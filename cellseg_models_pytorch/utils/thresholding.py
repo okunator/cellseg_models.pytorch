@@ -1,10 +1,9 @@
 import numpy as np
-import skimage.segmentation as segm
 import skimage.filters as filters
+import skimage.segmentation as segm
 from skimage.exposure import histogram
 
 from .mask_utils import remove_debris_binary
-
 
 __all__ = [
     "naive_thresh_prob",
@@ -68,7 +67,7 @@ def naive_thresh(prob_map: np.ndarray, threshold: int = 2, **kwargs) -> np.ndarr
 
 
 def niblack_thresh(prob_map: np.ndarray, win_size: int = 13, **kwargs) -> np.ndarray:
-    """Wrapper for skimage niblack thresholding method.
+    """Do niblack thresholding (skimage wrapper).
 
     Parameters
     ----------
@@ -90,7 +89,7 @@ def niblack_thresh(prob_map: np.ndarray, win_size: int = 13, **kwargs) -> np.nda
 
 
 def sauvola_thresh(prob_map: np.ndarray, win_size: int = 33, **kwargs) -> np.ndarray:
-    """Wrapper for skimage sauvola thresholding method.
+    """Do sauvola thresholding (skimage wrapper).
 
     Parameters
     ----------
@@ -137,7 +136,7 @@ def morph_chan_vese_thresh(prob_map: np.ndarray, **kwargs) -> np.ndarray:
 
 
 def argmax(prob_map: np.ndarray, **kwargs) -> np.ndarray:
-    """Wrapper to take argmax of a one_hot logits or prob map.
+    """Take argmax of a one_hot logits or prob map.
 
     Parameters
     ----------
@@ -159,7 +158,7 @@ def argmax(prob_map: np.ndarray, **kwargs) -> np.ndarray:
 
 
 def smoothed_thresh(prob_map: np.ndarray, eps: float = 0.01, **kwargs) -> np.ndarray:
-    """Thresholding probability map after it has been smoothed with dog.
+    """Threshold a probability map after it has been smoothed with dog.
 
     After dog, the prob_map histogram has a notable discontinuity which
     can be found by taking the minimum of the derivative of the histogram

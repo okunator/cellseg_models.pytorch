@@ -1,15 +1,15 @@
-import pytest
-import numpy as np
-
 from pathlib import Path
+
+import numpy as np
+import pytest
 
 from cellseg_models_pytorch.utils import (
     FileHandler,
+    float2ubyte,
+    minmax_normalize,
+    normalize,
     percentile_normalize,
     percentile_normalize99,
-    normalize,
-    minmax_normalize,
-    float2ubyte,
 )
 
 

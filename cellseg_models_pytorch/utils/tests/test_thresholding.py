@@ -1,15 +1,14 @@
-import pytest
 import numpy as np
-from typing import Callable
+import pytest
 
 from cellseg_models_pytorch.utils import (
+    argmax,
+    morph_chan_vese_thresh,
     naive_thresh,
     naive_thresh_prob,
-    sauvola_thresh,
-    morph_chan_vese_thresh,
-    smoothed_thresh,
     niblack_thresh,
-    argmax,
+    sauvola_thresh,
+    smoothed_thresh,
 )
 
 
@@ -30,9 +29,6 @@ def prob_map() -> np.ndarray:
     ],
 )
 def test_thresh(prob_map, method):
-    """
-    Quick tests for the different thresholding methods
-    """
     binary = method(prob_map)
 
     if len(np.unique(binary)) == 2:

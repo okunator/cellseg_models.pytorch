@@ -1,7 +1,8 @@
-import numpy as np
-import cv2
-from typing import Union
 from pathlib import Path
+from typing import Union
+
+import cv2
+import numpy as np
 
 
 class FileHandler:

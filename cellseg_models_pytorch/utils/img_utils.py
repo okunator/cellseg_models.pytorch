@@ -1,7 +1,6 @@
 import numpy as np
 from skimage import img_as_ubyte
 
-
 __all__ = [
     "percentile_normalize",
     "percentile_normalize99",
@@ -163,7 +162,6 @@ def minmax_normalize(
         np.ndarray:
             Min-max normalized image. Same shape as input
     """
-
     if img.ndim not in (2, 3):
         raise ValueError(
             f"Input img needs to have shape (H, W, C)|(H, W). Got: {img.shape}"

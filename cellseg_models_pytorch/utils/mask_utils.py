@@ -1,9 +1,9 @@
+from typing import List
+
 import cv2
 import numpy as np
-from typing import List
 from scipy import ndimage as ndi
 from skimage import morphology as morph
-
 
 __all__ = [
     "remove_small_objects",
@@ -38,6 +38,7 @@ def remove_small_objects(
     out: np.ndarray = None,
 ):
     """Remove objects smaller than the specified size.
+
     Expects ar to be an array with labeled objects, and removes objects
     smaller than min_size. If `ar` is bool, the image is first labeled.
     This leads to potentially different behavior for bool and 0-and-1
@@ -91,7 +92,6 @@ def remove_small_objects(
     >>> d is a
     True
     """
-
     if out is not None:
         in_place = False
 
@@ -173,7 +173,7 @@ def fix_duplicates(inst_map: np.ndarray) -> np.ndarray:
 
 # ported from https://github.com/vqdang/hover_net/blob/master/src/loader/augs.py
 def remove_1px_boundary(inst_map: np.ndarray) -> np.ndarray:
-    """Removes 1px around instances.
+    """Remove 1px around object instances.
 
     Parameters
     ----------
@@ -448,7 +448,7 @@ def soft_type_flatten(type_map: np.ndarray) -> np.ndarray:
 
 
 def remove_debris_binary(binary_mask: np.ndarray) -> np.ndarray:
-    """Takes in a binary mask -> fill holes -> removes small objects.
+    """Take in a binary mask -> fill holes -> removes small objects.
 
     Parameters
     -----------

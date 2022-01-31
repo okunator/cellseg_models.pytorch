@@ -1,25 +1,25 @@
-import pytest
 import numpy as np
+import pytest
 
 from cellseg_models_pytorch.utils import (
-    remove_small_objects,
-    remove_1px_boundary,
-    fix_duplicates,
-    remap_label,
     binarize,
-    center_crop,
     bounding_box,
+    center_crop,
+    fill_holes_semantic,
+    fix_duplicates,
     get_inst_centroid,
     get_inst_types,
     get_type_instances,
+    label_semantic,
     one_hot,
-    type_map_flatten,
-    soft_type_flatten,
+    remap_label,
+    remove_1px_boundary,
     remove_debris_binary,
     remove_debris_instance,
     remove_debris_semantic,
-    fill_holes_semantic,
-    label_semantic,
+    remove_small_objects,
+    soft_type_flatten,
+    type_map_flatten,
 )
 
 
