@@ -1,20 +1,25 @@
 default_stages: [commit, push]
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.3.0
+    rev: v4.1.0
     hooks:
       - id: end-of-file-fixer
       - id: trailing-whitespace
   - repo: https://github.com/psf/black
-    rev: 21.12b0
+    rev: 22.1.0
     hooks:
       - id: black
         args: [--config=pyproject.toml]
         language_version: python3
-  - repo: https://github.com/PyCQA/flake8
-    rev: 4.0.1
-    hooks:
-      - id: flake8
-        args: [--config=pyproject.toml]
-        additional_dependencies: [flake8-docstrings==1.6.0, flake8-black>=0.2.3]
-        language_version: python3
+  # - repo: https://github.com/PyCQA/flake8
+  #   rev: 4.0.1
+  #   hooks:
+  #     - id: flake8
+  #       args:
+  #         [
+  #           --config=pyproject.toml,
+  #           --max-line-length=88,
+  #           --ignore=D100,D103,E203,
+  #         ]
+  #       additional_dependencies: [flake8-docstrings==1.6.0, flake8-black>=0.2.3]
+  #       language_version: python3
