@@ -50,4 +50,4 @@ jobs:
       - name: Run tests
         run: |
           source .venv/bin/activate
-          pytest --cov
+          poetry run pytest --cov
