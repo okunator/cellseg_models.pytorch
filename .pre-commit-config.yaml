@@ -18,17 +18,11 @@ repos:
       - id: isort
         args: [--multi-line=3, "--profile", "black", "--filter-files"]
         name: imports
-
-  # - repo: https://github.com/PyCQA/flake8
-  #   rev: 4.0.1
-  #   hooks:
-  #     - id: flake8
-  #       args:
-  #         [
-  #           --config=pyproject.toml,
-  #           --max-line-length=88,
-  #           --ignore=D100,D103,E203,
-  #         ]
-  #       additional_dependencies: [flake8-docstrings==1.6.0, flake8-black>=0.2.3]
-  #       language_version: python3
-  #       name: PEP8
+  - repo: https://github.com/PyCQA/flake8
+    rev: 4.0.1
+    hooks:
+      - id: flake8
+        args: [--config=.flake8]
+        additional_dependencies: [flake8-docstrings==1.6.0, flake8-black>=0.2.3]
+        language_version: python3
+        name: PEP8
