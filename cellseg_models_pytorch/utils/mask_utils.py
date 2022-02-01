@@ -546,13 +546,13 @@ def remove_debris_semantic(sem_map: np.ndarray, min_size: int = 10000):
                 x1 = x1 - 2 if x1 - 2 >= 0 else x1
                 x2 = x2 + 2 if x2 + 2 <= res.shape[1] - 1 else x2
                 y2 = y2 + 2 if y2 + 2 <= res.shape[0] - 1 else y2
-                l, c = np.unique(res[y1:y2, x1:x2], return_counts=True)
+                labels, counts = np.unique(res[y1:y2, x1:x2], return_counts=True)
 
-                if 0 in l and len(l) > 1:
-                    l = l[1:]
-                    c = c[1:]
+                if 0 in labels and len(labels) > 1:
+                    labels = labels[1:]
+                    counts = counts[1:]
 
-                fill_label = l[np.argmax(c)]
+                fill_label = labels[np.argmax(counts)]
                 res[inst_map == label] = fill_label
 
     return res
@@ -640,9 +640,9 @@ def label_semantic(sem_map: np.ndarray, sort: bool = True) -> np.ndarray:
         if len(labels) > 1:
             labels = labels[1:]
 
-        for l in labels:
+        for label in labels:
             counter += 1
-            obj = obj_insts == l
+            obj = obj_insts == label
             sem_inst[obj] += counter
 
     return sem_inst
