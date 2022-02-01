@@ -17,8 +17,7 @@ exclude =
     old,
     build,
     dist,
-    test,
-    tests
+    test*,
 
 extend-ignore =
     D100,
