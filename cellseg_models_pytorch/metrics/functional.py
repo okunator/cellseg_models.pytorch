@@ -33,6 +33,15 @@ import numpy as np
 
 from .binary_metrics import get_stats, iou_score
 
+__all__ = [
+    "pairwise_pixel_stats",
+    "pairwise_object_stats",
+    "panoptic_quality",
+    "average_precision",
+    "aggregated_jaccard_index",
+    "dice2",
+]
+
 
 def pairwise_pixel_stats(
     true: np.ndarray, pred: np.ndarray, metric_func: Optional[Callable] = None
