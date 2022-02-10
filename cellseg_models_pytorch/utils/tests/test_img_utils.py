@@ -1,28 +1,19 @@
-from pathlib import Path
-
 import numpy as np
 import pytest
 
 from cellseg_models_pytorch.utils import (
-    FileHandler,
     float2ubyte,
     minmax_normalize,
     normalize,
     percentile_normalize,
     percentile_normalize99,
 )
-
-
-@pytest.fixture(scope="package")
-def img_sample() -> np.ndarray:
-    """Read in test RGB img."""
-    path = Path().resolve()
-    return FileHandler.read_img(path / "cellseg_models_pytorch/utils/tests/data/HE.png")
+from cellseg_models_pytorch.utils.tests.fixtures import img_sample
 
 
 @pytest.mark.parametrize("lower", [0.0, 0.1])
 @pytest.mark.parametrize("upper", [99.99, 100.0])
-def test_percentile_normalize(img_sample, lower, upper) -> None:
+def test_percentile_normalize(img_sample, lower, upper, wrongshape) -> None:
     im = img_sample
     nim = percentile_normalize(im, lower, upper)
 

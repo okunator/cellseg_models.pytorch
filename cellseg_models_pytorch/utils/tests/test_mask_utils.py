@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from cellseg_models_pytorch.utils import (
     binarize,
@@ -21,69 +20,7 @@ from cellseg_models_pytorch.utils import (
     soft_type_flatten,
     type_map_flatten,
 )
-
-
-@pytest.fixture(scope="package")
-def inst_map() -> np.ndarray:
-    inst_map = np.array(
-        [
-            [2, 2, 2, 1, 1, 1, 1, 0, 5, 5],
-            [2, 2, 2, 1, 1, 1, 1, 0, 5, 5],
-            [2, 2, 0, 0, 1, 1, 1, 0, 5, 5],
-            [2, 0, 0, 0, 0, 0, 0, 4, 4, 0],
-            [0, 0, 3, 3, 3, 0, 4, 4, 4, 0],
-            [0, 3, 3, 3, 3, 0, 4, 4, 4, 0],
-            [0, 3, 3, 3, 0, 0, 4, 4, 4, 0],
-            [0, 3, 3, 0, 0, 0, 4, 4, 0, 0],
-            [0, 0, 0, 0, 0, 0, 9, 9, 0, 0],
-            [0, 8, 8, 8, 0, 0, 9, 9, 9, 0],
-            [0, 8, 8, 8, 0, 0, 9, 9, 9, 0],
-        ],
-        dtype=int,
-    )
-    return inst_map
-
-
-@pytest.fixture(scope="package")
-def type_map() -> np.ndarray:
-    type_map = np.array(
-        [
-            [2, 2, 2, 1, 1, 1, 1, 0, 3, 3],
-            [2, 2, 2, 1, 1, 1, 1, 0, 3, 3],
-            [2, 2, 0, 0, 1, 1, 1, 0, 3, 3],
-            [2, 0, 0, 0, 0, 0, 0, 1, 1, 0],
-            [0, 0, 3, 3, 3, 0, 1, 1, 1, 0],
-            [0, 3, 3, 3, 3, 0, 1, 1, 1, 0],
-            [0, 3, 3, 3, 0, 0, 1, 1, 1, 0],
-            [0, 3, 3, 0, 0, 0, 1, 1, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
-            [0, 2, 2, 2, 0, 0, 1, 1, 1, 0],
-            [0, 2, 2, 2, 0, 0, 1, 1, 1, 0],
-        ],
-        dtype=int,
-    )
-    return type_map
-
-
-@pytest.fixture(scope="package")
-def sem_map() -> np.ndarray:
-    sem_map = np.array(
-        [
-            [2, 2, 2, 1, 1, 1, 1, 3, 3, 3],
-            [2, 2, 2, 1, 1, 1, 1, 3, 3, 3],
-            [2, 1, 2, 2, 1, 1, 1, 3, 3, 3],
-            [2, 1, 0, 2, 3, 3, 3, 1, 1, 1],
-            [2, 0, 2, 2, 3, 3, 1, 1, 1, 0],
-            [2, 2, 2, 2, 3, 3, 1, 2, 1, 1],
-            [2, 2, 2, 2, 3, 3, 1, 1, 1, 1],
-            [3, 3, 3, 3, 3, 3, 1, 1, 0, 0],
-            [3, 3, 3, 0, 3, 3, 1, 1, 0, 0],
-            [3, 2, 2, 2, 3, 3, 1, 1, 1, 1],
-            [3, 2, 3, 2, 3, 3, 1, 1, 1, 1],
-        ],
-        dtype=int,
-    )
-    return sem_map
+from cellseg_models_pytorch.utils.tests.fixtures import inst_map, sem_map, type_map
 
 
 def test_remove_small_objects(inst_map):
