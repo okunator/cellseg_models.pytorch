@@ -13,7 +13,7 @@ from cellseg_models_pytorch.utils.tests.fixtures import img_sample
 
 @pytest.mark.parametrize("lower", [0.0, 0.1])
 @pytest.mark.parametrize("upper", [99.99, 100.0])
-def test_percentile_normalize(img_sample, lower, upper, wrongshape) -> None:
+def test_percentile_normalize(img_sample, lower, upper) -> None:
     im = img_sample
     nim = percentile_normalize(im, lower, upper)
 
