@@ -28,6 +28,12 @@ def percentile_normalize(
     -------
         np.ndarray:
             Normalized img. Same shape as input.
+
+    Raises
+    ------
+        ValueError
+            If input image does not have shape (H, W) or (H, W, C).
+            If the pixel values of the image are not positive.
     """
     axis = (0, 1)
 
@@ -68,6 +74,12 @@ def percentile_normalize99(
     -------
         np.ndarray:
             Normalized image. Same shape as input.
+
+    Raises
+    ------
+        ValueError
+            If input image does not have shape (H, W) or (H, W, C).
+            If the pixel values of the image are not positive.
     """
     axis = (0, 1)
 
@@ -114,6 +126,12 @@ def normalize(
     -------
         np.ndarray:
             Normalized image. Same shape as input.
+
+    Raises
+    ------
+        ValueError
+            If input image does not have shape (H, W) or (H, W, C).
+            If the pixel values of the image are not positive.
     """
     axis = (0, 1)
 
@@ -161,6 +179,12 @@ def minmax_normalize(
     -------
         np.ndarray:
             Min-max normalized image. Same shape as input
+
+    Raises
+    ------
+        ValueError
+            If input image does not have shape (H, W) or (H, W, C).
+            If the pixel values of the image are not positive.
     """
     if img.ndim not in (2, 3):
         raise ValueError(
