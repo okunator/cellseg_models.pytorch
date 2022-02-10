@@ -26,6 +26,7 @@ from .mask_utils import (
     soft_type_flatten,
     type_map_flatten,
 )
+from .patching import TilerStitcher, extract_patches, stitch_patches
 from .thresholding import (
     argmax,
     morph_chan_vese_thresh,
@@ -68,4 +69,7 @@ __all__ = [
     "morph_chan_vese_thresh",
     "argmax",
     "smoothed_thresh",
+    "TilerStitcher",
+    "extract_patches",
+    "stitch_patches",
 ]

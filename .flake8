@@ -21,5 +21,6 @@ exclude =
 
 extend-ignore =
     D100,
+    D101,
     D104,
     E203,
