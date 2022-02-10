@@ -44,8 +44,8 @@ def percentile_normalize(
 
     if not np.all(np.ptp(img, axis=(0, 1)) > 0.0):
         raise ValueError(
-            f"""Pixel values need to be positive in the input image.
-            Got: {np.ptp(img, axis=(0, 1))}"""
+            f"""Pixel values need to have a range.
+            Got range(min, max): {np.ptp(img, axis=(0, 1))}"""
         )
 
     im = img.copy()
@@ -90,8 +90,8 @@ def percentile_normalize99(
 
     if not np.all(np.ptp(img, axis=axis) > 0.0):
         raise ValueError(
-            f"""Pixel values need to be positive in the input image.
-            Got: {np.ptp(img, axis=(0, 1))}"""
+            f"""Pixel values need to have a range.
+            Got range(min, max): {np.ptp(img, axis=(0, 1))}"""
         )
 
     im = img.copy()
@@ -142,8 +142,8 @@ def normalize(
 
     if not np.all(np.ptp(img, axis=axis) > 0.0):
         raise ValueError(
-            f"""Pixel values need to be positive in the input image.
-            Got: {np.ptp(img, axis=(0, 1))}"""
+            f"""Pixel values need to have a range.
+            Got range(min, max): {np.ptp(img, axis=(0, 1))}"""
         )
 
     im = img.copy()
@@ -193,8 +193,8 @@ def minmax_normalize(
 
     if not np.all(np.ptp(img, axis=(0, 1)) > 0.0):
         raise ValueError(
-            f"""Pixel values need to be positive in the input image.
-            Got: {np.ptp(img, axis=(0, 1))}"""
+            f"""Pixel values need to have a range.
+            Got range(min, max): {np.ptp(img, axis=(0, 1))}"""
         )
 
     im = img.copy()
