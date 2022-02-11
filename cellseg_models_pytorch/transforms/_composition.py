@@ -89,6 +89,17 @@ class ToTensorV3(A.BasicTransform):
 def apply_each(transforms: List[OnlyInstMapTransform]) -> Callable:
     """Apply each transform wrapper.
 
+    Example
+    -------
+        >>> im = read_image("/path/to/image.png")
+        >>> inst_map = read_mask("/path/to/mask.mat")
+        >>> tr = apply_each([cellpose_transform(), edgeweight_transform()])
+        >>> aug = tr(image=im, inst_map=inst_map)
+        >>> print(aug["cellpose"]["inst_map"].shape)
+        (2, 256, 256)
+        >>> print(aug["edgeweight"]["inst_map"].shape)
+        (256, 256)
+
     Returns
     -------
         ApplyEach: ApplyEach object.
