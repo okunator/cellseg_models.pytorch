@@ -160,7 +160,7 @@ def binarize(inst_map: np.ndarray) -> np.ndarray:
     Parameters
     ----------
         inst_map : np.ndarray
-            Instance map to be binarized.
+            Instance labelled mask. Shape (H, W).
 
     Returns
     -------
