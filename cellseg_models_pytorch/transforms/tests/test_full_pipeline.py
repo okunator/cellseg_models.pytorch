@@ -12,7 +12,6 @@ from cellseg_models_pytorch.transforms import (
     smooth_dist_transform,
     to_tensorv3,
 )
-from cellseg_models_pytorch.utils.tests.fixtures import img_sample, inst_map, sem_map
 
 
 @pytest.mark.parametrize("zero_input", [None, np.zeros((11, 10))])

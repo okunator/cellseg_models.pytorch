@@ -8,7 +8,6 @@ from cellseg_models_pytorch.utils import (
     percentile_normalize,
     percentile_normalize99,
 )
-from cellseg_models_pytorch.utils.tests.fixtures import img_sample
 
 
 @pytest.mark.parametrize("lower", [0.0, 0.1])

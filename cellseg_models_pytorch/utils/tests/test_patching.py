@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 
 from cellseg_models_pytorch.utils import TilerStitcher, extract_patches, stitch_patches
-from cellseg_models_pytorch.utils.tests.fixtures import img_sample
 
 
 @pytest.mark.parametrize(

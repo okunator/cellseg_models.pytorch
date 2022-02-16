@@ -12,7 +12,6 @@ from cellseg_models_pytorch.transforms import (
     omnipose_transform,
     smooth_dist_transform,
 )
-from cellseg_models_pytorch.utils.tests.fixtures import inst_map
 
 
 @pytest.mark.parametrize(
