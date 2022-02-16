@@ -38,6 +38,7 @@ isort = "^5.10.1"
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra -v"
+markers = ["cuda (deselect with '-m \"nocuda\"')"]
 
 [tool.tox]
 legacy_tox_ini = """
@@ -69,10 +70,13 @@ line-length = 88
 max-line-length = 88
 extend-ignore = "E203,D103,D104,"
 max-complexity = 10
-exclude = ".git,__pycache__,docs/source/conf.py,old,build,dist,test,tests"
+exclude = ".git,__pycache__,docs/source/conftest.py,old,build,dist,test,tests"
 
 [tool.coverage.run]
 source = ["cellseg_models_pytorch"]
+
+[tool.coverage.report]
+exclude_lines = ["raise TypeError", "raise NotImplementedError", "raise ValueError"]
 
 [tool.mypy]
 warn_return_any = false
