@@ -18,9 +18,11 @@ exclude =
     build,
     dist,
     test*,
+    conftest.py
 
 extend-ignore =
     D100,
     D101,
     D104,
     E203,
+    W503,
