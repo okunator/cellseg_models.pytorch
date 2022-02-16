@@ -1,0 +1,9 @@
+docker*
+.tox
+.mypy_cache
+.pytest_cache
+.github*
+.vscode
+.dockerignore
+notebook_tests
+html_cov
