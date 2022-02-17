@@ -101,8 +101,8 @@ def tensor_to_ndarray(
             The order of the dimensions in the output tensor.
             One of: "HW", "HWC", "BHWC", "BHW"
 
-    Returns:
-    -----------
+    Returns
+    -------
         np.ndarray:
             An ndarray. Shape(B, H, W, C)|(B, H, W)|(H, W, C)|(H, W)
 
