@@ -2,6 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import torch
 
 from cellseg_models_pytorch.utils import FileHandler
 
@@ -98,3 +99,30 @@ def sem_map() -> np.ndarray:
         dtype=int,
     )
     return sem_map
+
+
+@pytest.fixture(scope="package")
+def tensor_sem_map() -> torch.LongTensor:
+    """Return a dummy tensor of shape (2, 6, 6)."""
+    t = torch.LongTensor(
+        [
+            [
+                [0, 0, 0, 1, 1, 1],
+                [0, 0, 0, 1, 1, 1],
+                [0, 0, 0, 1, 1, 1],
+                [2, 2, 2, 3, 3, 3],
+                [2, 2, 2, 3, 3, 3],
+                [2, 2, 2, 3, 3, 3],
+            ],
+            [
+                [2, 2, 2, 0, 0, 0],
+                [2, 2, 2, 0, 0, 0],
+                [2, 2, 2, 0, 0, 0],
+                [3, 3, 3, 1, 1, 1],
+                [3, 3, 3, 1, 1, 1],
+                [3, 3, 3, 1, 1, 1],
+            ],
+        ]
+    )
+
+    return t

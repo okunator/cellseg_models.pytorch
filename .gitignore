@@ -1,4 +1,5 @@
 notebook_tests
+tests_cuda.yml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
