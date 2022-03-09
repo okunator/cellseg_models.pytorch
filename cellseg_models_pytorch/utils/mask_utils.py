@@ -514,7 +514,7 @@ def remove_debris_instance(inst_map: np.ndarray, min_size: int = 10):
         np.ndarray:
             Cleaned instance labelled mask of shape (H, W).
     """
-    res = np.zeros(inst_map.shape, np.uint32)
+    res = np.zeros(inst_map.shape, np.int32)
     for ix in np.unique(inst_map)[1:]:
         nuc_map = np.copy(inst_map == ix)
 
@@ -523,11 +523,11 @@ def remove_debris_instance(inst_map: np.ndarray, min_size: int = 10):
         x1 = x1 - 2 if x1 - 2 >= 0 else x1
         x2 = x2 + 2 if x2 + 2 <= inst_map.shape[1] - 1 else x2
         y2 = y2 + 2 if y2 + 2 <= inst_map.shape[0] - 1 else y2
-        nuc_map_crop = nuc_map[y1:y2, x1:x2].astype("u4")
+        nuc_map_crop = nuc_map[y1:y2, x1:x2].astype("i4")
 
         nuc_map_crop = remove_small_objects(
             nuc_map_crop.astype(bool), min_size, connectivity=1
-        ).astype("u4")
+        ).astype("i4")
 
         nuc_map_crop[nuc_map_crop > 0] = ix
         res[y1:y2, x1:x2] += nuc_map_crop
@@ -559,7 +559,7 @@ def remove_debris_semantic(sem_map: np.ndarray, min_size: int = 10000):
 
     for i in classes:
 
-        area = np.array(res == i, np.uint32)
+        area = np.array(res == i, np.int32)
         inst_map = ndi.label(area)[0]
         labels, counts = np.unique(inst_map, return_counts=True)
 
