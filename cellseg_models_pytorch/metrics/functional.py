@@ -216,7 +216,7 @@ def average_precision(
     Returns
     -------
         float:
-            The compuited precision.
+            The computed precision.
     """
     iou = pairwise_pixel_stats(pred, true, iou_score)
     ap = 0.0
@@ -281,7 +281,7 @@ def aggregated_jaccard_index(
     Returns
     -------
         float:
-            The computed precision.
+            The computed aji.
     """
     aji = 0.0
     stats = pairwise_pixel_stats(true, pred)

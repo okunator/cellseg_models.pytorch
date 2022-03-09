@@ -13,7 +13,6 @@ from cellseg_models_pytorch.transforms import (
     rigid_transforms,
     to_tensor,
 )
-from cellseg_models_pytorch.utils.tests.fixtures import img_sample
 
 
 @pytest.mark.parametrize(

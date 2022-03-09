@@ -20,7 +20,6 @@ from cellseg_models_pytorch.utils import (
     soft_type_flatten,
     type_map_flatten,
 )
-from cellseg_models_pytorch.utils.tests.fixtures import inst_map, sem_map, type_map
 
 
 def test_remove_small_objects(inst_map):

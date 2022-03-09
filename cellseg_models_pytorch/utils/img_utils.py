@@ -42,7 +42,7 @@ def percentile_normalize(
             f"Input img needs to have shape (H, W, C)|(H, W). Got: {img.shape}"
         )
 
-    if not np.all(np.ptp(img, axis=(0, 1)) > 0.0):
+    if not np.all(np.ptp(img, axis=(0, 1)) >= 0.0):
         raise ValueError(
             f"""Pixel values need to have a range.
             Got range(min, max): {np.ptp(img, axis=(0, 1))}"""
@@ -88,7 +88,7 @@ def percentile_normalize99(
             f"Input img needs to have shape (H, W, C)|(H, W). Got: {img.shape}"
         )
 
-    if not np.all(np.ptp(img, axis=axis) > 0.0):
+    if not np.all(np.ptp(img, axis=axis) >= 0.0):
         raise ValueError(
             f"""Pixel values need to have a range.
             Got range(min, max): {np.ptp(img, axis=(0, 1))}"""

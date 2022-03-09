@@ -26,7 +26,22 @@ from .mask_utils import (
     soft_type_flatten,
     type_map_flatten,
 )
-from .patching import TilerStitcher, extract_patches, stitch_patches
+from .patching import (
+    TilerStitcher,
+    TilerStitcherTorch,
+    _get_margins,
+    extract_patches_numpy,
+    extract_patches_torch,
+    stitch_patches_numpy,
+    stitch_patches_torch,
+)
+from .tensor_kernels import filter2D, gaussian, gaussian_kernel2d, sobel_hv
+from .tensor_utils import (
+    ndarray_to_tensor,
+    tensor_one_hot,
+    tensor_to_ndarray,
+    to_device,
+)
 from .thresholding import (
     argmax,
     morph_chan_vese_thresh,
@@ -70,6 +85,18 @@ __all__ = [
     "argmax",
     "smoothed_thresh",
     "TilerStitcher",
-    "extract_patches",
-    "stitch_patches",
+    "TilerStitcherTorch",
+    "extract_patches_numpy",
+    "stitch_patches_numpy",
+    "extract_patches_torch",
+    "stitch_patches_torch",
+    "_get_margins",
+    "gaussian",
+    "gaussian_kernel2d",
+    "sobel_hv",
+    "filter2D",
+    "ndarray_to_tensor",
+    "tensor_to_ndarray",
+    "to_device",
+    "tensor_one_hot",
 ]
