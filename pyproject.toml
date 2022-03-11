@@ -76,7 +76,7 @@ exclude = ".git,__pycache__,docs/source/conftest.py,old,build,dist,test,tests"
 source = ["cellseg_models_pytorch"]
 
 [tool.coverage.report]
-exclude_lines = ["raise TypeError", "raise NotImplementedError", "raise ValueError"]
+exclude_lines = ["raise TypeError", "raise NotImplementedError", "raise ValueError", "def extra_repr"]
 
 [tool.mypy]
 warn_return_any = false
