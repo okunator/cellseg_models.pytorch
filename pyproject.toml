@@ -20,6 +20,7 @@ pathos = "^0.2.8"
 torchmetrics = "^0.3.0"
 opencv-python = "^4.2.0.32"
 black = "^21.12b0"
+timm = "^0.5.4"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"

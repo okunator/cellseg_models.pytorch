@@ -34,13 +34,6 @@ class JointLoss(nn.ModuleDict):
         if not isinstance(losses, list):
             raise ValueError("`losses` arg must be a list.")
 
-        if len(losses) > 4:
-            raise ValueError(
-                f"""
-                Currently the max number of losses in one JointLoss is 4.
-                Got: {len(losses)}. {losses}"""
-            )
-
         self.weights = [1.0] * len(losses)
         if weights is not None:
             if not all(0 <= val <= 1.0 for val in weights):
