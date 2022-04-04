@@ -41,6 +41,6 @@ class FixedUnpool(nn.Module):
 
         return ret
 
-    def __repr__(self):
+    def extra_repr(self):
         """Print output."""
-        return f"FixedUnpool(scale_factor={self.scale_factor})"
+        return "scale_factor={self.scale_factor}"  # .format(**self.__dict__)

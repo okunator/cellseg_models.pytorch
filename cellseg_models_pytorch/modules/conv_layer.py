@@ -52,7 +52,7 @@ class ConvLayer(nn.ModuleDict):
             preactivates : Tuple[bool, ...], default=(False, False)
                 Pre-activations flags for the conv-blocks.
             kernel_sizes : Tuple[int, ...], default=(3, 3)
-                The size of the convolution kernels.
+                The size of the convolution kernels in each conv block.
             attentions : Tuple[str, ...], default=(None, None)
                 Attention method. One of: "se", "scse", "gc", "eca", None
             preattends : Tuple[bool, ...], default=(False, False)
@@ -66,11 +66,17 @@ class ConvLayer(nn.ModuleDict):
         super().__init__()
         self.short_skip = short_skip
 
-        if not all(
-            [len(a) == n_blocks for a in locals().values() if isinstance(a, tuple)]
-        ):
+        illegal_args = [
+            (k, a)
+            for k, a in locals().items()
+            if isinstance(a, tuple) and len(a) != n_blocks
+        ]
+
+        if illegal_args:
             raise ValueError(
-                f"All the tuple-arg lengths need to be equal to `n_blocks`={n_blocks}."
+                f"""
+                All the tuple-arg lengths need to be equal to `n_blocks`={n_blocks}.
+                Illegal args: {illegal_args}"""
             )
 
         blocks = list(range(n_blocks))

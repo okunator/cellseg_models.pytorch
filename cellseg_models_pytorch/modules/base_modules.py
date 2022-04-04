@@ -6,7 +6,25 @@ from .conv import CONV_LOOKUP
 from .norm import NORM_LOOKUP
 from .upsample import UP_LOOKUP
 
-__all__ = ["Activation", "Norm", "Up", "Conv"]
+__all__ = ["Activation", "Norm", "Up", "Conv", "Identity"]
+
+
+class Identity(nn.Module):
+    def __init__(
+        self, in_channels: int = None, out_channels: int = None, *args, **kwargs
+    ):
+        """Identity operator that is argument-insensitive.
+
+        The forward method can take in multiple arguments returning only the
+        first one.
+        """
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+    def forward(self, input: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+        """Forward pass of identity operator."""
+        return input
 
 
 class Activation(nn.Module):
@@ -36,7 +54,7 @@ class Activation(nn.Module):
             except Exception:
                 self.act = ACT_LOOKUP[name](**kwargs)
         else:
-            self.act = nn.Identity()
+            self.act = Identity()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the activation function."""
@@ -67,7 +85,7 @@ class Norm(nn.Module):
         if name is not None:
             self.norm = NORM_LOOKUP[name](**kwargs)
         else:
-            self.norm = nn.Identity()
+            self.norm = Identity()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass for the norm function."""
