@@ -28,7 +28,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from timm.models.layers.helpers import make_divisible
 
-from .base_modules import Activation, Conv, Norm
+from .base_modules import Activation, Conv, Identity, Norm
 
 __all__ = [
     "Attention",
@@ -327,7 +327,7 @@ class Attention(nn.Module):
         if name is not None:
             self.att = ATT_LOOKUP[name](**kwargs)
         else:
-            self.att = nn.Identity()
+            self.att = Identity()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass for the attention method."""
