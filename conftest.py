@@ -9,10 +9,14 @@ from cellseg_models_pytorch.utils import FileHandler
 
 def pytest_addoption(parser):
     parser.addoption("--cuda", action="store_true", default=False, help="run gpu tests")
+    parser.addoption(
+        "--slow", action="store_true", default=False, help="run slow tests"
+    )
 
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "cuda: mark test as a gpu test")
+    config.addinivalue_line("markers", "slow: mark test as a slow test")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -26,6 +30,17 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "cuda" in item.keywords:
                 item.add_marker(skip_cuda)
+
+    only_slow = pytest.mark.skip(reason="--slow option runs only slow tests")
+    if config.getoption("--slow"):
+        for item in items:
+            if "slow" not in item.keywords:
+                item.add_marker(only_slow)
+    else:
+        skip_slow = pytest.mark.skip(reason="need --slow option to run")
+        for item in items:
+            if "slow" in item.keywords:
+                item.add_marker(skip_slow)
 
 
 @pytest.fixture(scope="package")
