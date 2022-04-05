@@ -142,9 +142,8 @@ class DecoderStage(nn.Module):
                 attentions=attentions[i],
             )
             self.conv_layers[f"conv_layer{i + 1}"] = layer
-            in_channels = layer.out_channels
 
-        self.out_channels = in_channels
+        self.out_channels = layer.out_channels
 
     def forward(
         self,

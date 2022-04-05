@@ -65,6 +65,7 @@ class ConvLayer(nn.ModuleDict):
         """
         super().__init__()
         self.short_skip = short_skip
+        self.out_channels = out_channels
 
         illegal_args = [
             (k, a)
@@ -114,8 +115,6 @@ class ConvLayer(nn.ModuleDict):
                 Norm(normalizations[-1], num_features=out_channels),
                 Activation(activations[-1]),
             )
-
-        self.out_channels = in_channels
 
     def forward_features_dense(self, init_features: List[torch.Tensor]) -> torch.Tensor:
         """Dense forward pass."""
