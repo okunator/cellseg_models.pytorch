@@ -11,7 +11,12 @@ from .unetpp import UnetppSkip
 __all__ = ["LongSkip"]
 
 
-LONGSKIP_LOOKUP = {"unet": UnetSkip, "unet3p": Unet3pSkip, "unetpp": UnetppSkip}
+LONGSKIP_LOOKUP = {
+    "unet": UnetSkip,
+    "unet3p": Unet3pSkip,
+    "unet3p-lite": Unet3pSkip,
+    "unetpp": UnetppSkip,
+}
 
 
 class LongSkip(nn.Module):
@@ -21,7 +26,8 @@ class LongSkip(nn.Module):
         Parameters
         ----------
             name : str
-                The name of the long skip method. One of "unet", "unet3p", "unetpp".
+                The name of the long skip method.
+                One of "unet", "unet3p", "unet3p-lite", "unetpp".
 
         Raises
         ------
@@ -36,6 +42,8 @@ class LongSkip(nn.Module):
             )
 
         if name is not None:
+            if name == "unet3p-lite":
+                kwargs["lite_version"] = True
             self.skip = LONGSKIP_LOOKUP[name](**kwargs)
         else:
             self.skip = Identity()

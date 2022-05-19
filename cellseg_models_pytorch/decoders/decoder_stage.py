@@ -93,7 +93,8 @@ class DecoderStage(nn.Module):
             upsampling : str, default="fixed-unpool"
                 Name of the upsampling method.
             long_skip : str, default="unet"
-                long skip method to be used. One of: "unet", "unetpp", "unet3p", None
+                long skip method to be used. One of: "unet", "unetpp", "unet3p",
+                 "unet3p-lite", None,
             merge_policy : str, default="sum"
                 The long skip merge policy. One of: "sum", "cat"
             layer_residual : bool, default=False

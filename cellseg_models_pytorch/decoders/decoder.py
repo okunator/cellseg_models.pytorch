@@ -35,7 +35,8 @@ class Decoder(nn.ModuleDict):
             n_blocks : Tuple[Tuple[int, ...], ...] = ((2, ), (2, ), (2, ). (2, ), (2, ))
                 The number of blocks inside each conv-layer in each decoder stage.
             long_skip : str, default="unet"
-                long skip method to be used. One of: "unet", "unetpp", "unet3p", None
+                long skip method to be used. One of: "unet", "unetpp", "unet3p",
+                "unet3p-lite", None
             stage_params : Optional[Tuple[Dict, ...]], default=None
                 The keyword args for each of the distinct decoder stages. Incudes the
                 parameters for the long skip connections and convolutional layers of the

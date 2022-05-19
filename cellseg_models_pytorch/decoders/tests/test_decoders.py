@@ -4,7 +4,7 @@ import torch
 from cellseg_models_pytorch.decoders import Decoder
 
 
-@pytest.mark.parametrize("long_skip", ["unet", "unetpp", "unet3p"])
+@pytest.mark.parametrize("long_skip", ["unet", "unetpp", "unet3p", "unet3p-lite"])
 @pytest.mark.parametrize("merge_policy", ["cat", "sum"])
 def test_decoder_fwdbwd(long_skip, merge_policy):
     enc_channels = (64, 32, 16, 8, 8)
@@ -42,7 +42,7 @@ def test_decoder_fwdbwd(long_skip, merge_policy):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("long_skip", ["unet", "unetpp", "unet3p"])
+@pytest.mark.parametrize("long_skip", ["unet", "unetpp", "unet3p", "unet3p-lite"])
 @pytest.mark.parametrize("merge_policy", ["cat", "sum"])
 @pytest.mark.parametrize("short_skip", ["residual", "dense", "basic"])
 @pytest.mark.parametrize(
