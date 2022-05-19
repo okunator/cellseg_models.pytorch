@@ -16,7 +16,7 @@ def test_percentile_normalize(img_sample, lower, upper) -> None:
     im = img_sample
     nim = percentile_normalize(im, lower, upper)
 
-    assert nim.dtype == "float64"
+    assert nim.dtype == "float32"
     assert nim.shape == im.shape
     assert np.logical_and(nim >= 0.0, nim <= 1.0).all()
 
@@ -27,7 +27,7 @@ def test_percentile_normalize99(img_sample, amin, amax) -> None:
     im = img_sample
     nim = percentile_normalize99(im, amin, amax)
 
-    assert nim.dtype == "float64"
+    assert nim.dtype == "float32"
     assert nim.shape == im.shape
 
 
@@ -38,7 +38,7 @@ def test_normalize(img_sample, standardize, amin, amax) -> None:
     im = img_sample
     nim = normalize(im, standardize, amin, amax)
 
-    assert nim.dtype == "float64"
+    assert nim.dtype == "float32"
     assert nim.shape == im.shape
 
 
@@ -48,7 +48,7 @@ def test_minmax_normalize(img_sample, amin, amax) -> None:
     im = img_sample
     nim = minmax_normalize(im, amin, amax)
 
-    assert nim.dtype == "float64"
+    assert nim.dtype == "float32"
     assert nim.shape == im.shape
     assert np.logical_and(nim >= 0.0, nim <= 1.0).all()
 

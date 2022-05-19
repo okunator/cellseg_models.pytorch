@@ -4,6 +4,7 @@ import numpy as np
 
 from cellseg_models_pytorch.utils import fix_duplicates
 
+from ..utils import binarize
 from ._composition import OnlyInstMapTransform
 from .functional import (
     gen_contour_maps,
@@ -15,6 +16,17 @@ from .functional import (
     smooth_distance,
 )
 
+__all__ = [
+    "cellpose_transform",
+    "hovernet_transform",
+    "omnipose_transform",
+    "dist_transform",
+    "smooth_dist_transform",
+    "edgeweight_transform",
+    "contour_transform",
+    "binarize_transform",
+]
+
 
 class CellposeTrans(OnlyInstMapTransform):
     def __init__(self):
@@ -25,13 +37,13 @@ class CellposeTrans(OnlyInstMapTransform):
         super().__init__()
         self.name = "cellpose"
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **params) -> np.ndarray:
+    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
         """Fix duplicate values and generate flows.
 
         Parameters
         ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+            inst_map : np.ndarray
+                Instance labelled mask. Shape (H, W).
 
         Returns
         -------
@@ -51,13 +63,13 @@ class HoVerNetTrans(OnlyInstMapTransform):
         super().__init__()
         self.name = "hovernet"
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **params) -> np.ndarray:
+    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
         """Fix duplicate values and generate gradients.
 
         Parameters
         ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+            inst_map : np.ndarray
+                Instance labelled mask. Shape (H, W).
 
         Returns
         -------
@@ -77,13 +89,13 @@ class OmniposeTrans(OnlyInstMapTransform):
         super().__init__()
         self.name = "omnipose"
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **params) -> np.ndarray:
+    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
         """Fix duplicate values and generate eikonal flows.
 
         Parameters
         ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+            inst_map : np.ndarray
+                Instance labelled mask. Shape (H, W).
 
         Returns
         -------
@@ -104,13 +116,13 @@ class SmoothDistTrans(OnlyInstMapTransform):
         super().__init__()
         self.name = "smoothdist"
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **params) -> np.ndarray:
+    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
         """Generate smooth distance transforms.
 
         Parameters
         ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+            inst_map : np.ndarray
+                Instance labelled mask. Shape (H, W).
 
         Returns
         -------
@@ -127,13 +139,13 @@ class DistTrans(OnlyInstMapTransform):
         super().__init__()
         self.name = "dist"
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **params) -> np.ndarray:
+    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
         """Generate distance transforms.
 
         Parameters
         ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape: (H, W).
+            inst_map : np.ndarray
+                Instance labelled mask. Shape: (H, W).
 
         Returns
         -------
@@ -150,13 +162,13 @@ class ContourTrans(OnlyInstMapTransform):
         super().__init__()
         self.name = "contour"
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **params) -> np.ndarray:
+    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
         """Generate contour transforms.
 
         Parameters
         ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+            inst_map : np.ndarray
+                Instance labelled mask. Shape (H, W).
 
         Returns
         -------
@@ -172,13 +184,13 @@ class EdgeWeightTrans(OnlyInstMapTransform):
         super().__init__()
         self.name = "edgeweight"
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **params) -> np.ndarray:
+    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
         """Generate edge weight transforms.
 
         Parameters
         ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+            inst_map : np.ndarray
+                Instance labelled mask. Shape (H, W).
 
         Returns
         -------
@@ -186,6 +198,28 @@ class EdgeWeightTrans(OnlyInstMapTransform):
                 Contour of objects. Shape: (H, W). Dtype: float64
         """
         return gen_weight_maps(inst_map)
+
+
+class BinarizeTrans(OnlyInstMapTransform):
+    def __init__(self):
+        """Binarize instance labelled mask."""
+        super().__init__()
+        self.name = "binary"
+
+    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
+        """Generate a binary mask from instance labelled mask.
+
+        Parameters
+        ----------
+            inst_map : np.ndarray
+                Instance labelled mask. Shape (H, W).
+
+        Returns
+        -------
+            np.ndarray:
+                Binary mask. Shape: (H, W). Dtype: uint8
+        """
+        return binarize(inst_map)
 
 
 def cellpose_transform(**kwargs) -> List[OnlyInstMapTransform]:
@@ -221,3 +255,8 @@ def contour_transform(**kwargs) -> List[OnlyInstMapTransform]:
 def edgeweight_transform(**kwargs) -> List[OnlyInstMapTransform]:
     """Return the edge weight tranformation for label mask."""
     return [EdgeWeightTrans()]
+
+
+def binarize_transform(**kwargs):
+    """Return the binarization tranformation for label mask."""
+    return [BinarizeTrans()]

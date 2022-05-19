@@ -6,7 +6,7 @@ import torch
 from albumentations.core.transforms_interface import BasicTransform
 from albumentations.pytorch import ToTensorV2
 
-__all__ = ["apply_each", "compose", "to_tensor"]
+__all__ = ["apply_each", "compose", "to_tensor", "to_tensorv3"]
 
 
 class OnlyInstMapTransform(A.BasicTransform):
@@ -78,7 +78,10 @@ class ToTensorV3(A.BasicTransform):
 
     def apply_to_aux(self, auxilliary: Dict[str, np.ndarray], **params):
         for k, aux in auxilliary.items():
-            auxilliary[k] = torch.from_numpy(aux["inst_map"]).float()
+            if k != "binary":
+                auxilliary[k] = torch.from_numpy(aux["inst_map"]).float()
+            else:
+                auxilliary[k] = torch.from_numpy(aux["inst_map"]).long()
 
         return auxilliary
 
@@ -114,6 +117,17 @@ def compose(transforms_to_compose: List[A.BasicTransform]) -> Callable:
 
     Takes in a list of albumentation transforms and composes them to one
     transformation pipeline.
+
+    Example
+    -------
+        >>> im = read_image("/path/to/image.png")
+        >>> inst_map = read_mask("/path/to/mask.mat")
+        >>> tr = compose([rigid_transform(), blur_transform(), minmax_normalize()])
+        >>> aug = tr(image=im, masks=[inst_map])
+        >>> print(aug["image"].shape)
+        (256, 256, 3)
+        >>> print(aug["masks"][0].shape)
+        (256, 256)
 
     Returns
     -------

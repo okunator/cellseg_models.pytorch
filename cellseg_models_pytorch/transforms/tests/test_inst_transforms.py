@@ -3,6 +3,7 @@ import pytest
 
 from cellseg_models_pytorch.transforms import (
     apply_each,
+    binarize_transform,
     cellpose_transform,
     compose,
     contour_transform,
@@ -45,6 +46,20 @@ def test_inst_transforms(inst_map, transform, zero_input):
     transformed = trans(image=inst_map, inst_map=inst_map)
 
     assert transformed["inst_map"].dtype == np.float64
+    assert transformed["inst_map"].shape == inst_map.shape
+
+
+@pytest.mark.parametrize("transform", [binarize_transform])
+@pytest.mark.parametrize("zero_input", [None, np.zeros((14, 14))])
+def test_binarize_transforms(inst_map, transform, zero_input):
+    trans = compose([transform()])
+
+    if zero_input is not None:
+        inst_map = zero_input
+
+    transformed = trans(image=inst_map, inst_map=inst_map)
+
+    assert transformed["inst_map"].dtype == np.uint8
     assert transformed["inst_map"].shape == inst_map.shape
 
 

@@ -27,13 +27,12 @@ def percentile_normalize(
     Returns
     -------
         np.ndarray:
-            Normalized img. Same shape as input.
+            Normalized img. Same shape as input. dtype: float32.
 
     Raises
     ------
         ValueError
             If input image does not have shape (H, W) or (H, W, C).
-            If the pixel values of the image are not positive.
     """
     axis = (0, 1)
 
@@ -42,18 +41,12 @@ def percentile_normalize(
             f"Input img needs to have shape (H, W, C)|(H, W). Got: {img.shape}"
         )
 
-    if not np.all(np.ptp(img, axis=(0, 1)) >= 0.0):
-        raise ValueError(
-            f"""Pixel values need to have a range.
-            Got range(min, max): {np.ptp(img, axis=(0, 1))}"""
-        )
-
     im = img.copy()
 
     upercentile = np.percentile(im, upper)
     lpercentile = np.percentile(im, lower)
 
-    return np.interp(im, (lpercentile, upercentile), axis)
+    return np.interp(im, (lpercentile, upercentile), axis).astype(np.float32)
 
 
 def percentile_normalize99(
@@ -65,33 +58,26 @@ def percentile_normalize99(
     ----------
         img : np.ndarray:
             Input image to be normalized. Shape (H, W, C)|(H, W).
-        a_min : float, optional
+        amin : float, optional
             Clamp min value. No clamping performed if None.
-        a_max : float, optional
+        amax : float, optional
             Clamp max value. No clamping performed if None.
 
     Returns
     -------
         np.ndarray:
-            Normalized image. Same shape as input.
+            Normalized image. Same shape as input. dtype: float32.
 
     Raises
     ------
         ValueError
             If input image does not have shape (H, W) or (H, W, C).
-            If the pixel values of the image are not positive.
     """
     axis = (0, 1)
 
     if img.ndim not in (2, 3):
         raise ValueError(
             f"Input img needs to have shape (H, W, C)|(H, W). Got: {img.shape}"
-        )
-
-    if not np.all(np.ptp(img, axis=axis) >= 0.0):
-        raise ValueError(
-            f"""Pixel values need to have a range.
-            Got range(min, max): {np.ptp(img, axis=(0, 1))}"""
         )
 
     im = img.copy()
@@ -103,7 +89,7 @@ def percentile_normalize99(
     if not any(x is None for x in (amin, amax)):
         im = np.clip(im, a_min=amin, a_max=amax)
 
-    return im
+    return im.astype(np.float32)
 
 
 def normalize(
@@ -117,33 +103,26 @@ def normalize(
             Input image to be normalized. Shape (H, W, C)|(H, W).
         standardize: bool, default=True
             If True, divide with standard deviation after mean centering
-        a_min : float, optional
+        amin : float, optional
             Clamp min value. No clamping performed if None.
-        a_max : float, optional
+        amax : float, optional
             Clamp max value. No clamping performed if None.
 
     Returns
     -------
         np.ndarray:
-            Normalized image. Same shape as input.
+            Normalized image. Same shape as input. dtype: float32.
 
     Raises
     ------
         ValueError
             If input image does not have shape (H, W) or (H, W, C).
-            If the pixel values of the image are not positive.
     """
     axis = (0, 1)
 
     if img.ndim not in (2, 3):
         raise ValueError(
             f"Input img needs to have shape (H, W, C)|(H, W). Got: {img.shape}"
-        )
-
-    if not np.all(np.ptp(img, axis=axis) > 0.0):
-        raise ValueError(
-            f"""Pixel values need to have a range.
-            Got range(min, max): {np.ptp(img, axis=(0, 1))}"""
         )
 
     im = img.copy()
@@ -158,7 +137,7 @@ def normalize(
     if not any(x is None for x in (amin, amax)):
         im = np.clip(im, a_min=amin, a_max=amax)
 
-    return im
+    return im.astype(np.float32)
 
 
 def minmax_normalize(
@@ -170,31 +149,24 @@ def minmax_normalize(
     ----------
         img : np.ndarray:
             Input image to be normalized. Shape (H, W, C)|(H, W).
-        a_min : float, optional
+        amin : float, optional
             Clamp min value. No clamping performed if None.
-        a_max : float, optional
+        amax : float, optional
             Clamp max value. No clamping performed if None.
 
     Returns
     -------
         np.ndarray:
-            Min-max normalized image. Same shape as input
+            Min-max normalized image. Same shape as input. dtype: float32.
 
     Raises
     ------
         ValueError
             If input image does not have shape (H, W) or (H, W, C).
-            If the pixel values of the image are not positive.
     """
     if img.ndim not in (2, 3):
         raise ValueError(
             f"Input img needs to have shape (H, W, C)|(H, W). Got: {img.shape}"
-        )
-
-    if not np.all(np.ptp(img, axis=(0, 1)) > 0.0):
-        raise ValueError(
-            f"""Pixel values need to have a range.
-            Got range(min, max): {np.ptp(img, axis=(0, 1))}"""
         )
 
     im = img.copy()
@@ -204,7 +176,7 @@ def minmax_normalize(
     if not any(x is None for x in (amin, amax)):
         im = np.clip(im, a_min=amin, a_max=amax)
 
-    return im
+    return im.astype(np.float32)
 
 
 def float2ubyte(mat: np.ndarray, normalize: bool = False) -> np.ndarray:
@@ -224,7 +196,7 @@ def float2ubyte(mat: np.ndarray, normalize: bool = False) -> np.ndarray:
     Returns
     -------
         np.ndarray:
-            A uint8 matrix. Shape (H, W, C).
+            A uint8 matrix. Shape (H, W, C). dtype: uint8.
     """
     m = mat.copy()
 

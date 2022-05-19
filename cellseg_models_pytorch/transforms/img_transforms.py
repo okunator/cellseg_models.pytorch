@@ -24,7 +24,7 @@ def rigid_transforms(**kwargs) -> List[BasicTransform]:
     - random rotate 90 degrees
     - flip (rotate 180 degrees)
     - transpose (flip x and y axis)
-    is applied with a probability of 0.7*(0.5/(0.5+0.5+0.5+0.5))=0.175
+    is applied with a probability of 0.5*(0.5/(0.5+0.5+0.5+0.5))=0.125
 
     Returns
     -------
@@ -39,7 +39,7 @@ def rigid_transforms(**kwargs) -> List[BasicTransform]:
                 A.Flip(p=0.5),
                 A.Transpose(p=0.5),
             ],
-            p=1.0,
+            p=0.5,
         )
     ]
 
@@ -76,7 +76,7 @@ def hue_saturation_transforms(**kwargs) -> List[BasicTransform]:
     """Return hue saturation albumentations augmentations.
 
     For every patch, either:
-    - hue saturation value shift is applied with a probability of 0.5
+    - hue saturation value shift is applied with a probability of 0.5*0.25*0.125
 
     Returns
     -------
@@ -90,10 +90,10 @@ def hue_saturation_transforms(**kwargs) -> List[BasicTransform]:
                     hue_shift_limit=(0, 15),
                     sat_shift_limit=(0, 30),
                     val_shift_limit=(0, 20),
-                    p=0.5,
+                    p=0.25,
                 )
             ],
-            p=1.0,
+            p=0.5,
         )
     ]
 
@@ -105,7 +105,7 @@ def blur_transforms(**kwargs) -> List[BasicTransform]:
     - motion blur
     - median blur
     - gaussian blur
-    is applied with a probability of 0.7*(0.5/(0.5+0.5+0.5))=0.233
+    is applied with a probability of 0.3*(0.5/(0.5+0.5+0.5))=0.1
 
     Returns
     -------
@@ -119,7 +119,7 @@ def blur_transforms(**kwargs) -> List[BasicTransform]:
                 A.MedianBlur(blur_limit=7, p=0.5),
                 A.Blur(blur_limit=7, p=0.5),
             ],
-            p=0.7,
+            p=0.3,
         )
     ]
 
@@ -141,7 +141,7 @@ def non_spatial_transforms(**kwargs) -> List[BasicTransform]:
     return [
         A.OneOf(
             [A.CLAHE(p=0.5), A.RandomBrightnessContrast(p=0.5), A.RandomGamma(p=0.5)],
-            p=0.7,
+            p=0.5,
         )
     ]
 
