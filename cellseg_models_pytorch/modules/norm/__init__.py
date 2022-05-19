@@ -1,4 +1,4 @@
-from torch.nn import BatchNorm2d, InstanceNorm2d, LocalResponseNorm, SyncBatchNorm
+from torch.nn import BatchNorm2d, InstanceNorm2d, SyncBatchNorm
 
 from .bcn import BCNorm
 from .gn import GroupNorm
@@ -10,7 +10,6 @@ NORM_LOOKUP = {
     "bcn": BCNorm,
     "gn": GroupNorm,
     "in": InstanceNorm2d,
-    "lrn": LocalResponseNorm,
 }
 
 __all__ = [
@@ -20,6 +19,5 @@ __all__ = [
     "BatchNorm2d",
     "InstanceNorm2d",
     "SyncBatchNorm",
-    "LocalResponseNorm",
     "LayerNorm2d",
 ]

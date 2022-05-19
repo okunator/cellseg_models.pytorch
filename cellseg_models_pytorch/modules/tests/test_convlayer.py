@@ -13,7 +13,7 @@ def test_conv_block_forward(convblocks, short_skip):
         out_channels=4,
         block_types=convblocks,
         short_skip=short_skip,
-        attention=(None, "gc"),
+        attentions=(None, "gc"),
         expand_ratio=1.0,
     )
 
@@ -32,7 +32,7 @@ def test_conv_block_backward(convblocks, short_skip):
         out_channels=4,
         block_types=convblocks,
         short_skip=short_skip,
-        attention=(None, "gc"),
+        attentions=(None, "gc"),
         expand_ratio=1.0,
     )
 

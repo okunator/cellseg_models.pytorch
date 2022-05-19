@@ -1,16 +1,17 @@
-from typing import Optional
-
 import torch
 import torch.nn as nn
 
-from .base_modules import Conv, Norm
 from .conv_base import (
     BasicConv,
     BottleneckConv,
     DepthWiseSeparableConv,
     FusedMobileInvertedConv,
+    HoverNetDenseConv,
     InvertedBottleneckConv,
 )
+from .misc_modules import ChannelPool, StyleBlock
+
+__all__ = ["ConvBlock"]
 
 CONVBLOCK_LOOKUP = {
     "basic": BasicConv,
@@ -18,6 +19,7 @@ CONVBLOCK_LOOKUP = {
     "dws": DepthWiseSeparableConv,
     "mbconv": InvertedBottleneckConv,
     "fmbconv": FusedMobileInvertedConv,
+    "hover_dense": HoverNetDenseConv,
 }
 
 
@@ -38,13 +40,11 @@ class ShortSkipMixIn:
 
         return out
 
-    def forward_residual(
-        self, x: torch.Tensor, downsample: Optional[nn.Module] = None
-    ) -> torch.Tensor:
+    def forward_residual(self, x: torch.Tensor) -> torch.Tensor:
         """Apply a generic forward pass with residual short skip."""
         identity = x
-        if downsample is not None:
-            identity = downsample(x)
+        if self.downsample is not None:
+            identity = self.downsample(x)
 
         if self.block.preactivate:
             out = self.block.forward_features_preact(x)
@@ -74,6 +74,7 @@ class ConvBlock(nn.Module, ShortSkipMixIn):
         name: str,
         in_channels: int,
         out_channels: int,
+        style_channels: int = None,
         short_skip: str = "residual",
         same_padding: bool = True,
         normalization: str = "bn",
@@ -82,11 +83,18 @@ class ConvBlock(nn.Module, ShortSkipMixIn):
         preactivate: bool = False,
         kernel_size: int = 3,
         groups: int = 1,
+        bias: bool = True,
         attention: str = None,
         preattend: bool = False,
+        use_style: bool = True,
         **kwargs,
     ) -> None:
         """Wrap different conv-blocks under one generic conv-block.
+
+        Adds one channel pooling block if `short_skip` == "residual".
+
+        Optional:
+            - add a style vector to the output at the end of the block (Cellpose).
 
         Parameters
         ----------
@@ -97,6 +105,8 @@ class ConvBlock(nn.Module, ShortSkipMixIn):
                 Number of input channels.
             out_channels : int
                 Number of output channels.
+            style_channels : int, default=None
+                Number of style vector channels. If None, style vectors are ignored.
             short_skip : str, default="residual"
                 The name of the short skip method. One of: "residual", "dense", "basic"
             same_padding : bool, default=True
@@ -119,10 +129,14 @@ class ConvBlock(nn.Module, ShortSkipMixIn):
                 Number of groups the kernels are divided into. If `groups == 1`
                 normal convolution is applied. If `groups = in_channels`
                 depthwise convolution is applied.
+            bias : bool, default=True,
+                Include bias term in the convolution block. Only used for `BaasicConv`.
             attention : str, default=None
                 Attention method. One of: "se", "scse", "gc", "eca", None
             preattend : bool, default=False
                 If True, Attention is applied at the beginning of forward pass.
+            use_style : bool, default=False
+                If True and `style_channels` is not None, adds a style vec to output.
 
         Raises
         ------
@@ -155,6 +169,7 @@ class ConvBlock(nn.Module, ShortSkipMixIn):
             preactivate=preactivate,
             kernel_size=kernel_size,
             groups=groups,
+            bias=bias,
             attention=attention,
             preattend=preattend,
             **kwargs,
@@ -162,30 +177,32 @@ class ConvBlock(nn.Module, ShortSkipMixIn):
 
         self.downsample = None
         if short_skip == "residual" and in_channels != self.out_channels:
-            self.downsample = nn.Sequential(
-                Conv(
-                    convolution,
-                    in_channels=in_channels,
-                    bias=False,
-                    out_channels=self.out_channels,
-                    kernel_size=1,
-                    padding=0,
-                ),
-                Norm(normalization, num_features=self.out_channels),
+            self.downsample = ChannelPool(
+                in_channels=in_channels,
+                out_channels=self.out_channels,
+                convolution=convolution,
+                normalization=normalization,
             )
+
+        self.add_style = None
+        if style_channels is not None and use_style:
+            self.add_style = StyleBlock(style_channels, out_channels)
 
     @property
     def out_channels(self) -> int:
         """Set out_channels."""
         return self.block.out_channels
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, style: torch.Tensor = None) -> torch.Tensor:
         """Forward pass of the conv-block."""
         if self.short_skip == "residual":
-            x = self.forward_residual(x, self.downsample)
+            x = self.forward_residual(x)
         elif self.short_skip == "dense":
             x = self.forward_dense(x)
         else:
             x = self.forward_basic(x)
+
+        if self.add_style is not None:
+            x = self.add_style(x, style)
 
         return x

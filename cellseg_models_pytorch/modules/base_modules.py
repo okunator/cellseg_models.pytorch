@@ -10,9 +10,7 @@ __all__ = ["Activation", "Norm", "Up", "Conv", "Identity"]
 
 
 class Identity(nn.Module):
-    def __init__(
-        self, in_channels: int = None, out_channels: int = None, *args, **kwargs
-    ):
+    def __init__(self, in_channels: int = None, *args, **kwargs):
         """Identity operator that is argument-insensitive.
 
         The forward method can take in multiple arguments returning only the
@@ -20,10 +18,10 @@ class Identity(nn.Module):
         """
         super().__init__()
         self.in_channels = in_channels
-        self.out_channels = out_channels
+        self.out_channels = in_channels
 
     def forward(self, input: torch.Tensor, *args, **kwargs) -> torch.Tensor:
-        """Forward pass of identity operator."""
+        """Forward pass of idenStity operator."""
         return input
 
 

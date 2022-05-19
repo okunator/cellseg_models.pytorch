@@ -3,8 +3,8 @@ from typing import List, Tuple
 import torch
 import torch.nn as nn
 
-from .base_modules import Activation, Conv, Norm
 from .conv_block import ConvBlock
+from .misc_modules import ChannelPool
 
 __all__ = ["ConvLayer"]
 
@@ -15,29 +15,44 @@ class ConvLayer(nn.ModuleDict):
         in_channels: int,
         out_channels: int,
         n_blocks: int = 2,
+        layer_residual: bool = False,
         short_skip: str = "residual",
+        style_channels: int = None,
+        expand_ratios: Tuple[float, float] = (1.0, 1.0),
         block_types: Tuple[str, ...] = ("basic", "basic"),
         normalizations: Tuple[str, ...] = ("bn", "bn"),
         activations: Tuple[str, ...] = ("relu", "relu"),
         convolutions: Tuple[str, ...] = ("conv", "conv"),
         kernel_sizes: Tuple[int, ...] = (3, 3),
+        groups: Tuple[int, ...] = (1, 1),
+        biases: Tuple[bool, ...] = (True, True),
         preactivates: Tuple[bool, ...] = (False, False),
         attentions: Tuple[str, ...] = (None, None),
         preattends: Tuple[bool, ...] = (False, False),
+        use_styles: Tuple[bool, ...] = (False, False),
         **kwargs,
     ) -> None:
         """Stack conv-blocks in a ModuleDict to compose a full layer.
 
+        Optional:
+            - add a style vector to the output at the end of each conv block (Cellpose)
+
         Parameters
         ----------
-            n_blocks : int
-                Number of ConvBlocks used in this layer.
             in_channels : int
                 Number of input channels.
             out_channels : int
                 Number of output channels.
+            n_blocks : int, default=2
+                Number of ConvBlocks used in this layer.
+            layer_residual : bool, default=False
+                Apply a layer level residual skip. I.e x + layer(x)
+            style_channels : int, default=None
+                Number of style vector channels. If None, style vectors are ignored.
             short_skip : str, default="residual"
                 The name of the short skip method. One of: "residual", "dense", "basic"
+            expand_ratios : Tuple[float, ...], default=(1.0, 1.0):
+                Expansion/Squeeze ratios for the out channels of each conv block.
             block_types : Tuple[str, ...], default=("basic", "basic")
                 The name of the conv-blocks. Length of the tuple has to equal `n_blocks`
                 One of: "basic". "mbconv", "fmbconv" "dws", "bottleneck".
@@ -53,10 +68,16 @@ class ConvLayer(nn.ModuleDict):
                 Pre-activations flags for the conv-blocks.
             kernel_sizes : Tuple[int, ...], default=(3, 3)
                 The size of the convolution kernels in each conv block.
+            groups : int, default=(1, 1)
+                Number of groups for the kernels in each convolution blocks.
+            biases : bool, default=(True, True)
+                Include bias terms in the convolution blocks.
             attentions : Tuple[str, ...], default=(None, None)
                 Attention method. One of: "se", "scse", "gc", "eca", None
             preattends : Tuple[bool, ...], default=(False, False)
                 If True, Attention is applied at the beginning of forward pass.
+            use_styles : bool, default=(False, False)
+                If True and `style_channels` is not None, adds a style vec to output.
 
         Raises
         ------
@@ -64,8 +85,9 @@ class ConvLayer(nn.ModuleDict):
                 If lengths of the tuple arguments are not equal to `n_blocks`.
         """
         super().__init__()
+        self.layer_residual = layer_residual
         self.short_skip = short_skip
-        self.out_channels = out_channels
+        self.in_channels = in_channels
 
         illegal_args = [
             (k, a)
@@ -82,18 +104,25 @@ class ConvLayer(nn.ModuleDict):
 
         blocks = list(range(n_blocks))
         for i in blocks:
+            out = int(out_channels * expand_ratios[i])
+
             conv_block = ConvBlock(
                 name=block_types[i],
                 in_channels=in_channels,
-                out_channels=out_channels,
+                out_channels=out,
+                style_channels=style_channels,
                 short_skip=short_skip,
                 kernel_size=kernel_sizes[i],
+                groups=groups[i],
+                bias=biases[i],
                 normalization=normalizations[i],
                 convolution=convolutions[i],
                 activation=activations[i],
                 attention=attentions[i],
                 preactivate=preactivates[i],
                 preattend=preattends[i],
+                use_style=use_styles[i],
+                **kwargs,
             )
             self.add_module(f"{short_skip}_{block_types[i]}_{i + 1}", conv_block)
 
@@ -102,26 +131,41 @@ class ConvLayer(nn.ModuleDict):
             else:
                 in_channels = conv_block.out_channels
 
+        self.out_channels = conv_block.out_channels
+
         if short_skip == "dense":
-            self.transition = nn.Sequential(
-                Conv(
-                    conv_block.block.conv_choice,
-                    in_channels=in_channels,
-                    bias=False,
-                    out_channels=out_channels,
-                    kernel_size=1,
-                    padding=0,
-                ),
-                Norm(normalizations[-1], num_features=out_channels),
-                Activation(activations[-1]),
+            self.transition = ConvBlock(
+                name="basic",
+                in_channels=in_channels,
+                short_skip="basic",
+                out_channels=out_channels,
+                same_padding=False,
+                bias=False,
+                kernel_size=1,
+                convolution=conv_block.block.conv_choice,
+                normalization=normalizations[-1],
+                activation=activations[-1],
+                preactivate=preactivates[-1],
+            )
+            self.out_channels = self.transition.out_channels
+
+        self.downsample = None
+        if layer_residual and self.in_channels != self.out_channels:
+            self.downsample = ChannelPool(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                convolution=convolutions[-1],
+                normalization=normalizations[-1],
             )
 
-    def forward_features_dense(self, init_features: List[torch.Tensor]) -> torch.Tensor:
+    def forward_features_dense(
+        self, init_features: List[torch.Tensor], style: torch.Tensor = None
+    ) -> torch.Tensor:
         """Dense forward pass."""
         features = [init_features]
         for name, conv_block in self.items():
-            if name != "transition":
-                new_features = conv_block(features)
+            if name not in ("transition", "downsample"):
+                new_features = conv_block(features, style)
                 features.append(new_features)
 
         x = torch.cat(features, 1)
@@ -129,18 +173,29 @@ class ConvLayer(nn.ModuleDict):
 
         return x
 
-    def forward_features(self, x: torch.Tensor) -> torch.Tensor:
+    def forward_features(
+        self, x: torch.Tensor, style: torch.Tensor = None
+    ) -> torch.Tensor:
         """Regular forward pass."""
-        for _, conv_block in self.items():
-            x = conv_block(x)
+        for name, conv_block in self.items():
+            if name != "downsample":
+                x = conv_block(x, style)
 
         return x
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, style: torch.Tensor = None) -> torch.Tensor:
         """Forward pass of the conv-layer."""
+        if self.layer_residual:
+            identity = x
+            if self.downsample is not None:
+                identity = self.downsample(x)
+
         if self.short_skip == "dense":
-            x = self.forward_features_dense(x)
+            x = self.forward_features_dense(x, style)
         else:
-            x = self.forward_features(x)
+            x = self.forward_features(x, style)
+
+        if self.layer_residual:
+            x = x + identity
 
         return x
