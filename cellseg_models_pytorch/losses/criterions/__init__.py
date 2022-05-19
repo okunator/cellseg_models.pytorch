@@ -8,7 +8,23 @@ from .sce import SCELoss
 from .ssim import MSSSIM, SSIM
 from .tversky import TverskyLoss
 
+SEG_LOSS_LOOKUP = {
+    "iou": IoULoss,
+    "dice": DiceLoss,
+    "tversky": TverskyLoss,
+    "ce": CELoss,
+    "sce": SCELoss,
+    "focal": FocalLoss,
+    "mse": MSE,
+    "gmse": GradMSE,
+    "ssim": SSIM,
+    "msssim": MSSSIM,
+}
+
+
 __all__ = [
+    "SEG_LOSS_LOOKUP",
+    "REG_LOSS_LOOKUP",
     "MSE",
     "GradMSE",
     "SSIM",

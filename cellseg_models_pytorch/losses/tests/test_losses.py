@@ -4,6 +4,7 @@ import pytest
 import scipy.ndimage as ndi
 import torch
 
+from cellseg_models_pytorch.losses import Loss
 from cellseg_models_pytorch.losses.criterions import (
     MSE,
     MSSSIM,
@@ -60,24 +61,13 @@ def _get_dummy_class_weights(n_classes: int) -> torch.Tensor:
     return w[0, ...]
 
 
-# TODO add expected vs received asserts
 @torch.no_grad()
 @pytest.mark.parametrize("n_classes", [1, 3])
 @pytest.mark.parametrize("class_weights", [True, False])
 @pytest.mark.parametrize("edge_weight", [1.1, None])
 @pytest.mark.parametrize(
     "loss",
-    [
-        MSE,
-        SSIM,
-        MSSSIM,
-        DiceLoss,
-        IoULoss,
-        FocalLoss,
-        TverskyLoss,
-        CELoss,
-        SCELoss,
-    ],
+    ["mse", "ssim", "msssim", "dice", "iou", "focal", "tversky", "ce", "sce"],
 )
 def test_loss(
     n_classes: int, loss: Callable, edge_weight: float, class_weights: bool
@@ -92,5 +82,5 @@ def test_loss(
     if class_weights:
         cw = _get_dummy_class_weights(n_classes)
 
-    criterion = loss(edge_weight=edge_weight, class_weights=cw)
+    criterion = Loss(name=loss, edge_weight=edge_weight, class_weights=cw)
     criterion(yhat=yhat, target=target, target_weight=wmap)
