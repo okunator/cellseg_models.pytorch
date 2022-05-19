@@ -17,9 +17,11 @@ class DecoderStage(nn.Module):
         dec_channels: Tuple[int, ...],
         dec_dims: Tuple[int, ...],
         skip_channels: Tuple[int, ...],
+        style_channels: int = None,
         n_layers: int = 1,
         n_blocks: Tuple[int, ...] = (2,),
         short_skips: Tuple[str, ...] = ("residual",),
+        expand_ratios: Tuple[float, float] = ((1.0, 1.0),),
         block_types: Tuple[Tuple[str, ...], ...] = (("basic", "basic"),),
         normalizations: Tuple[Tuple[str, ...], ...] = (("bn", "bn"),),
         activations: Tuple[Tuple[str, ...], ...] = (("relu", "relu"),),
@@ -27,9 +29,14 @@ class DecoderStage(nn.Module):
         attentions: Tuple[Tuple[str, ...], ...] = ((None, "se"),),
         preactivates: Tuple[Tuple[bool, ...], ...] = ((False, False),),
         preattends: Tuple[Tuple[bool, ...], ...] = ((False, False),),
+        use_styles: Tuple[Tuple[bool, ...], ...] = ((False, False),),
+        kernel_sizes: Tuple[Tuple[int, ...]] = ((3, 3),),
+        groups: Tuple[Tuple[int, ...]] = ((1, 1),),
+        biases: Tuple[Tuple[bool, ...]] = ((False, False),),
         upsampling: str = "fixed-unpool",
         long_skip: str = "unet",
         merge_policy: str = "sum",
+        layer_residual: bool = False,
         skip_params: Optional[Dict] = None,
         **kwargs,
     ) -> None:
@@ -47,18 +54,22 @@ class DecoderStage(nn.Module):
             dec_channels : Tuple[int, ...]
                 The number of output channels in the decoder output stages. First elem
                 is the number of channels in the encoder head or bottleneck.
-            dec_dims : Tuple[int, ...], default=None
+            dec_dims : Tuple[int, ...]
                 Tuple of the heights/widths of each encoder/decoder feature map
                 e.g. (8, 16, 32, 64, 128, 256). Feature maps are assumed to be square.
-            skip_channels : Tuple[int, ...]:
+            skip_channels : Tuple[int, ...]
                 List of the number of channels in the encoder skip tensors. Ignored if
                 `long_skip` == None.
+            style_channels : int, default=None
+                Number of style vector channels. If None, style vectors are ignored.
             n_layers : int, default=1
                 The number of conv layers inside one decoder stage.
             n_blocks : int, default=2
                 Number of conv-blocks inside one conv layer.
             short_skips : str, default=("residual", )
                 The short skip methods used inside the conv layers.
+            expand_ratios : Tuple[float, ...], default=((1.0, 1.0),):
+                Expansion/Squeeze ratios for the out channels of each conv block.
             block_types : Tuple[Tuple[str, ...], ...], default=(("basic", "basic"), )
                 The type of the convolution blocks in the conv blocks inside the layers.
             normalizations : Tuple[Tuple[str, ...], ...], default: (("bn", "bn"), )
@@ -71,12 +82,22 @@ class DecoderStage(nn.Module):
                 Boolean flags for the conv layers to use pre-activation.
             preattends Tuple[Tuple[bool, ...], ...], default: ((False, False), )
                 Boolean flags for the conv layers to use pre-activation.
+            use_styles : Tuple[Tuple[bool, ...], ...], default=((False, False), )
+                Boolean flags for the conv layers to add style vectors at each block.
+            kernel_sizes : Tuple[int, ...], default=((3, 3),)
+                The size of the convolution kernels in each conv block.
+            groups : int, default=((1, 1),)
+                Number of groups for the kernels in each convolution blocks.
+            biases : bool, default=((False, False),)
+                Include bias terms in the convolution blocks.
             upsampling : str, default="fixed-unpool"
                 Name of the upsampling method.
             long_skip : str, default="unet"
                 long skip method to be used. One of: "unet", "unetpp", "unet3p", None
             merge_policy : str, default="sum"
                 The long skip merge policy. One of: "sum", "cat"
+            layer_residual : bool, default=False
+                Apply a layer level residual skip at each layer. I.e x + layer(x)
             skip_params : Optional[Dict]
                 Extra keyword arguments for the skip-connection module. These depend
                 on the skip module. Refer to specific skip modules for more info.
@@ -124,22 +145,30 @@ class DecoderStage(nn.Module):
         )
 
         # Set up n layers of conv blocks
+        layer = None  # placeholder
         self.conv_layers = nn.ModuleDict()
         for i in range(n_layers):
-            n_in_feats = self.skip.out_channels if i == 0 else self.out_channels
+            n_in_feats = self.skip.out_channels if i == 0 else layer.out_channels
             layer = ConvLayer(
-                name=block_types[i],
-                short_skip=short_skips[i],
                 in_channels=n_in_feats,
                 out_channels=self.out_channels,
                 n_blocks=n_blocks[i],
+                layer_residual=layer_residual,
+                style_channels=style_channels,
+                short_skip=short_skips[i],
+                expand_ratios=expand_ratios[i],
                 block_types=block_types[i],
                 normalizations=normalizations[i],
                 activations=activations[i],
                 convolutions=convolutions[i],
                 preactivates=preactivates[i],
                 preattends=preattends[i],
+                use_styles=use_styles[i],
                 attentions=attentions[i],
+                kernel_sizes=kernel_sizes[i],
+                groups=groups[i],
+                biases=biases[i],
+                **kwargs,
             )
             self.conv_layers[f"conv_layer{i + 1}"] = layer
 
@@ -150,6 +179,7 @@ class DecoderStage(nn.Module):
         x: torch.Tensor,
         skips: Tuple[torch.Tensor, ...],
         extra_skips: Tuple[torch.Tensor, ...] = None,
+        style: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, Union[None, Tuple[torch.Tensor, ...]]]:
         """Forward pass of the decoder stage.
 
@@ -162,6 +192,8 @@ class DecoderStage(nn.Module):
                 Order is bottom up. Shapes: (B, C, H, W).
             extra_skips : Tuple[torch.Tensor, ...], default=None
                 Extra skip connections. Used in unet3+ and unet++.
+            style : torch.Tensor
+                Style vector. Shape (B, C).
 
         Returns
         -------
@@ -180,6 +212,6 @@ class DecoderStage(nn.Module):
 
         # conv layer
         for _, conv_layer in self.conv_layers.items():
-            x = conv_layer(x)
+            x = conv_layer(x, style)
 
         return x, extra_skips

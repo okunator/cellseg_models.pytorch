@@ -46,7 +46,7 @@ def test_decoder_fwdbwd(long_skip, merge_policy):
 @pytest.mark.parametrize("merge_policy", ["cat", "sum"])
 @pytest.mark.parametrize("short_skip", ["residual", "dense", "basic"])
 @pytest.mark.parametrize(
-    "block_types", ["mbconv", "fmbconv", "basic", "bottleneck", "dws"]
+    "block_types", ["mbconv", "fmbconv", "basic", "bottleneck", "dws", "hover_dense"]
 )
 @pytest.mark.parametrize("normalizations", ["bn", "bcn", "gn"])
 @pytest.mark.parametrize("convolutions", ["conv", "scaled_wsconv", "wsconv"])

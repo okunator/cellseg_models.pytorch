@@ -5,31 +5,31 @@ import torch.nn as nn
 
 from .decoder_stage import DecoderStage
 
+__all__ = ["Decoder"]
+
 
 class Decoder(nn.ModuleDict):
     def __init__(
         self,
         enc_channels: Tuple[int, ...],
-        model_input_size: int,
         out_channels: Tuple[int, ...] = (256, 128, 64, 32, 16),
+        style_channels: int = None,
         n_layers: Tuple[int, ...] = (1, 1, 1, 1, 1),
         n_blocks: Tuple[Tuple[int, ...], ...] = ((2,), (2,), (2,), (2,), (2,)),
         long_skip: str = "unet",
         stage_params: Optional[Tuple[Dict, ...]] = None,
         **kwargs,
     ) -> None:
-        """Build a generic decoder.
+        """Build a generic U-net-like decoder.
 
         Parameters
         ----------
             enc_channels : Tuple[int, ...]
                 Number of channels at each encoder layer.
-            model_input_size : int
-                The input image size of the model. Assumes that input images are square
-                patches i.e. H == W.
             out_channels : Tuple[int, ...], default=(256, 128, 64, 32, 16)
-                Number of channels at each decoder layer output. If None, the decoder
-                channels will be set automatically from the `enc_channels`.
+                Number of channels at each decoder layer output.
+            style_channels : int, default=None
+                Number of style vector channels. If None, style vectors are ignored.
             n_layers : Tuple[int, ...], default=(1, 1, 1, 1, 1)
                 The number of conv layers inside each of the decoder stages.
             n_blocks : Tuple[Tuple[int, ...], ...] = ((2, ), (2, ), (2, ). (2, ), (2, ))
@@ -54,9 +54,10 @@ class Decoder(nn.ModuleDict):
         out_channels = [enc_channels[0]] + list(out_channels)
         skip_channels = enc_channels[1:]
 
-        # scaling factor assumed to be 2 for the spatial dims in the
+        # scaling factor assumed to be 2 for the spatial dims and the input
+        # has to be divisible by 32. 256 used here just for convenience.
         depth = len(out_channels)
-        out_dims = [model_input_size // 2**i for i in range(depth)][::-1]
+        out_dims = [256 // 2**i for i in range(depth)][::-1]
 
         # Build decoder
         for i in range(depth - 1):
@@ -65,16 +66,19 @@ class Decoder(nn.ModuleDict):
                 dec_channels=tuple(out_channels),
                 dec_dims=tuple(out_dims),
                 skip_channels=skip_channels,
+                style_channels=style_channels,
+                long_skip=long_skip,
                 n_layers=n_layers[i],
                 n_blocks=n_blocks[i],
-                long_skip=long_skip,
                 **stage_params[i] if stage_params is not None else {"k": None},
             )
             self.add_module(f"decoder_stage{i + 1}", decoder_block)
 
         self.out_channels = decoder_block.out_channels
 
-    def forward(self, *features: Tuple[torch.Tensor]) -> torch.Tensor:
+    def forward(
+        self, *features: Tuple[torch.Tensor], style: torch.Tensor = None
+    ) -> torch.Tensor:
         """Forward pass of the decoder."""
         head = features[0]
         skips = features[1:]
@@ -82,7 +86,9 @@ class Decoder(nn.ModuleDict):
 
         x = head
         for _, decoder_stage in enumerate(self.values()):
-            x, extra = decoder_stage(x, skips=skips, extra_skips=extra_skips)
+            x, extra = decoder_stage(
+                x, skips=skips, extra_skips=extra_skips, style=style
+            )
 
             if self.long_skip == "unetpp":
                 extra_skips = extra

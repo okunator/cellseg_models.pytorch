@@ -16,7 +16,7 @@ class Unet3pSkip(nn.ModuleDict):
         dec_channels: Tuple[int, ...],
         skip_channels: Tuple[int, ...],
         dec_dims: Tuple[int, ...],
-        out_channels: int = 320,
+        hid_channels: int = 320,
         n_layers: int = 1,
         n_blocks: Tuple[int, ...] = (1,),
         short_skips: Tuple[str, ...] = ("residual",),
@@ -26,8 +26,12 @@ class Unet3pSkip(nn.ModuleDict):
         convolutions: Tuple[Tuple[str, ...], ...] = (("conv",),),
         attentions: Tuple[Tuple[str, ...], ...] = ((None,),),
         kernel_sizes: Tuple[int, ...] = ((3,),),
+        groups: Tuple[int, ...] = ((1,),),
+        biases: Tuple[Tuple[bool, ...], ...] = ((False,),),
         preactivates: Tuple[Tuple[bool, ...], ...] = ((False,),),
         preattends: Tuple[Tuple[bool, ...], ...] = ((False,),),
+        use_styles: Tuple[Tuple[bool, ...], ...] = ((False,),),
+        expand_ratios: Tuple[float, float] = ((1.0,),),
         merge_policy: str = "sum",
         lite_version: bool = False,
         **kwargs,
@@ -57,7 +61,7 @@ class Unet3pSkip(nn.ModuleDict):
             dec_dims : Tuple[int, ...]
                 List of the heights/widths of each encoder/decoder feature map
                 e.g. [256, 128, 64, 32, 16]. Assumption is that feature maps are square.
-            out_channels : int
+            hid_channels : int
                 Number of output channels from this module.
             n_layers : int, default=1
                 The number of conv layers inside one skip stage.
@@ -75,12 +79,20 @@ class Unet3pSkip(nn.ModuleDict):
                 Activation methods used inside the conv layers.
             kernel_sizes : Tuple[int, ...], default=(3, 3)
                 The size of the convolution kernels in each conv block.
+            groups : int, default=((1,),)
+                Number of groups for the kernels in each convolution blocks.
+            biases : bool, default=((False,),)
+                Include bias terms in the convolution blocks.
             attentions : Tuple[Tuple[str, ...], ...], default: ((None,), )
                 Attention methods used inside the conv layers.
             preactivates Tuple[Tuple[bool, ...], ...], default: ((False,), )
                 Boolean flags for the conv layers to use pre-activation.
             preattends Tuple[Tuple[bool, ...], ...], default: ((False,), )
                 Boolean flags for the conv layers to use pre-activation.
+            use_styles : Tuple[Tuple[bool, ...], ...], default=((False,), )
+                Boolean flags for the conv layers to add style vectors at each block.
+            expand_ratios : Tuple[float, float], default=((1.0, ),)
+                Expand ratios for the conv blocks.
             upsampling : str, default="fixed-unpool"
                 Name of the upsampling method.
             merge_policy : str, default="sum"
@@ -115,7 +127,7 @@ class Unet3pSkip(nn.ModuleDict):
         self.merge_policy = merge_policy
         self.lite_version = lite_version
         self.n_skips = len(skip_channels) + 1
-        self.fin_channels = out_channels
+        self.fin_channels = hid_channels
         self.encoder_skip_channels = skip_channels[stage_ix:]
 
         if stage_ix < len(skip_channels):
@@ -135,6 +147,7 @@ class Unet3pSkip(nn.ModuleDict):
                     in_channels=dec_channels[stage_ix],
                     out_channels=out,
                     n_blocks=n_blocks[i],
+                    expand_ratios=expand_ratios[i],
                     short_skip=short_skips[i],
                     block_types=block_types[i],
                     activations=activations[i],
@@ -143,7 +156,10 @@ class Unet3pSkip(nn.ModuleDict):
                     attentions=attentions[i],
                     preattends=preattends[i],
                     preactivates=preactivates[i],
+                    use_styles=use_styles[i],
                     kernel_sizes=kernel_sizes[i],
+                    groups=groups[i],
+                    biases=biases[i],
                 )
                 self.add_module("nonskip_layer", layer)
 
@@ -160,6 +176,7 @@ class Unet3pSkip(nn.ModuleDict):
                             in_channels=in_,
                             out_channels=cat_channels if merge_policy == "cat" else out,
                             n_blocks=n_blocks[j],
+                            expand_ratios=expand_ratios[j],
                             short_skip=short_skips[j],
                             block_types=block_types[j],
                             activations=activations[j],
@@ -168,7 +185,10 @@ class Unet3pSkip(nn.ModuleDict):
                             attentions=attentions[j],
                             preattends=preattends[j],
                             preactivates=preactivates[j],
+                            use_styles=use_styles[j],
                             kernel_sizes=kernel_sizes[j],
+                            groups=groups[j],
+                            biases=biases[j],
                         )
                         self.add_module(f"enc2dec_layer{i + 1}", layer)
 
@@ -186,6 +206,7 @@ class Unet3pSkip(nn.ModuleDict):
                             in_channels=in_,
                             out_channels=cat_channels if merge_policy == "cat" else out,
                             n_blocks=n_blocks[j],
+                            expand_ratios=expand_ratios[j],
                             short_skip=short_skips[j],
                             block_types=block_types[j],
                             activations=activations[j],
@@ -194,7 +215,10 @@ class Unet3pSkip(nn.ModuleDict):
                             attentions=attentions[j],
                             preattends=preattends[j],
                             preactivates=preactivates[j],
+                            use_styles=use_styles[j],
                             kernel_sizes=kernel_sizes[j],
+                            groups=groups[j],
+                            biases=biases[j],
                         )
                         self.add_module(f"dec2dec_layer{i + 1}", layer)
 

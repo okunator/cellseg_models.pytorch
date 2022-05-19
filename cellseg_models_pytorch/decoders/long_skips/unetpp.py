@@ -26,8 +26,12 @@ class UnetppSkip(nn.ModuleDict):
         convolutions: Tuple[Tuple[str, ...], ...] = (("conv",),),
         attentions: Tuple[Tuple[str, ...], ...] = ((None,),),
         kernel_sizes: Tuple[int, ...] = ((3,),),
+        groups: Tuple[int, ...] = ((1,),),
+        biases: Tuple[Tuple[bool, ...], ...] = ((False,),),
         preactivates: Tuple[Tuple[bool, ...], ...] = ((False,),),
         preattends: Tuple[Tuple[bool, ...], ...] = ((False,),),
+        use_styles: Tuple[Tuple[bool, ...], ...] = ((False,),),
+        expand_ratios: Tuple[float, float] = ((1.0,),),
         merge_policy: str = "cat",
         **kwargs,
     ) -> None:
@@ -48,7 +52,7 @@ class UnetppSkip(nn.ModuleDict):
             dec_dims : Tuple[int, ...]
                 List of the heights/widths of each encoder/decoder feature map
                 e.g. [256, 128, 64, 32, 16]. Assumption is that feature maps are square.
-            hid_channels : int, default=320
+            hid_channels : int, default=256
                 Number of output channels from the hidden middle blocks of unet++.
             n_layers : int, default=1
                 The number of conv layers inside one skip stage.
@@ -66,12 +70,20 @@ class UnetppSkip(nn.ModuleDict):
                 Activation methods used inside the conv layers.
             kernel_sizes : Tuple[int, ...], default=(3, 3)
                 The size of the convolution kernels in each conv block.
+            groups : int, default=(1, 1)
+                Number of groups for the kernels in each convolution blocks.
+            biases : bool, default=(True, True)
+                Include bias terms in the convolution blocks.
             attentions : Tuple[Tuple[str, ...], ...], default: ((None,), )
                 Attention methods used inside the conv layers.
             preactivates Tuple[Tuple[bool, ...], ...], default: ((False,), )
                 Boolean flags for the conv layers to use pre-activation.
             preattends Tuple[Tuple[bool, ...], ...], default: ((False,), )
                 Boolean flags for the conv layers to use pre-activation.
+            use_styles : Tuple[Tuple[bool, ...], ...], default=((False,), )
+                Boolean flags for the conv layers to add style vectors at each block.
+            expand_ratios : Tuple[float, float], default=((1.0, ),)
+                Expand ratios for the conv blocks.
             upsampling : str, default="fixed-unpool"
                 Name of the upsampling method.
             merge_policy : str, default="sum"
@@ -128,6 +140,7 @@ class UnetppSkip(nn.ModuleDict):
                         in_channels=merge.out_channels,
                         out_channels=hid_channels,
                         n_blocks=n_blocks[j],
+                        expand_ratios=expand_ratios[j],
                         short_skip=short_skips[j],
                         block_types=block_types[j],
                         activations=activations[j],
@@ -136,7 +149,10 @@ class UnetppSkip(nn.ModuleDict):
                         attentions=attentions[j],
                         preattends=preattends[j],
                         preactivates=preactivates[j],
+                        use_styles=use_styles[j],
                         kernel_sizes=kernel_sizes[j],
+                        groups=groups[j],
+                        biases=biases[j],
                     )
                     self.add_module(f"mid_layer{i + 1}", layer)
 
