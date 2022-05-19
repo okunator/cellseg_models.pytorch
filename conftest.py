@@ -44,10 +44,33 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(scope="package")
+def type_map_tensor() -> torch.Tensor:
+    """Return a dummy type map target tensor. Shape (8, 320, 320)."""
+    path = Path().resolve()
+    path = path / "cellseg_models_pytorch/training/tests/data/type_target_batch8.pt"
+    return torch.load(path.as_posix())
+
+
+@pytest.fixture(scope="package")
+def sem_map_tensor() -> torch.Tensor:
+    """Return a dummy semantic map target tensor. Shape (8, 320, 320)."""
+    path = Path().resolve()
+    path = path / "cellseg_models_pytorch/training/tests/data/sem_target_batch8.pt"
+    return torch.load(path.as_posix())
+
+
+@pytest.fixture(scope="package")
 def img_sample() -> np.ndarray:
     """Read in test RGB img."""
     path = Path().resolve()
     return FileHandler.read_img(path / "cellseg_models_pytorch/utils/tests/data/HE.png")
+
+
+@pytest.fixture(scope="package")
+def hdf5db() -> Path:
+    """Read in test RGB img."""
+    path = Path().resolve()
+    return path / "cellseg_models_pytorch/datasets/tests/data/tiny_test.h5"
 
 
 @pytest.fixture(scope="package")
