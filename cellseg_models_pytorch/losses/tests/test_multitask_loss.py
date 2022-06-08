@@ -29,7 +29,7 @@ def test_multitask_loss(n_classes, losses):
     yhats = {}
     targets = {}
     for i, br in enumerate(losses.keys(), 1):
-        yhats[f"{br}_map"], targets[f"{br}_map"] = _get_dummy_pair(n_classes + i)
+        yhats[f"{br}"], targets[f"{br}"] = _get_dummy_pair(n_classes + i)
 
     mtl = MultiTaskLoss(losses)
     mtl(yhats, targets)

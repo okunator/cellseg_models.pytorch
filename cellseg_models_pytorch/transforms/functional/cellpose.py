@@ -95,7 +95,7 @@ def gen_flow_maps(inst_map: np.ndarray, pad: int = 1) -> np.ndarray:
 
         # padded bounding box of the instance
         sy, sx = ndi.find_objects(inst)[0]
-        inst = np.pad(inst[sy, sx], 1)
+        inst = np.pad(inst[sy, sx], pad)
         h, w = inst.shape
 
         # non-zero pixel indices in the bounding box

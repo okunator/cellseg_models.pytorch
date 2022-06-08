@@ -254,8 +254,7 @@ class TilerStitcher:
         stride: int,
         padding: bool = True,
     ) -> None:
-        """
-        Numpy image patcher-stitcher.
+        """Numpy image patcher-stitcher.
 
         Parameters
         ----------

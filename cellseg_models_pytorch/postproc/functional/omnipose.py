@@ -155,7 +155,7 @@ def post_proc_omnipose(
     More info in the omnipose paper:
     https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
 
-    Args:
+    Parameters
     ----------
         flow_map : np.ndarray
             Y- and x-flows. Shape: (2, H, W)

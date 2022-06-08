@@ -75,7 +75,7 @@ def steps2D_interp(
     shape = dP.shape[1:]
     shape = np.array(shape)[[1, 0]].astype("double") - 1
 
-    # Flip dims and modify to shape [1, 1, 320, 320, 2] for `grid_sample`
+    # Flip dims and modify to shape [1, 1, H*W, 2] for `grid_sample`
     pt = torch.from_numpy(p[[1, 0]].T).double().to(device)
     pt = pt.unsqueeze(0).unsqueeze(0)
 

@@ -59,9 +59,9 @@ class MultiTaskLoss(nn.ModuleDict):
 
         Parameters
         ----------
-            yhats : Dict,[str, torch.Tensor]
+            yhats : Dict[str, torch.Tensor]
                 Dictionary of branch names mapped to the predicted masks.
-            targets : Dict,[str, torch.Tensor]
+            targets : Dict[str, torch.Tensor]
                 Dictionary of branch names mapped to the GT masks.
 
         Returns
@@ -70,15 +70,15 @@ class MultiTaskLoss(nn.ModuleDict):
                 Computed multi-task loss (Scalar).
         """
         weight_map = None
-        if "weight_map" in targets.keys():
-            weight_map = targets["weight_map"]
+        if "edgeweight" in targets.keys():
+            weight_map = targets["edgeweight"]
 
         multitask_loss = 0.0
         for branch, loss in self.items():
             branch = branch.split("_")[0]
             branch_loss = loss(
-                yhat=yhats[f"{branch}_map"],
-                target=targets[f"{branch}_map"],
+                yhat=yhats[branch],
+                target=targets[branch],
                 target_weight=weight_map,
             )
             multitask_loss += branch_loss * self.weights[branch]
