@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 import numpy as np
 import scipy.ndimage as ndi
+from numba import njit
 
 __all__ = ["normalize_field", "gen_flow_maps"]
 
@@ -55,6 +56,31 @@ def normalize_field(mu: np.ndarray) -> np.ndarray:
     out = np.divide(mu, mag, out=out, where=mask)
 
     return out
+
+
+@njit(nogil=True)
+def _extend_centers(
+    T: np.ndarray,
+    y: np.ndarray,
+    x: np.ndarray,
+    ymed: int,
+    xmed: int,
+    w: int,
+    niter: int,
+) -> np.ndarray:
+    """Run diffusion from center of the label."""
+    for _ in range(niter):
+        T[ymed * w + xmed] += 1
+
+        t = T[y * w + x]
+        tdy = T[(y - 1) * w + x] + T[(y + 1) * w + x]
+        tdx = T[y * w + x - 1] + T[y * w + x + 1]
+        tdydx = T[(y - 1) * w + x - 1] + T[(y - 1) * w + x + 1]
+        tdxdy = T[(y + 1) * w + x - 1] + T[(y + 1) * w + x + 1]
+
+        T[y * w + x] = 1 / 9.0 * (t + tdy + tdx + tdydx + tdxdy)
+
+    return T
 
 
 def gen_flow_maps(inst_map: np.ndarray, pad: int = 1) -> np.ndarray:
@@ -113,17 +139,7 @@ def gen_flow_maps(inst_map: np.ndarray, pad: int = 1) -> np.ndarray:
 
         # solve heat equation
         T = np.zeros(h * w, dtype=np.float64)
-        for _ in range(niter):
-            T[ymed * w + xmed] += 1
-
-            t = T[y * w + x]
-            tdy = T[(y - 1) * w + x] + T[(y + 1) * w + x]
-            tdx = T[y * w + x - 1] + T[y * w + x + 1]
-            tdydx = T[(y - 1) * w + x - 1] + T[(y - 1) * w + x + 1]
-            tdxdy = T[(y + 1) * w + x - 1] + T[(y + 1) * w + x + 1]
-
-            T[y * w + x] = 1 / 9.0 * (t + tdy + tdx + tdydx + tdxdy)
-
+        T = _extend_centers(T, y, x, ymed, xmed, np.int32(w), np.int32(niter))
         T[(y + 1) * w + x + 1] = np.log(1.0 + T[(y + 1) * w + x + 1])
 
         # central difference approximation to first derivative
