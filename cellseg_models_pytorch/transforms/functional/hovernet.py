@@ -29,7 +29,7 @@ SOFTWARE.
 import numpy as np
 from scipy import ndimage as ndi
 
-from cellseg_models_pytorch.utils import bounding_box, remove_small_objects
+from ...utils import bounding_box, remove_small_objects
 
 __all__ = ["gen_hv_maps"]
 
@@ -61,12 +61,11 @@ def gen_hv_maps(inst_map: np.ndarray, min_size: int = 5) -> np.ndarray:
     x_map = np.zeros_like(inst_map, dtype=np.float64)
     y_map = np.zeros_like(inst_map, dtype=np.float64)
 
+    inst_map = remove_small_objects(inst_map, min_size=min_size, out=inst_map)
+
     inst_list = list(np.unique(inst_map))
     if 0 in inst_list:
         inst_list.remove(0)
-
-    if len(inst_list) > 0:
-        remove_small_objects(inst_map, min_size=min_size, out=inst_map)
 
     for inst_id in inst_list:
         inst = np.array(inst_map == inst_id, np.int32)
