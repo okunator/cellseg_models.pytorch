@@ -12,6 +12,8 @@ from .functional import (
     gen_flow_maps,
     gen_hv_maps,
     gen_omni_flow_maps,
+    gen_radial_distmaps,
+    gen_stardist_maps,
     gen_weight_maps,
     smooth_distance,
 )
@@ -20,6 +22,8 @@ __all__ = [
     "cellpose_transform",
     "hovernet_transform",
     "omnipose_transform",
+    "stardist_transform",
+    "stardist_opt_transform",
     "dist_transform",
     "smooth_dist_transform",
     "edgeweight_transform",
@@ -106,10 +110,83 @@ class OmniposeTrans(OnlyInstMapTransform):
         return gen_omni_flow_maps(fix_duplicates(inst_map))
 
 
+# Not useful for now.
+class StardistSelfTrans(OnlyInstMapTransform):
+    def __init__(self, n_rays: int = 32, n_segments: int = 20):
+        """Generate radial distance maps from a label mask.
+
+        https://arxiv.org/abs/1806.03535
+
+        Parameters
+        ----------
+            n_rays : int, default=32
+                Number of rays used for computing distance maps.
+            n_segments : int, default=20
+                Number of line segments the contour is divided into.
+                The more segments used, the more detail is preserved with
+                performance tradeoff.
+        """
+        super().__init__()
+        self.name = "stardist"
+        self.n_rays = n_rays
+        self.n_seg = n_segments
+
+    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
+        """Fix duplicate values and generate radial distance maps.
+
+        Parameters
+        ----------
+            inst_map : np.ndarray
+                Instance labelled mask. Shape (H, W).
+
+        Returns
+        -------
+            np.ndarray:
+                Pixelwise radial distance maps.
+                Shape: (n_rays, H, W). Dtype: float64.
+        """
+        return gen_radial_distmaps(fix_duplicates(inst_map), self.n_rays, self.n_seg)
+
+
+class StardistTrans(OnlyInstMapTransform):
+    def __init__(self, n_rays: int = 32, **kwargs):
+        """Generate radial distance maps from a label mask.
+
+        https://arxiv.org/abs/1806.03535
+
+        Parameters
+        ----------
+            n_rays : int, default=32
+                Number of rays used for computing distance maps.
+            n_segments : int, default=20
+                Number of line segments the contour is divided into.
+                The more segments used, the more detail is preserved with
+                performance tradeoff.
+        """
+        super().__init__()
+        self.name = "stardist"
+        self.n_rays = n_rays
+
+    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
+        """Fix duplicate values and generate radial distance maps.
+
+        Parameters
+        ----------
+            inst_map : np.ndarray
+                Instance labelled mask. Shape (H, W).
+
+        Returns
+        -------
+            np.ndarray:
+                Pixelwise radial distance maps.
+                Shape: (n_rays, H, W). Dtype: float64.
+        """
+        return gen_stardist_maps(fix_duplicates(inst_map), self.n_rays)
+
+
 class SmoothDistTrans(OnlyInstMapTransform):
     def __init__(self):
-        """
-        Generate FIM distance transforms from a label mask.
+        """Generate FIM distance transforms from a label mask.
 
         https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
         """
@@ -235,6 +312,16 @@ def hovernet_transform(**kwargs) -> List[OnlyInstMapTransform]:
 def omnipose_transform(**kwargs) -> List[OnlyInstMapTransform]:
     """Return the omnipose tranformation for label mask."""
     return [OmniposeTrans()]
+
+
+def stardist_transform(**kwargs) -> List[OnlyInstMapTransform]:
+    """Return the stardist tranformation for label mask."""
+    return [StardistTrans(**kwargs)]
+
+
+def stardist_opt_transform(**kwargs) -> List[OnlyInstMapTransform]:
+    """Return the stardist tranformation for label mask."""
+    return [StardistTrans(**kwargs)]
 
 
 def dist_transform(**kwargs) -> List[OnlyInstMapTransform]:

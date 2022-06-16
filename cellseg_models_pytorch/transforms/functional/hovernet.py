@@ -61,7 +61,8 @@ def gen_hv_maps(inst_map: np.ndarray, min_size: int = 5) -> np.ndarray:
     x_map = np.zeros_like(inst_map, dtype=np.float64)
     y_map = np.zeros_like(inst_map, dtype=np.float64)
 
-    inst_map = remove_small_objects(inst_map, min_size=min_size, out=inst_map)
+    # inst_map = remove_small_objects(inst_map, min_size=min_size, out=inst_map)
+    inst_map = remove_small_objects(inst_map, min_size=min_size)
 
     inst_list = list(np.unique(inst_map))
     if 0 in inst_list:
