@@ -19,6 +19,7 @@ albumentations = "1.1"
 pathos = "^0.2.8"
 opencv-python = "^4.2.0.32"
 timm = "^0.5.4"
+numba = "^0.55.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
