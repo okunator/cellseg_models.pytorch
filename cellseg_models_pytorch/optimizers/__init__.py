@@ -1,4 +1,12 @@
 from torch.optim import ASGD, SGD, Adadelta, Adagrad, Adam, Adamax, AdamW, RMSprop
+from torch.optim.lr_scheduler import (
+    CosineAnnealingLR,
+    CosineAnnealingWarmRestarts,
+    CyclicLR,
+    ExponentialLR,
+    LambdaLR,
+    ReduceLROnPlateau,
+)
 from torch_optimizer import (
     PID,
     QHM,
@@ -21,7 +29,56 @@ from torch_optimizer import (
     Yogi,
 )
 
+from .utils import adjust_optim_params
+
+SCHED_LOOKUP = {
+    "lambda": LambdaLR,
+    "reduce_on_plateau": ReduceLROnPlateau,
+    "cyclic": CyclicLR,
+    "exponential": ExponentialLR,
+    "cosine_annealing": CosineAnnealingLR,
+    "cosine_annealing_warm": CosineAnnealingWarmRestarts,
+}
+
+OPTIM_LOOKUP = {
+    "adam": Adam,
+    "rmsprop": RMSprop,
+    "sgd": SGD,
+    "adadelta": Adadelta,
+    "adagrad": Adagrad,
+    "adamax": Adamax,
+    "adamw": AdamW,
+    "asgd": ASGD,
+    "accsgd": AccSGD,
+    "adabound": AdaBound,
+    "adabelief": AdaBelief,
+    "adamp": AdamP,
+    "apollo": Apollo,
+    "adamod": AdaMod,
+    "diffgrad": DiffGrad,
+    "lamb": Lamb,
+    "novograd": NovoGrad,
+    "pid": PID,
+    "qhadam": QHAdam,
+    "qhm": QHM,
+    "radam": RAdam,
+    "sgwd": SGDW,
+    "yogi": Yogi,
+    "ranger": Ranger,
+    "rangerqh": RangerQH,
+    "rangerva": RangerVA,
+    "lookahead": Lookahead,
+}
+
 __all__ = [
+    "SCHED_LOOKUP",
+    "OPTIM_LOOKUP",
+    "LambdaLR",
+    "ReduceLROnPlateau",
+    "CosineAnnealingLR",
+    "CosineAnnealingWarmRestarts",
+    "CyclicLR",
+    "ExponentialLR",
     "Adam",
     "RMSprop",
     "SGD",
@@ -49,4 +106,5 @@ __all__ = [
     "RangerQH",
     "RangerVA",
     "Lookahead",
+    "adjust_optim_params",
 ]
