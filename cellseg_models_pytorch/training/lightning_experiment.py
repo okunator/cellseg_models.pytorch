@@ -84,7 +84,9 @@ class SegmentationExperiment(pl.LightningModule):
         ------
             ValueError if decoder branch related dicts don't have matching keys.
             ValueError if `branch_losses` contains illegal joint loss names.
+            ValueError if illegal metric names are given.
             ValueError if illegal optimizer name is given.
+            ValueError if illegal scheduler name is given.
         """
         super().__init__()
         self.model = model

@@ -63,12 +63,12 @@ def gen_stardist_maps(inst_map: np.ndarray, n_rays: int) -> np.ndarray:
     Returns
     -------
         np.ndarray:
-            The radial distance maps. Shape (n_rays, H, W). Dtype: float64
+            The radial distance maps. Shape (n_rays, H, W). Dtype: float32
     """
     n_rays = int(n_rays)
     dist = np.empty(inst_map.shape + (n_rays,), np.float32)
 
-    st_rays = np.float64((2 * np.pi) / n_rays)
+    st_rays = np.float32((2 * np.pi) / n_rays)
     for i in range(inst_map.shape[0]):
         for j in range(inst_map.shape[1]):
             value = inst_map[i, j]
@@ -199,7 +199,7 @@ def gen_radial_distmaps(
     """
     eps = 1e-5
     H, W = inst_map.shape
-    dist = np.zeros((n_rays, H, W), np.float64)
+    dist = np.zeros((n_rays, H, W), np.float32)
 
     inst_map = remove_small_objects(inst_map, min_size=5, out=inst_map)
 
@@ -246,7 +246,7 @@ def gen_radial_distmaps(
             y2 = rays[:, 0]
             x2 = rays[:, 1]
 
-            dst = np.zeros((n_segments, h * w), dtype=np.float64)
+            dst = np.zeros((n_segments, h * w), dtype=np.float32)
             for t, (p1, p2) in enumerate(zip(points1, points2)):
                 # line segments end points
                 y3 = p1[0]

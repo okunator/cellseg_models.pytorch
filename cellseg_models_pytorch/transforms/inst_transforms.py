@@ -321,7 +321,7 @@ def stardist_transform(**kwargs) -> List[OnlyInstMapTransform]:
 
 def stardist_opt_transform(**kwargs) -> List[OnlyInstMapTransform]:
     """Return the stardist tranformation for label mask."""
-    return [StardistTrans(**kwargs)]
+    return [StardistSelfTrans(**kwargs)]
 
 
 def dist_transform(**kwargs) -> List[OnlyInstMapTransform]:

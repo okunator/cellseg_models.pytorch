@@ -73,9 +73,9 @@ class CellPoseUnet(BaseMultiTaskSegModel):
             depth : int, default=4
                 The depth of the encoder. I.e. Number of returned feature maps from
                 the encoder. Maximum depth = 5.
-            out_channels : Tuple[int, ...], default=(256, 128, 64, 32, 32)
+            out_channels : Tuple[int, ...], default=(256, 128, 64, 32)
                 Out channels for each decoder stage.
-            layer_depths : Tuple[int, ...], default=(4, 4, 4, 4, 4)
+            layer_depths : Tuple[int, ...], default=(4, 4, 4, 4)
                 The number of conv blocks at each decoder stage.
             style_channels : int, default=256
                 Number of style vector channels. If None, style vectors are ignored.

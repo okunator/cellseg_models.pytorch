@@ -66,7 +66,7 @@ def test_binarize_transforms(inst_map, transform, zero_input):
 
 
 @pytest.mark.parametrize("transform", [stardist_transform, stardist_opt_transform])
-@pytest.mark.parametrize("zero_input", [None, np.zeros((14, 14))])
+@pytest.mark.parametrize("zero_input", [None, np.zeros((14, 14), np.int32)])
 def test_stardist_transforms(inst_map, transform, zero_input):
     trans = compose([transform(n_rays=3, n_segments=10)])
 

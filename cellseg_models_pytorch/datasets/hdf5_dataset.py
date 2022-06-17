@@ -207,10 +207,10 @@ class SegmentationHDF5Dataset(Dataset):
         # wrangle data to return format
         out = dict(image=data["image"])
         for m, n in zip(data["masks"], mask_names):
-            out[f"{n}"] = m
+            out[n] = m
 
         for n, aux_map in aux.items():
-            out[f"{n}"] = aux_map
+            out[n] = aux_map
 
         # remove redundant target (not needed in downstream).
         if self.return_inst:

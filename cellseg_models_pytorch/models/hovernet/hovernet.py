@@ -71,7 +71,7 @@ class HoverNet(BaseMultiTaskSegModel):
             depth : int, default=4
                 The depth of the encoder. I.e. Number of returned feature maps from
                 the encoder. Maximum depth = 5.
-            out_channels : Tuple[int, ...], default=(512, 256, 64, 64, 16)
+            out_channels : Tuple[int, ...], default=(512, 256, 64, 64)
                 Out channels for each decoder stage.
             style_channels : int, default=None
                 Number of style vector channels. If None, style vectors are ignored.
