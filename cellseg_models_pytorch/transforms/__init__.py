@@ -18,6 +18,8 @@ from .inst_transforms import (
     hovernet_transform,
     omnipose_transform,
     smooth_dist_transform,
+    stardist_opt_transform,
+    stardist_transform,
 )
 from .norm_transforms import (
     imgnorm_transform,
@@ -38,11 +40,13 @@ IMG_TRANSFORMS = {
 
 INST_TRANSFORMS = {
     "cellpose": cellpose_transform,
+    "omnipose": omnipose_transform,
+    "hovernet": hovernet_transform,
+    "stardist": stardist_transform,
+    "stardist_opt": stardist_opt_transform,
     "contour": contour_transform,
     "dist": dist_transform,
     "edgeweight": edgeweight_transform,
-    "hovernet": hovernet_transform,
-    "omnipose": omnipose_transform,
     "smooth_dist": smooth_dist_transform,
     "binarize": binarize_transform,
 }
@@ -70,8 +74,10 @@ __all__ = [
     "to_tensor",
     "to_tensorv3",
     "cellpose_transform",
-    "hovernet_transform",
     "omnipose_transform",
+    "hovernet_transform",
+    "stardist_transform",
+    "stardist_orig_transform",
     "dist_transform",
     "smooth_dist_transform",
     "contour_transform",

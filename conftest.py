@@ -8,15 +8,30 @@ from cellseg_models_pytorch.utils import FileHandler
 
 
 def pytest_addoption(parser):
-    parser.addoption("--cuda", action="store_true", default=False, help="run gpu tests")
     parser.addoption(
-        "--slow", action="store_true", default=False, help="run slow tests"
+        "--cuda",
+        action="store_true",
+        default=False,
+        help="run gpu tests",
+    )
+    parser.addoption(
+        "--slow",
+        action="store_true",
+        default=False,
+        help="run slow tests",
+    )
+    parser.addoption(
+        "--optional",
+        action="store_true",
+        default=False,
+        help="run tests that require optional packages",
     )
 
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "cuda: mark test as a gpu test")
     config.addinivalue_line("markers", "slow: mark test as a slow test")
+    config.addinivalue_line("markers", "optional: mark test as an optional test")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -41,6 +56,17 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "slow" in item.keywords:
                 item.add_marker(skip_slow)
+
+    only_opt = pytest.mark.skip(reason="--optional option runs only optional tests")
+    if config.getoption("--optional"):
+        for item in items:
+            if "optional" not in item.keywords:
+                item.add_marker(only_opt)
+    else:
+        skip_opt = pytest.mark.skip(reason="need --optional option to run")
+        for item in items:
+            if "optional" in item.keywords:
+                item.add_marker(skip_opt)
 
 
 @pytest.fixture(scope="package")
