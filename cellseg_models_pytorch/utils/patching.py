@@ -209,8 +209,8 @@ def stitch_patches_torch(
     ----------
         patches : torch.Tensor
             Input tensor patches. Shape (B, C, n_patches, H, W).
-        orig_shape : Tuple[int, int, int]
-            Shape of the original image. Format (H, W, C).
+        orig_shape : Tuple[int, int, int, int]
+            Shape of the original image. Format (B, C, H, W).
         stride : int
             Stride of the sliding window that was used for patching.
         padding : bool

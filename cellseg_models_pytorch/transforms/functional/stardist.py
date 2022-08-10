@@ -180,7 +180,6 @@ def gen_radial_distmaps(
     of the rays and line segments rather than shooting rays from each
     pixel.
 
-
     Parameters
     ----------
         inst_map : np.ndarray
