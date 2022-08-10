@@ -24,6 +24,7 @@ class HoverNet(BaseMultiTaskSegModel):
         self,
         decoders: Tuple[str, ...],
         heads: Dict[str, Dict[str, int]],
+        inst_key: str = "inst",
         depth: int = 4,
         out_channels: Tuple[int, ...] = (512, 256, 64, 64),
         style_channels: int = None,
@@ -68,6 +69,9 @@ class HoverNet(BaseMultiTaskSegModel):
                 branches (has to match `decoders`) mapped to dicts
                  of output name - number of output classes. E.g.
                 {"hovernet": {"hovernet": 2}, "sem": {"sem": 5}, "type": {"type": 5}}
+            inst_key : str, default="inst"
+                The key for the model output that will be used in the instance
+                segmentation post-processing pipeline as the binary segmentation result.
             depth : int, default=4
                 The depth of the encoder. I.e. Number of returned feature maps from
                 the encoder. Maximum depth = 5.
@@ -116,6 +120,7 @@ class HoverNet(BaseMultiTaskSegModel):
         """
         super().__init__()
         self.aux_key = self._check_decoder_args(decoders, ("hovernet",))
+        self.inst_key = inst_key
         self._check_head_args(heads, decoders)
         self._check_depth(depth, {"out_channels": out_channels})
 
@@ -279,6 +284,7 @@ def hovernet_small(type_classes: int, **kwargs) -> nn.Module:
     """
     hovernet = HoverNet(
         decoders=("hovernet", "type"),
+        inst_key="type",
         heads={
             "hovernet": {"hovernet": 2},
             "type": {"type": type_classes},
@@ -305,6 +311,7 @@ def hovernet_small_plus(type_classes: int, sem_classes: int, **kwargs) -> nn.Mod
     """
     hovernet = HoverNet(
         decoders=("hovernet", "type", "sem"),
+        inst_key="type",
         heads={
             "hovernet": {"hovernet": 2},
             "type": {"type": type_classes},

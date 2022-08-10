@@ -19,6 +19,7 @@ class StarDistUnet(BaseMultiTaskSegModel):
         decoders: Tuple[str, ...],
         extra_convs: Dict[str, Dict[str, int]],
         heads: Dict[str, Dict[str, int]],
+        inst_key: str = "dist",
         depth: int = 4,
         out_channels: Tuple[int, ...] = (256, 128, 64, 32),
         style_channels: int = None,
@@ -68,6 +69,9 @@ class StarDistUnet(BaseMultiTaskSegModel):
                 branches (has to match `decoders`) mapped to dicts
                  of output name - number of output classes. E.g.
                 {"cellpose": {"type": 4, "cellpose": 2}, "sem": {"sem": 5}}
+            inst_key : str, default="dist"
+                The key for the model output that will be used in the instance
+                segmentation post-processing pipeline as the binary segmentation result.
             depth : int, default=4
                 The depth of the encoder. I.e. Number of returned feature maps from
                 the encoder. Maximum depth = 5.
@@ -116,6 +120,7 @@ class StarDistUnet(BaseMultiTaskSegModel):
         """
         super().__init__()
         self.aux_key = self._check_decoder_args(decoders, ("stardist",))
+        self.inst_key = inst_key
         self._check_head_args(extra_convs, decoders)
         self._check_head_args(heads, self._get_inner_keys(extra_convs))
         self._check_depth(depth, {"out_channels": out_channels})

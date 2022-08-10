@@ -24,6 +24,7 @@ class CellPoseUnet(BaseMultiTaskSegModel):
         self,
         decoders: Tuple[str],
         heads: Dict[str, Dict[str, int]],
+        inst_key: str = "type",
         depth: int = 4,
         out_channels: Tuple[int, ...] = (256, 128, 64, 32),
         layer_depths: Tuple[int, ...] = (4, 4, 4, 4),
@@ -70,6 +71,9 @@ class CellPoseUnet(BaseMultiTaskSegModel):
                 Names of the decoder branches (has to match `decoders`) mapped to dicts
                  of output name - number of output classes. E.g.
                 {"cellpose": {"type": 4, "cellpose": 2}, "sem": {"sem": 5}}
+            inst_key : str, default="type"
+                The key for the model output that will be used in the instance
+                segmentation post-processing pipeline as the binary segmentation result.
             depth : int, default=4
                 The depth of the encoder. I.e. Number of returned feature maps from
                 the encoder. Maximum depth = 5.
@@ -120,7 +124,8 @@ class CellPoseUnet(BaseMultiTaskSegModel):
             ValueError: If decoder names don't have a matching head name in `heads`.
         """
         super().__init__()
-        self.flow_key = self._check_decoder_args(decoders, ("omnipose", "cellpose"))
+        self.aux_key = self._check_decoder_args(decoders, ("omnipose", "cellpose"))
+        self.inst_key = inst_key
         self._check_head_args(heads, decoders)
         self._check_depth(
             depth, {"out_channels": out_channels, "layer_depths": layer_depths}
@@ -208,7 +213,7 @@ class CellPoseUnet(BaseMultiTaskSegModel):
 
         for decoder_name in self.heads.keys():
             for head_name in self.heads[decoder_name].keys():
-                k = self.flow_key if head_name not in dec_feats.keys() else head_name
+                k = self.aux_key if head_name not in dec_feats.keys() else head_name
                 dec_feats[head_name] = dec_feats[k]
 
         out = self.forward_heads(dec_feats)

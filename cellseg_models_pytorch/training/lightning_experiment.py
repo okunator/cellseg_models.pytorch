@@ -90,6 +90,9 @@ class SegmentationExperiment(pl.LightningModule):
         """
         super().__init__()
         self.model = model
+        self.heads = model.heads
+        self.aux_key = model.aux_key
+        self.inst_key = model.inst_key
 
         # Optimizer args
         self.optimizer = optimizer
