@@ -133,7 +133,7 @@ def tensor_to_ndarray(
             f"Illegal `in_dim_format`. Got {in_dim_format}. Allowed: {in_dim_types}"
         )
 
-    out_dim_types = ("BHWC", "BHW", "HWC", "HW")
+    out_dim_types = ("BCHW", "BHWC", "BHW", "HWC", "HW")
     if out_dim_format not in out_dim_types:
         raise ValueError(
             f"Illegal `out_dim_format`. Got {out_dim_format}. Allowed: {out_dim_types}"
@@ -145,7 +145,7 @@ def tensor_to_ndarray(
         array = array.cpu()
 
     array = array.numpy()
-    if array.ndim == 4:
+    if array.ndim == 4 and out_dim_format != "BCHW":
         array = array.transpose(0, 2, 3, 1)  # (B, H, W, C)
 
     if out_dim_format == "HW" and array.ndim == 4:

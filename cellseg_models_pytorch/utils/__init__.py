@@ -35,6 +35,14 @@ from .patching import (
     stitch_patches_numpy,
     stitch_patches_torch,
 )
+from .tensor_img_utlls import (
+    NORM_LOOKUP,
+    dataset_normalize_torch,
+    minmax_normalize_torch,
+    normalize_torch,
+    percentile,
+    percentile_normalize_torch,
+)
 from .tensor_kernels import filter2D, gaussian, gaussian_kernel2d, sobel_hv
 from .tensor_utils import (
     ndarray_to_tensor,
@@ -52,7 +60,16 @@ from .thresholding import (
     smoothed_thresh,
 )
 
+THRESH_LOOKUP = {
+    "argmax": argmax,
+    "naive": naive_thresh_prob,
+    "sauvola": sauvola_thresh,
+    "niblack": niblack_thresh,
+}
+
+
 __all__ = [
+    "THRESH_LOOKUP",
     "FileHandler",
     "percentile_normalize",
     "percentile_normalize99",
@@ -99,4 +116,10 @@ __all__ = [
     "tensor_to_ndarray",
     "to_device",
     "tensor_one_hot",
+    "normalize_torch",
+    "minmax_normalize_torch",
+    "percentile",
+    "percentile_normalize_torch",
+    "dataset_normalize_torch",
+    "NORM_LOOKUP",
 ]

@@ -14,7 +14,18 @@ from .functional.drfns import post_proc_drfns
 from .functional.hovernet import post_proc_hovernet
 from .functional.omnipose import get_masks_omnipose, post_proc_omnipose
 
+POSTPROC_LOOKUP = {
+    # "stardist": post_proc_stardist,
+    "cellpose": post_proc_cellpose,
+    "omnipose": post_proc_omnipose,
+    "dcan": post_proc_dcan,
+    "drfns": post_proc_drfns,
+    "dran": post_proc_dran,
+    "hovernet": post_proc_hovernet,
+}
+
 __all__ = [
+    "POSTPROC_LOOKUP",
     "gen_flows",
     "fill_holes_and_remove_small_masks",
     "normalize_field",
