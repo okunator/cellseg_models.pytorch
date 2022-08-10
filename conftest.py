@@ -70,6 +70,13 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(scope="package")
+def img_dir() -> Path:
+    """Return a path to directory with a few test images."""
+    path = Path().resolve()
+    return path / "cellseg_models_pytorch//inference/tests/data"
+
+
+@pytest.fixture(scope="package")
 def type_map_tensor() -> torch.Tensor:
     """Return a dummy type map target tensor. Shape (8, 320, 320)."""
     path = Path().resolve()
@@ -163,6 +170,55 @@ def sem_map() -> np.ndarray:
         dtype=int,
     )
     return sem_map
+
+
+@pytest.fixture(scope="package")
+def true_sem() -> np.ndarray:
+    true = np.array(
+        [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 1, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0],
+            [0, 1, 1, 1, 1, 0, 0, 2, 2, 2, 2, 0, 0, 0],
+            [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 0, 0],
+            [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 0, 0],
+            [0, 1, 1, 1, 1, 0, 0, 2, 2, 2, 2, 0, 0, 0],
+            [0, 0, 1, 1, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 4, 4, 0],
+            [0, 0, 0, 0, 3, 3, 3, 3, 0, 0, 4, 4, 4, 4],
+            [0, 0, 0, 3, 3, 3, 3, 3, 3, 0, 4, 4, 4, 4],
+            [0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 0, 4, 4, 0],
+            [0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0],
+        ],
+        dtype=int,
+    )
+
+    return true
+
+
+@pytest.fixture(scope="package")
+def pred_sem() -> np.ndarray:
+    pred = np.array(
+        [
+            [0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 1, 1, 1, 0, 0, 2, 2, 0, 0, 0, 0],
+            [0, 1, 1, 1, 1, 0, 0, 2, 2, 2, 2, 0, 0, 0],
+            [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 0, 0],
+            [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 0, 0],
+            [0, 1, 1, 1, 1, 0, 0, 2, 2, 2, 2, 0, 0, 0],
+            [0, 0, 1, 1, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0],
+            [0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 3, 4, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 3, 3, 4, 4, 0, 0, 4, 0, 0, 0],
+            [0, 0, 0, 3, 3, 3, 4, 4, 4, 4, 4, 0, 0, 0],
+            [0, 0, 3, 3, 3, 3, 4, 4, 4, 4, 0, 0, 0, 0],
+            [0, 3, 3, 3, 3, 3, 4, 4, 4, 4, 0, 0, 0, 0],
+        ],
+        dtype=int,
+    )
+    return pred
 
 
 @pytest.fixture(scope="package")
