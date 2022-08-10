@@ -39,10 +39,10 @@ def test_postproc_cellpose(inst_map, return_flows):
     flows = gen_flow_maps(inst_map)
 
     if not return_flows:
-        rebuild = post_proc_cellpose(flows, inst_map, min_size=0)
+        rebuild = post_proc_cellpose(inst_map, flows, min_size=0)
     else:
         rebuild, _ = post_proc_cellpose(
-            flows, inst_map, min_size=0, return_flows=return_flows
+            inst_map, flows, min_size=0, return_flows=return_flows
         )
 
     assert rebuild.shape == inst_map.shape
@@ -55,10 +55,10 @@ def test_postproc_omnipose(inst_map, return_flows):
     flows = gen_flow_maps(inst_map)
 
     if not return_flows:
-        rebuild = post_proc_omnipose(flows, inst_map, min_size=0)
+        rebuild = post_proc_omnipose(inst_map, flows, min_size=0)
     else:
         rebuild, _ = post_proc_omnipose(
-            flows, inst_map, min_size=0, return_flows=return_flows
+            inst_map, flows, min_size=0, return_flows=return_flows
         )
 
     assert rebuild.dtype == "int32"
@@ -69,7 +69,7 @@ def test_postproc_omnipose(inst_map, return_flows):
 
 def test_postproc_cellpose_old(inst_map):
     flows = gen_hv_maps(inst_map)
-    rebuild = rebuild = post_proc_cellpose_old(flows, inst_map)
+    rebuild = rebuild = post_proc_cellpose_old(inst_map, flows)
 
     assert rebuild.shape == inst_map.shape
     assert rebuild.dtype == "int32"
@@ -86,7 +86,7 @@ def test_postproc_hovernet(inst_map, enhance):
 
 def test_postproc_drfns(inst_map):
     dist = gen_dist_maps(inst_map)
-    rebuild = post_proc_drfns(dist, inst_map)
+    rebuild = post_proc_drfns(inst_map, dist)
 
     assert rebuild.dtype == "int32"
     assert rebuild.shape == inst_map.shape

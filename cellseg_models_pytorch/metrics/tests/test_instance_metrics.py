@@ -65,7 +65,9 @@ def pred() -> np.ndarray:
 @pytest.mark.parametrize("metric_func", [None, iou_score])
 def test_get_pixel_stats(true, pred, metric_func):
     expected_shape = (len(np.unique(true)[1:]), len(np.unique(pred)[1:]))
-    stats = pairwise_pixel_stats(remap_label(true), remap_label(pred), metric_func)[0]
+    stats = pairwise_pixel_stats(
+        remap_label(true), remap_label(pred), metric_func=metric_func
+    )[0]
 
     assert stats.shape == expected_shape
 
@@ -76,7 +78,9 @@ def test_pairwise_object_stats(true, pred, sum_reduce):
     expected_fp = 1
     expected_fn = 2
 
-    iou = pairwise_pixel_stats(remap_label(true), remap_label(pred), iou_score)
+    iou = pairwise_pixel_stats(
+        remap_label(true), remap_label(pred), metric_func=iou_score
+    )
     iou = iou[0]
     matches = iou > 0.5
 
