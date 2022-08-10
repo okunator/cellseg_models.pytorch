@@ -246,7 +246,7 @@ def get_masks_cellpose_old(
     return M0
 
 
-def post_proc_cellpose_old(flow_map: np.ndarray, inst_map: np.ndarray) -> np.ndarray:
+def post_proc_cellpose_old(inst_map: np.ndarray, flow_map: np.ndarray) -> np.ndarray:
     """Run the CellPose post-processing pipeline (OLD).
 
     https://www.nature.com/articles/s41592-020-01018-x
@@ -257,10 +257,10 @@ def post_proc_cellpose_old(flow_map: np.ndarray, inst_map: np.ndarray) -> np.nda
 
     Args:
     -----------
-        flow_map : np.ndarray
-            Horizontal and vertical flows. Shape (2, H, W).
         inst_map : np.ndarray
             Instance labelled mask. Shape (H, W).
+        flow_map : np.ndarray
+            Horizontal and vertical flows. Shape (2, H, W).
 
     Returns
     -------

@@ -36,7 +36,9 @@ from cellseg_models_pytorch.utils import naive_thresh_prob, percentile_normalize
 __all__ = ["post_proc_dcan"]
 
 
-def post_proc_dcan(prob_map: np.ndarray, contour_map: np.ndarray) -> np.ndarray:
+def post_proc_dcan(
+    prob_map: np.ndarray, contour_map: np.ndarray, **kwargs
+) -> np.ndarray:
     """DCAN post-processing pipeline.
 
     https://arxiv.org/abs/1604.02677

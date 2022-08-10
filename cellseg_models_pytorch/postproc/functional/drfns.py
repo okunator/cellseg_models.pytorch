@@ -133,7 +133,7 @@ def dynamic_ws_alias(
 
 
 def post_proc_drfns(
-    dist_map: np.ndarray, inst_map: np.ndarray, thresh: float = 0.5
+    inst_map: np.ndarray, dist_map: np.ndarray, thresh: float = 0.5, **kwargs
 ) -> np.ndarray:
     """DRFNS post processing pipeline.
 
@@ -145,10 +145,10 @@ def post_proc_drfns(
 
     Parameters
     ----------
-        dist_map : np.ndarray
-            Distance transform. Shape (H, W)
         inst_map : np.ndarray
             Instance labelled mask. Shape (H, W).
+        dist_map : np.ndarray
+            Distance transform. Shape (H, W)
         thresh : float, default=0.5
             threshold value for markers and binary mask
 

@@ -12,7 +12,9 @@ from cellseg_models_pytorch.utils import (
 )
 
 
-def post_proc_dran(inst_map: np.ndarray, contour_map: np.ndarray) -> np.ndarray:
+def post_proc_dran(
+    inst_map: np.ndarray, contour_map: np.ndarray, **kwargs
+) -> np.ndarray:
     """DRAN post-processing pipeline.
 
     https://www.frontiersin.org/articles/10.3389/fbioe.2019.00053/full

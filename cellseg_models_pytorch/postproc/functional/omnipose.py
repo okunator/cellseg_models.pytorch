@@ -144,11 +144,12 @@ def get_masks_omnipose(
 
 
 def post_proc_omnipose(
-    flow_map: np.ndarray,
     inst_map: np.ndarray,
+    flow_map: np.ndarray,
     dist_map: np.ndarray = None,
     return_flows: bool = False,
     min_size: int = 30,
+    **kwargs
 ) -> np.ndarray:
     """Run the omnipose post-processing pipeline.
 
@@ -157,10 +158,10 @@ def post_proc_omnipose(
 
     Parameters
     ----------
-        flow_map : np.ndarray
-            Y- and x-flows. Shape: (2, H, W)
         inst_map : np.ndarray
             Instance labelled mask. Shape (H, W).
+        flow_map : np.ndarray
+            Y- and x-flows. Shape: (2, H, W)
         dist_map : np.ndarray, default=None
             Regressed distance transform. Optional. Shape: (H, W).
         return_flows : bool, default=False
