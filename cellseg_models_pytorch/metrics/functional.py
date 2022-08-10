@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union
 
 import numpy as np
 
@@ -11,26 +11,35 @@ __all__ = [
     "average_precision",
     "aggregated_jaccard_index",
     "dice2",
+    "iou_multiclass",
+    "dice_multiclass",
+    "f1score_multiclass",
+    "accuracy_multiclass",
+    "sensitivity_multiclass",
+    "specificity_multiclass",
 ]
 
 
 def pairwise_pixel_stats(
-    true: np.ndarray, pred: np.ndarray, metric_func: Optional[Callable] = None
+    true: np.ndarray,
+    pred: np.ndarray,
+    num_classes: int = None,
+    metric_func: Callable = None,
 ) -> Union[List[np.ndarray], None]:
-    """Compute the number of TP, FP, FN pixels for each object in a labelled mask.
+    """Compute the # of TP, FP, FN pixels for each object in a labelled/semantic mask.
 
     Optionally a binary metric can be computed instead of the satistics.
     Atleast 2x faster than computing with `np.histogram2d`.
 
-    NOTE: borrows from:
-    https://github.com/vqdang/hover_net/blob/master/metrics/stats_utils.py
-
     Parameters
     ----------
         true : np.ndarray
-            Ground truth (labelled mask). Shape (H, W).
+            Ground truth (semantic or labelled mask). Shape (H, W).
         pred : np.ndarray
-            Predicted (labelled mask). Shape (H, W).
+            Predicted (semantic or labelled mask). Shape (H, W).
+        num_classes : int, optional
+            Number of classes in the dataset. If None, stats are computed for instances.
+            If not None stats are computed for classes i.e. semantic segmentation masks.
         metric_func : Callable, optional
             A binary metric function. e.g. `iou_score` or `dice`.
 
@@ -40,11 +49,19 @@ def pairwise_pixel_stats(
             A List of 2D arrays (i, j) where i corresponds to a ground
             truth label and j corresponds to a predicted label. Each value
             of the matrix is the computed statistic or metric at pos (i, j).
+            By default. returns the tp, fp, and fn matrices.
 
-            Shape: (n_labels_gt, n_labels_pred). Dtype. float64.
+            If stats computed for instances:
+                Shape: (n_labels_gt, n_labels_pred). Dtype. float64.
+            If stats computed for classes:
+                Shape: (num_classes, num_classes). Dtype. float64.
     """
-    true_labels = list(np.unique(true))[1:]
-    pred_labels = list(np.unique(pred))[1:]
+    if num_classes is not None:
+        true_labels = list(range(num_classes))
+        pred_labels = list(range(num_classes))
+    else:
+        true_labels = list(np.unique(true))[1:]
+        pred_labels = list(np.unique(pred))[1:]
 
     true_objects = {}
     for t in true_labels:
@@ -75,20 +92,27 @@ def pairwise_pixel_stats(
         overlap_label = np.unique(overlap)
         for pred_label in overlap_label:
 
-            # ignore bg and empty preds
-            if pred_label == 0:
+            # ignore bg and empty preds in instance mode
+            if pred_label == 0 and num_classes is None:
                 continue
 
             pred_obj = pred_objects[pred_label]
             tp, fp, fn = get_stats(true_obj, pred_obj)
 
+            if num_classes is None:
+                ix = true_label - 1
+                jx = pred_label - 1
+            else:
+                ix = true_label
+                jx = pred_label
+
             # compute a metric or add stats
             if metric_func is not None:
-                ret[0][true_label - 1, pred_label - 1] = metric_func(tp, fp, fn)
+                ret[0][ix, jx] = metric_func(tp, fp, fn)
             else:
-                ret[0][true_label - 1, pred_label - 1] = tp.sum()
-                ret[1][true_label - 1, pred_label - 1] = fp.sum()
-                ret[2][true_label - 1, pred_label - 1] = fn.sum()
+                ret[0][ix, jx] = tp.sum()
+                ret[1][ix, jx] = fp.sum()
+                ret[2][ix, jx] = fn.sum()
 
     return ret
 
@@ -141,7 +165,7 @@ def panoptic_quality(
             Ground truth (labelled mask). Shape (H, W).
         pred : np.ndarray
             Predicted (labelled mask). Shape (H, W).
-        thresh (float, default=0.5):
+        thresh : float, default=0.5
             Threshold for the iou to include the prediction as TP
         eps : float, default=1e-8:
             Epsilon to avoid zero div errors.
@@ -152,7 +176,7 @@ def panoptic_quality(
             Dictionary containing the detection quality (dq), segmentation
             quality (sq) and panoptic quality (pq) values.
     """
-    iou = pairwise_pixel_stats(true, pred, iou_score)
+    iou = pairwise_pixel_stats(true, pred, metric_func=iou_score)
     res = {"pq": 0.0, "sq": 0.0, "dq": 0.0}
 
     if iou:
@@ -182,7 +206,7 @@ def average_precision(
             Ground truth (labelled mask). Shape (H, W).
         pred : np.ndarray
             Predicted (labelled mask). Shape (H, W).
-        thresh (float, default=0.5):
+        thresh : float, default=0.5
             Threshold for the iou to include the prediction as TP
         eps : float, default=1e-8:
             Epsilon to avoid zero div errors.
@@ -192,7 +216,7 @@ def average_precision(
         float:
             The computed precision.
     """
-    iou = pairwise_pixel_stats(pred, true, iou_score)
+    iou = pairwise_pixel_stats(pred, true, metric_func=iou_score)
     ap = 0.0
 
     if iou:
@@ -247,7 +271,7 @@ def aggregated_jaccard_index(
             Ground truth (labelled mask). Shape (H, W).
         pred : np.ndarray
             Predicted (labelled mask). Shape (H, W).
-        thresh (float, default=0.5):
+        thresh : float, default=0.5
             Threshold for the iou to include the prediction as TP
         eps : float, default=1e-8:
             Epsilon to avoid zero div errors.
@@ -285,3 +309,178 @@ def aggregated_jaccard_index(
         aji = inter / (union + eps)
 
     return aji
+
+
+def iou_multiclass(
+    true: np.ndarray, pred: np.ndarray, num_classes: int, eps: float = 1e-8
+) -> np.ndarray:
+    """Compute multi-class intersection over union for semantic segmentation masks.
+
+    Parameters
+    ----------
+        true : np.ndarray
+            Ground truth semantic mask. Shape (H, W).
+        pred : np.ndarray
+            Predicted semantic mask. Shape (H, W).
+        num_classes : int
+            Number of classes in the training dataset.
+        eps : float, default=1e-8:
+            Epsilon to avoid zero div errors.
+
+    Returns
+    -------
+        np.ndarray:
+            Per class IoU-metrics. Shape: (num_classes,).
+    """
+    tp, fp, fn = pairwise_pixel_stats(true, pred, num_classes=num_classes)
+    tp = tp.diagonal()
+    fp = fp.diagonal()
+    fn = fn.diagonal()
+
+    return tp / (tp + fp + fn + eps)
+
+
+def accuracy_multiclass(
+    true: np.ndarray, pred: np.ndarray, num_classes: int, eps: float = 1e-8
+) -> np.ndarray:
+    """Compute multi-class accuracy for semantic segmentation masks.
+
+    Parameters
+    ----------
+        true : np.ndarray
+            Ground truth semantic mask. Shape (H, W).
+        pred : np.ndarray
+            Predicted semantic mask. Shape (H, W).
+        num_classes : int
+            Number of classes in the training dataset.
+        eps : float, default=1e-8:
+            Epsilon to avoid zero div errors.
+
+    Returns
+    -------
+        np.ndarray:
+            Per class accuracy-metrics. Shape: (num_classes,).
+    """
+    tp, fp, fn = pairwise_pixel_stats(true, pred, num_classes=num_classes)
+    tp = tp.diagonal()
+    fp = fp.diagonal()
+    fn = fn.diagonal()
+    tn = np.prod(true.shape) - (tp + fn + fp)
+
+    return (tp + tn) / (tp + fp + fn + tn + eps)
+
+
+def f1score_multiclass(
+    true: np.ndarray, pred: np.ndarray, num_classes: int, eps: float = 1e-8
+) -> np.ndarray:
+    """Compute multi-class f1-score for semantic segmentation masks.
+
+    Parameters
+    ----------
+        true : np.ndarray
+            Ground truth semantic mask. Shape (H, W).
+        pred : np.ndarray
+            Predicted semantic mask. Shape (H, W).
+        num_classes : int
+            Number of classes in the training dataset.
+        eps : float, default=1e-8:
+            Epsilon to avoid zero div errors.
+
+    Returns
+    -------
+        np.ndarray:
+            Per class f1score-metrics. Shape: (num_classes,).
+    """
+    tp, fp, fn = pairwise_pixel_stats(true, pred, num_classes=num_classes)
+    tp = tp.diagonal()
+    fp = fp.diagonal()
+    fn = fn.diagonal()
+
+    return tp / (0.5 * fp + 0.5 * fn + tp + eps)
+
+
+def dice_multiclass(
+    true: np.ndarray, pred: np.ndarray, num_classes: int, eps: float = 1e-8
+) -> np.ndarray:
+    """Compute multi-class dice for semantic segmentation masks.
+
+    Parameters
+    ----------
+        true : np.ndarray
+            Ground truth semantic mask. Shape (H, W).
+        pred : np.ndarray
+            Predicted semantic mask. Shape (H, W).
+        num_classes : int
+            Number of classes in the training dataset.
+        eps : float, default=1e-8:
+            Epsilon to avoid zero div errors.
+
+    Returns
+    -------
+        np.ndarray:
+            Per class dice-metrics. Shape: (num_classes,).
+    """
+    tp, fp, fn = pairwise_pixel_stats(true, pred, num_classes=num_classes)
+    tp = tp.diagonal()
+    fp = fp.diagonal()
+    fn = fn.diagonal()
+
+    return 2 * tp / (2 * tp + fp + fn + eps)
+
+
+def sensitivity_multiclass(
+    true: np.ndarray, pred: np.ndarray, num_classes: int, eps: float = 1e-8
+) -> np.ndarray:
+    """Compute multi-class sensitivity for semantic segmentation masks.
+
+    Parameters
+    ----------
+        true : np.ndarray
+            Ground truth semantic mask. Shape (H, W).
+        pred : np.ndarray
+            Predicted semantic mask. Shape (H, W).
+        num_classes : int
+            Number of classes in the training dataset.
+        eps : float, default=1e-8:
+            Epsilon to avoid zero div errors.
+
+    Returns
+    -------
+        np.ndarray:
+            Per class sensitivity-metrics. Shape: (num_classes,).
+    """
+    tp, fp, fn = pairwise_pixel_stats(true, pred, num_classes=num_classes)
+    tp = tp.diagonal()
+    fp = fp.diagonal()
+    fn = fn.diagonal()
+
+    return tp / (tp + fn + eps)
+
+
+def specificity_multiclass(
+    true: np.ndarray, pred: np.ndarray, num_classes: int, eps: float = 1e-8
+) -> np.ndarray:
+    """Compute multi-class specificity for semantic segmentation masks.
+
+    Parameters
+    ----------
+        true : np.ndarray
+            Ground truth semantic mask. Shape (H, W).
+        pred : np.ndarray
+            Predicted semantic mask. Shape (H, W).
+        num_classes : int
+            Number of classes in the training dataset.
+        eps : float, default=1e-8:
+            Epsilon to avoid zero div errors.
+
+    Returns
+    -------
+        np.ndarray:
+            Per class specificity-metrics. Shape: (num_classes,).
+    """
+    tp, fp, fn = pairwise_pixel_stats(true, pred, num_classes=num_classes)
+    tp = tp.diagonal()
+    fp = fp.diagonal()
+    fn = fn.diagonal()
+
+    return tp / (tp + fp + eps)
