@@ -30,7 +30,7 @@ def mask2mat(
         inst : np.ndarray
             Instance labelled instance segmentation mask from the segmentation model.
         sem : np.ndarray, optional
-            Cell type labelled semantic segmentation mask from the segmentation model.
+            Semantic segmentation mask from the segmentation model.
         type : np.ndarray, optional
             Cell type labelled semantic segmentation mask from the segmentation model.
     """
