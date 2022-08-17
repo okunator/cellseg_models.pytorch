@@ -1,12 +1,13 @@
-# from .hdf5_dataset import SegmentationHDF5Dataset
+from .folder_dataset import FolderDataset
+from .hdf5_dataset import SegmentationHDF5Dataset
 
 DATASET_LOOKUP = {
-    "dd": "dd"
-    # "hdf5": SegmentationHDF5Dataset,
-    # "folder": FolderDataset
+    "dd": "dd",
+    "hdf5": SegmentationHDF5Dataset,
+    "folder": FolderDataset
     # "inference": InferenceDataset
 }
 
 
 # __all__ = ["DATASET_LOOKUP", "SegmentationHDF5Dataset"]
-__all__ = ["DATASET_LOOKUP"]
+__all__ = ["DATASET_LOOKUP", "SegmentationHDF5Dataset", "FolderDataset"]
