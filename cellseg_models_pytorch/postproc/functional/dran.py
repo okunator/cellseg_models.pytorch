@@ -25,7 +25,7 @@ def post_proc_dran(
     Parameters
     ----------
         inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+            Instance labelled or binary mask. Shape (H, W).
         contour_map : np.ndarray
             Contour map. Shape (H, W).
 

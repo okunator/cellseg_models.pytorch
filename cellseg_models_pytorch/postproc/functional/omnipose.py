@@ -159,7 +159,7 @@ def post_proc_omnipose(
     Parameters
     ----------
         inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+            Instance labelled or binary mask. Shape (H, W).
         flow_map : np.ndarray
             Y- and x-flows. Shape: (2, H, W)
         dist_map : np.ndarray, default=None

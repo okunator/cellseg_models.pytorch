@@ -217,6 +217,8 @@ def hovernet_base(type_classes: int, inst_classes: int = 2, **kwargs) -> nn.Modu
             Number of type classes.
         inst_classes : int, default=2
             Number of instance classes.
+        **kwargs:
+            Arbitrary key word args for the HoverNet class.
 
     Returns
     -------
@@ -251,6 +253,8 @@ def hovernet_plus(
             Number of semantic-branch classes.
         inst_classes : int, default=2
             Number of instance-branch classes.
+        **kwargs:
+            Arbitrary key word args for the HoverNet class.
 
     Returns
     -------
@@ -277,6 +281,8 @@ def hovernet_small(type_classes: int, **kwargs) -> nn.Module:
     ----------
         type_classes : int
             Number of type-branch classes.
+        **kwargs:
+            Arbitrary key word args for the HoverNet class.
 
     Returns
     -------
@@ -304,6 +310,8 @@ def hovernet_small_plus(type_classes: int, sem_classes: int, **kwargs) -> nn.Mod
             Number of type-branch classes.
         sem_classes : int
             Number of semantic-branch classes.
+        **kwargs:
+            Arbitrary key word args for the HoverNet class.
 
     Returns
     -------

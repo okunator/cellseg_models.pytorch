@@ -48,7 +48,7 @@ def post_proc_hovernet(
     Parameters
     ----------
         inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+            Instance labelled or binary mask. Shape (H, W).
         hover_map : np.ndarray
             Regressed horizontal and vertical gradients. Shape: (2, H, W).
         enhance : bool, default=True

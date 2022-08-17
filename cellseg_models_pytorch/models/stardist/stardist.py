@@ -246,6 +246,8 @@ def stardist_base(n_rays: int, **kwargs) -> nn.Module:
     ----------
         n_rays : int
             Number of rays predicted per each object
+        **kwargs:
+            Arbitrary key word args for the StarDistUnet class.
 
     Returns
     -------
@@ -273,6 +275,8 @@ def stardist_base_multiclass(n_rays: int, type_classes: int, **kwargs) -> nn.Mod
             Number of rays predicted per each object
         type_classes : int
             Number of type classes in the dataset.
+        **kwargs:
+            Arbitrary key word args for the StarDistUnet class.
 
     Returns
     -------
@@ -307,6 +311,8 @@ def stardist_plus(
             Number of type classes in the dataset.
         sem_classes : int
             Number of semantic-branch classes.
+        **kwargs:
+            Arbitrary key word args for the StarDistUnet class.
 
     Returns
     -------

@@ -231,6 +231,8 @@ def cellpose_base(type_classes: int, **kwargs) -> nn.Module:
     ----------
         type_classes : int
             Number of type classes in the dataset.
+        **kwargs:
+            Arbitrary key word args for the CellPoseUnet class.
 
     Returns
     -------
@@ -257,6 +259,8 @@ def cellpose_plus(type_classes: int, sem_classes: int, **kwargs) -> nn.Module:
             Number of type classes in the dataset.
         sem_classes : int
             Number of semantic-branch classes.
+        **kwargs:
+            Arbitrary key word args for the CellPoseUnet class.
 
     Returns
     -------
@@ -284,6 +288,8 @@ def omnipose_base(type_classes: int, **kwargs) -> nn.Module:
     ----------
         type_classes : int
             Number of type classes in the dataset.
+        **kwargs:
+            Arbitrary key word args for the CellPoseUnet class.
 
     Returns
     -------
@@ -310,6 +316,8 @@ def omnipose_plus(type_classes: int, sem_classes: int, **kwargs) -> nn.Module:
             Number of type classes in the dataset.
         sem_classes : int
             Number of semantic-branch classes.
+        **kwargs:
+            Arbitrary key word args for the CellPoseUnet class.
 
     Returns
     -------

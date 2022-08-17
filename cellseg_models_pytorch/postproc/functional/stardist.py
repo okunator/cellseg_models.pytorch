@@ -191,7 +191,7 @@ def polygons_to_label(
 
 
 def post_proc_stardist(
-    stardist_map: np.ndarray, dist_map: np.ndarray, thresh: float = 0.5
+    dist_map: np.ndarray, stardist_map: np.ndarray, thresh: float = 0.5
 ) -> np.ndarray:
     """Run post-processing for stardist.
 
@@ -200,10 +200,10 @@ def post_proc_stardist(
 
     Parameters
     ----------
-        stardist_map : np.ndarray
-            Predicted radial distances. Shape: (n_rays, H, W).
         dist_map : np.ndarray
             Predicted distance transform. Shape: (H, W).
+        stardist_map : np.ndarray
+            Predicted radial distances. Shape: (n_rays, H, W).
         thresh : float, default=0.5
             Threshold for the regressed distance transform.
 
@@ -236,7 +236,7 @@ def post_proc_stardist(
 
 
 def post_proc_stardist_orig(
-    stardist_map: np.ndarray, dist_map: np.ndarray, thresh: float = 0.5
+    dist_map: np.ndarray, stardist_map: np.ndarray, thresh: float = 0.5
 ) -> np.ndarray:
     """Run the original stardist post-processing pipeline.
 
@@ -244,10 +244,10 @@ def post_proc_stardist_orig(
 
     Parameters
     ----------
-        stardist_map : np.ndarray
-            Predicted radial distances. Shape: (n_rays, H, W).
         dist_map : np.ndarray
             Predicted distance transform. Shape: (H, W).
+        stardist_map : np.ndarray
+            Predicted radial distances. Shape: (n_rays, H, W).
         thresh : float, default=0.5
             Threshold for the regressed distance transform.
 

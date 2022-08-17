@@ -146,7 +146,7 @@ def post_proc_drfns(
     Parameters
     ----------
         inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+            Instance labelled or binary mask. Shape (H, W).
         dist_map : np.ndarray
             Distance transform. Shape (H, W)
         thresh : float, default=0.5

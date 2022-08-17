@@ -116,7 +116,7 @@ def test_postproc_dran(inst_map):
 def test_postproc_stardist(inst_map):
     stardist = gen_stardist_maps(inst_map, 32)
     dist = gen_dist_maps(inst_map)
-    rebuild = post_proc_stardist(stardist, dist)
+    rebuild = post_proc_stardist(dist, stardist)
 
     assert rebuild.dtype == "int32"
     assert rebuild.shape == inst_map.shape
