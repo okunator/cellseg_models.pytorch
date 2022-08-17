@@ -13,10 +13,13 @@ from .functional.dran import post_proc_dran
 from .functional.drfns import post_proc_drfns
 from .functional.hovernet import post_proc_hovernet
 from .functional.omnipose import get_masks_omnipose, post_proc_omnipose
+from .functional.stardist import post_proc_stardist, post_proc_stardist_orig
 
 POSTPROC_LOOKUP = {
-    # "stardist": post_proc_stardist,
+    "stardist_orig": post_proc_stardist_orig,
+    "stardist": post_proc_stardist,
     "cellpose": post_proc_cellpose,
+    "cellpose_old": post_proc_cellpose_old,
     "omnipose": post_proc_omnipose,
     "dcan": post_proc_dcan,
     "drfns": post_proc_drfns,
@@ -34,6 +37,8 @@ __all__ = [
     "get_masks_omnipose",
     "post_proc_omnipose",
     "post_proc_hovernet",
+    "post_proc_stardist",
+    "post_proc_stardist_orig",
     "get_masks_cellpose_old",
     "post_proc_cellpose_old",
     "post_proc_drfns",

@@ -11,12 +11,14 @@ from cellseg_models_pytorch.postproc import (
     post_proc_drfns,
     post_proc_hovernet,
     post_proc_omnipose,
+    post_proc_stardist,
 )
 from cellseg_models_pytorch.transforms.functional import (
     gen_contour_maps,
     gen_dist_maps,
     gen_flow_maps,
     gen_hv_maps,
+    gen_stardist_maps,
 )
 from cellseg_models_pytorch.utils import binarize, remap_label
 
@@ -106,6 +108,15 @@ def test_postproc_dcan(inst_map):
 def test_postproc_dran(inst_map):
     cont = gen_contour_maps(inst_map)
     rebuild = post_proc_dran(inst_map, cont)
+
+    assert rebuild.dtype == "int32"
+    assert rebuild.shape == inst_map.shape
+
+
+def test_postproc_stardist(inst_map):
+    stardist = gen_stardist_maps(inst_map, 32)
+    dist = gen_dist_maps(inst_map)
+    rebuild = post_proc_stardist(stardist, dist)
 
     assert rebuild.dtype == "int32"
     assert rebuild.shape == inst_map.shape
