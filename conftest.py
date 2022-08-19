@@ -73,7 +73,21 @@ def pytest_collection_modifyitems(config, items):
 def img_dir() -> Path:
     """Return a path to directory with a few test images."""
     path = Path().resolve()
-    return path / "cellseg_models_pytorch//inference/tests/data"
+    return path / "cellseg_models_pytorch/inference/tests/data"
+
+
+@pytest.fixture(scope="package")
+def img_patch_dir() -> Path:
+    """Return a path to directory with a few test images."""
+    path = Path().resolve()
+    return path / "cellseg_models_pytorch/datasets/tests/data/imgs"
+
+
+@pytest.fixture(scope="package")
+def mask_patch_dir() -> Path:
+    """Return a path to directory with a few test images."""
+    path = Path().resolve()
+    return path / "cellseg_models_pytorch/datasets/tests/data/masks"
 
 
 @pytest.fixture(scope="package")
