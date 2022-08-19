@@ -102,8 +102,6 @@ class SlidingWindowInferer(BaseInferer):
         )
 
         self.stride = stride
-        # self.save_masks = save_masks
-        # self.save_intermediate = save_intermediate
 
     def _get_margins(
         self, first_endpoint: int, img_size: int, stride: int, pad: int = None
