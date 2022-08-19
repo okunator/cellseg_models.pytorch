@@ -4,23 +4,20 @@ from typing import Dict, List
 
 import numpy as np
 
+from ..utils import FileHandler
 from ._base_dataset import TrainDatasetBase
 
-try:
-    import tables as tb
-except Exception:
-    raise ImportError(
-        "`pytables` needed for this class. Install with: `pip install tables`"
-    )
+IMG_SUFFIXES = (".jpeg", ".jpg", ".tif", ".tiff", ".png")
+MASK_SUFFIXES = (".mat",)
+
+__all__ = ["SegmentationFolderDataset"]
 
 
-__all__ = ["SegmentationHDF5Dataset"]
-
-
-class SegmentationHDF5Dataset(TrainDatasetBase):
+class SegmentationFolderDataset(TrainDatasetBase):
     def __init__(
         self,
         path: str,
+        mask_path: str,
         img_transforms: List[str],
         inst_transforms: List[str],
         normalization: str = None,
@@ -30,14 +27,14 @@ class SegmentationHDF5Dataset(TrainDatasetBase):
         return_weight: bool = False,
         **kwargs,
     ) -> None:
-        """Create a dataset class that reads images/patches from a hdf5 database.
-
-        NOTE: The h5-db needs to be written with `HDF5Writer` (/utils/h5_writer.py).
+        """Create a dataset class that reads images/patches from a folder.
 
         Parameters
         ----------
             path : str
-                Path to the hdf5 db.
+                Path to the folder containing the images.
+            mask_path : str
+                Path to the folder containing the corresponding masks (.mat files).
             img_transforms : List[str]
                 A list containing all the transformations that are applied to the input
                 images and corresponding masks. Allowed ones: "blur", "non_spatial",
@@ -57,6 +54,10 @@ class SegmentationHDF5Dataset(TrainDatasetBase):
                 If True, returns a semantic mask, (If the db contains these.)
             return_weight : bool, default=False
                 Include a nuclear border weight map in the output.
+
+        Raises
+        ------
+            ValueError if there are issues with the given paths or files.
         """
         super().__init__(
             img_transforms=img_transforms,
@@ -69,18 +70,39 @@ class SegmentationHDF5Dataset(TrainDatasetBase):
         )
 
         self.path = Path(path)
+        self.mask_path = Path(mask_path)
 
-        if self.path.suffix not in (".h5", ".hdf5"):
+        if not self.path.exists():
+            raise ValueError(f"folder: {path} does not exist")
+
+        if not self.path.is_dir():
+            raise ValueError(f"path: {path} is not a folder")
+
+        if not all([f.suffix in IMG_SUFFIXES for f in self.path.iterdir()]):
             raise ValueError(
-                f"""The input path has to be a hdf5 db. Got suffix: {self.path.suffix}
-                Allowed suffices: {(".h5", ".hdf5")}"""
+                f"files formats in given folder need to be in {IMG_SUFFIXES}"
             )
 
-        # n imgs in the db.
-        with tb.open_file(self.path) as h5:
-            self.n_items = h5.root._v_attrs["n_items"]
+        if not self.mask_path.exists():
+            raise ValueError(f"folder: {self.mask_path} does not exist")
 
-    def read_h5_patch(
+        if not self.mask_path.is_dir():
+            raise ValueError(f"path: {self.mask_path} is not a folder")
+
+        if not all([f.suffix in MASK_SUFFIXES for f in self.mask_path.iterdir()]):
+            raise ValueError(
+                f"files formats in given folder need to be in {MASK_SUFFIXES}"
+            )
+
+        self.fnames_imgs = sorted(path.glob("*"))
+        self.fnames_masks = sorted(mask_path.glob("*"))
+        if len(self.fnames_imgs) != len(self.fnames_masks):
+            raise ValueError(
+                f"Found different number of files in {self.path.as_posix()} and "
+                f"{self.mask_path.as_posix()}."
+            )
+
+    def read_img_mask(
         self,
         ix: int,
         return_type: bool = True,
@@ -91,7 +113,7 @@ class SegmentationHDF5Dataset(TrainDatasetBase):
         Parameters
         ----------
             ix : int
-                Index for the hdf5 db-arrays.
+                Index for the img in the folder.
             return_type : bool, default=True
                 If True, returns a type mask. (If the db contains these.)
             return_sem : bool, default=False
@@ -105,36 +127,40 @@ class SegmentationHDF5Dataset(TrainDatasetBase):
 
         Raises
         ------
-            IOError: If a mask that does not exist in the db is being read.
+            KeyError: If a mask that does not exist in a given .mat file.
         """
-        with tb.open_file(self.path.as_posix(), "r") as h5:
-            out = OrderedDict()
-            out["image"] = h5.root.imgs[ix, ...]
+        out = OrderedDict()
+        out["image"] = FileHandler.read_img(self.fnames_imgs[ix])
+        masks = FileHandler.read_mask(self.fnames_masks[ix], return_all=True)
 
+        try:
+            out["inst"] = masks["inst_map"]
+        except KeyError:
+            raise KeyError(
+                f"The file {self.fnames_masks[ix]} does not contain key `inst_map`."
+            )
+
+        if return_type:
             try:
-                out["inst"] = h5.root.insts[ix, ...]
-            except Exception:
-                raise IOError(
-                    "The HDF5 database does not contain instance labelled masks."
+                out["type"] = masks["type_map"]
+            except KeyError:
+                raise KeyError(
+                    f"The file {self.fnames_masks[ix]} does not contain key `type_map`."
                 )
 
-            if return_type:
-                try:
-                    out["type"] = h5.root.types[ix, ...]
-                except Exception:
-                    raise IOError("The HDF5 database does not contain type masks.")
+        if return_sem:
+            try:
+                out["sem"] = masks["sem_map"]
+            except KeyError:
+                raise KeyError(
+                    f"The file {self.fnames_masks[ix]} does not contain key `sem_map`."
+                )
 
-            if return_sem:
-                try:
-                    out["sem"] = h5.root.areas[ix, ...]
-                except Exception:
-                    raise IOError("The HDF5 database does not contain semantic masks.")
-
-            return out
+        return out
 
     def __len__(self) -> int:
         """Return the number of items in the db."""
-        return self.n_items
+        return len(self.fnames_imgs)
 
     def __getitem__(self, ix: int) -> Dict[str, np.ndarray]:
         """Get item.
@@ -152,4 +178,4 @@ class SegmentationHDF5Dataset(TrainDatasetBase):
                 Mask shapes: (B, C_mask, H, W).
 
         """
-        return self._getitem(ix, self.read_h5_patch)
+        return self._getitem(ix, self.read_img_mask)
