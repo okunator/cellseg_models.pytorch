@@ -12,8 +12,8 @@ from cellseg_models_pytorch.training import SegmentationExperiment
 # @pytest.mark.parametrize
 def test_training(img_patch_dir, mask_patch_dir):
     train_ds = SegmentationFolderDataset(
-        path="/home/leos/test_im_patches",
-        mask_path="/home/leos/test_mask_patches",
+        path=img_patch_dir.as_posix(),
+        mask_path=mask_patch_dir.as_posix(),
         img_transforms=["blur"],
         inst_transforms=["cellpose"],
         return_sem=True,
