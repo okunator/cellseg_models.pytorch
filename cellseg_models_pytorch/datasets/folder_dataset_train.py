@@ -94,8 +94,8 @@ class SegmentationFolderDataset(TrainDatasetBase):
                 f"files formats in given folder need to be in {MASK_SUFFIXES}"
             )
 
-        self.fnames_imgs = sorted(path.glob("*"))
-        self.fnames_masks = sorted(mask_path.glob("*"))
+        self.fnames_imgs = sorted(self.path.glob("*"))
+        self.fnames_masks = sorted(self.mask_path.glob("*"))
         if len(self.fnames_imgs) != len(self.fnames_masks):
             raise ValueError(
                 f"Found different number of files in {self.path.as_posix()} and "

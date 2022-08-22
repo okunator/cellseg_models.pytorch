@@ -1,52 +1,35 @@
+from copy import deepcopy
+
 import pytest
 import pytorch_lightning as pl
 
-from cellseg_models_pytorch.datamodules.csmp_datamodule import CSMPDataModule
+from cellseg_models_pytorch.datamodules.custom_datamodule import CustomDataModule
+from cellseg_models_pytorch.datasets import SegmentationFolderDataset
 from cellseg_models_pytorch.models import cellpose_plus
 from cellseg_models_pytorch.training import SegmentationExperiment
 
 
 # @pytest.mark.parametrize
 def test_training(img_patch_dir, mask_patch_dir):
-    type_classes = {
-        "background": 0,
-        "class1": 1,
-        "class2": 2,
-        "class3": 3,
-        "class4": 4,
-        "class5": 5,
-        "class6": 6,
-    }
-
-    sem_classes = {
-        "background": 0,
-        "class1": 1,
-        "class2": 2,
-        "class3": 3,
-        "class4": 4,
-        "class5": 5,
-        "class6": 6,
-    }
-
-    model = cellpose_plus(sem_classes=7, type_classes=7)
-
-    datamodule = CSMPDataModule(
+    train_ds = SegmentationFolderDataset(
+        path="/home/leos/test_im_patches",
+        mask_path="/home/leos/test_mask_patches",
         img_transforms=["blur"],
         inst_transforms=["cellpose"],
-        train_data_path=img_patch_dir.as_posix(),
-        valid_data_path=img_patch_dir.as_posix(),
-        test_data_path=img_patch_dir.as_posix(),
-        train_mask_path=mask_patch_dir.as_posix(),
-        valid_mask_path=mask_patch_dir.as_posix(),
-        test_mask_path=mask_patch_dir.as_posix(),
-        type_classes=type_classes,
-        sem_classes=sem_classes,
+        return_sem=True,
+        return_type=True,
         return_inst=False,
         return_weight=False,
-        batch_size=1,
-        num_workers=1,
+        normalization="percentile",
+    )
+    valid_ds = deepcopy(train_ds)
+    test_ds = deepcopy(train_ds)
+
+    datamodule = CustomDataModule(
+        [train_ds, valid_ds, test_ds], batch_size=1, num_workers=1
     )
 
+    model = cellpose_plus(sem_classes=7, type_classes=7)
     experiment = SegmentationExperiment(
         model=model,
         branch_losses={"cellpose": "mse_ssim", "sem": "ce_dice", "type": "ce_dice"},
