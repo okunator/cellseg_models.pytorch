@@ -147,7 +147,13 @@ class BaseInferer(ABC):
         raise NotImplementedError
 
     def infer(self) -> None:
-        """Run inference and post-processing for the images."""
+        """Run inference and post-processing for the images.
+
+        NOTE: Saves outputs in `self.out_masks` or to disk (.mat) files.
+
+        `self.out_masks` is a nested dict: E.g.
+            {"image1": {"inst": [H, W], "type": [H, W], "sem": [H, W]}}
+        """
         self.soft_masks = {}
         self.out_masks = {}
         self.elapsed = []

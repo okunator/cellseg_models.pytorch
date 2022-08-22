@@ -67,7 +67,7 @@ class HoverNet(BaseMultiTaskSegModel):
             heads : Dict[str, Dict[str, int]]
                 The segmentation heads of the architecture. I.e. Names of the decoder
                 branches (has to match `decoders`) mapped to dicts
-                 of output name - number of output classes. E.g.
+                of output name - number of output classes. E.g.
                 {"hovernet": {"hovernet": 2}, "sem": {"sem": 5}, "type": {"type": 5}}
             inst_key : str, default="inst"
                 The key for the model output that will be used in the instance
@@ -211,6 +211,9 @@ class HoverNet(BaseMultiTaskSegModel):
 def hovernet_base(type_classes: int, inst_classes: int = 2, **kwargs) -> nn.Module:
     """Create the baseline HoVer-Net (three decoders) from kwargs.
 
+    HoVer-Net:
+        - https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub
+
     Parameters
     ----------
         type_classes : int
@@ -245,6 +248,9 @@ def hovernet_plus(
 ) -> nn.Module:
     """Create HoVer-Net+ (additional semantic decoders) from kwargs.
 
+    HoVer-Net:
+        - https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub
+
     Parameters
     ----------
         type_classes : int
@@ -277,6 +283,9 @@ def hovernet_plus(
 def hovernet_small(type_classes: int, **kwargs) -> nn.Module:
     """Create HoVer-Net without inst decoder branch from kwargs.
 
+    HoVer-Net:
+        - https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub
+
     Parameters
     ----------
         type_classes : int
@@ -303,6 +312,9 @@ def hovernet_small(type_classes: int, **kwargs) -> nn.Module:
 
 def hovernet_small_plus(type_classes: int, sem_classes: int, **kwargs) -> nn.Module:
     """Create the HoVer-Net+ without inst decoder branch from kwargs.
+
+    HoVer-Net:
+        - https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub
 
     Parameters
     ----------

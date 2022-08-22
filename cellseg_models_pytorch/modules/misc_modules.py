@@ -15,8 +15,7 @@ class ChannelPool(nn.Module):
         convolution: str = "conv",
         **kwargs,
     ) -> None:
-        """
-        Channel pooling/downsampling module for convenience.
+        """Channel pooling/downsampling module for convenience.
 
         Parameters
         ----------
