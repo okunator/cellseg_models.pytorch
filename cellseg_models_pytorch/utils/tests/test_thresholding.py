@@ -1,14 +1,13 @@
 import numpy as np
 import pytest
 
-from cellseg_models_pytorch.utils import (
+from cellseg_models_pytorch.utils import (  # smoothed_thresh,
     argmax,
     morph_chan_vese_thresh,
     naive_thresh,
     naive_thresh_prob,
     niblack_thresh,
     sauvola_thresh,
-    smoothed_thresh,
 )
 
 
@@ -24,7 +23,7 @@ def prob_map() -> np.ndarray:
         naive_thresh_prob,
         sauvola_thresh,
         morph_chan_vese_thresh,
-        smoothed_thresh,
+        # smoothed_thresh,
         niblack_thresh,
     ],
 )
