@@ -28,6 +28,7 @@ class SlidingWindowInferer(BaseInferer):
         save_intermediate: bool = False,
         save_dir: Union[Path, str] = None,
         checkpoint_path: Union[Path, str] = None,
+        n_images: int = None,
         **postproc_kwargs,
     ) -> None:
         """Sliding window inference for a folder of images.
@@ -80,6 +81,8 @@ class SlidingWindowInferer(BaseInferer):
                 are flushed.
             checkpoint_path : Path | str, optional
                 Path to the model weight checkpoints.
+            n_images : int, optional
+                First n-number of images used from the `ìnput_folder`.
             **postproc_kwargs:
                 Arbitrary keyword arguments for the post-processing.
         """
@@ -98,6 +101,7 @@ class SlidingWindowInferer(BaseInferer):
             save_intermediate=save_intermediate,
             save_dir=save_dir,
             checkpoint_path=checkpoint_path,
+            n_images=n_images,
             **postproc_kwargs,
         )
 

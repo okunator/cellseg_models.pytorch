@@ -35,6 +35,7 @@ class BaseInferer(ABC):
         save_intermediate: bool = False,
         save_dir: Union[Path, str] = None,
         checkpoint_path: Union[Path, str] = None,
+        n_images: int = None,
         **postproc_kwargs,
     ) -> None:
         """Inference for an image folder.
@@ -81,6 +82,8 @@ class BaseInferer(ABC):
                 are flushed.
             checkpoint_path : Path | str, optional
                 Path to the model weight checkpoints.
+            n_images : int, optional
+                First n-number of images used from the `input_folder`.
             **postproc_kwargs:
                 Arbitrary keyword arguments for the post-processing.
         """
@@ -90,7 +93,7 @@ class BaseInferer(ABC):
 
         # dataloader
         self.path = Path(input_folder)
-        folder_ds = FolderDataset(self.path)
+        folder_ds = FolderDataset(self.path, n_images=n_images)
         self.dataloader = DataLoader(
             folder_ds, batch_size=batch_size, shuffle=False, pin_memory=True
         )

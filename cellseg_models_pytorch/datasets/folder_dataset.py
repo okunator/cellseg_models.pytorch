@@ -13,7 +13,9 @@ __all__ = ["FolderDataset"]
 
 
 class FolderDataset(Dataset, FileHandler):
-    def __init__(self, path: Union[str, Path], pattern: str = "*") -> None:
+    def __init__(
+        self, path: Union[str, Path], pattern: str = "*", n_images: int = None
+    ) -> None:
         """Folder dataset that can be used during inference for loading images.
 
         NOTE: loads only images.
@@ -24,6 +26,8 @@ class FolderDataset(Dataset, FileHandler):
                 Path to the folder containing image files.
             pattern: str, default="*"
                 File pattern for filtering only the files that contain the pattern.
+            n_images : int, optional
+                First n-number of images used from the folder.
 
         Raises
         ------
@@ -44,6 +48,8 @@ class FolderDataset(Dataset, FileHandler):
             raise ValueError(f"files formats in given folder need to be in {SUFFIXES}")
 
         self.fnames = sorted(folder_path.glob(pattern))
+        if n_images is not None:
+            self.fnames = self.fnames[:n_images]
 
     def __len__(self) -> int:
         """Length of folder."""
