@@ -1,9 +1,13 @@
 import numpy as np
+import pytest
 
 from cellseg_models_pytorch.utils import (
+    FileHandler,
     binarize,
     bounding_box,
     center_crop,
+    draw_stuff_contours,
+    draw_thing_contours,
     fill_holes_semantic,
     fix_duplicates,
     get_inst_centroid,
@@ -322,3 +326,42 @@ def test_label_semantic(sem_map):
     )
     observed = label_semantic(sem_map)
     np.testing.assert_array_equal(observed, expected)
+
+
+@pytest.mark.parametrize("func", [draw_stuff_contours, draw_thing_contours])
+@pytest.mark.parametrize("fill_contours", [True, False])
+@pytest.mark.parametrize(
+    "classes", [None, {"a": 0, "b": 1, "c": 2, "d": 3, "e": 4, "f": 5, "g": 6}]
+)
+@pytest.mark.parametrize(
+    "colors",
+    [
+        None,
+        {
+            "a": (1.0, 2.0, 3.0),
+            "b": (1.0, 2.0, 3.0),
+            "c": (1.0, 2.0, 3.0),
+            "d": (1.0, 2.0, 3.0),
+            "e": (1.0, 2.0, 3.0),
+            "f": (1.0, 2.0, 3.0),
+            "g": (1.0, 2.0, 3.0),
+        },
+    ],
+)
+def test_conoturs(img_patch_dir, mask_patch_dir, func, fill_contours, classes, colors):
+    im_path = sorted(img_patch_dir.glob("*"))[0]
+    mask_path = sorted(mask_patch_dir.glob("*"))[0]
+
+    img = FileHandler.read_img(im_path)
+    masks = FileHandler.read_mask(mask_path, return_all=True)
+    cont = func(
+        masks["inst_map"],
+        img,
+        masks["type_map"],
+        fill_contours=fill_contours,
+        classes=classes,
+        colors=colors,
+    )
+
+    assert cont.shape == img.shape
+    assert cont.dtype == img.dtype

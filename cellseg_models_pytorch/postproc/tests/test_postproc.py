@@ -20,7 +20,7 @@ from cellseg_models_pytorch.transforms.functional import (
     gen_hv_maps,
     gen_stardist_maps,
 )
-from cellseg_models_pytorch.utils import binarize, remap_label
+from cellseg_models_pytorch.utils import FileHandler, binarize, remap_label
 
 
 def test_gen_flows(inst_map):
@@ -113,7 +113,9 @@ def test_postproc_dran(inst_map):
     assert rebuild.shape == inst_map.shape
 
 
-def test_postproc_stardist(inst_map):
+def test_postproc_stardist(mask_patch_dir):
+    mask_path = sorted(mask_patch_dir.glob("*"))[0]
+    inst_map = FileHandler.read_mask(mask_path)
     stardist = gen_stardist_maps(inst_map, 32)
     dist = gen_dist_maps(inst_map)
     rebuild = post_proc_stardist(dist, stardist)
