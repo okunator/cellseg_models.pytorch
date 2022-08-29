@@ -10,6 +10,8 @@ from .mask_utils import (
     binarize,
     bounding_box,
     center_crop,
+    draw_stuff_contours,
+    draw_thing_contours,
     fill_holes_semantic,
     fix_duplicates,
     get_inst_centroid,
@@ -57,7 +59,6 @@ from .thresholding import (
     naive_thresh_prob,
     niblack_thresh,
     sauvola_thresh,
-    smoothed_thresh,
 )
 
 THRESH_LOOKUP = {
@@ -100,7 +101,6 @@ __all__ = [
     "sauvola_thresh",
     "morph_chan_vese_thresh",
     "argmax",
-    "smoothed_thresh",
     "TilerStitcher",
     "TilerStitcherTorch",
     "extract_patches_numpy",
@@ -122,4 +122,6 @@ __all__ = [
     "percentile_normalize_torch",
     "dataset_normalize_torch",
     "NORM_LOOKUP",
+    "draw_stuff_contours",
+    "draw_thing_contours",
 ]

@@ -1,7 +1,6 @@
 import numpy as np
 import skimage.filters as filters
 import skimage.segmentation as segm
-from skimage.exposure import histogram
 
 from .mask_utils import remove_debris_binary
 
@@ -11,7 +10,6 @@ __all__ = [
     "niblack_thresh",
     "sauvola_thresh",
     "morph_chan_vese_thresh",
-    "smoothed_thresh",
     "argmax",
 ]
 
@@ -153,36 +151,5 @@ def argmax(prob_map: np.ndarray, **kwargs) -> np.ndarray:
         prob_map = np.stack([inv_prob, prob_map], axis=-1)
 
     seg = np.argmax(prob_map, axis=-1).astype("u4")
-
-    return seg
-
-
-def smoothed_thresh(prob_map: np.ndarray, eps: float = 0.01, **kwargs) -> np.ndarray:
-    """Threshold a probability map after it has been smoothed with dog.
-
-    After dog, the prob_map histogram has a notable discontinuity which
-    can be found by taking the minimum of the derivative of the histogram
-    -> no need for arbitrary cutoff value for threshold.
-
-    Parameters
-    ----------
-        prob_map : np.ndarray
-            Soft mask to be thresholded. Shape (H, W).
-        eps : float, default=0.01
-            Small increase the threshold, since the histogram center
-            often not optimal.
-
-    Returns
-    -------
-        np.ndarray:
-            Thresholded soft mask. Shape: (H, W). Type: uint8.
-    """
-    # Find the steepest drop in the histogram
-    hist, hist_centers = histogram(prob_map)
-    d = np.diff(hist)
-    b = d == np.min(d)
-    b = np.append(b, False)  # append 1 b/c np.diff loses one elem in arr
-    thresh = hist_centers[b][0] + eps
-    seg = naive_thresh_prob(prob_map, thresh)
 
     return seg

@@ -25,14 +25,16 @@ SOFTWARE.
 """
 
 import numpy as np
-from scipy.ndimage.morphology import distance_transform_cdt
+from scipy.ndimage.morphology import distance_transform_cdt, distance_transform_edt
 
 from cellseg_models_pytorch.utils import bounding_box
 
 __all__ = ["gen_dist_maps"]
 
 
-def gen_dist_maps(inst_map: np.ndarray, normalize: bool = True) -> np.ndarray:
+def gen_dist_maps(
+    inst_map: np.ndarray, normalize: bool = True, euclidean: bool = True
+) -> np.ndarray:
     """Compute distance transforms for every labelled object.
 
     Parameters
@@ -41,6 +43,8 @@ def gen_dist_maps(inst_map: np.ndarray, normalize: bool = True) -> np.ndarray:
             Instance labelled mask. Shape (H, W).
         normalize : bool, default=True
             Normalize the distance maps to [0, 1].
+        euclidean : bool, default=True
+            If True, uses the euclidean transformation. Else, the chessboard one.
 
     Returns
     -------
@@ -69,14 +73,17 @@ def gen_dist_maps(inst_map: np.ndarray, normalize: bool = True) -> np.ndarray:
 
         # chessboard distance map generation
         # normalize distance to 0-1
-        inst_dist = distance_transform_cdt(inst)
+        if euclidean:
+            inst_dist = distance_transform_edt(inst)
+        else:
+            inst_dist = distance_transform_cdt(inst)
         inst_dist = inst_dist.astype("float64")
 
         if normalize:
             max_value = np.amax(inst_dist)
             if max_value <= 0:
                 continue
-            inst_dist = inst_dist / np.amax(inst_dist)
+            inst_dist = inst_dist / (np.max(inst_dist) + 1e-10)
 
         dist_map_box = dist[y1:y2, x1:x2]
         dist_map_box[inst > 0] = inst_dist[inst > 0]

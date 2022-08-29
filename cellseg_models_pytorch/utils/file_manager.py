@@ -109,8 +109,8 @@ class FileHandler:
     def write_mask(
         path: Union[str, Path],
         inst_map: np.ndarray,
-        type_map: np.ndarray,
-        sem_map: np.ndarray,
+        type_map: np.ndarray = None,
+        sem_map: np.ndarray = None,
     ) -> None:
         """
         Write multiple masks to .mat file.
@@ -121,9 +121,9 @@ class FileHandler:
                 Path to the .mat file.
             inst_map : np.ndarray
                 The inst_map to be written.
-            type_map : np.ndarray
+            type_map : np.ndarray, optional
                 The inst_map to be written.
-            sem_map : np.ndarray, default=None
+            sem_map : np.ndarray, optional
                 The inst_map to be written.
         """
         path = Path(path)
@@ -138,14 +138,20 @@ class FileHandler:
             [bounding_box(np.array(inst_map == id_, np.uint8)) for id_ in inst_ids]
         )
 
+        res = {
+            "inst_map": inst_map,
+            "inst_type": inst_types,
+            "inst_centroid": centroids,
+            "inst_bbox": bboxes,
+        }
+
+        if type_map is not None:
+            res["type_map"] = type_map
+
+        if sem_map is not None:
+            res["sem_map"] = type_map
+
         sio.savemat(
             file_name=path,
-            mdict={
-                "inst_map": inst_map,
-                "type_map": type_map,
-                "sem_map": sem_map,
-                "inst_type": inst_types,
-                "inst_centroid": centroids,
-                "inst_bbox": bboxes,
-            },
+            mdict=res,
         )
