@@ -1,36 +1,31 @@
-from typing import List, Optional
+import zipfile
+from pathlib import Path
+from typing import Union
 
-from torch.utils.data import DataLoader, Dataset
+import pytorch_lightning as pl
+from torch.utils.data import DataLoader
 
-from ._basemodule import BaseDataModule
+__all__ = ["BaseDataModule"]
 
 
-class CustomDataModule(BaseDataModule):
+class BaseDataModule(pl.LightningDataModule):
     def __init__(
         self,
-        custom_datasets: List[Dataset],
         batch_size: int = 8,
         num_workers: int = 8,
     ) -> None:
-        """Set up a custom datamodule with custom datasets.
+        """Set up pannuke datamodule..
 
         Parameters
         ----------
-            custom_datasets : List[torch.utils.Dataset]
-                A list of initialized torch Datasets. Order: train. valid, test.
             batch_size : int, default=8
                 Batch size for the dataloader.
             num_workers : int, default=8
                 number of cpu cores/threads used in the dataloading process.
         """
-        super().__init__(batch_size, num_workers)
-        self.custom_datasets = custom_datasets
-
-    def setup(self, stage: Optional[str] = None) -> None:
-        """Set up the train, valid, and test datasets."""
-        self.trainset = self.custom_datasets[0]
-        self.validset = self.custom_datasets[1]
-        self.testset = self.custom_datasets[2]
+        super().__init__()
+        self.batch_size = batch_size
+        self.num_workers = num_workers
 
     def train_dataloader(self) -> DataLoader:
         """Initialize train dataloader."""
@@ -61,3 +56,21 @@ class CustomDataModule(BaseDataModule):
             pin_memory=True,
             num_workers=self.num_workers,
         )
+
+    @staticmethod
+    def extract_zips(path: Union[str, Path], rm: bool = False) -> None:
+        """Extract files from all the .zip files inside a folder.
+
+        Parameters
+        ----------
+            path : str or Path
+                Path to a folder containing .zip files.
+            rm :bool, default=False
+                remove the .zip files after extraction.
+        """
+        for f in Path(path).iterdir():
+            if f.is_file() and f.suffix == ".zip":
+                with zipfile.ZipFile(f, "r") as z:
+                    z.extractall(path)
+                if rm:
+                    f.unlink()
