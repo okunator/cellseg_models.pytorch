@@ -20,7 +20,7 @@
 
 ## Introduction
 
-Contains multi-task encoder-decoder architectures (U-Net-like) for cell and nuclei segmentation along with dedicated post-processing methods for separating cell/nuclei instances. As the name suggests, this library is heavily inspired by [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch) library for semantic segmentation.
+Contains multi-task encoder-decoder architectures (U-Net-like) along with dedicated post-processing methods for segmenting cell/nuclei instances. As the name suggests, this library is heavily inspired by [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch) library for semantic segmentation.
 
 <br><br>
 
@@ -49,9 +49,11 @@ Contains multi-task encoder-decoder architectures (U-Net-like) for cell and nucl
 
 ## Installation
 
-`pip install cellseg_models_pytorch`
+```shell
+pip install cellseg_models_pytorch
+```
 
-## Simple Code Examples
+## Code Examples
 
 **Define Cellpose for cell segmentation.**
 
@@ -59,7 +61,7 @@ Contains multi-task encoder-decoder architectures (U-Net-like) for cell and nucl
 import cellseg_models_pytorch as csmp
 import torch
 
-model = csmp.models.cellpose_base(type_classes=5) # number of cell types in training data.
+model = csmp.models.cellpose_base(type_classes=5) # num of cell types in training data=5.
 x = torch.rand([1, 3, 256, 256])
 
 # NOTE: these outputs still need post-processing to obtain instance segmentation masks.
@@ -103,6 +105,7 @@ model = csmp.CellPoseUnet(
     pre_activate=False, # normalize and activation after convolution.
 )
 
+x = torch.rand([1, 3, 256, 256])
 # NOTE: these outputs still need post-processing to obtain instance and semantic segmentation masks.
 y = model(x) # {"cellpose": [1, 2, 256, 256], "type": [1, 5, 256, 256], "sem": [1, 3, 256, 256]}
 ```
@@ -122,7 +125,7 @@ inferer = csmp.inference.SlidingWindowInferer(
     checkpoint_path="/path/to/model/weights/",
     out_activations={"hovernet": "tanh", "type": "softmax", "inst": "softmax"},
     out_boundary_weights={"hovernet": True, "type": False, "inst": False}, # smooths boundary effects
-    instance_postproc="hovernet",
+    instance_postproc="hovernet", # THE POST-PROCESSING METHOD
     patch_size=(256, 256),
     stride=128,
     padding=80,
@@ -138,9 +141,9 @@ inferer.out_masks
 
 ## Models API
 
-#### Class API
+### Class API
 
-The class API is borrowing a lot from [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch).
+The class API enables the most flexibility in defining different model architectures. It allows for defining a multitude of hard-parameter sharing multi-task encoder-decoder architectures with (relatively) low effort. The class API is borrowing a lot from [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch) models API.
 
 **Model classes**:
 
@@ -155,30 +158,42 @@ The class API is borrowing a lot from [segmentation_models.pytorch](https://gith
 - `model.{head_name}_seg_head` - Model decoders can have multiple segmentation heads with unique names.
 - `model.forward(x)` - forward pass.
 
-**Model outputs**:
+**Defining you own multi-task architecture**
 
-The model outputs are named after the `heads` argument. For example the stardist model in the following code snippet will give three outputs named after the keys of the inner dicts: `"stardist"` `"dist"` and `"type"`.
+For example, to define a multi-task architecture that has `resnet50` encoder, four decoders, and 5 output heads with `CellPoseUnet` architectural components, we could do this:
 
 ```python
 import cellseg_models_pytorch as csmp
+import torch
 
-model = csmp.StarDistUnet(
-    decoders=("stardist",),
-    extra_convs={"stardist": {"type": 128, "stardist": 128}},
+model = csmp.CellPoseUnet(
+    decoders=("cellpose", "dist", "contour", "sem"),
     heads={
-        "stardist": {"stardist": 32, "dist": 1},
-        "type": {"type": 5},
+        "cellpose": {"type": 5, "cellpose": 2},
+        "dist": {"dist": 1},
+        "contour": {"contour": 1},
+        "sem": {"sem": 4}
     },
 )
 
-model(x) # {"stardist": [B, 32, H, W], "dist": [B, 1, H, W], "type": [B, 5, H, W]}
+x = torch.rand([1, 3, 256, 256])
+model(x)
+# {
+#   "cellpose": [1, 2, 256, 256],
+#   "type": [1, 5, 256, 256],
+#   "dist": [1, 1, 256, 256],
+#   "contour": [1, 1, 256, 256],
+#   "sem": [1, 4, 256, 256]
+# }
 ```
 
-####Function API
+This model would give 5 outputs with names that should describe their prediction task. The names are arbitrary and there are no restrictions for them, however, during training and post-processing, these names need to match to the input names of the training or post-processing pipelines. Here, for example during training, the `"cellpose"`-head would predict x- and -y flow gradients, given that during training there would be x- and- y- gradient ground truth inputs with the same name. Similarly, `"type"`-head would predict semantic cell type masks, `"dist"`-head would predict a distance transform from the center of cell/nuclei instances, `"contour"`-head would predict cell/nuclei contours, and `"sem"`-head would predict semantic area segmentation masks. Check out the training notebooks in the `examples`-folder for more detailed info.
 
-These functions simply call the above classes with pre-defined arguments to define models with low effort.
+### Function API
 
-| Model functions                        | Output keys                               | Task                             |
+With the function API, you can build models with low effort by calling the below listed functions. Under the hood, the function API simply calls the above classes with pre-defined decoder- and head names. The training- and post-processing tools of this library are built around these names, thus, it is recommended to use the function API, although, it is a bit more rigid than the class API. Basically, the function API only lacks the ability to define the output-tasks of the model, but allows for all the rest as the class API.
+
+| Model functions                        | Output names                              | Task                             |
 | -------------------------------------- | ----------------------------------------- | -------------------------------- |
 | `csmp.models.cellpose_base`            | `"type"`, `"cellpose"`,                   | **instance segmentation**        |
 | `csmp.models.cellpose_plus`            | `"type"`, `"cellpose"`, `"sem"`,          | **panoptic segmentation**        |
@@ -191,8 +206,6 @@ These functions simply call the above classes with pre-defined arguments to defi
 | `csmp.models.stardist_base`            | `"stardist"`, `"dist"`                    | **binary instance segmentation** |
 | `csmp.models.stardist_base_multiclass` | `"stardist"`, `"dist"`, `"type"`          | **instance segmentation**        |
 | `csmp.models.stardist_plus`            | `"stardist"`, `"dist"`, `"type"`, `"sem"` | **panoptic segmentation**        |
-
-Different output-types are post-processed differently, thus, the model outputs need to be mapped to right post-processing pipelines. The in-built post-processing pipelines (in `csmp.inference`) use especially the `"type"`, `"sem"`, `"inst"` keys extensively to do this. For this reason, it's recommended to use these same keys when using the **class API**.
 
 ## References
 
@@ -216,7 +229,7 @@ Different output-types are post-processed differently, thus, the model outputs n
 
 This project is distributed under [MIT License](https://github.com/okunator/cellseg_models.pytorch/blob/main/LICENSE)
 
-The project contains code from the original 3rd-party cell segmentation libraries that have permissive licenses:
+The project contains code from the original cell segmentation and 3rd-party libraries that have permissive licenses:
 
 - [timm](https://github.com/rwightman/pytorch-image-models) (Apache-2)
 - [HoVer-Net](https://github.com/vqdang/hover_net) (MIT)
