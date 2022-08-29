@@ -8,7 +8,7 @@ from skimage.util import img_as_ubyte
 from tqdm import tqdm
 
 from ..postproc import POSTPROC_LOOKUP
-from ..utils import fill_holes_semantic, remove_debris_semantic
+from ..utils import binarize, fill_holes_semantic, remove_debris_semantic
 
 __all__ = ["PostProcessor"]
 
@@ -102,7 +102,11 @@ class PostProcessor:
         return self.postproc_method(inst, aux_map, **self.kwargs)
 
     def _get_type_map(
-        self, prob_map: np.ndarray, inst_map: np.ndarray, **kwargs
+        self,
+        prob_map: np.ndarray,
+        inst_map: np.ndarray,
+        use_mask: bool = False,
+        **kwargs,
     ) -> np.ndarray:
         """Run the type map post-processing. Majority voting for each instance.
 
@@ -110,6 +114,9 @@ class PostProcessor:
         https://github.com/vqdang/hover_net/blob/master/models/hovernet/post_proc.py
         """
         type_map = np.argmax(prob_map, axis=0)
+        if use_mask:
+            type_map = binarize(inst_map) * type_map
+
         pred_id_list = np.unique(inst_map)[1:]
         for inst_id in pred_id_list:
             inst_type = type_map[inst_map == inst_id]
