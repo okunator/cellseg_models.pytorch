@@ -67,6 +67,7 @@ class SegmentationFolderDataset(TrainDatasetBase):
             return_type=return_type,
             return_sem=return_sem,
             return_weight=return_weight,
+            **kwargs,
         )
 
         self.path = Path(path)

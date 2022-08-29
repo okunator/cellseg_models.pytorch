@@ -82,7 +82,7 @@ class TrainDatasetBase(Dataset):
         if normalization is not None:
             img_transforms.append(NORM_TRANSFORMS[normalization]())
 
-        inst_transforms = [INST_TRANSFORMS[tr]() for tr in inst_transforms]
+        inst_transforms = [INST_TRANSFORMS[tr](**kwargs) for tr in inst_transforms]
         if return_inst:
             inst_transforms.append(INST_TRANSFORMS["binarize"]())
 
