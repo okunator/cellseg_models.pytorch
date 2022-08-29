@@ -39,6 +39,7 @@ from skimage import img_as_ubyte
 from skimage.draw import polygon
 from skimage.measure import regionprops
 
+from ...utils import bounding_box, remap_label, remove_small_objects
 from .drfns import find_maxima, h_minima_reconstruction
 
 __all__ = ["post_proc_stardist", "post_proc_stardist_orig", "polygons_to_label"]
@@ -135,7 +136,7 @@ def _ind_prob_thresh(prob: np.ndarray, prob_thresh: float, b: int = 2) -> np.nda
         )
         _ind_thresh[ss] = True
         ind_thresh &= _ind_thresh
-    return ind_thresh
+    return ind_thresh.astype("int32")
 
 
 def polygons_to_label(
@@ -190,8 +191,37 @@ def polygons_to_label(
     return polygons_to_label_coord(coord, shape=shape, labels=ind)
 
 
+def _clean_up(inst_map: np.ndarray, size: int = 150, **kwargs) -> np.ndarray:
+    """Clean up overlapping instances."""
+    mask = remap_label(inst_map.copy())
+    mask_connected = ndi.label(mask)[0]
+
+    labels_connected = np.unique(mask_connected)[1:]
+    for lab in labels_connected:
+        inst = np.array(mask_connected == lab, copy=True)
+        y1, y2, x1, x2 = bounding_box(inst)
+        y1 = y1 - 2 if y1 - 2 >= 0 else y1
+        x1 = x1 - 2 if x1 - 2 >= 0 else x1
+        x2 = x2 + 2 if x2 + 2 <= mask_connected.shape[1] - 1 else x2
+        y2 = y2 + 2 if y2 + 2 <= mask_connected.shape[0] - 1 else y2
+
+        box_insts = mask[y1:y2, x1:x2]
+        if len(np.unique(ndi.label(box_insts)[0])) <= 2:
+            real_labels, counts = np.unique(box_insts, return_counts=True)
+            real_labels = real_labels[1:]
+            counts = counts[1:]
+            max_pixels = np.max(counts)
+            max_label = real_labels[np.argmax(counts)]
+            for real_lab, count in list(zip(list(real_labels), list(counts))):
+                if count < max_pixels:
+                    if count < size:
+                        mask[mask == real_lab] = max_label
+
+    return mask
+
+
 def post_proc_stardist(
-    dist_map: np.ndarray, stardist_map: np.ndarray, thresh: float = 0.5
+    dist_map: np.ndarray, stardist_map: np.ndarray, thresh: float = 0.4, **kwargs
 ) -> np.ndarray:
     """Run post-processing for stardist.
 
@@ -204,7 +234,7 @@ def post_proc_stardist(
             Predicted distance transform. Shape: (H, W).
         stardist_map : np.ndarray
             Predicted radial distances. Shape: (n_rays, H, W).
-        thresh : float, default=0.5
+        thresh : float, default=0.4
             Threshold for the regressed distance transform.
 
     Returns
@@ -222,21 +252,27 @@ def post_proc_stardist(
     reconstructed = h_minima_reconstruction(inv_dist_map)
     markers = find_maxima(reconstructed, mask=mask)
     markers = ndi.label(markers)[0]
+    markers = remove_small_objects(markers, min_size=5)
     points = np.array(
         tuple(np.array(r.centroid).astype(int) for r in regionprops(markers))
     )
+
+    if len(points) == 0:
+        return np.zeros_like(mask)
+
     dist = stardist_map[tuple(points.T)]
     scores = dist_map[tuple(points.T)]
 
     labels = polygons_to_label(
         dist, points, prob=scores, shape=mask.shape, scale_dist=(1, 1)
     )
+    labels = _clean_up(labels, **kwargs)
 
     return labels
 
 
 def post_proc_stardist_orig(
-    dist_map: np.ndarray, stardist_map: np.ndarray, thresh: float = 0.5
+    dist_map: np.ndarray, stardist_map: np.ndarray, thresh: float = 0.4, **kwargs
 ) -> np.ndarray:
     """Run the original stardist post-processing pipeline.
 
@@ -248,7 +284,7 @@ def post_proc_stardist_orig(
             Predicted distance transform. Shape: (H, W).
         stardist_map : np.ndarray
             Predicted radial distances. Shape: (n_rays, H, W).
-        thresh : float, default=0.5
+        thresh : float, default=0.4
             Threshold for the regressed distance transform.
 
     Returns

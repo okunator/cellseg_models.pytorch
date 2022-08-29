@@ -63,7 +63,7 @@ class StarDistUnet(BaseMultiTaskSegModel):
                 The extra conv blocks before segmentation heads of the architecture.
                 I.e. Names of the decoder branches (has to match `decoders`) mapped to
                 dicts of output name - number of output channels. E.g.
-                {"stardist": {"type": 128, "stardist": §128}, "sem": {"sem": 128}}
+                {"stardist": {"type": 128, "stardist": 128}, "sem": {"sem": 128}}
             heads : Dict[str, Dict[str, int]]
                 The segmentation heads of the architecture. I.e. Names of the decoder
                 branches (has to match `decoders`) mapped to dicts
@@ -218,7 +218,6 @@ class StarDistUnet(BaseMultiTaskSegModel):
             style = self.make_style(feats[0])
 
         dec_feats = self.forward_dec_features(feats, style)
-
         # Extra convs after decoders
         for e in self.extra_convs.keys():
             for extra_conv in self.extra_convs[e].keys():
@@ -229,7 +228,8 @@ class StarDistUnet(BaseMultiTaskSegModel):
         for decoder_name in self.heads.keys():
             for head_name in self.heads[decoder_name].keys():
                 k = self.aux_key if head_name not in dec_feats.keys() else head_name
-                dec_feats[head_name] = dec_feats[k]
+                if k != head_name:
+                    dec_feats[head_name] = dec_feats[k]
 
         out = self.forward_heads(dec_feats)
 
