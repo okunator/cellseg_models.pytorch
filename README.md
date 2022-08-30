@@ -8,10 +8,7 @@
 <br>
 [![Github Test](https://img.shields.io/github/workflow/status/okunator/cellseg_models.pytorch/Tests?label=Tests&logo=github&style=for-the-badge)](https://github.com/okunator/cellseg_models.pytorch/actions/workflows/tests.yml)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge)](https://github.com/psf/black)
-[![codecov](https://codecov.io/gh/okunator/cellseg_models.pytorch/branch/main/graph/badge.svg?token=oGSj7FZ1lm)](https://codecov.io/gh/okunator/cellseg_models.pytorch)
-
-<!-- [![codecov](https://codecov.io/gh/okunator/segmentation_models.pytorch/branch/main/graph/badge.svg?token=I6YE7PM5ZR)](https://codecov.io/gh/okunator/segmentation_models.pytorch)
-[![codecov](https://codecov.io/gh/okunator/segmentation_models.pytorch/branch/main/graph/badge.svg?token=I6YE7PM5ZR)](https://codecov.io/gh/okunator/segmentation_models.pytorch) -->
+[![Codecov](https://img.shields.io/codecov/c/github/okunator/cellseg_models.pytorch?logo=codecov&style=for-the-badge&token=oGSj7FZ1lm)](https://codecov.io/gh/okunator/cellseg_models.pytorch)
 
 </div>
 
