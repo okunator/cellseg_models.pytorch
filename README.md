@@ -49,7 +49,7 @@ Contains multi-task encoder-decoder architectures (U-Net-like) along with dedica
 
 ## Datasets
 
-| Model                       | Paper                                                                                            |
+| Dataset                     | Paper                                                                                            |
 | --------------------------- | ------------------------------------------------------------------------------------------------ |
 | [[5, 6](#Citation)] Pannuke | https://arxiv.org/abs/2003.10778 , https://link.springer.com/chapter/10.1007/978-3-030-23937-4_2 |
 
