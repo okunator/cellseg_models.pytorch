@@ -58,7 +58,7 @@ Contains multi-task encoder-decoder architectures (U-Net-like) along with dedica
 ## Installation
 
 ```shell
-pip install cellseg_models_pytorch
+pip install cellseg-models-pytorch
 ```
 
 ## Code Examples
