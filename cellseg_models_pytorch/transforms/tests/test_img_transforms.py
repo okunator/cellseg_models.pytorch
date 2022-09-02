@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from cellseg_models_pytorch.transforms import (
+from cellseg_models_pytorch.transforms.albu_transforms import (
     blur_transforms,
     center_crop,
     compose,

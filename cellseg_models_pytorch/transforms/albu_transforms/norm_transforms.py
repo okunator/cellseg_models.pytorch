@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 from albumentations.core.transforms_interface import ImageOnlyTransform
 
-from ..utils import minmax_normalize, normalize, percentile_normalize
+from ...utils import minmax_normalize, normalize, percentile_normalize
 
 __all__ = ["imgnorm_transform", "percentilenorm_transform", "minmaxnorm_transform"]
 

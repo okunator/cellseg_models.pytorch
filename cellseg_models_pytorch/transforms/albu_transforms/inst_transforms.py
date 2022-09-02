@@ -4,9 +4,8 @@ import numpy as np
 
 from cellseg_models_pytorch.utils import fix_duplicates
 
-from ..utils import binarize
-from ._composition import OnlyInstMapTransform
-from .functional import (
+from ...utils import binarize
+from ..functional import (
     gen_contour_maps,
     gen_dist_maps,
     gen_flow_maps,
@@ -17,6 +16,7 @@ from .functional import (
     gen_weight_maps,
     smooth_distance,
 )
+from ._composition import OnlyInstMapTransform
 
 __all__ = [
     "cellpose_transform",

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import torch
 
-from cellseg_models_pytorch.transforms import (
+from cellseg_models_pytorch.transforms.albu_transforms import (
     apply_each,
     blur_transforms,
     cellpose_transform,
