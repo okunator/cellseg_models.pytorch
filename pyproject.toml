@@ -38,7 +38,6 @@ all = ["pytorch-lightning", "tables", "requests", "albumentations", "torch-optim
 pytest = "^6.2.5"
 pytest-cov = "^3.0.0"
 pytest-xdist = "^2.5.0"
-tox = "^3.24.5"
 flake8 = "^4.0.1"
 flake8-docstrings = "^1.6.0"
 flake8-bugbear = "^22.1.11"
@@ -47,30 +46,12 @@ pre-commit = "^2.17.0"
 matplotlib = "^3.5.1"
 mypy = "^0.931"
 isort = "^5.10.1"
-black = "^21.12b0"
+black = "^22.3.0"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra -v"
 markers = ["cuda (deselect with '-m \"nocuda\"')"]
-
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-minversion = 3.24.0
-envlist = py37
-skipsdist = true
-
-[testenv]
-whitelist_externals = poetry
-platform = linux
-deps =
-    pytest >= 6.0.0, < 6.3.0
-
-commands =
-    poetry install -v
-    poetry run pytest --cov
-"""
 
 [tool.isort]
 profile = "black"
