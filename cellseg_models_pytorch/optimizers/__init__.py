@@ -1,3 +1,5 @@
+import warnings
+
 from torch.optim import ASGD, SGD, Adadelta, Adagrad, Adam, Adamax, AdamW, RMSprop
 from torch.optim.lr_scheduler import (
     CosineAnnealingLR,
@@ -7,29 +9,59 @@ from torch.optim.lr_scheduler import (
     LambdaLR,
     ReduceLROnPlateau,
 )
-from torch_optimizer import (
-    PID,
-    QHM,
-    SGDW,
-    AccSGD,
-    AdaBelief,
-    AdaBound,
-    AdaMod,
-    AdamP,
-    Apollo,
-    DiffGrad,
-    Lamb,
-    Lookahead,
-    NovoGrad,
-    QHAdam,
-    RAdam,
-    Ranger,
-    RangerQH,
-    RangerVA,
-    Yogi,
-)
 
 from .utils import adjust_optim_params
+
+EXTRA_OPTIM_LOOKUP = {}
+try:
+    from torch_optimizer import (
+        PID,
+        QHM,
+        SGDW,
+        AccSGD,
+        AdaBelief,
+        AdaBound,
+        AdaMod,
+        AdamP,
+        Apollo,
+        DiffGrad,
+        Lamb,
+        Lookahead,
+        NovoGrad,
+        QHAdam,
+        RAdam,
+        Ranger,
+        RangerQH,
+        RangerVA,
+        Yogi,
+    )
+
+    EXTRA_OPTIM_LOOKUP = {
+        "accsgd": AccSGD,
+        "adabound": AdaBound,
+        "adabelief": AdaBelief,
+        "adamp": AdamP,
+        "apollo": Apollo,
+        "adamod": AdaMod,
+        "diffgrad": DiffGrad,
+        "lamb": Lamb,
+        "novograd": NovoGrad,
+        "pid": PID,
+        "qhadam": QHAdam,
+        "qhm": QHM,
+        "radam": RAdam,
+        "sgwd": SGDW,
+        "yogi": Yogi,
+        "ranger": Ranger,
+        "rangerqh": RangerQH,
+        "rangerva": RangerVA,
+        "lookahead": Lookahead,
+    }
+except ModuleNotFoundError:
+    warnings.warn(
+        "`torch_optimizer` optimzers not available. To use them, install with "
+        "`pip install torch-optimizer`."
+    )
 
 SCHED_LOOKUP = {
     "lambda": LambdaLR,
@@ -49,25 +81,7 @@ OPTIM_LOOKUP = {
     "adamax": Adamax,
     "adamw": AdamW,
     "asgd": ASGD,
-    "accsgd": AccSGD,
-    "adabound": AdaBound,
-    "adabelief": AdaBelief,
-    "adamp": AdamP,
-    "apollo": Apollo,
-    "adamod": AdaMod,
-    "diffgrad": DiffGrad,
-    "lamb": Lamb,
-    "novograd": NovoGrad,
-    "pid": PID,
-    "qhadam": QHAdam,
-    "qhm": QHM,
-    "radam": RAdam,
-    "sgwd": SGDW,
-    "yogi": Yogi,
-    "ranger": Ranger,
-    "rangerqh": RangerQH,
-    "rangerva": RangerVA,
-    "lookahead": Lookahead,
+    **EXTRA_OPTIM_LOOKUP,
 }
 
 __all__ = [
