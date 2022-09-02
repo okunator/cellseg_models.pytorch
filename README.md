@@ -28,6 +28,20 @@ Contains multi-task encoder-decoder architectures (U-Net-like) along with dedica
 
 ![Architecture](./images/architecture_overview.png)
 
+## Installation
+
+**Basic installation**
+
+```shell
+pip install cellseg-models-pytorch
+```
+
+**To install extra dependencies (training utilities and datamodules for open-source datasets) use**
+
+```shell
+pip install cellseg-models-pytorch[all]
+```
+
 ## Features
 
 - High level API to define cell/nuclei instance segmentation models.
@@ -55,19 +69,9 @@ Contains multi-task encoder-decoder architectures (U-Net-like) along with dedica
 | --------------------------- | ------------------------------------------------------------------------------------------------ |
 | [[5, 6](#Citation)] Pannuke | https://arxiv.org/abs/2003.10778 , https://link.springer.com/chapter/10.1007/978-3-030-23937-4_2 |
 
-## Installation
+## Notebook examples
 
-**Basic installation**
-
-```shell
-pip install cellseg-models-pytorch
-```
-
-**To install extra dependencies (training utilities and datamodules for open-source datasets) use**
-
-```shell
-pip install cellseg-models-pytorch[all]
-```
+- [Training Stardist with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_stardist.ipynb). Uses in-built training utilities and Pytorch-Lightning
 
 ## Code Examples
 
