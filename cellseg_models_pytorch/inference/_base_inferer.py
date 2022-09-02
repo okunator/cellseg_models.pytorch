@@ -11,9 +11,9 @@ from pathos.multiprocessing import ThreadPool as Pool
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from ..datasets import FolderDataset
 from ..utils import tensor_to_ndarray
 from ..utils.save_utils import mask2mat
+from .folder_dataset import FolderDataset
 from .post_processor import PostProcessor
 from .predictor import Predictor
 

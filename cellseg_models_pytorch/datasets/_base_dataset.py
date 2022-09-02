@@ -3,14 +3,20 @@ from typing import Callable, Dict, List
 import numpy as np
 from torch.utils.data import Dataset
 
-from ..transforms import (
-    IMG_TRANSFORMS,
-    INST_TRANSFORMS,
-    NORM_TRANSFORMS,
-    apply_each,
-    compose,
-    to_tensorv3,
-)
+try:
+    from ..transforms.albu_transforms import (
+        IMG_TRANSFORMS,
+        INST_TRANSFORMS,
+        NORM_TRANSFORMS,
+        apply_each,
+        compose,
+        to_tensorv3,
+    )
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "To use the `csmp.dataset` module, the albumentations lib is needed. "
+        "Install with `pip install albumentations`"
+    )
 
 __all__ = ["TrainDatasetBase"]
 
