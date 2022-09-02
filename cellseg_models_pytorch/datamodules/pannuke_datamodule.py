@@ -5,10 +5,18 @@ from typing import Dict, List, Optional
 import numpy as np
 from tqdm import tqdm
 
-from ..datasets import SegmentationFolderDataset
 from ..utils import FileHandler, fix_duplicates
-from ._basemodule import BaseDataModule
-from .downloader import SimpleDownloader
+
+try:
+    from ..datasets import SegmentationFolderDataset
+    from ._basemodule import BaseDataModule
+    from .downloader import SimpleDownloader
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "To use the PannukeDataModule, requests, pytorch-lightning, & albumentations "
+        "libraries are needed. Install with "
+        "`pip install requests pytorch-lightning albumentations`"
+    )
 
 
 class PannukeDataModule(BaseDataModule):

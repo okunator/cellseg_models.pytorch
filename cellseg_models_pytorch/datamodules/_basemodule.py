@@ -2,7 +2,13 @@ import zipfile
 from pathlib import Path
 from typing import Union
 
-import pytorch_lightning as pl
+try:
+    import pytorch_lightning as pl
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "To use the `csmp.datamodules` module, the pytorch-lightning lib, is needed. "
+        "Install with `pip install pytorch-lightning`"
+    )
 from torch.utils.data import DataLoader
 
 __all__ = ["BaseDataModule"]

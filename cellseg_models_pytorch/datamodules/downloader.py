@@ -1,7 +1,13 @@
 import re
 from pathlib import Path
 
-import requests
+try:
+    import requests
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "To use `SimpleDownloader`, the requests package is needed. "
+        "Install with `pip install requests`."
+    )
 from tqdm import tqdm
 
 
