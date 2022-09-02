@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from cellseg_models_pytorch.training.train_metrics import accuracy, iou
+from cellseg_models_pytorch.training.functional.train_metrics import accuracy, iou
 
 
 @pytest.mark.parametrize("metric", [accuracy, iou])

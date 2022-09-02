@@ -1,13 +1,20 @@
 from copy import deepcopy
 from typing import Any, Dict, List
 
-import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 
-from ..losses import JOINT_SEG_LOSSES, SEG_LOSS_LOOKUP, JointLoss, Loss, MultiTaskLoss
-from ..optimizers import OPTIM_LOOKUP, SCHED_LOOKUP, adjust_optim_params
-from .callbacks import METRIC_LOOKUP
+try:
+    import pytorch_lightning as pl
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "To use the `SegmentationExperiment`, pytorch-lightning is required. "
+        "Install with `pip install pytorch-lightning`"
+    )
+
+from ...losses import JOINT_SEG_LOSSES, SEG_LOSS_LOOKUP, JointLoss, Loss, MultiTaskLoss
+from ...optimizers import OPTIM_LOOKUP, SCHED_LOOKUP, adjust_optim_params
+from ..callbacks import METRIC_LOOKUP
 
 
 class SegmentationExperiment(pl.LightningModule):

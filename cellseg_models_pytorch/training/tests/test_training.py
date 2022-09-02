@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 from cellseg_models_pytorch.datamodules.custom_datamodule import CustomDataModule
 from cellseg_models_pytorch.datasets import SegmentationFolderDataset
 from cellseg_models_pytorch.models import cellpose_plus
-from cellseg_models_pytorch.training import SegmentationExperiment
+from cellseg_models_pytorch.training.lit import SegmentationExperiment
 
 
 # @pytest.mark.parametrize

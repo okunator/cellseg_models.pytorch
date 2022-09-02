@@ -1,14 +1,15 @@
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import torch
 
-from ..train_metrics import accuracy, iou
+from ..functional.train_metrics import accuracy, iou
 
 try:
     from torchmetrics import Metric
-except ImportError:
-    raise ImportError(
-        "`torchmetrics` package needed for metrics. `pip install torchmetrics`"
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "`torchmetrics` package is required when using metric callbacks. "
+        "Install with `pip install torchmetrics`"
     )
 
 
@@ -16,6 +17,9 @@ __all__ = ["Accuracy", "MeanIoU"]
 
 
 class Accuracy(Metric):
+    higher_is_better: Optional[bool] = True
+    full_state_update: bool = False
+
     def __init__(
         self,
         compute_on_step: bool = True,
@@ -55,7 +59,7 @@ class Accuracy(Metric):
         self,
         pred: torch.Tensor,
         target: torch.Tensor,
-        activation: str = "sofmax",
+        activation: str = "softmax",
     ) -> None:
         """Update the batch accuracy list with one batch accuracy value.
 
@@ -83,6 +87,9 @@ class Accuracy(Metric):
 
 
 class MeanIoU(Metric):
+    higher_is_better: Optional[bool] = True
+    full_state_update: bool = False
+
     def __init__(
         self,
         compute_on_step: bool = True,
@@ -119,7 +126,7 @@ class MeanIoU(Metric):
         self,
         pred: torch.Tensor,
         target: torch.Tensor,
-        activation: str = "sofmax",
+        activation: str = "softmax",
     ) -> None:
         """Update the batch IoU list with one batch IoU matrix.
 
