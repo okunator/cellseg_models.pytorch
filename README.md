@@ -1,6 +1,8 @@
-# cellseg_models.pytorch
-
 <div align="center">
+
+![Logo](./images/logo.png)
+
+**Python library for 2D cell/nuclei instance segmentation models written with [PyTorch](https://pytorch.org/).**
 
 [![Generic badge](https://img.shields.io/badge/License-MIT-<COLOR>.svg?style=for-the-badge)](https://github.com/okunator/cellseg_models.pytorch/blob/master/LICENSE)
 [![PyTorch - Version](https://img.shields.io/badge/PYTORCH-1.8+-red?style=for-the-badge&logo=pytorch)](https://pytorch.org/)
@@ -15,8 +17,6 @@
 </div>
 
 <div align="center">
-
-**Python library for 2D cell/nuclei instance segmentation models written with [PyTorch](https://pytorch.org/).**
 
 </div>
 
