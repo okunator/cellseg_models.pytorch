@@ -111,6 +111,8 @@ class FileHandler:
         inst_map: np.ndarray,
         type_map: np.ndarray = None,
         sem_map: np.ndarray = None,
+        compute_centorids: bool = False,
+        compute_bboxes: bool = False,
     ) -> None:
         """
         Write multiple masks to .mat file.
@@ -125,25 +127,33 @@ class FileHandler:
                 The inst_map to be written.
             sem_map : np.ndarray, optional
                 The inst_map to be written.
+            compute_centroids : bool, optional
+                Flag to tompute instance centorids.
+            compute_bboxes : bool, optional
+                Flag to tompute instance bboxes.
         """
         path = Path(path)
         if not path.suffix == ".mat":
             raise ValueError(f"File suffix needs to be '.mat'. Got {path.suffix}.")
 
         inst_map = fix_duplicates(inst_map)
-        centroids = get_inst_centroid(inst_map)
         inst_types = get_inst_types(inst_map, type_map)
-        inst_ids = list(np.unique(inst_map)[1:])
-        bboxes = np.array(
-            [bounding_box(np.array(inst_map == id_, np.uint8)) for id_ in inst_ids]
-        )
 
         res = {
             "inst_map": inst_map,
             "inst_type": inst_types,
-            "inst_centroid": centroids,
-            "inst_bbox": bboxes,
         }
+
+        if compute_centorids:
+            centroids = get_inst_centroid(inst_map)
+            res["inst_centroid"] = centroids
+
+        if compute_bboxes:
+            inst_ids = list(np.unique(inst_map)[1:])
+            bboxes = np.array(
+                [bounding_box(np.array(inst_map == id_, np.uint8)) for id_ in inst_ids]
+            )
+            res["inst_bbox"] = bboxes
 
         if type_map is not None:
             res["type_map"] = type_map
