@@ -15,7 +15,7 @@ def _create_cellpose_args(
     use_style: bool,
     merge_policy: str,
     skip_params: Dict[str, Any],
-) -> Dict[str, Any]:
+) -> Tuple[Dict[str, Any], ...]:
     """Create the args to build CellPose-Unet architecture."""
     skip_params = skip_params if skip_params is not None else {"k": None}
 

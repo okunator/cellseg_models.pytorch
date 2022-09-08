@@ -57,7 +57,7 @@ class StarDistUnet(BaseMultiTaskSegModel):
 
         Parameters
         ----------
-            decoders : Tuple[str]
+            decoders : Tuple[str, ...]
                 Names of the decoder branches of this network. E.g. ("stardist", "sem")
             extra_convs : Dict[str, Dict[str, int]]
                 The extra conv blocks before segmentation heads of the architecture.

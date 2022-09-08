@@ -62,7 +62,7 @@ class HoverNet(BaseMultiTaskSegModel):
 
         Parameters
         ----------
-            decoders : Tuple[str]
+            decoders : Tuple[str, ...]
                 Names of the decoder branches of this network. E.g. ("hovernet", "sem")
             heads : Dict[str, Dict[str, int]]
                 The segmentation heads of the architecture. I.e. Names of the decoder

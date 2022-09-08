@@ -22,7 +22,7 @@ __all__ = [
 class CellPoseUnet(BaseMultiTaskSegModel):
     def __init__(
         self,
-        decoders: Tuple[str],
+        decoders: Tuple[str, ...],
         heads: Dict[str, Dict[str, int]],
         inst_key: str = "type",
         depth: int = 4,
@@ -65,7 +65,7 @@ class CellPoseUnet(BaseMultiTaskSegModel):
 
         Parameters
         ----------
-            decoders : Tuple[str]
+            decoders : Tuple[str, ...]
                 Names of the decoder branches of this network. E.g. ("cellpose", "sem")
             heads : Dict[str, Dict[str, int]]
                 Names of the decoder branches (has to match `decoders`) mapped to dicts

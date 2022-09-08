@@ -1,3 +1,4 @@
+from .base._multitask_unet import MultiTaskUnet
 from .cellpose.cellpose import (
     CellPoseUnet,
     cellpose_base,
@@ -20,6 +21,7 @@ from .stardist.stardist import (
 )
 
 __all__ = [
+    "MultiTaskUnet",
     "HoverNet",
     "hovernet_base",
     "hovernet_plus",

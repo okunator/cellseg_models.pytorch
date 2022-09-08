@@ -2,6 +2,7 @@ import pytest
 import torch
 
 from cellseg_models_pytorch.models import (
+    MultiTaskUnet,
     cellpose_base,
     cellpose_plus,
     hovernet_base,
@@ -76,3 +77,20 @@ def test_omnipose_fwdbwd(model):
         assert y["sem"].shape == torch.Size([1, 3, 64, 64])
 
     assert y["omnipose"].shape == torch.Size([1, 2, 64, 64])
+
+
+def test_multitaskunet_fwdbwd():
+    x = torch.rand([1, 3, 64, 64])
+    m = MultiTaskUnet(
+        decoders=("sem",),
+        heads={"sem": {"sem": 3}},
+        n_layers={"sem": (1, 1, 1, 1)},
+        n_blocks={"sem": ((2,), (2,), (2,), (2,))},
+        out_channels={"sem": (128, 64, 32, 16)},
+        long_skips={"sem": "unet"},
+        dec_params={"sem": None},
+    )
+    y = m(x)
+    y["sem"].mean().backward()
+
+    assert y["sem"].shape == torch.Size([1, 3, 64, 64])

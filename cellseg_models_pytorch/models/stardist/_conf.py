@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 __all__ = ["_create_stardist_args"]
 
@@ -16,7 +16,7 @@ def _create_stardist_args(
     block_type: str,
     merge_policy: str,
     skip_params: Dict[str, Any],
-) -> Dict[str, Any]:
+) -> Tuple[Dict[str, Any], ...]:
     """Create the args to build CellPose-Unet architecture."""
     skip_params = skip_params if skip_params is not None else {"k": None}
 
