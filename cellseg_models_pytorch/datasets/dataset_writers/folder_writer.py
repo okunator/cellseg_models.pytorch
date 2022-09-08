@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 from tqdm import tqdm
@@ -72,15 +72,22 @@ class SlidingWindowFolderWriter(BaseWriter):
         self.save_dir_im = Path(save_dir_im)
         self.save_dir_mask = Path(save_dir_mask)
 
-    def write(self) -> None:
-        """Write patches to a folder."""
+    def write(self, pre_proc: Callable = None, msg: str = None) -> None:
+        """Write patches to a folder.
+
+        Parameters
+        ----------
+            pre_proc : Callable, optional
+                An optional pre-processing function for the masks.
+        """
         with tqdm(
             zip(self.fnames_im, self.fnames_mask), total=len(self.fnames_im)
         ) as pbar:
             total_tiles = 0
             for fni, fnm in pbar:
-                pbar.set_description("Extracting patches to folders..")
-                tiles = self._get_tiles(fni, fnm)
+                msg = msg if msg is not None else ""
+                pbar.set_description(f"Extracting {msg} patches to folders..")
+                tiles = self._get_tiles(fni, fnm, pre_proc)
                 n_tiles = tiles["image"].shape[0]
 
                 arg_list = []
@@ -93,7 +100,6 @@ class SlidingWindowFolderWriter(BaseWriter):
                     for k, m in tiles.items():
                         dd[k] = m[i : i + 1].squeeze()
                     arg_list.append(dd)
-
                 self._write_parallel(self._save2folder, arg_list)
                 total_tiles += n_tiles
                 pbar.set_postfix_str(f"# of extracted tiles {total_tiles}")
@@ -104,8 +110,8 @@ class SlidingWindowFolderWriter(BaseWriter):
         path_mask: str,
         image: np.ndarray,
         inst_map: np.ndarray,
-        type_map: np.ndarray,
-        sem_map: np.ndarray,
+        type_map: np.ndarray = None,
+        sem_map: np.ndarray = None,
     ) -> None:
         """Write image and corresponding masks to folder."""
         FileHandler.write_img(path_im, image)

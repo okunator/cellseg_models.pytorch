@@ -33,6 +33,11 @@ class PannukeDataModule(BaseDataModule):
     ) -> None:
         """Set up pannuke datamodule..
 
+        The patches will be saved in directories:
+        - `{save_dir}/train/*`
+        - `{save_dir}/test/*`
+        - `{save_dir}/valid/*`
+
         References
         ----------
         Gamper, J., Koohbanani, N., Benet, K., Khuram, A., & Rajpoot, N. (2019)
@@ -67,6 +72,25 @@ class PannukeDataModule(BaseDataModule):
                 Batch size for the dataloader.
             num_workers : int, default=8
                 number of cpu cores/threads used in the dataloading process.
+
+        Example
+        -------
+            >>> from pathlib import Path
+            >>> from cellseg_models_pytorch.datamodules import PannukeDataModule
+
+            >>> fold_split = {"train": 1, "valid": 2, "test": 3}
+            >>> save_dir = Path.home() / "pannuke"
+            >>> pannuke_module = PannukeDataModule(
+                    save_dir=save_dir,
+                    fold_split=fold_split,
+                    inst_transforms=["dist", "stardist"],
+                    img_transforms=["blur", "hue_sat"],
+                    normalization="percentile",
+                    n_rays=32
+                )
+
+            >>> # pannuke_module.download(save_dir) # just the downloading
+            >>> pannuke_module.prepare_data() # download and process the pannuke data
         """
         super().__init__(batch_size, num_workers)
         allowed = ("train", "valid", "test")
@@ -103,7 +127,7 @@ class PannukeDataModule(BaseDataModule):
             SimpleDownloader.download(url, root)
         PannukeDataModule.extract_zips(root, rm=True)
 
-    def prepare_data(self) -> None:
+    def prepare_data(self, rm_orig: bool = True) -> None:
         """Prepare the pannuke datasets.
 
         1. Download pannuke folds from:
@@ -143,9 +167,10 @@ class PannukeDataModule(BaseDataModule):
                 "If in need of a re-download, please empty the `save_dir` folder."
             )
 
-        for d in self.save_dir.iterdir():
-            if "fold" in d.name.lower():
-                shutil.rmtree(d)
+        if rm_orig:
+            for d in self.save_dir.iterdir():
+                if "fold" in d.name.lower():
+                    shutil.rmtree(d)
 
     def setup(self, stage: Optional[str] = None) -> None:
         """Set up the train, valid, and test datasets."""
@@ -201,7 +226,7 @@ class PannukeDataModule(BaseDataModule):
         fold: int,
         phase: str,
     ) -> None:
-        """Save the pannuke patches .mat files in 'train' and 'test' folders."""
+        """Save the pannuke patches .mat files in 'train', 'valid' & 'test' folders."""
         # Create directories for the files.
         Path(save_im_dir).mkdir(parents=True, exist_ok=True)
         Path(save_mask_dir).mkdir(parents=True, exist_ok=True)

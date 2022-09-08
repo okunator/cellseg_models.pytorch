@@ -5,7 +5,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 import numpy as np
 from pathos.multiprocessing import ThreadPool as Pool
 
-from ...transforms import IMG_TRANSFORMS, compose
+from ...transforms.albu_transforms import IMG_TRANSFORMS, compose
 from ...utils import FileHandler, TilerStitcher, fix_duplicates
 
 __all__ = ["BaseWriter"]
@@ -78,11 +78,18 @@ class BaseWriter(ABC):
         raise NotImplementedError
 
     def _get_tiles(
-        self, img_path: Union[str, Path], mask_path: Union[str, Path]
+        self,
+        img_path: Union[str, Path],
+        mask_path: Union[str, Path],
+        pre_proc: Callable = None,
     ) -> Dict[str, np.ndarray]:
         """Read one image and corresponding masks and do tiling on them."""
+        # im, masks = self._get_arrays()
         im = FileHandler.read_img(img_path)
         masks = FileHandler.read_mask(mask_path, return_all=True)
+
+        if pre_proc is not None:
+            masks = pre_proc(masks)
 
         inst = None
         types = None

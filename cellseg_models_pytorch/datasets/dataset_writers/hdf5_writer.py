@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import BinaryIO, List, Optional, Tuple
+from typing import BinaryIO, Callable, List, Optional, Tuple
 
 import numpy as np
 import tables as tb
@@ -94,8 +94,14 @@ class SlidingWindowHDF5Writer(BaseWriter):
         else:
             self.fname = self.fname.with_suffix(".h5")
 
-    def write(self) -> None:
-        """Write patches to a hdf5 db."""
+    def write(self, pre_proc: Callable = None, msg: str = None) -> None:
+        """Write patches to a hdf5 db.
+
+        Parameters
+        ----------
+            pre_proc : Callable, optional
+                An optional pre-processing function for the masks.
+        """
         h5 = tb.open_file(self.fname.as_posix(), mode="w")
 
         h5.create_earray(
@@ -139,9 +145,10 @@ class SlidingWindowHDF5Writer(BaseWriter):
                 zip(self.fnames_im, self.fnames_mask), total=len(self.fnames_im)
             ) as pbar:
                 total_tiles = 0
+                msg = msg if msg is not None else ""
                 for fni, fnm in pbar:
-                    pbar.set_description("Extracting patches to h5 db..")
-                    tiles = self._get_tiles(fni, fnm)
+                    pbar.set_description(f"Extracting {msg} patches to h5 db..")
+                    tiles = self._get_tiles(fni, fnm, pre_proc)
                     n_tiles = tiles["image"].shape[0]
 
                     arg_list = []
@@ -150,7 +157,6 @@ class SlidingWindowHDF5Writer(BaseWriter):
                         for k, m in tiles.items():
                             dd[k] = m[i : i + 1]
                         arg_list.append(dd)
-
                     self._write_sequential(self.save2db, arg_list)
                     total_tiles += n_tiles
                     pbar.set_postfix_str(f"# of extracted tiles {total_tiles}")
@@ -166,11 +172,14 @@ class SlidingWindowHDF5Writer(BaseWriter):
         h5: BinaryIO,
         image: np.ndarray,
         inst_map: np.ndarray,
-        type_map: np.ndarray,
-        sem_map: np.ndarray,
+        type_map: np.ndarray = None,
+        sem_map: np.ndarray = None,
     ) -> None:
         """Write image and corresponding masks to h5-db."""
         h5.root.imgs.append(image)
         h5.root.insts.append(inst_map)
-        h5.root.types.append(type_map)
-        h5.root.areas.append(sem_map)
+
+        if type_map is not None:
+            h5.root.types.append(type_map)
+        if sem_map is not None:
+            h5.root.areas.append(sem_map)

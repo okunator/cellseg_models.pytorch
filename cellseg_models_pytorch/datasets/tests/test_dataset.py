@@ -23,7 +23,7 @@ def test_hdf5_dataset(hdf5db, return_inst, return_type, return_sem, normalizatio
         return_sem=return_sem,
     )
 
-    out = next(iter(ds))
+    out = ds.__getitem__(0)
 
     if return_inst:
         assert "inst" in out.keys()
