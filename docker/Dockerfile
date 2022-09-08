@@ -14,7 +14,7 @@ RUN pip install -U pip \
     # opencv2 deps
     && apt-get install ffmpeg libsm6 libxext6  -y \
     && apt-get install -y curl netcat \
-    && curl -sSL "https://install.python-poetry.org" | python -
+    && curl -sSL "https://install.python-poetry.org" | python3 -
 
 ENV PATH="/root/.local/bin:${PATH}"
 
@@ -26,7 +26,7 @@ RUN poetry --version
 
 WORKDIR /usr/src/code
 COPY poetry.lock pyproject.toml /usr/src/code/
-RUN poetry install --no-interaction --no-ansi
+RUN poetry install --no-interaction --no-ansi --all-extras
 
 # copy in source code
 COPY . /usr/src/code
