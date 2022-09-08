@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cellseg_models_pytorch"
-version = "0.1.1"
+version = "0.1.2"
 description = "Python library for 2D cell/nuclei instance segmentation models written with PyTorch."
 authors = ["Okunator <oskari.lehtonen@helsinki.fi>"]
 license = "MIT"
@@ -48,6 +48,13 @@ mypy = "^0.931"
 isort = "^5.10.1"
 black = "^22.3.0"
 
+[tool.poetry.group.dev.dependencies]
+scriv = {extras = ["toml"], version = "^0.16.0"}
+
+[tool.scriv]
+format = "md"
+version = "literal: cellseg_models_pytorch/__init__.py: __version__"
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra -v"
@@ -71,7 +78,7 @@ exclude = ".git,__pycache__,docs/source/conftest.py,old,build,dist,test,tests"
 source = ["cellseg_models_pytorch"]
 
 [tool.coverage.report]
-omit = ["*/tests/*", "*/__init__.py"]
+omit = ["*/tests/*", "*/__init__.py", "*/datamodules/*"]
 exclude_lines = [
     "raise TypeError",
     "raise ImportError",
