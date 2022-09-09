@@ -1340,7 +1340,7 @@ all = ["imagecodecs (>=2021.7.30)", "lxml", "matplotlib (>=3.2)"]
 
 [[package]]
 name = "timm"
-version = "0.5.4"
+version = "0.6.7"
 description = "(Unofficial) PyTorch Image Models"
 category = "main"
 optional = false
@@ -1550,7 +1550,7 @@ all = ["pytorch-lightning", "tables", "requests", "albumentations", "torch-optim
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1,<3.11"
-content-hash = "69f9984b2bb3b3fa34d1d35a830fc0b0fbe3afd3e8c25d1a8bc04038363bd75c"
+content-hash = "ffb38765f31c04392d75cb0fecab98793c546eb4195a2691cc7215e8178bb50d"
 
 [metadata.files]
 absl-py = [
@@ -2813,8 +2813,8 @@ tifffile = [
     {file = "tifffile-2021.11.2.tar.gz", hash = "sha256:153e31fa1d892f482fabb2ae9f2561fa429ee42d01a6f67e58cee13637d9285b"},
 ]
 timm = [
-    {file = "timm-0.5.4-py3-none-any.whl", hash = "sha256:0592c8fd2d46d0769c0b7e954b3dacea93769eee40dabb4bd7f2acb85243b588"},
-    {file = "timm-0.5.4.tar.gz", hash = "sha256:5d7b92e66a76c432009aba90d515ea7a882aae573415a7c5269e3617df901c1f"},
+    {file = "timm-0.6.7-py3-none-any.whl", hash = "sha256:4bbd7a5c9ae462ec7fec3d99ffc62ac2012010d755248e3de778d50bce5f6186"},
+    {file = "timm-0.6.7.tar.gz", hash = "sha256:340f907906695092cf53fe01a476aa14ad15763545b654bc122ea0daef23071f"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
