@@ -7,6 +7,13 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - README.md
+      - CHANGELOG.md
+      - .gitignore
+      - "examples/**"
+      - "docker/**"
+      - "images/**"
   pull_request:
     branches:
       - main
@@ -16,7 +23,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: ["3.7", "3.8", "3.9"]
+        # python-version: ["3.7", "3.8", "3.9"]
+        python-version: ["3.7"]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
