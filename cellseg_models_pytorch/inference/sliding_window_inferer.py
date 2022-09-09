@@ -161,8 +161,11 @@ class SlidingWindowInferer(BaseInferer):
             self.stride, self.patch_size, tuple(input_batch.shape[2:]), self.padding
         )
 
-        padx = padx // 2
-        pady = pady // 2
+        padx, modx = divmod(padx, 2)
+        pady, mody = divmod(pady, 2)
+        padx += modx
+        pady += mody
+
         input_batch = F.pad(
             input_batch.float(), pad=(padx, padx, pady, pady), mode="reflect"
         )
