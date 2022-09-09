@@ -122,6 +122,19 @@ class LizardDataModule(BaseDataModule):
 
         self.dataset_type = dataset_type
 
+    @property
+    def type_classes(self) -> Dict[str, int]:
+        """Pannuke cell type classes."""
+        return {
+            "bg": 0,
+            "neutrophil": 1,
+            "epithelial": 2,
+            "lymphocyte": 3,
+            "plasma": 4,
+            "eosinophil": 5,
+            "connective": 6,
+        }
+
     @staticmethod
     def download(root: str) -> None:
         """Download the lizard dataset from online."""
@@ -144,9 +157,12 @@ class LizardDataModule(BaseDataModule):
 
         Parameters
         ----------
-        do_patching : bool, default=True
-            Flag, whether to do patching at all. Can be used if you only want to
-            download and split the data and then work it out on your own.
+            rm_orig : bool, default=False
+                After processing all the files, If True, removes the original
+                un-processed files.
+            do_patching : bool, default=True
+                Flag, whether to do patching at all. Can be used if you only want to
+                download and split the data and then work it out on your own.
         """
         folders_found = [
             d.name

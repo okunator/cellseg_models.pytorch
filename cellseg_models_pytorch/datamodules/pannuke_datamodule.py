@@ -133,6 +133,12 @@ class PannukeDataModule(BaseDataModule):
         1. Download pannuke folds from:
             "https://warwick.ac.uk/fac/cross_fac/tia/data/pannuke/"
         2. Pre-process and split the images and masks into train, valid and test sets.
+
+        Parameters
+        ----------
+            rm_orig : bool, default=False
+                After processing all the files, If True, removes the original
+                un-processed files.
         """
         folds_found = [
             d.name
