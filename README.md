@@ -22,7 +22,7 @@
 
 ## Introduction
 
-Contains multi-task encoder-decoder architectures (U-Net-like) along with dedicated post-processing methods for segmenting cell/nuclei instances. As the name suggests, this library is heavily inspired by [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch) library for semantic segmentation.
+Contains multi-task encoder-decoder architectures along with dedicated post-processing methods for segmenting cell/nuclei instances. As the name suggests, this library is heavily inspired by [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch) library for semantic segmentation.
 
 <br><br>
 
@@ -45,8 +45,8 @@ pip install cellseg-models-pytorch[all]
 ## Features
 
 - High level API to define cell/nuclei instance segmentation models.
-- 4 notorious cell/nuclei instance segmentation models and more to come.
-- Pre-trained backbones/encoders from the notorious [timm](https://github.com/rwightman/pytorch-image-models) library.
+- 4 cell/nuclei instance segmentation models and more to come.
+- Pre-trained backbones/encoders from the [timm](https://github.com/rwightman/pytorch-image-models) library.
 - All the architectures can be augmented to output semantic segmentation outputs along with instance semgentation outputs (panoptic segmentation).
 - A lot of flexibility to modify the components of the model architectures.
 - Optimized inference methods.
@@ -65,13 +65,15 @@ pip install cellseg-models-pytorch[all]
 
 ## Datasets
 
-| Dataset                     | Paper                                                                                            |
-| --------------------------- | ------------------------------------------------------------------------------------------------ |
-| [[5, 6](#Citation)] Pannuke | https://arxiv.org/abs/2003.10778 , https://link.springer.com/chapter/10.1007/978-3-030-23937-4_2 |
+| Dataset                       | Paper                                                                                            |
+| ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| [[5, 6](#References)] Pannuke | https://arxiv.org/abs/2003.10778 , https://link.springer.com/chapter/10.1007/978-3-030-23937-4_2 |
+| [[7](#References)] Lizard     | http://arxiv.org/abs/2108.11195                                                                  |
 
 ## Notebook examples
 
-- [Training Stardist with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_stardist.ipynb). Uses in-built training utilities and Pytorch-Lightning
+- [Training Stardist with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_stardist.ipynb). Train the Stardist model with constant sized Pannuke patches.
+- [Training Cellpose with Lizard](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/lizard_nuclei_segmentation_cellpose.ipynb). Train the Cellpose model with Lizard dataset that is composed of varying sized images.
 
 ## Code Examples
 
@@ -207,11 +209,9 @@ model(x)
 # }
 ```
 
-This model would give 5 outputs with names that should describe their prediction task. The names are arbitrary and there are no restrictions for them, however, during training and post-processing, these names need to match to the input names of the training or post-processing pipelines. Here, for example during training, the `"cellpose"`-head would predict x- and -y flow gradients, given that during training there would be x- and- y- gradient ground truth inputs with the same name. Similarly, `"type"`-head would predict semantic cell type masks, `"dist"`-head would predict a distance transform from the center of cell/nuclei instances, `"contour"`-head would predict cell/nuclei contours, and `"sem"`-head would predict semantic area segmentation masks. Check out the training notebooks in the `examples`-folder for more detailed info.
-
 ### Function API
 
-With the function API, you can build models with low effort by calling the below listed functions. Under the hood, the function API simply calls the above classes with pre-defined decoder- and head names. The training- and post-processing tools of this library are built around these names, thus, it is recommended to use the function API, although, it is a bit more rigid than the class API. Basically, the function API only lacks the ability to define the output-tasks of the model, but allows for all the rest as the class API.
+With the function API, you can build models with low effort by calling the below listed functions. Under the hood, the function API simply calls the above classes with pre-defined decoder and head names. The training and post-processing tools of this library are built around these names, thus, it is recommended to use the function API, although, it is a bit more rigid than the class API. Basically, the function API only lacks the ability to define the output-tasks of the model, but allows for all the rest as the class API.
 
 | Model functions                        | Output names                              | Task                             |
 | -------------------------------------- | ----------------------------------------- | -------------------------------- |
@@ -235,6 +235,7 @@ With the function API, you can build models with low effort by calling the below
 - [4] Uwe Schmidt, Martin Weigert, Coleman Broaddus, & Gene Myers (2018). Cell Detection with Star-Convex Polygons. In Medical Image Computing and Computer Assisted Intervention - MICCAI 2018 - 21st International Conference, Granada, Spain, September 16-20, 2018, Proceedings, Part II (pp. 265–273).
 - [5] Gamper, J., Koohbanani, N., Benet, K., Khuram, A., & Rajpoot, N. (2019) PanNuke: an open pan-cancer histology dataset for nuclei instance segmentation and classification. In European Congress on Digital Pathology (pp. 11-19).
 - [6] Gamper, J., Koohbanani, N., Graham, S., Jahanifar, M., Khurram, S., Azam, A.,Hewitt, K., & Rajpoot, N. (2020). PanNuke Dataset Extension, Insights and Baselines. arXiv preprint arXiv:2003.10778.
+- [7] Graham, S., Jahanifar, M., Azam, A., Nimir, M., Tsang, Y.W., Dodd, K., Hero, E., Sahota, H., Tank, A., Benes, K., & others (2021). Lizard: A Large-Scale Dataset for Colonic Nuclear Instance Segmentation and Classification. In Proceedings of the IEEE/CVF International Conference on Computer Vision (pp. 684-693).
 
 ## Citation
 
