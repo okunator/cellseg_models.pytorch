@@ -83,15 +83,6 @@ class LizardDataModule(BaseDataModule):
 
             >>> fold_split = {"train": 1, "valid": 2, "test": 3}
             >>> save_dir = Path.home() / "pannuke"
-            >>> pannuke_module = PannukeDataModule(
-                    save_dir=save_dir,
-                    fold_split=fold_split,
-                    inst_transforms=["dist", "stardist"],
-                    img_transforms=["blur", "hue_sat"],
-                    normalization="percentile",
-                    n_rays=32
-                )
-
             >>> lizard_module = LizardDataModule(
                     save_dir=save_dir,
                     fold_split=fold_split,
