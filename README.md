@@ -13,6 +13,8 @@
 [![Codecov](https://img.shields.io/codecov/c/github/okunator/cellseg_models.pytorch?logo=codecov&style=for-the-badge&token=oGSj7FZ1lm)](https://codecov.io/gh/okunator/cellseg_models.pytorch)
 <br>
 [![Pypi](https://img.shields.io/pypi/v/cellseg-models-pytorch?color=blue&logo=pypi&style=for-the-badge)](https://pypi.org/project/cellseg-models-pytorch/)
+<br>
+[![DOI](https://zenodo.org/badge/450787123.svg)](https://zenodo.org/badge/latestdoi/450787123)
 
 </div>
 
@@ -244,6 +246,7 @@ With the function API, you can build models with low effort by calling the below
     title={{cellseg_models.pytorch}: Cell/Nuclei Segmentation Models and Benchmark.},
     author={Oskari Lehtonen},
     howpublished = {\url{https://github.com/okunator/cellseg_models.pytorch}},
+    doi = {10.5281/zenodo.7064617}
     year={2022}
 }
 ```
