@@ -1,3 +1,29 @@
+<a id='changelog-0.1.3'></a>
+
+# 0.1.3 — 2022-09-23
+
+## Test
+
+    - Update tests for Inferes and mask utils.
+
+    - Add tests for the benchmarkers.
+
+## Fixes
+
+    - init and typing fixes
+
+## Docs
+
+    - Typo fies in docs
+
+## Features
+
+    - Add numba parallellized median filter and majority voting for post-processing
+    - Add support for own semantic and type seg post-proc funcs in Inferers
+
+    - Add segmentation performance benchmarking helper class.
+    - Add segmentation latency benchmarking helper class.
+
 <a id='changelog-0.1.2'></a>
 
 # 0.1.2 — 2022-09-09
