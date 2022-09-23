@@ -15,7 +15,7 @@ def test_latency_benchmark(img_dir):
         padding=80,
         instance_postproc="hovernet",
         batch_size=1,
-        save_intermediate=False,
+        save_intermediate=True,
         device="cpu",
         parallel=False,
     )
@@ -28,5 +28,5 @@ def test_latency_benchmark(img_dir):
     bm.postproc_latency("sem", reps_per_img=1)
     bm.inference_latency(reps=1, warmup_reps=0)
     bm.inference_postproc_latency(reps=1)
-    bm.model_latency(input_size=(64, 64), reps=1, warmup_reps=0, device="cpu")
-    bm.model_throughput(input_size=(64, 64), reps=1, warmup_reps=0, device="cpu")
+    # bm.model_latency(input_size=(64, 64), reps=1, warmup_reps=0, device="cpu")
+    # bm.model_throughput(input_size=(64, 64), reps=1, warmup_reps=0, device="cpu")
