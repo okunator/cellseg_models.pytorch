@@ -11,9 +11,9 @@ on:
       - README.md
       - CHANGELOG.md
       - .gitignore
-      - "examples/**"
-      - "docker/**"
-      - "images/**"
+      - examples/**
+      - docker/**
+      - images/**
   pull_request:
     branches:
       - main
