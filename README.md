@@ -182,7 +182,7 @@ The class API enables the most flexibility in defining different model architect
 - `model.{head_name}_seg_head` - Model decoders can have multiple segmentation heads with unique names.
 - `model.forward(x)` - forward pass.
 
-**Defining you own multi-task architecture**
+**Defining your own multi-task architecture**
 
 For example, to define a multi-task architecture that has `resnet50` encoder, four decoders, and 5 output heads with `CellPoseUnet` architectural components, we could do this:
 

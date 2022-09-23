@@ -7,7 +7,7 @@ img_transforms = ["rigid", "blur"]
 inst_transforms = ["smooth_dist"]
 
 
-@pytest.mark.optional
+# @pytest.mark.optional
 @pytest.mark.parametrize("return_inst", [True, False])
 @pytest.mark.parametrize("return_type", [True, False])
 @pytest.mark.parametrize("return_sem", [True, False])
