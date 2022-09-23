@@ -154,7 +154,7 @@ class Predictor:
         patch: torch.Tensor,
         act: Union[str, None] = "softmax",
         apply_weights: bool = False,
-    ) -> np.ndarray:
+    ) -> torch.Tensor:
         """Take in logits and output probabilities.
 
         Additionally apply a weight matrix to help with boundary artefacts.
@@ -171,7 +171,7 @@ class Predictor:
 
         Returns
         -------
-            np.ndarray:
+            torch.Tensor:
                 The model prediction. Same shape as input `patch`.
         """
         allowed = ("sigmoid", "softmax", "tanh", None)

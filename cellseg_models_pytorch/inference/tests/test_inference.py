@@ -20,8 +20,7 @@ def test_slidingwin_inference(img_dir, batch_size):
         batch_size=batch_size,
         save_intermediate=False,
         device="cpu",
-        use_blur=True,
-        use_closing=True,
+        parallel=False,
     )
 
     inferer.infer()
@@ -45,8 +44,7 @@ def test_resize_inference(img_dir, batch_size):
         batch_size=batch_size,
         save_intermediate=False,
         device="cpu",
-        use_blur=True,
-        use_closing=True,
+        parallel=False,
     )
 
     inferer.infer()

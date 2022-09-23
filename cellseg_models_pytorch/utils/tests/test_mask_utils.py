@@ -14,6 +14,8 @@ from cellseg_models_pytorch.utils import (
     get_inst_types,
     get_type_instances,
     label_semantic,
+    majority_vote_sequential,
+    med_filt_sequential,
     one_hot,
     remap_label,
     remove_1px_boundary,
@@ -365,3 +367,18 @@ def test_conoturs(img_patch_dir, mask_patch_dir, func, fill_contours, classes, c
 
     assert cont.shape == img.shape
     assert cont.dtype == img.dtype
+
+
+def test_med_filter():
+    im = np.random.randint(0, 255, size=(3, 32, 32), dtype="uint8")
+    imf = med_filt_sequential(im)
+
+    assert imf.shape == im.shape
+    assert imf.dtype == im.dtype
+
+
+def test_majority_vote(inst_map, type_map):
+    tmap = majority_vote_sequential(type_map, inst_map)
+
+    assert tmap.shape == type_map.shape
+    assert tmap.dtype == type_map.dtype

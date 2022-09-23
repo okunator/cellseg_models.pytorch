@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from itertools import chain
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union
 
 import numpy as np
 import torch
@@ -36,6 +36,8 @@ class BaseInferer(ABC):
         save_dir: Union[Path, str] = None,
         checkpoint_path: Union[Path, str] = None,
         n_images: int = None,
+        type_post_proc: Callable = None,
+        sem_post_proc: Callable = None,
         **postproc_kwargs,
     ) -> None:
         """Inference for an image folder.
@@ -84,6 +86,12 @@ class BaseInferer(ABC):
                 Path to the model weight checkpoints.
             n_images : int, optional
                 First n-number of images used from the `input_folder`.
+            type_post_proc : Callable, optional
+                A post-processing function for the type maps. If not None, overrides
+                the default.
+            sem_post_proc : Callable, optional
+                A post-processing function for the semantc seg maps. If not None,
+                overrides the default.
             **postproc_kwargs:
                 Arbitrary keyword arguments for the post-processing.
         """
@@ -142,6 +150,8 @@ class BaseInferer(ABC):
             instance_postproc,
             inst_key=self.model.inst_key,
             aux_key=self.model.aux_key,
+            type_post_proc=type_post_proc,
+            sem_post_proc=sem_post_proc,
             **postproc_kwargs,
         )
 

@@ -1,14 +1,19 @@
-from typing import Dict, List
+from typing import Callable, Dict, List
 
 import numpy as np
 from pathos.multiprocessing import ThreadPool as Pool
-from skimage.filters import rank
-from skimage.morphology import closing, disk, opening
 from skimage.util import img_as_ubyte
 from tqdm import tqdm
 
 from ..postproc import POSTPROC_LOOKUP
-from ..utils import binarize, fill_holes_semantic, remove_debris_semantic
+from ..utils import (
+    fill_holes_semantic,
+    majority_vote_parallel,
+    majority_vote_sequential,
+    med_filt_parallel,
+    med_filt_sequential,
+    remove_debris_semantic,
+)
 
 __all__ = ["PostProcessor"]
 
@@ -28,7 +33,13 @@ INST_ARGMAX = {
 
 class PostProcessor:
     def __init__(
-        self, instance_postproc: str, inst_key: str, aux_key: str, **kwargs
+        self,
+        instance_postproc: str,
+        inst_key: str,
+        aux_key: str,
+        type_post_proc: Callable = None,
+        sem_post_proc: Callable = None,
+        **kwargs,
     ) -> None:
         """Multi-threaded post-processing.
 
@@ -42,6 +53,12 @@ class PostProcessor:
             aux_key : Tuple[str, ...]:
                 The key/name of the model auxilliary output that is used for the
                 instance segmentation post-processing pipeline.
+            type_post_proc : Callable, optional
+                A post-processing function for the type maps. If not None, overrides
+                the default.
+            sem_post_proc : Callable, optional
+                A post-processing function for the semantc seg maps. If not None,
+                overrides the default.
             **kwargs
                 Arbitrary keyword arguments that can be used for any of the private
                 post-processing functions of this class.
@@ -57,36 +74,32 @@ class PostProcessor:
         self.inst_key = inst_key
         self.aux_key = aux_key
         self.kwargs = kwargs
+        self.sem_post_proc = sem_post_proc
+        self.type_post_proc = type_post_proc
 
     def _get_sem_map(
         self,
         prob_map: np.ndarray,
-        use_blur: bool = False,
-        use_closing: bool = False,
-        use_opening: bool = True,
-        disk_size: int = 10,
+        parallel: bool = False,
+        kernel_width: int = 15,
         **kwargs,
     ) -> np.ndarray:
         """Run the semantic segmentation post-processing."""
-        # Median filtering to get rid of noise. Adds a lot of overhead sop optional.
-        if use_blur:
-            sem = np.zeros_like(prob_map)
-            for i in range(prob_map.shape[0]):
-                sem[i, ...] = rank.median(
-                    img_as_ubyte(prob_map[i, ...]), footprint=disk(disk_size)
+        sem_map = img_as_ubyte(prob_map)
+
+        if self.sem_post_proc is not None:
+            sem = self.sem_post_proc(sem_map)
+        else:
+            if parallel:
+                sem = med_filt_parallel(
+                    sem_map, kernel_size=(kernel_width, kernel_width)
                 )
-            prob_map = sem
+            else:
+                sem = med_filt_sequential(sem_map, kernel_width)
 
-        sem = np.argmax(prob_map, axis=0)
-
-        if use_opening:
-            sem = opening(sem, disk(disk_size))
-
-        if use_closing:
-            sem = closing(sem, disk(disk_size))
-
-        sem = remove_debris_semantic(sem)
-        sem = fill_holes_semantic(sem)
+            sem = np.argmax(sem, axis=0)
+            sem = remove_debris_semantic(sem)
+            sem = fill_holes_semantic(sem)
 
         return sem
 
@@ -105,31 +118,19 @@ class PostProcessor:
         self,
         prob_map: np.ndarray,
         inst_map: np.ndarray,
-        use_mask: bool = False,
+        parallel: bool = True,
         **kwargs,
     ) -> np.ndarray:
-        """Run the type map post-processing. Majority voting for each instance.
-
-        Adapted from:
-        https://github.com/vqdang/hover_net/blob/master/models/hovernet/post_proc.py
-        """
+        """Run the type map post-processing. Majority voting for each instance."""
         type_map = np.argmax(prob_map, axis=0)
-        if use_mask:
-            type_map = binarize(inst_map) * type_map
 
-        pred_id_list = np.unique(inst_map)[1:]
-        for inst_id in pred_id_list:
-            inst_type = type_map[inst_map == inst_id]
-            type_list, type_pixels = np.unique(inst_type, return_counts=True)
-            type_list = list(zip(type_list, type_pixels))
-            type_list = sorted(type_list, key=lambda x: x[1], reverse=True)
-            cell_type = type_list[0][0]
-
-            if cell_type == 0:
-                if len(type_list) > 1:
-                    cell_type = type_list[1][0]
-
-            type_map[inst_map == inst_id] = cell_type
+        if self.type_post_proc is not None:
+            type_map = self.type_post_proc(type_map, inst_map, **kwargs)
+        else:
+            if parallel:
+                type_map = majority_vote_parallel(type_map, inst_map)
+            else:
+                type_map = majority_vote_sequential(type_map, inst_map)
 
         return type_map
 
@@ -174,7 +175,6 @@ class PostProcessor:
                 The model output map dictionaries in a list.
             progress_bar : bool, default=False
                 If True, a tqdm progress bar is shown.
-
 
         Returns
         -------

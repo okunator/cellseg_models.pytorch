@@ -30,8 +30,11 @@ from typing import Dict, List, Tuple
 
 import cv2
 import numpy as np
+from numba import njit, prange
 from scipy import ndimage as ndi
 from skimage import morphology as morph
+from skimage.filters import rank
+from skimage.morphology import square
 
 __all__ = [
     "remove_small_objects",
@@ -52,6 +55,10 @@ __all__ = [
     "remove_debris_semantic",
     "fill_holes_semantic",
     "label_semantic",
+    "majority_vote_parallel",
+    "majority_vote_sequential",
+    "med_filt_parallel",
+    "med_filt_sequential",
 ]
 
 
@@ -866,3 +873,144 @@ def draw_stuff_contours(
         bg = cv2.addWeighted(image, 1 - alpha, bg, alpha, 0)
 
     return bg
+
+
+@njit(parallel=True)
+def majority_vote_parallel(type_map: np.ndarray, inst_map: np.ndarray) -> np.ndarray:
+    """Do a majority voting on the type_map pixels in parallel.
+
+    I.e. Given a raw argmaxed type_map and an instance labelled mask, for each instance,
+    decide the class of the instance with majority voting on the corresponding type_map
+    pixels.
+
+    NOTE: This gives a performance boost over the sequential version.
+
+    Parameters
+    ----------
+        type_map : np.ndarray
+            A raw type map (after an argmax function). Shape: (H, W).
+        inst_map : np.ndarray
+            An instance labelled mask. Shape: (H, W).
+
+    Returns
+    -------
+        np.ndarray:
+            Post-processed type map. Shape: (H, W).
+    """
+    tmap = np.zeros_like(inst_map)
+    types = np.unique(type_map)
+    ntypes = np.max(types)
+    pred_id_list = np.unique(inst_map)[1:]
+    y, x = np.nonzero(inst_map)
+
+    for ix in prange(len(pred_id_list)):
+        inst_id = pred_id_list[ix]
+        type_pxls = np.zeros(ntypes + 1)
+
+        for j, i in zip(y, x):
+            if inst_map[j, i] == inst_id:
+                pxl_type = type_map[j, i]
+                type_pxls[int(pxl_type)] += 1
+
+        for j, i in zip(y, x):
+            if inst_map[j, i] == inst_id:
+                tmap[j, i] = np.argmax(type_pxls)
+
+    return tmap
+
+
+def majority_vote_sequential(
+    type_map: np.ndarray,
+    inst_map: np.ndarray,
+) -> np.ndarray:
+    """Do a majority voting on the type_map pixels by broadcasting.
+
+    Adapted from:
+    https://github.com/vqdang/hover_net/blob/master/models/hovernet/post_proc.py
+
+    Parameters
+    ----------
+        type_map : np.ndarray
+            A raw type map (after an argmax function). Shape: (H, W).
+        inst_map : np.ndarray
+            An instance labelled mask. Shape: (H, W).
+
+    Returns
+    -------
+        np.ndarray:
+            Post-processed type map. Shape: (H, W).
+    """
+    type_map = binarize(inst_map) * type_map
+    pred_id_list = np.unique(inst_map)[1:]
+    for inst_id in pred_id_list:
+        inst_type = type_map[inst_map == inst_id]
+        type_list, type_pixels = np.unique(inst_type, return_counts=True)
+        type_list = list(zip(type_list, type_pixels))
+        type_list = sorted(type_list, key=lambda x: x[1], reverse=True)
+        cell_type = type_list[0][0]
+
+        if cell_type == 0:
+            if len(type_list) > 1:
+                cell_type = type_list[1][0]
+
+        type_map[inst_map == inst_id] = cell_type
+
+    return type_map
+
+
+@njit(parallel=True)
+def med_filt_parallel(sem_map: np.ndarray, kernel_size: Tuple[int, int]) -> np.ndarray:
+    """Parallel median filter.
+
+    NOTE: Can bring latency benefits if a lot of cores are available. If not,
+    only slows down things.
+
+    Parameters
+    ----------
+        sem_map : np.ndarray
+            Input semantic segmentation prob map. Shape: (C, H, W). Dtype: uint8.
+        kernel_size : Tuple[int, int]
+            Size of the kernel.
+
+    Returns
+    -------
+        Median filtered probability map. Shape: (C, H, W). Dtype: uint8.
+    """
+    _, ny, nx = sem_map.shape
+    ky = kernel_size[0] // 2
+    kx = kernel_size[1] // 2
+    z, y, x = np.nonzero(sem_map)
+
+    smap = np.zeros_like(sem_map)
+    coords = list(zip(z, y, x))
+
+    for coord_ix in prange(len(coords)):
+        c, j, i = coords[coord_ix]
+        j_start = max(j - ky, 0)
+        j_end = min(j + ky, ny - 1)
+        i_start = max(i - kx, 0)
+        i_end = min(i + kx, nx - 1)
+
+        box = sem_map[c, j_start : j_end + 1, i_start : i_end + 1]
+        smap[c, j, i] = np.median(box)
+
+    return smap
+
+
+def med_filt_sequential(sem_map: np.ndarray, kernel_width: int = 15) -> np.ndarray:
+    """Sequential median filter.
+
+    Parameters
+    ----------
+        sem_map : np.ndarray
+            Input semantic segmentation prob map. Shape: (C, H, W). Dtype: uint8.
+
+    Returns
+    -------
+        Median filtered probability map. Shape: (C, H, W). Dtype: uint8.
+    """
+    sem = np.zeros_like(sem_map)
+    for i in range(sem_map.shape[0]):
+        sem[i] = rank.median(sem_map[i], footprint=square(kernel_width))
+
+    return sem

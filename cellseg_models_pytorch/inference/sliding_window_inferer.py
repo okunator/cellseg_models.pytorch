@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Tuple, Union
+from typing import Callable, Dict, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -29,6 +29,8 @@ class SlidingWindowInferer(BaseInferer):
         save_dir: Union[Path, str] = None,
         checkpoint_path: Union[Path, str] = None,
         n_images: int = None,
+        type_post_proc: Callable = None,
+        sem_post_proc: Callable = None,
         **postproc_kwargs,
     ) -> None:
         """Sliding window inference for a folder of images.
@@ -83,6 +85,12 @@ class SlidingWindowInferer(BaseInferer):
                 Path to the model weight checkpoints.
             n_images : int, optional
                 First n-number of images used from the `ìnput_folder`.
+            type_post_proc : Callable, optional
+                A post-processing function for the type maps. If not None, overrides
+                the default.
+            sem_post_proc : Callable, optional
+                A post-processing function for the semantc seg maps. If not None,
+                overrides the default.
             **postproc_kwargs:
                 Arbitrary keyword arguments for the post-processing.
         """
@@ -102,6 +110,8 @@ class SlidingWindowInferer(BaseInferer):
             save_dir=save_dir,
             checkpoint_path=checkpoint_path,
             n_images=n_images,
+            type_post_proc=type_post_proc,
+            sem_post_proc=sem_post_proc,
             **postproc_kwargs,
         )
 
