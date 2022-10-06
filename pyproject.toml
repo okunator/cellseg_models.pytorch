@@ -78,7 +78,7 @@ exclude = ".git,__pycache__,docs/source/conftest.py,old,build,dist,test,tests"
 source = ["cellseg_models_pytorch"]
 
 [tool.coverage.report]
-omit = ["*/tests/*", "*/__init__.py", "*/datamodules/*"]
+omit = ["*/tests/*", "*/__init__.py", "*/datamodules/*", "*/wandb_callbacks.py"]
 exclude_lines = [
     "raise TypeError",
     "raise ImportError",
