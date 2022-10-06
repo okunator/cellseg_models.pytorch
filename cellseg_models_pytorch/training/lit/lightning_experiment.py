@@ -3,6 +3,7 @@ from typing import Any, Dict, List
 
 import torch
 import torch.nn as nn
+import yaml
 
 try:
     import pytorch_lightning as pl
@@ -22,18 +23,14 @@ class SegmentationExperiment(pl.LightningModule):
         self,
         model: nn.Module,
         branch_losses: Dict[str, int],
+        branch_loss_params: Dict[str, Dict[str, Any]] = None,
         branch_metrics: Dict[str, List[str]] = None,
-        edge_weights: Dict[str, float] = None,
-        class_weights: Dict[str, bool] = None,
         optimizer: str = "adam",
         lookahead: bool = False,
-        dec_learning_rate: float = 0.0005,
-        enc_learning_rate: float = 0.00005,
-        dec_weight_decay: float = 0.0003,
-        enc_weight_decay: float = 0.00003,
-        rm_bias_weight_decay: bool = True,
+        optim_params: Dict[str, Dict[str, Any]] = None,
         scheduler: str = "reduce_on_plateau",
         scheduler_params: Dict[str, Any] = None,
+        log_freq: int = 100,
     ) -> None:
         """Segmentation model training experiment.
 
@@ -48,18 +45,14 @@ class SegmentationExperiment(pl.LightningModule):
                 E.g. {"inst": "tversky_ce_ssim", "sem": "mse"}. Allowed losses: "mse",
                 "ce", "sce", "ssim", "msssim", "tversky", "focal", "iou", "dice".
                 Use underscores to create joint loss functions. e.g. "dice_ce_tversky".
+            branch_loss_params : Dict[str, Dict[str, Any]], optional
+                Params for the different losses at different branches. For example to
+                use LS or class weighting when computing the losses.
+                E.g. {"inst": {"apply_ls": True}, "sem": {"edge_weight": False}}
             branch_metrics : Dict[str, List[str]], optional
                 A Dict of branch names mapped to a list of strings specifying a metrics.
                 E.g. {"inst": ["acc"], "sem": ["miou", "acc"]}. Allowed metrics: "miou",
-                "acc". If None, no metrics will be recorded during training.
-            edge_weights : Dict[str, float], optional
-                A dictionary of branch names mapped to floats that are used to weight
-                nuclei edges in CE-based losses. E.g. {"inst": 1.1, "sem": None}.
-                If None, no edge weights will be used during training.
-            class_weights : Dict[str, torch.Tensor], optional
-                A dictionary of branch names mapped to class weight tensors
-                of shape (n_classes_branch, ). E.g. {"inst": tensor([[0.4, 0.6]])}.
-                If None, no edge weights will be used during training.
+                "acc", "ssim", "iqi", "mse", None.
             optimizer : str, default="adam"
                 Name of the optimizer. In-built optimizers from `torch` and
                 `torch_optimizer` packages can be used. One of: "adam", "rmsprop","sgd",
@@ -67,18 +60,12 @@ class SegmentationExperiment(pl.LightningModule):
                 "adamw", "asdg", "accsgd", "adabound", "adamod", "diffgrad", "lamb",
                 "novograd", "pid", "qhadam", "qhm", "radam", "sgdw", "yogi", "ranger",
                 "rangerqh","rangerva"
+            optim_params : Dict[str, Dict[str, Any]]
+                optim paramas like learning rates, weight decays etc for diff parts of
+                the network.
+                E.g. {"encoder": {"weight_decay: 0.1, "lr": 0.1}, "sem": {"lr": 0.01}}
             lookahead : bool, default=False
                 Flag whether the optimizer uses lookahead.
-            dec_learning_rate : float, default=0.0005
-                Learning rate for the decoder(s) during training.
-            enc_learning_rate : float, default=0.00005
-                Learning rate for the encoder during training.
-            dec_weight_decay : float, defauilt=0.0003
-                Weight decay for the decoder(s) during training.
-            enc_weight_decay : float, default=0.00003
-                Weight decay for the encoder during training.
-            rm_bias_weight_decay : bool, default=True
-                Flag whether to remove weight decay for bias terms.
             scheduler : str, default="reduce_on_plateau"
                 The name of the learning rate scheduler (torch in-built schedulers).
                 Allowed ones: "reduce_on_plateau", "lambda", "cyclic", "exponential",
@@ -86,6 +73,10 @@ class SegmentationExperiment(pl.LightningModule):
             scheduler_params : Dict[str, Any]
                 Params dict for the scheduler. Refer to torch lr_scheduler docs
                 for the possible scheduler arguments.
+            return_soft_masks : bool, default=True
+                Return the model outputs for logging if True. Saves mem if set to False.
+            log_freq : int, default=100
+                Return soft masks every every n batches for callbacks and logging.
 
         Raises
         ------
@@ -101,22 +92,16 @@ class SegmentationExperiment(pl.LightningModule):
         self.aux_key = model.aux_key
         self.inst_key = model.inst_key
 
-        # Optimizer args
         self.optimizer = optimizer
-        self.dec_learning_rate = dec_learning_rate
-        self.enc_learning_rate = enc_learning_rate
-        self.dec_weight_decay = dec_weight_decay
-        self.enc_weight_decay = enc_weight_decay
+        self.optim_params = optim_params
         self.scheduler = scheduler
         self.scheduler_params = scheduler_params
         self.lookahead = lookahead
-        self.rm_bias_weight_decay = rm_bias_weight_decay
 
-        # loss/metircs args
         self.branch_losses = branch_losses
         self.branch_metrics = branch_metrics
-        self.edge_weights = edge_weights
-        self.class_weights = class_weights
+        self.branch_loss_params = branch_loss_params
+        self.log_freq = log_freq
 
         self._validate_branch_args()
         self.save_hyperparameters(ignore="model")
@@ -126,6 +111,22 @@ class SegmentationExperiment(pl.LightningModule):
         self.train_metrics = deepcopy(metrics)
         self.val_metrics = deepcopy(metrics)
         self.test_metrics = deepcopy(metrics)
+
+    @classmethod
+    def from_yaml(cls, model: nn.Module, yaml_path: str) -> pl.LightningModule:
+        """Initialize the experiment from a yaml-file.
+
+        Parameters
+        ----------
+            model : nn.Module
+                Initialized model.
+            yaml_path : str
+                Path to the yaml file containing rest of the params
+        """
+        with open(yaml_path, "r") as stream:
+            kwargs = yaml.full_load(stream)
+
+        return cls(model, **kwargs)
 
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         """Forward."""
@@ -142,7 +143,7 @@ class SegmentationExperiment(pl.LightningModule):
         metrics = self.compute_metrics(soft_masks, targets, phase)
 
         ret = {
-            "soft_masks": soft_masks if phase == "val" else None,
+            "soft_masks": soft_masks if batch_idx % self.log_freq == 0 else None,
             "loss": loss,
         }
 
@@ -154,15 +155,13 @@ class SegmentationExperiment(pl.LightningModule):
         """Training step + train metric logs."""
         res = self.step(batch, batch_idx, "train")
 
-        del res["soft_masks"]  # soft masks not needed for logging
-        loss = res.pop("loss")
-
         # log all the metrics
-        self.log("train_loss", loss, prog_bar=True, on_epoch=False, on_step=True)
+        self.log("train_loss", res["loss"], prog_bar=True, on_epoch=False, on_step=True)
         for k, val in res.items():
-            self.log(f"train_{k}", val, prog_bar=True, on_epoch=False, on_step=True)
+            if k not in ("loss", "soft_masks"):
+                self.log(f"train_{k}", val, prog_bar=True, on_epoch=False, on_step=True)
 
-        return loss
+        return res
 
     def validation_step(
         self, batch: Dict[str, torch.Tensor], batch_idx: int
@@ -170,17 +169,13 @@ class SegmentationExperiment(pl.LightningModule):
         """Validate step + validation metric logs + example outputs for logging."""
         res = self.step(batch, batch_idx, "val")
 
-        soft_masks = res.pop("soft_masks")  # soft masks for logging
-        loss = res.pop("loss")
-
         # log all the metrics
-        self.log("val_loss", loss, prog_bar=False, on_epoch=True, on_step=False)
+        self.log("val_loss", res["loss"], prog_bar=False, on_epoch=True, on_step=False)
         for k, val in res.items():
-            self.log(f"val_{k}", val, prog_bar=False, on_epoch=True, on_step=False)
+            if k not in ("loss", "soft_masks"):
+                self.log(f"val_{k}", val, prog_bar=False, on_epoch=True, on_step=False)
 
-        # If batch_idx in (0, 10, 50), sends outputs to logger
-        if batch_idx in (0, 10, 50):
-            return soft_masks
+        return res
 
     def test_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> None:
         """Test step + test metric logs."""
@@ -212,9 +207,7 @@ class SegmentationExperiment(pl.LightningModule):
         for metric_name, metric in metrics_dict.items():
             if metric is not None:
                 branch = metric_name.split("_")[0]
-                act = "softmax" if branch in ("inst", "type", "sem") else None
-                # act = None if branch in ("inst", "type", "sem") else "softmax"
-                ret[branch] = metric(preds[branch], targets[branch], act)
+                ret[metric_name] = metric(preds[branch], targets[branch])
 
         return ret
 
@@ -230,24 +223,18 @@ class SegmentationExperiment(pl.LightningModule):
             has_same_keys = dk == lk == mk
 
         ek = None
-        if self.edge_weights is not None:
-            ek = set(self.edge_weights.keys())
+        if self.branch_loss_params is not None:
+            ek = set(self.branch_loss_params.keys())
             has_same_keys = dk == lk == mk == ek
-
-        ck = None
-        if self.class_weights is not None:
-            ck = set(self.class_weights.keys())
-            has_same_keys = dk == lk == mk == ek == ck
 
         if not has_same_keys:
             raise ValueError(
                 "Got mismatching keys for branch dict args. "
                 f"Branch losses: {lk}. "
+                f"Branch loss params: {ek}. "
                 f"Decoder branches: {dk}. "
                 f"Metrics: {mk}. "
-                f"Edge weights: {ek}. "
-                f"Class weights: {ck}. "
-                f"(Metrics, edge weights, and class weights can be None)"
+                f"(`metrics`, and `branch_loss_params` can be None)"
             )
 
     def configure_loss(self) -> nn.Module:
@@ -265,21 +252,13 @@ class SegmentationExperiment(pl.LightningModule):
             except Exception:
                 losses = [loss]
 
-            # set edge and class weights
-            edge_weight = None
-            if self.edge_weights is not None:
-                edge_weight = self.edge_weights[branch]
-
-            class_weight = None
-            if self.class_weights:
-                class_weight = self.class_weights[branch]
+            loss_kwargs = {"k": None}
+            if self.branch_loss_params is not None:
+                loss_kwargs = self.branch_loss_params[branch]
 
             # set joint losses for each branch
             branch_losses[branch] = JointLoss(
-                [
-                    Loss(loss_name, edge_weight=edge_weight, class_weights=class_weight)
-                    for loss_name in losses
-                ]
+                [Loss(loss_name, **loss_kwargs) for loss_name in losses]
             )
 
         return MultiTaskLoss(branch_losses=branch_losses)
@@ -318,14 +297,14 @@ class SegmentationExperiment(pl.LightningModule):
                 f"Illegal scheduler given. Got {self.scheduler}. Allowed: {allowed}."
             )
 
-        params = adjust_optim_params(
-            self.model,
-            encoder_lr=self.enc_learning_rate,
-            encoder_wd=self.enc_weight_decay,
-            decoder_lr=self.dec_learning_rate,
-            decoder_wd=self.dec_weight_decay,
-            remove_bias_wd=self.rm_bias_weight_decay,
-        )
+        # set sensible default if None.
+        if self.optim_params is None:
+            self.optim_params = {
+                "encoder": {"lr": 0.00005, "weight_decay": 0.00003},
+                "decoder": {"lr": 0.0005, "weight_decay": 0.0003},
+            }
+
+        params = adjust_optim_params(self.model, self.optim_params)
         optimizer = OPTIM_LOOKUP[self.optimizer](params)
 
         if self.lookahead:

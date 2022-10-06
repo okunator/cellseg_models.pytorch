@@ -5,7 +5,13 @@ import torch
 from ..functional.train_metrics import accuracy, iou
 
 try:
-    from torchmetrics import Metric
+    from torchmetrics import (
+        MeanSquaredError,
+        Metric,
+        StructuralSimilarityIndexMeasure,
+        UniversalImageQualityIndex,
+    )
+
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
         "`torchmetrics` package is required when using metric callbacks. "
@@ -26,6 +32,7 @@ class Accuracy(Metric):
         dist_sync_on_step: bool = False,
         progress_group: Any = None,
         dist_sync_func: Callable = None,
+        **kwargs
     ) -> None:
         """Create a custom torchmetrics accuracy callback.
 
@@ -57,9 +64,10 @@ class Accuracy(Metric):
 
     def update(
         self,
-        pred: torch.Tensor,
+        preds: torch.Tensor,
         target: torch.Tensor,
         activation: str = "softmax",
+        **kwargs
     ) -> None:
         """Update the batch accuracy list with one batch accuracy value.
 
@@ -72,7 +80,7 @@ class Accuracy(Metric):
             activation : str, default="softmax"
                 The activation function. One of: "softmax", "sigmoid" or None.
         """
-        batch_acc = accuracy(pred, target, activation)
+        batch_acc = accuracy(preds, target, activation)
         self.batch_accuracies += batch_acc
         self.n_batches += 1
 
@@ -96,6 +104,8 @@ class MeanIoU(Metric):
         dist_sync_on_step: bool = False,
         progress_grouo: Any = None,
         dist_sync_func: Callable = None,
+        num_classes: int = None,
+        **kwargs
     ) -> None:
         """Create a custom torchmetrics mIoU callback.
 
@@ -111,6 +121,9 @@ class MeanIoU(Metric):
             dist_sync_func : Callable, optional
                 Callback that performs the allgather operation on the metric state.
                 When None, DDP will be used to perform the allgather.
+            num_classes : int, optional
+                If not None, multi-class miou will be returned.
+
         """
         super().__init__(
             compute_on_step=compute_on_step,
@@ -124,9 +137,10 @@ class MeanIoU(Metric):
 
     def update(
         self,
-        pred: torch.Tensor,
+        preds: torch.Tensor,
         target: torch.Tensor,
         activation: str = "softmax",
+        **kwargs
     ) -> None:
         """Update the batch IoU list with one batch IoU matrix.
 
@@ -139,7 +153,7 @@ class MeanIoU(Metric):
             activation : str, default="softmax"
                 The activation function. One of: "softmax", "sigmoid" or None.
         """
-        batch_iou = iou(pred, target, activation)
+        batch_iou = iou(preds, target, activation)
         self.batch_ious += batch_iou.mean()
         self.n_batches += 1
 
@@ -153,4 +167,10 @@ class MeanIoU(Metric):
         return self.batch_ious / self.n_batches
 
 
-METRIC_LOOKUP = {"acc": Accuracy, "miou": MeanIoU}
+METRIC_LOOKUP = {
+    "acc": Accuracy,
+    "miou": MeanIoU,
+    "mse": MeanSquaredError,
+    "ssim": StructuralSimilarityIndexMeasure,
+    "iqi": UniversalImageQualityIndex,
+}
