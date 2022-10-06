@@ -1,3 +1,30 @@
+
+<a id='changelog-0.1.3'></a>
+# 0.1.3 — 2022-10-06
+
+## Test
+
+- Update loss tests
+
+## Fixes
+
+- Add a conv block `BasicConvOld` to enable `Dippa` to cellseg conversion of models.
+- Fix `inst_key`, `aux_key` bug in `MultiTaskUnet`
+- Add a type_map > 0 masking for the `inst_map`s in post-processing
+
+- Modify the optimizer adjustment utility function to adjust any optim/weight params.
+
+- Modify lit `SegmentationExperiment` according to new changes.
+
+## Features
+
+- Add optional spectral decoupliing to all losses
+- Add optional Label smoothing to all losses
+- Add optional Spatially varying label smoothing to all losses
+
+- Add mse, ssim and iqi torchmetrics for metric logging.
+- Add wandb per class metric callback for logging.
+- Add `from_yaml` init classmethod to initialize from yaml files.
 <a id='changelog-0.1.3'></a>
 
 # 0.1.3 — 2022-09-23
