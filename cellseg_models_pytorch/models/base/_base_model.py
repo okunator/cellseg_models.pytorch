@@ -86,7 +86,11 @@ class BaseMultiTaskSegModel(nn.ModuleDict):
 
     def _get_inner_keys(self, d: Dict[str, Dict[str, Any]]) -> List[str]:
         """Get the inner dict keys from a nested dict."""
-        return chain.from_iterable(list(d[k].keys()) for k in d.keys())
+        return list(chain.from_iterable(list(d[k].keys()) for k in d.keys()))
+
+    def _flatten_inner_dicts(self, d: Dict[str, Dict[str, Any]]) -> List[str]:
+        """Get the inner dicts as one dict from a nested dict."""
+        return dict(chain.from_iterable(list(d[k].items()) for k in d.keys()))
 
     def _check_head_args(
         self, heads: Dict[str, int], decoders: Tuple[str, ...]

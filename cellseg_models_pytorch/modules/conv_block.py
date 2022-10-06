@@ -3,6 +3,7 @@ import torch.nn as nn
 
 from .conv_base import (
     BasicConv,
+    BasicConvOld,
     BottleneckConv,
     DepthWiseSeparableConv,
     FusedMobileInvertedConv,
@@ -20,6 +21,7 @@ CONVBLOCK_LOOKUP = {
     "mbconv": InvertedBottleneckConv,
     "fmbconv": FusedMobileInvertedConv,
     "hover_dense": HoverNetDenseConv,
+    "basic_old": BasicConvOld,
 }
 
 

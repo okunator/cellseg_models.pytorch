@@ -41,7 +41,7 @@ class WSConv2d(nn.Conv2d):
         )
         self.eps = eps
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Weight standardized convolution forward pass."""
         weight = self.weight
 

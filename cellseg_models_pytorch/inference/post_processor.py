@@ -161,6 +161,7 @@ class PostProcessor:
 
         if "type" in maps.keys():
             res["type"] = self._get_type_map(maps["type"], res["inst"], **self.kwargs)
+            res["inst"] *= res["type"] > 0
 
         return res
 

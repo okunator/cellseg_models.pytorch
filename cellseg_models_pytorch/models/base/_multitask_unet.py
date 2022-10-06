@@ -26,6 +26,8 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
         enc_name: str = "resnet50",
         enc_pretrain: bool = True,
         enc_freeze: bool = False,
+        inst_key: str = None,
+        aux_key: str = None,
     ) -> None:
         """Create a universal multi-task (2D) unet.
 
@@ -63,11 +65,19 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
                 Whether to use imagenet pretrained weights in the encoder.
             enc_freeze : bool, default=False
                 Freeze encoder weights for training.
+            inst_key : str, optional
+                The key for the model output that will be used in the instance
+                segmentation post-processing pipeline as the binary segmentation result.
+            aux_key : str, optional
+                The key for the model output that will be used in the instance
+                segmentation post-processing pipeline as the auxilliary map.
         """
         super().__init__()
         self.enc_freeze = enc_freeze
         use_style = style_channels is not None
         self.heads = heads
+        self.inst_key = inst_key
+        self.aux_key = aux_key
 
         # set timm encoder
         self.encoder = TimmEncoder(
