@@ -8,7 +8,13 @@ from ..weighted_base_loss import WeightedBaseLoss
 
 class IoULoss(WeightedBaseLoss):
     def __init__(
-        self, edge_weight: float = None, class_weights: torch.Tensor = None, **kwargs
+        self,
+        apply_sd: bool = False,
+        apply_ls: bool = False,
+        apply_svls: bool = False,
+        edge_weight: float = None,
+        class_weights: torch.Tensor = None,
+        **kwargs,
     ) -> None:
         """Intersection over union loss.
 
@@ -16,20 +22,27 @@ class IoULoss(WeightedBaseLoss):
 
         Parameters
         ----------
+            apply_sd : bool, default=False
+                If True, Spectral decoupling regularization will be applied  to the
+                loss matrix.
+            apply_ls : bool, default=False
+                If True, Label smoothing will be applied to the target.
+            apply_svls : bool, default=False
+                If True, spatially varying label smoothing will be applied to the target
             edge_weight : float, default=none
                 Weight that is added to object borders.
             class_weights : torch.Tensor, default=None
                 Class weights. A tensor of shape (n_classes,).
         """
-        super().__init__(class_weights, edge_weight)
-        self.eps = 1e-6
+        super().__init__(apply_sd, apply_ls, apply_svls, class_weights, edge_weight)
+        self.eps = 1e-8
 
     def forward(
         self,
         yhat: torch.Tensor,
         target: torch.Tensor,
         target_weight: torch.Tensor = None,
-        **kwargs
+        **kwargs,
     ) -> torch.Tensor:
         """Compute the IoU loss.
 
@@ -48,12 +61,26 @@ class IoULoss(WeightedBaseLoss):
                 Computed IoU loss (scalar).
         """
         yhat_soft = F.softmax(yhat, dim=1)
-        target_one_hot = tensor_one_hot(target, n_classes=yhat.shape[1])
+        num_classes = yhat.shape[1]
+        target_one_hot = tensor_one_hot(target, n_classes=num_classes)
         assert target_one_hot.shape == yhat.shape
+
+        if self.apply_svls:
+            target_one_hot = self.apply_svls_to_target(
+                target_one_hot, num_classes, **kwargs
+            )
+
+        if self.apply_ls:
+            target_one_hot = self.apply_ls_to_target(
+                target_one_hot, num_classes, **kwargs
+            )
 
         intersection = torch.sum(yhat_soft * target_one_hot, 1)  # to (B, H, W)
         union = torch.sum(yhat_soft + target_one_hot, 1)  # to (B, H, W)
         iou = intersection / union.clamp_min(self.eps)
+
+        if self.apply_sd:
+            iou = self.apply_spectral_decouple(iou, yhat)
 
         if self.class_weights is not None:
             iou = self.apply_class_weights(iou, target)

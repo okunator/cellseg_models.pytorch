@@ -11,6 +11,9 @@ class SCELoss(WeightedBaseLoss):
         self,
         alpha: float = 0.5,
         beta: float = 1.0,
+        apply_sd: bool = False,
+        apply_ls: bool = False,
+        apply_svls: bool = False,
         edge_weight: float = None,
         class_weights: torch.Tensor = None,
         **kwargs
@@ -25,12 +28,19 @@ class SCELoss(WeightedBaseLoss):
                 Weight factor b/w [0,1].
             beta :float, default=1.0
                 Weight factor b/w [0,1].
+            apply_sd : bool, default=False
+                If True, Spectral decoupling regularization will be applied  to the
+                loss matrix.
+            apply_ls : bool, default=False
+                If True, Label smoothing will be applied to the target.
+            apply_svls : bool, default=False
+                If True, spatially varying label smoothing will be applied to the target
             edge_weight : float, default=none
                 Weight that is added to object borders.
             class_weights : torch.Tensor, default=None
                 Class weights. A tensor of shape (n_classes,).
         """
-        super().__init__(class_weights, edge_weight)
+        super().__init__(apply_sd, apply_ls, apply_svls, class_weights, edge_weight)
         self.alpha = alpha
         self.beta = beta
         self.eps = 1e-6
@@ -87,5 +97,8 @@ class SCELoss(WeightedBaseLoss):
         loss = (
             self.alpha * cross_entropy.mean() + self.beta * reverse_cross_entropy.mean()
         )
+
+        if self.apply_sd:
+            loss = self.apply_spectral_decouple(loss, yhat)
 
         return loss

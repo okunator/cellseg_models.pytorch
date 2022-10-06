@@ -5,10 +5,18 @@ from cellseg_models_pytorch.utils import tensor_one_hot
 
 from ..weighted_base_loss import WeightedBaseLoss
 
+__all__ = ["DiceLoss"]
+
 
 class DiceLoss(WeightedBaseLoss):
     def __init__(
-        self, edge_weight: float = None, class_weights: torch.Tensor = None, **kwargs
+        self,
+        apply_sd: bool = False,
+        apply_ls: bool = False,
+        apply_svls: bool = False,
+        edge_weight: float = None,
+        class_weights: torch.Tensor = None,
+        **kwargs,
     ) -> None:
         """Sørensen-Dice Coefficient Loss.
 
@@ -16,20 +24,27 @@ class DiceLoss(WeightedBaseLoss):
 
         Parameters
         ----------
+            apply_sd : bool, default=False
+                If True, Spectral decoupling regularization will be applied  to the
+                loss matrix.
+            apply_ls : bool, default=False
+                If True, Label smoothing will be applied to the target.
+            apply_svls : bool, default=False
+                If True, spatially varying label smoothing will be applied to the target
             edge_weight : float, default=none
                 Weight that is added to object borders.
             class_weights : torch.Tensor, default=None
                 Class weights. A tensor of shape (n_classes,).
         """
-        super().__init__(class_weights, edge_weight)
-        self.eps = 1e-6
+        super().__init__(apply_sd, apply_ls, apply_svls, class_weights, edge_weight)
+        self.eps = 1e-8
 
     def forward(
         self,
         yhat: torch.Tensor,
         target: torch.Tensor,
         target_weight: torch.Tensor = None,
-        **kwargs
+        **kwargs,
     ) -> torch.Tensor:
         """Compute the DICE coefficient.
 
@@ -48,12 +63,26 @@ class DiceLoss(WeightedBaseLoss):
                 Computed DICE loss (scalar).
         """
         yhat_soft = F.softmax(yhat, dim=1)
-        target_one_hot = tensor_one_hot(target, n_classes=yhat.shape[1])
+        num_classes = yhat.shape[1]
+        target_one_hot = tensor_one_hot(target, n_classes=num_classes)
         assert target_one_hot.shape == yhat.shape
+
+        if self.apply_svls:
+            target_one_hot = self.apply_svls_to_target(
+                target_one_hot, num_classes, **kwargs
+            )
+
+        if self.apply_ls:
+            target_one_hot = self.apply_ls_to_target(
+                target_one_hot, num_classes, **kwargs
+            )
 
         intersection = torch.sum(yhat_soft * target_one_hot, 1)
         union = torch.sum(yhat_soft + target_one_hot, 1)
-        dice = 2.0 * intersection / union.clamp_min(self.eps)
+        dice = 2.0 * intersection / union.clamp_min(self.eps)  # (B, H, W)
+
+        if self.apply_sd:
+            dice = self.apply_spectral_decouple(dice, yhat)
 
         if self.class_weights is not None:
             dice = self.apply_class_weights(dice, target)
