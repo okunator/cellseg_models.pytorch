@@ -104,7 +104,6 @@ class MeanIoU(Metric):
         dist_sync_on_step: bool = False,
         progress_grouo: Any = None,
         dist_sync_func: Callable = None,
-        num_classes: int = None,
         **kwargs
     ) -> None:
         """Create a custom torchmetrics mIoU callback.
@@ -121,9 +120,6 @@ class MeanIoU(Metric):
             dist_sync_func : Callable, optional
                 Callback that performs the allgather operation on the metric state.
                 When None, DDP will be used to perform the allgather.
-            num_classes : int, optional
-                If not None, multi-class miou will be returned.
-
         """
         super().__init__(
             compute_on_step=compute_on_step,

@@ -12,7 +12,7 @@ except ImportError:
 
 from ..functional import iou
 
-__all__ = ["WandbImageCallback", "WandbClassMetricCallback"]
+__all__ = ["WandbImageCallback", "WandbClassBarCallback", "WandbClassLineCallback"]
 
 
 class WandbImageCallback(pl.Callback):
@@ -104,26 +104,22 @@ class WandbImageCallback(pl.Callback):
             trainer.logger.experiment.log(log_dict)
 
 
-class WandbClassMetricCallback(pl.Callback):
+class WandbIoUCallback(pl.Callback):
     def __init__(
         self,
         type_classes: Dict[str, int],
         sem_classes: Optional[Dict[str, int]],
         freq: int = 100,
-        return_series: bool = True,
-        return_bar: bool = True,
-        return_table: bool = False,
     ) -> None:
-        """Call back to compute per-class ious and log them to wandb."""
+        """Create a base class for IoU wandb callbacks."""
         super().__init__()
         self.type_classes = type_classes
         self.sem_classes = sem_classes
         self.freq = freq
-        self.return_series = return_series
-        self.return_bar = return_bar
-        self.return_table = return_table
-        self.cell_ious = np.empty(0)
-        self.sem_ious = np.empty(0)
+
+    def batch_end(self) -> None:
+        """Abstract batch end method."""
+        raise NotImplementedError
 
     def compute(
         self,
@@ -138,92 +134,6 @@ class WandbClassMetricCallback(pl.Callback):
 
         met = iou(pred, target).mean(dim=0)
         return met.to("cpu").numpy()
-
-    def get_table(
-        self, ious: np.ndarray, x: np.ndarray, classes: Dict[int, str]
-    ) -> wandb.Table:
-        """Return a wandb Table with step, iou and label values for every step."""
-        batch_data = [
-            [xi * self.freq, c, np.round(ious[xi, i], 4)]
-            for i, c, in classes.items()
-            for xi in x
-        ]
-
-        return wandb.Table(data=batch_data, columns=["step", "label", "value"])
-
-    def get_bar(self, iou: np.ndarray, classes: Dict[int, str], title: str) -> Any:
-        """Return a wandb bar plot object of the current per class iou values."""
-        batch_data = [[lab, val] for lab, val in zip(list(classes.values()), iou)]
-        table = wandb.Table(data=batch_data, columns=["label", "value"])
-        return wandb.plot.bar(table, "label", "value", title=title)
-
-    def get_series(
-        self, ious: np.ndarray, x: np.ndarray, classes: Dict[int, str], title: str
-    ) -> Any:
-        """Return a wandb series plot obj of the per class iou values over timesteps."""
-        return wandb.plot.line_series(
-            xs=x.tolist(),
-            ys=[ious[:, c].tolist() for c in classes.keys()],
-            keys=list(classes.values()),
-            title=title,
-            xname="step",
-        )
-
-    def batch_end(
-        self,
-        trainer: pl.Trainer,
-        outputs: Dict[str, torch.Tensor],
-        batch: Dict[str, torch.Tensor],
-        batch_idx: int,
-        phase: str,
-    ) -> None:
-        """Log metrics at every 100th step to wandb."""
-        if batch_idx % self.freq == 0:
-            log_dict = {}
-            if "type" in list(batch.keys()):
-                iou = self.compute("type", outputs, batch)
-                self.cell_ious = np.append(self.cell_ious, iou)
-                cell_ious = self.cell_ious.reshape(-1, len(self.type_classes))
-                x = np.arange(cell_ious.shape[0])
-
-                if self.return_table:
-                    log_dict[f"{phase}/type_ious_table"] = self.get_table(
-                        cell_ious, x, self.type_classes
-                    )
-
-                if self.return_series:
-                    log_dict[f"{phase}/type_ious_per_class"] = self.get_series(
-                        cell_ious, x, self.type_classes, title="Per type class mIoU"
-                    )
-
-                if self.return_bar:
-                    log_dict[f"{phase}/type_ious_bar"] = self.get_bar(
-                        list(iou), self.type_classes, title="Cell class mIoUs"
-                    )
-
-            if "sem" in list(batch.keys()):
-                iou = self.compute("sem", outputs, batch)
-
-                self.sem_ious = np.append(self.sem_ious, iou)
-                sem_ious = self.sem_ious.reshape(-1, len(self.sem_classes))
-                x = np.arange(sem_ious.shape[0])
-
-                if self.return_table:
-                    log_dict[f"{phase}/sem_ious_table"] = self.get_table(
-                        cell_ious, x, self.type_classes
-                    )
-
-                if self.return_series:
-                    log_dict[f"{phase}/sem_ious_per_class"] = self.get_series(
-                        cell_ious, x, self.type_classes, title="Per sem class mIoU"
-                    )
-
-                if self.return_bar:
-                    log_dict[f"{phase}/sem_ious_bar"] = self.get_bar(
-                        list(iou), self.type_classes, title="Sem class mIoUs"
-                    )
-
-            trainer.logger.experiment.log(log_dict)
 
     def on_train_batch_end(
         self,
@@ -248,3 +158,85 @@ class WandbClassMetricCallback(pl.Callback):
     ) -> None:
         """Log the inputs and outputs of the model to wandb."""
         self.batch_end(trainer, outputs["soft_masks"], batch, batch_idx, phase="val")
+
+
+class WandbClassBarCallback(WandbIoUCallback):
+    def __init__(
+        self,
+        type_classes: Dict[str, int],
+        sem_classes: Optional[Dict[str, int]],
+        freq: int = 100,
+    ) -> None:
+        """Create a wandb callback that logs per-class mIoU at batch ends."""
+        super().__init__(type_classes, sem_classes, freq)
+
+    def get_bar(self, iou: np.ndarray, classes: Dict[int, str], title: str) -> Any:
+        """Return a wandb bar plot object of the current per class iou values."""
+        batch_data = [[lab, val] for lab, val in zip(list(classes.values()), iou)]
+        table = wandb.Table(data=batch_data, columns=["label", "value"])
+        return wandb.plot.bar(table, "label", "value", title=title)
+
+    def batch_end(
+        self,
+        trainer: pl.Trainer,
+        outputs: Dict[str, torch.Tensor],
+        batch: Dict[str, torch.Tensor],
+        batch_idx: int,
+        phase: str,
+    ) -> None:
+        """Log metrics at every 100th step to wandb."""
+        if batch_idx % self.freq == 0:
+            log_dict = {}
+            if "type" in list(batch.keys()):
+                iou = self.compute("type", outputs, batch)
+                log_dict[f"{phase}/type_ious_bar"] = self.get_bar(
+                    list(iou), self.type_classes, title="Cell class mIoUs"
+                )
+
+            if "sem" in list(batch.keys()):
+                iou = self.compute("sem", outputs, batch)
+                log_dict[f"{phase}/sem_ious_bar"] = self.get_bar(
+                    list(iou), self.sem_classes, title="Sem class mIoUs"
+                )
+
+            trainer.logger.experiment.log(log_dict)
+
+
+class WandbClassLineCallback(WandbIoUCallback):
+    def __init__(
+        self,
+        type_classes: Dict[str, int],
+        sem_classes: Optional[Dict[str, int]],
+        freq: int = 100,
+    ) -> None:
+        """Create a wandb callback that logs per-class mIoU at batch ends."""
+        super().__init__(type_classes, sem_classes, freq)
+
+    def get_points(self, iou: np.ndarray, classes: Dict[int, str]) -> Any:
+        """Return a wandb bar plot object of the current per class iou values."""
+        return {lab: val for lab, val in zip(list(classes.values()), iou)}
+
+    def batch_end(
+        self,
+        trainer: pl.Trainer,
+        outputs: Dict[str, torch.Tensor],
+        batch: Dict[str, torch.Tensor],
+        batch_idx: int,
+        phase: str,
+    ) -> None:
+        """Log metrics at every 100th step to wandb."""
+        if batch_idx % self.freq == 0:
+            log_dict = {}
+            if "type" in list(batch.keys()):
+                iou = self.compute("type", outputs, batch)
+                log_dict[f"{phase}/type_ious_points"] = self.get_points(
+                    list(iou), self.type_classes
+                )
+
+            if "sem" in list(batch.keys()):
+                iou = self.compute("sem", outputs, batch)
+                log_dict[f"{phase}/sem_ious_points"] = self.get_points(
+                    list(iou), self.sem_classes
+                )
+
+            trainer.logger.experiment.log(log_dict)

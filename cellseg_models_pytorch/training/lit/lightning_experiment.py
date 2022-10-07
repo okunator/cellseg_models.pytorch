@@ -73,8 +73,6 @@ class SegmentationExperiment(pl.LightningModule):
             scheduler_params : Dict[str, Any]
                 Params dict for the scheduler. Refer to torch lr_scheduler docs
                 for the possible scheduler arguments.
-            return_soft_masks : bool, default=True
-                Return the model outputs for logging if True. Saves mem if set to False.
             log_freq : int, default=100
                 Return soft masks every every n batches for callbacks and logging.
 
