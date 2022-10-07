@@ -1,3 +1,10 @@
+
+<a id='changelog-0.1.4'></a>
+# 0.1.4 — 2022-10-07
+
+## Fixes
+
+- Wandb Callback bugs fixed.
 <a id='changelog-0.1.4'></a>
 
 # 0.1.4 — 2022-10-06
