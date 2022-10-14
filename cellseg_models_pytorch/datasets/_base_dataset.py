@@ -27,7 +27,8 @@ class TrainDatasetBase(Dataset):
         img_transforms: List[str],
         inst_transforms: List[str],
         normalization: str = None,
-        return_inst: bool = True,
+        return_inst: bool = False,
+        return_binary: bool = True,
         return_type: bool = True,
         return_sem: bool = False,
         return_weight: bool = False,
@@ -48,7 +49,9 @@ class TrainDatasetBase(Dataset):
             normalization : str, optional
                 Apply img normalization after all the transformations. One of "minmax",
                 "norm", "percentile", None.
-            return_inst : bool, default=True
+            return_inst : bool, default=False
+                If True, returns the instance labelled mask. (If the db contains these.)
+            return_binary : bool, default=True
                 If True, returns a binarized instance mask. (If the db contains these.)
             return_type : bool, default=True
                 If True, returns a type mask. (If the db contains these.)
@@ -79,6 +82,7 @@ class TrainDatasetBase(Dataset):
             )
 
         # Return masks
+        self.return_binary = return_binary
         self.return_inst = return_inst
         self.return_type = return_type
         self.return_sem = return_sem
@@ -89,7 +93,7 @@ class TrainDatasetBase(Dataset):
             img_transforms.append(NORM_TRANSFORMS[normalization]())
 
         inst_transforms = [INST_TRANSFORMS[tr](**kwargs) for tr in inst_transforms]
-        if return_inst:
+        if return_binary:
             inst_transforms.append(INST_TRANSFORMS["binarize"]())
 
         if return_weight:
@@ -142,10 +146,14 @@ class TrainDatasetBase(Dataset):
             out[n] = aux_map
 
         # remove redundant target (not needed in downstream).
+
         if self.return_inst:
-            out["inst"] = out["binary"]
-            del out["binary"]
+            out["inst_map"] = out["inst"]
         else:
             del out["inst"]
+
+        if self.return_binary:
+            out["inst"] = out["binary"]
+            del out["binary"]
 
         return out

@@ -21,7 +21,8 @@ class SegmentationFolderDataset(TrainDatasetBase):
         img_transforms: List[str],
         inst_transforms: List[str],
         normalization: str = None,
-        return_inst: bool = True,
+        return_inst: bool = False,
+        return_binary: bool = True,
         return_type: bool = True,
         return_sem: bool = False,
         return_weight: bool = False,
@@ -46,7 +47,9 @@ class SegmentationFolderDataset(TrainDatasetBase):
             normalization : str, optional
                 Apply img normalization after all the transformations. One of "minmax",
                 "norm", "percentile", None.
-            return_inst : bool, default=True
+            return_inst : bool, default=False
+                If True, returns the instance labelled mask. (If the db contains these.)
+            return_binary : bool, default=True
                 If True, returns a binarized instance mask. (If the db contains these.)
             return_type : bool, default=True
                 If True, returns a type mask. (If the db contains these.)
@@ -67,6 +70,7 @@ class SegmentationFolderDataset(TrainDatasetBase):
             return_type=return_type,
             return_sem=return_sem,
             return_weight=return_weight,
+            return_binary=return_binary,
             **kwargs,
         )
 

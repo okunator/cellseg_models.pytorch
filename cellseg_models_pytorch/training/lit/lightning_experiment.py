@@ -140,52 +140,66 @@ class SegmentationExperiment(pl.LightningModule):
         loss = self.criterion(yhats=soft_masks, targets=targets)
         metrics = self.compute_metrics(soft_masks, targets, phase)
 
+        if batch_idx % self.log_freq == 0:
+            ret_masks = soft_masks
+        elif phase == "test":
+            ret_masks = soft_masks
+        else:
+            ret_masks = None
+
         ret = {
-            "soft_masks": soft_masks if batch_idx % self.log_freq == 0 else None,
+            "soft_masks": ret_masks,
             "loss": loss,
         }
 
         return {**ret, **metrics}
 
+    def log_step(
+        self, batch: Dict[str, torch.Tensor], batch_idx: int, phase: str
+    ) -> Dict[str, torch.Tensor]:
+        """Do the logging."""
+        on_epoch = phase in ("val", "test")
+        on_step = phase == "train"
+        prog_bar = phase == "train"
+
+        res = self.step(batch, batch_idx, phase)
+
+        # log all the metrics
+        self.log(
+            f"{phase}_loss",
+            res["loss"],
+            prog_bar=prog_bar,
+            on_epoch=on_epoch,
+            on_step=on_step,
+        )
+
+        for k, val in res.items():
+            if k not in ("loss", "soft_masks"):
+                self.log(
+                    f"{phase}_{k}",
+                    val,
+                    prog_bar=prog_bar,
+                    on_epoch=on_epoch,
+                    on_step=on_step,
+                )
+
+        return res
+
     def training_step(
         self, batch: Dict[str, torch.Tensor], batch_idx: int
     ) -> Dict[str, torch.Tensor]:
         """Training step + train metric logs."""
-        res = self.step(batch, batch_idx, "train")
-
-        # log all the metrics
-        self.log("train_loss", res["loss"], prog_bar=True, on_epoch=False, on_step=True)
-        for k, val in res.items():
-            if k not in ("loss", "soft_masks"):
-                self.log(f"train_{k}", val, prog_bar=True, on_epoch=False, on_step=True)
-
-        return res
+        return self.log_step(batch, batch_idx, "train")
 
     def validation_step(
         self, batch: Dict[str, torch.Tensor], batch_idx: int
     ) -> Dict[str, torch.Tensor]:
         """Validate step + validation metric logs + example outputs for logging."""
-        res = self.step(batch, batch_idx, "val")
-
-        # log all the metrics
-        self.log("val_loss", res["loss"], prog_bar=False, on_epoch=True, on_step=False)
-        for k, val in res.items():
-            if k not in ("loss", "soft_masks"):
-                self.log(f"val_{k}", val, prog_bar=False, on_epoch=True, on_step=False)
-
-        return res
+        return self.log_step(batch, batch_idx, "val")
 
     def test_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> None:
         """Test step + test metric logs."""
-        res = self.step(batch, batch_idx, "test")
-
-        del res["soft_masks"]  # soft masks not needed for logging
-        loss = res.pop("loss")
-
-        # log all the metrics
-        self.log("test_loss", loss, prog_bar=False, on_epoch=True, on_step=False)
-        for k, val in res.items():
-            self.log(f"test_{k}", val, prog_bar=False, on_epoch=True, on_step=False)
+        return self.log_step(batch, batch_idx, "test")
 
     def compute_metrics(
         self,
