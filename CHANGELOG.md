@@ -1,11 +1,26 @@
+<a id='changelog-0.1.6'></a>
 
-<a id='changelog-0.1.4'></a>
-# 0.1.4 — 2022-10-07
+# 0.1.6 — 2022-10-14
+
+## Features
+
+- Add a Wandb artifact table callback for loading a table of test data metrics and insights to wandb.
+
+## Fixes
+
+- Symmetric CE loss fixed.
+
+- Add option to return binary and instance labelled mask from the dataloader. Previously binary was returned with `return_inst` flag which was confusing.
+- Fix the `SegmentationExperiment` to return preds and masks at test time.
+
+<a id='changelog-0.1.5'></a>
+
+# 0.1.5 — 2022-10-07
 
 ## Fixes
 
 - Wandb Callback bugs fixed.
-<a id='changelog-0.1.4'></a>
+  <a id='changelog-0.1.4'></a>
 
 # 0.1.4 — 2022-10-06
 
