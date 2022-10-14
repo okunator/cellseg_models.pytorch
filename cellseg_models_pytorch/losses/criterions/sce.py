@@ -81,24 +81,15 @@ class SCELoss(WeightedBaseLoss):
 
         cross_entropy = -torch.sum(forward, dim=1)  # to (B, H, W)
         reverse_cross_entropy = -torch.sum(reverse, dim=1)  # to (B, H, W)
-
-        if self.class_weights is not None:
-            cross_entropy = self.apply_class_weights(cross_entropy, target)
-            reverse_cross_entropy = self.apply_class_weights(
-                reverse_cross_entropy, target
-            )
-
-        if self.edge_weight is not None:
-            cross_entropy = self.apply_edge_weights(cross_entropy, target_weight)
-            reverse_cross_entropy = self.apply_edge_weights(
-                reverse_cross_entropy, target_weight
-            )
-
-        loss = (
-            self.alpha * cross_entropy.mean() + self.beta * reverse_cross_entropy.mean()
-        )
+        loss = self.alpha * cross_entropy + self.beta * reverse_cross_entropy
 
         if self.apply_sd:
             loss = self.apply_spectral_decouple(loss, yhat)
 
-        return loss
+        if self.class_weights is not None:
+            loss = self.apply_class_weights(loss, target)
+
+        if self.edge_weight is not None:
+            loss = self.apply_edge_weights(loss, target_weight)
+
+        return loss.mean()
