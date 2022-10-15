@@ -73,8 +73,15 @@ class SCELoss(WeightedBaseLoss):
         yhat_soft = F.softmax(yhat, dim=1) + self.eps
         assert target_one_hot.shape == yhat.shape
 
-        yhat = torch.clamp(yhat_soft, min=1e-7, max=1.0)
-        target_one_hot = torch.clamp(target_one_hot, min=1e-4, max=1.0)
+        if self.apply_svls:
+            target_one_hot = self.apply_svls_to_target(
+                target_one_hot, num_classes, **kwargs
+            )
+
+        if self.apply_ls:
+            target_one_hot = self.apply_ls_to_target(
+                target_one_hot, num_classes, **kwargs
+            )
 
         forward = target_one_hot * torch.log(yhat_soft)
         reverse = yhat_soft * torch.log(target_one_hot)
