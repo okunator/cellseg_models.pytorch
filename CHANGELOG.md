@@ -1,3 +1,10 @@
+
+<a id='changelog-0.1.7'></a>
+# 0.1.7 — 2022-10-15
+
+## Fixes
+
+- Fix SCE loss bug.
 <a id='changelog-0.1.6'></a>
 
 # 0.1.6 — 2022-10-14
