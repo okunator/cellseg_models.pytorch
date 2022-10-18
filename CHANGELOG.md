@@ -1,4 +1,13 @@
 
+<a id='changelog-0.1.8'></a>
+# 0.1.8 — 2022-10-18
+
+## Features
+
+- Support to return all of the feature maps from each decoder stage.
+
+- Add multi-gpu inference via DataParallel
+
 <a id='changelog-0.1.7'></a>
 # 0.1.7 — 2022-10-15
 
