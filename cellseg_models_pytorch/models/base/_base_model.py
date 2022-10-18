@@ -10,17 +10,38 @@ __all__ = ["BaseMultiTaskSegModel"]
 
 
 class BaseMultiTaskSegModel(nn.ModuleDict):
+    def forward_encoder(self, x: torch.Tensor) -> List[torch.Tensor]:
+        """Forward the model encoder."""
+        self._check_input_shape(x)
+        feats = self.encoder(x)
+
+        return feats
+
+    def forward_style(self, feat: torch.Tensor) -> torch.Tensor:
+        """Forward the style domain adaptation layer.
+
+        NOTE: returns None if style channels are not given at model init.
+        """
+        style = None
+        if self.make_style is not None:
+            style = self.make_style(feat)
+
+        return style
+
     def forward_dec_features(
         self, feats: List[torch.Tensor], style: torch.Tensor = None
-    ) -> Dict[str, torch.Tensor]:
-        """Forward pass of the decoders in a multi-task seg model."""
+    ) -> Dict[str, List[torch.Tensor]]:
+        """Forward pass of all the decoder features mappings in the model.
+
+        NOTE: returns all the features from diff decoder stages in a list.
+        """
         res = {}
         decoders = [k for k in self.keys() if "decoder" in k]
 
         for dec in decoders:
-            x = self[dec](*feats, style=style)
+            featlist = self[dec](*feats, style=style)
             branch = dec.split("_")[0]
-            res[branch] = x
+            res[branch] = featlist
 
         return res
 
@@ -30,10 +51,9 @@ class BaseMultiTaskSegModel(nn.ModuleDict):
         """Forward pass of the seg heads in a multi-task seg model."""
         res = {}
         heads = [k for k in self.keys() if "head" in k]
-
         for head in heads:
             branch = head.split("_")[0]
-            x = self[head](dec_feats[branch])
+            x = self[head](dec_feats[branch][-1])  # the last decoder stage feat map
             res[branch] = x
 
         return res

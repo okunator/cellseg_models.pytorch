@@ -36,9 +36,9 @@ def test_decoder_fwdbwd(long_skip, merge_policy):
     x = [torch.rand([1, enc_channels[i], out_dims[i], out_dims[i]]) for i in range(5)]
     out = decoder(*x)
 
-    out.mean().backward()
+    out[-1].mean().backward()
 
-    assert out.shape[1] == decoder.out_channels
+    assert out[-1].shape[1] == decoder.out_channels
 
 
 @pytest.mark.slow
@@ -163,6 +163,6 @@ def test_decoder_fwdbwd_all(
     x = [torch.rand([1, enc_channels[i], out_dims[i], out_dims[i]]) for i in range(5)]
     out = decoder(*x)
 
-    out.mean().backward()
+    out[-1].mean().backward()
 
-    assert out.shape[1] == decoder.out_channels
+    assert out[-1].shape[1] == decoder.out_channels

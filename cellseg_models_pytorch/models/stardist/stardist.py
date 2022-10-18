@@ -209,20 +209,17 @@ class StarDistUnet(BaseMultiTaskSegModel):
 
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         """Forward pass of Stardist."""
-        self._check_input_shape(x)
-
-        feats = self.encoder(x)
-
-        style = None
-        if self.make_style is not None:
-            style = self.make_style(feats[0])
+        feats = self.forward_encoder(x)
+        style = self.forward_style(feats[0])
 
         dec_feats = self.forward_dec_features(feats, style)
         # Extra convs after decoders
         for e in self.extra_convs.keys():
             for extra_conv in self.extra_convs[e].keys():
                 k = self.aux_key if extra_conv not in dec_feats.keys() else extra_conv
-                dec_feats[extra_conv] = self[f"{extra_conv}_features"](dec_feats[k])
+                dec_feats[extra_conv] = [
+                    self[f"{extra_conv}_features"](dec_feats[k][-1])
+                ]  # use last decoder feat
 
         # seg heads
         for decoder_name in self.heads.keys():

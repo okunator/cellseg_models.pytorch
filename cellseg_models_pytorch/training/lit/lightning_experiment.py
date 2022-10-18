@@ -74,7 +74,7 @@ class SegmentationExperiment(pl.LightningModule):
                 Params dict for the scheduler. Refer to torch lr_scheduler docs
                 for the possible scheduler arguments.
             log_freq : int, default=100
-                Return soft masks every every n batches for callbacks and logging.
+                Return logs every n batches in logging callbacks.
 
         Raises
         ------

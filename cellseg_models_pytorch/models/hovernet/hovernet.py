@@ -194,13 +194,8 @@ class HoverNet(BaseMultiTaskSegModel):
 
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         """Forward pass of HoVer-Net."""
-        self._check_input_shape(x)
-
-        feats = self.encoder(x)
-
-        style = None
-        if self.make_style is not None:
-            style = self.make_style(feats[0])
+        feats = self.forward_encoder(x)
+        style = self.forward_style(feats[0])
 
         dec_feats = self.forward_dec_features(feats, style)
         out = self.forward_heads(dec_feats)

@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -77,13 +77,14 @@ class Decoder(nn.ModuleDict):
 
         self.out_channels = decoder_block.out_channels
 
-    def forward(
-        self, *features: Tuple[torch.Tensor], style: torch.Tensor = None
-    ) -> torch.Tensor:
-        """Forward pass of the decoder."""
+    def forward_features(
+        self, features: Tuple[torch.Tensor], style: torch.Tensor = None
+    ) -> List[torch.Tensor]:
+        """Forward pass of the decoder. Returns all the decoder stage feats."""
         head = features[0]
         skips = features[1:]
         extra_skips = [head] if self.long_skip == "unet3p" else []
+        ret_feats = []
 
         x = head
         for _, decoder_stage in enumerate(self.values()):
@@ -96,4 +97,14 @@ class Decoder(nn.ModuleDict):
             elif self.long_skip == "unet3p":
                 extra_skips.append(x)
 
-        return x
+            ret_feats.append(x)
+
+        return ret_feats
+
+    def forward(
+        self, *features: Tuple[torch.Tensor], style: torch.Tensor = None
+    ) -> torch.Tensor:
+        """Forward pass of the decoder."""
+        dec_feats = self.forward_features(features, style)
+
+        return dec_feats

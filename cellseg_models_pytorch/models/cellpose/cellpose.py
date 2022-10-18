@@ -201,14 +201,8 @@ class CellPoseUnet(BaseMultiTaskSegModel):
 
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         """Forward pass of Cellpose U-net."""
-        self._check_input_shape(x)
-
-        feats = self.encoder(x)
-
-        style = None
-        if self.make_style is not None:
-            style = self.make_style(feats[0])
-
+        feats = self.forward_encoder(x)
+        style = self.forward_style(feats[0])
         dec_feats = self.forward_dec_features(feats, style)
 
         for decoder_name in self.heads.keys():
