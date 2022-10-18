@@ -24,6 +24,7 @@ class SlidingWindowInferer(BaseInferer):
         batch_size: int = 8,
         normalization: str = None,
         device: str = "cuda",
+        n_devices: int = 1,
         save_masks: bool = True,
         save_intermediate: bool = False,
         save_dir: Union[Path, str] = None,
@@ -71,6 +72,9 @@ class SlidingWindowInferer(BaseInferer):
                 "minmax", "norm", "percentile", None.
             device : str, default="cuda"
                 The device of the input and model. One of: "cuda", "cpu"
+            n_devices : int, default=1
+                Number of devices (cpus/gpus) used for inference.
+                The model will be copied into these devices.
             save_masks : bool, default=False
                 If True, the resulting segmentation masks will be saved into `out_masks`
                 variable.
@@ -110,6 +114,7 @@ class SlidingWindowInferer(BaseInferer):
             save_dir=save_dir,
             checkpoint_path=checkpoint_path,
             n_images=n_images,
+            n_devices=n_devices,
             type_post_proc=type_post_proc,
             sem_post_proc=sem_post_proc,
             **postproc_kwargs,

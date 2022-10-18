@@ -184,11 +184,15 @@ class Predictor:
         if apply_weights:
             # work out the tensor shape first for the weight mat
             B, C = patch.shape[:2]
-            W = torch.repeat_interleave(
-                self.weight_mat,
-                dim=1,
-                repeats=C,
-            ).repeat_interleave(repeats=B, dim=0)
+            W = (
+                torch.repeat_interleave(
+                    self.weight_mat,
+                    dim=1,
+                    repeats=C,
+                )
+                .repeat_interleave(repeats=B, dim=0)
+                .to(patch.device)
+            )
             patch *= W
 
         # apply classification activation

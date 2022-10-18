@@ -7,6 +7,7 @@ from typing import Callable, Dict, List, Tuple, Union
 import numpy as np
 import torch
 import torch.nn as nn
+import yaml
 from pathos.multiprocessing import ThreadPool as Pool
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -31,6 +32,7 @@ class BaseInferer(ABC):
         batch_size: int = 8,
         normalization: str = None,
         device: str = "cuda",
+        n_devices: int = 1,
         save_masks: bool = True,
         save_intermediate: bool = False,
         save_dir: Union[Path, str] = None,
@@ -72,6 +74,9 @@ class BaseInferer(ABC):
                 One of: "dataset", "minmax", "norm", "percentile", None.
             device : str, default="cuda"
                 The device of the input and model. One of: "cuda", "cpu"
+            n_devices : int, default=1
+                Number of devices (cpus/gpus) used for inference.
+                The model will be copied into these devices.
             save_masks : bool, default=False
                 If True, the resulting segmentation masks will be saved into `out_masks`
                 variable.
@@ -95,6 +100,16 @@ class BaseInferer(ABC):
             **postproc_kwargs:
                 Arbitrary keyword arguments for the post-processing.
         """
+        # basic inits
+        self.model = model
+        self.out_heads = self._get_out_info()  # the names and num channels of out heads
+        self.batch_size = batch_size
+        self.patch_size = patch_size
+        self.padding = padding
+        self.out_activations = out_activations
+        self.out_boundary_weights = out_boundary_weights
+        self.head_kwargs = self._check_and_set_head_args()
+
         self.save_dir = Path(save_dir) if save_dir is not None else None
         self.save_masks = save_masks
         self.save_intermediate = save_intermediate
@@ -106,17 +121,17 @@ class BaseInferer(ABC):
             folder_ds, batch_size=batch_size, shuffle=False, pin_memory=True
         )
 
-        # model and device
-        self.model = model
-        if device == "cpu":
-            self.model.cpu()
-            self.device = torch.device("cpu")
-        if torch.cuda.is_available() and device == "cuda":
-            self.model.cuda()
-            self.device = torch.device("cuda")
+        # Set post processor
+        self.postprocessor = PostProcessor(
+            instance_postproc,
+            inst_key=self.model.inst_key,
+            aux_key=self.model.aux_key,
+            type_post_proc=type_post_proc,
+            sem_post_proc=sem_post_proc,
+            **postproc_kwargs,
+        )
 
-        self.model.eval()
-
+        # load weights and set devices
         if checkpoint_path is not None:
             ckpt = torch.load(
                 checkpoint_path, map_location=lambda storage, loc: storage
@@ -130,30 +145,41 @@ class BaseInferer(ABC):
             except BaseException as e:
                 print(e)
 
-        #
+        assert device in ("cuda", "cpu")
+        if device == "cpu":
+            self.device = torch.device("cpu")
+        if torch.cuda.is_available() and device == "cuda":
+            self.device = torch.device("cuda")
+
+            if torch.cuda.device_count() > 1 and n_devices > 1:
+                self.model = nn.DataParallel(self.model, device_ids=range(n_devices))
+
+        self.model.to(self.device)
+        self.model.eval()
+
+        # Helper class to perform forward + extra processing
         self.predictor = Predictor(
             model=self.model,
             patch_size=patch_size,
             normalization=normalization,
             device=self.device,
         )
-        self.out_heads = self._get_out_info()  # the names and num channels of out heads
-        self.batch_size = batch_size
-        self.patch_size = patch_size
-        self.padding = padding
-        self.out_activations = out_activations
-        self.out_boundary_weights = out_boundary_weights
-        self.head_kwargs = self._check_and_set_head_args()
 
-        #
-        self.postprocessor = PostProcessor(
-            instance_postproc,
-            inst_key=self.model.inst_key,
-            aux_key=self.model.aux_key,
-            type_post_proc=type_post_proc,
-            sem_post_proc=sem_post_proc,
-            **postproc_kwargs,
-        )
+    @classmethod
+    def from_yaml(cls, model: nn.Module, yaml_path: str):
+        """Initialize the inferer from a yaml-file.
+
+        Parameters
+        ----------
+            model : nn.Module
+                Initialized segmentation model.
+            yaml_path : str
+                Path to the yaml file containing rest of the params
+        """
+        with open(yaml_path, "r") as stream:
+            kwargs = yaml.full_load(stream)
+
+        return cls(model, **kwargs)
 
     @abstractmethod
     def _infer_batch(self):
