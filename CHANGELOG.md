@@ -1,5 +1,17 @@
+<a id='changelog-0.1.9'></a>
+
+# 0.1.9 — 2022-10-21
+
+## Refactor
+
+- Moved saving utilities to `FileHandler` and updated tests.
+
+## Features
+
+- Added geojson saving support for inference
 
 <a id='changelog-0.1.8'></a>
+
 # 0.1.8 — 2022-10-18
 
 ## Features
@@ -9,12 +21,13 @@
 - Add multi-gpu inference via DataParallel
 
 <a id='changelog-0.1.7'></a>
+
 # 0.1.7 — 2022-10-15
 
 ## Fixes
 
 - Fix SCE loss bug.
-<a id='changelog-0.1.6'></a>
+  <a id='changelog-0.1.6'></a>
 
 # 0.1.6 — 2022-10-14
 
