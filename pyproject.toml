@@ -24,7 +24,6 @@ numba = "^0.55.2"
 tqdm = "^4.64.0"
 scikit-learn = "^1.0.2"
 pytorch-lightning = {version = "^1.6.0", optional = true}
-torch-optimizer = {version = "^0.3.0", optional = true}
 tables = {version = "^3.6.0", optional = true}
 albumentations = {version = "^1.0.0", optional = true}
 requests = {version = "^2.28.0", optional = true}
@@ -38,7 +37,6 @@ all = [
     "requests",
     "albumentations",
     "geojson",
-    "torch-optimizer",
     "torchmetrics"
 ]
 

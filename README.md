@@ -5,7 +5,7 @@
 **Python library for 2D cell/nuclei instance segmentation models written with [PyTorch](https://pytorch.org/).**
 
 [![Generic badge](https://img.shields.io/badge/License-MIT-<COLOR>.svg?style=for-the-badge)](https://github.com/okunator/cellseg_models.pytorch/blob/master/LICENSE)
-[![PyTorch - Version](https://img.shields.io/badge/PYTORCH-1.8+-red?style=for-the-badge&logo=pytorch)](https://pytorch.org/)
+[![PyTorch - Version](https://img.shields.io/badge/PYTORCH-1.8.1+-red?style=for-the-badge&logo=pytorch)](https://pytorch.org/)
 [![Python - Version](https://img.shields.io/badge/PYTHON-3.7+-red?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 <br>
 [![Github Test](https://img.shields.io/github/workflow/status/okunator/cellseg_models.pytorch/Tests?label=Tests&logo=github&style=for-the-badge)](https://github.com/okunator/cellseg_models.pytorch/actions/workflows/tests.yml)
@@ -51,10 +51,9 @@ pip install cellseg-models-pytorch[all]
 - Pre-trained backbones/encoders from the [timm](https://github.com/rwightman/pytorch-image-models) library.
 - All the architectures can be augmented to output semantic segmentation outputs along with instance semgentation outputs (panoptic segmentation).
 - A lot of flexibility to modify the components of the model architectures.
-- Optimized inference methods.
+- Multi-GPU inference.
 - Popular training losses and benchmarking metrics.
 - Simple model training with [pytorch-lightning](https://www.pytorchlightning.ai/).
-- Popular optimizers for training (provided by [pytorch-optimizer](https://github.com/jettify/pytorch-optimizer)).
 
 ## Models
 
@@ -85,10 +84,10 @@ pip install cellseg-models-pytorch[all]
 import cellseg_models_pytorch as csmp
 import torch
 
-model = csmp.models.cellpose_base(type_classes=5) # num of cell types in training data=5.
+model = csmp.models.cellpose_base(type_classes=5)
 x = torch.rand([1, 3, 256, 256])
 
-# NOTE: these outputs still need post-processing to obtain instance segmentation masks.
+# NOTE: the outputs still need post-processing.
 y = model(x) # {"cellpose": [1, 2, 256, 256], "type": [1, 5, 256, 256]}
 ```
 
@@ -98,10 +97,10 @@ y = model(x) # {"cellpose": [1, 2, 256, 256], "type": [1, 5, 256, 256]}
 import cellseg_models_pytorch as csmp
 import torch
 
-model = csmp.models.cellpose_plus(type_classes=5, sem_classes=3) # num cell types and tissue types
+model = csmp.models.cellpose_plus(type_classes=5, sem_classes=3)
 x = torch.rand([1, 3, 256, 256])
 
-# NOTE: these outputs still need post-processing to obtain instance and semantic segmentation masks.
+# NOTE: the outputs still need post-processing.
 y = model(x) # {"cellpose": [1, 2, 256, 256], "type": [1, 5, 256, 256], "sem": [1, 3, 256, 256]}
 ```
 
@@ -110,27 +109,37 @@ y = model(x) # {"cellpose": [1, 2, 256, 256], "type": [1, 5, 256, 256], "sem": [
 ```python
 import cellseg_models_pytorch as csmp
 
+# two decoder branches.
+decoders = ("cellpose", "sem")
+
+# three segmentation heads from the decoders.
+heads = {
+    "cellpose": {"cellpose": 2, "type": 5},
+    "sem": {"sem": 3}
+}
+
 model = csmp.CellPoseUnet(
-    decoders=("cellpose", "sem"), # cellpose and semantic decoders
-    heads={"cellpose": {"cellpose": 2, "type": 5}, "sem": {"sem": 3}}, # three output heads
-    depth=5, # encoder depth
-    out_channels=(256, 128, 64, 32, 16), # number of out channels at each decoder stage
-    layer_depths=(4, 4, 4, 4, 4), # number of conv blocks at each decoder layer
-    style_channels=256, # Number of style vector channels
-    enc_name="resnet50", # timm encoder
-    enc_pretrain=True, # imagenet pretrained encoder
-    long_skip="unetpp", # use unet++ long skips. ("unet", "unetpp", "unet3p")
-    merge_policy="sum", # ("cat", "sum")
-    short_skip="residual", # residual short skips. ("basic", "residual", "dense")
-    normalization="bcn", # batch-channel-normalization. ("bcn", "bn", "gn", "ln", "in")
-    activation="gelu", # gelu activation instead of relu. Several options for this.
-    convolution="wsconv", # weight standardized conv. ("wsconv", "conv", "scaled_wsconv")
-    attention="se", # squeeze-and-excitation attention. ("se", "gc", "scse", "eca")
-    pre_activate=False, # normalize and activation after convolution.
+    decoders=decoders,                   # cellpose and semantic decoders
+    heads=heads,                         # three output heads
+    depth=5,                             # encoder depth
+    out_channels=(256, 128, 64, 32, 16), # num out channels at each decoder stage
+    layer_depths=(4, 4, 4, 4, 4),        # num of conv blocks at each decoder layer
+    style_channels=256,                  # num of style vector channels
+    enc_name="resnet50",                 # timm encoder
+    enc_pretrain=True,                   # imagenet pretrained encoder
+    long_skip="unetpp",                  # unet++ long skips ("unet", "unetpp", "unet3p")
+    merge_policy="sum",                  # concatenate long skips ("cat", "sum")
+    short_skip="residual",               # residual short skips ("basic", "residual", "dense")
+    normalization="bcn",                 # batch-channel-normalization.
+    activation="gelu",                   # gelu activation.
+    convolution="wsconv",                # weight standardized conv.
+    attention="se",                      # squeeze-and-excitation attention.
+    pre_activate=False,                  # normalize and activation after convolution.
 )
 
 x = torch.rand([1, 3, 256, 256])
-# NOTE: these outputs still need post-processing to obtain instance and semantic segmentation masks.
+
+# NOTE: the outputs still need post-processing.
 y = model(x) # {"cellpose": [1, 2, 256, 256], "type": [1, 5, 256, 256], "sem": [1, 3, 256, 256]}
 ```
 
@@ -142,13 +151,20 @@ import cellseg_models_pytorch as csmp
 model = csmp.models.hovernet_base(type_classes=5)
 # returns {"hovernet": [B, 2, H, W], "type": [B, 5, H, W], "inst": [B, 2, H, W]}
 
+# the final activations for each model output
+out_activations = {"hovernet": "tanh", "type": "softmax", "inst": "softmax"}
+
+# models perform the poorest at the image boundaries, with overlapping patches this
+# causes issues which can be overcome by adding smoothing to the prediction boundaries
+out_boundary_weights = {"hovernet": True, "type": False, "inst": False}
+
 # Sliding window inference for big images using overlapping patches
 inferer = csmp.inference.SlidingWindowInferer(
     model=model,
     input_folder="/path/to/images/",
     checkpoint_path="/path/to/model/weights/",
-    out_activations={"hovernet": "tanh", "type": "softmax", "inst": "softmax"},
-    out_boundary_weights={"hovernet": True, "type": False, "inst": False}, # smooths boundary effects
+    out_activations=out_activations,
+    out_boundary_weights=out_boundary_weights,
     instance_postproc="hovernet", # THE POST-PROCESSING METHOD
     patch_size=(256, 256),
     stride=128,
@@ -157,7 +173,8 @@ inferer = csmp.inference.SlidingWindowInferer(
     normalization="percentile", # same normalization as in training
 )
 
-inferer.infer() # Run sliding window inference.
+# Run sliding window inference.
+inferer.infer()
 
 inferer.out_masks
 # {"image1" :{"inst": [H, W], "type": [H, W]}, ..., "imageN" :{"inst": [H, W], "type": [H, W]}}
