@@ -1,10 +1,18 @@
 
-<a id='changelog-0.1.9'></a>
-# 0.1.9 — 2022-10-21
+<a id='changelog-0.1.11'></a>
+# 0.1.11 — 2022-10-21
+
+## Removed
+
+- unnecessary torchvision dependency
+<a id='changelog-0.1.10'></a>
+
+# 0.1.10 — 2022-10-21
 
 ## Removed
 
 - torch-optimizer removed from the optional dependency list. Started to cause headache.
+
 <a id='changelog-0.1.9'></a>
 
 # 0.1.9 — 2022-10-21
