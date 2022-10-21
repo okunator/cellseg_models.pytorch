@@ -355,7 +355,7 @@ def test_conoturs(img_patch_dir, mask_patch_dir, func, fill_contours, classes, c
     mask_path = sorted(mask_patch_dir.glob("*"))[0]
 
     img = FileHandler.read_img(im_path)
-    masks = FileHandler.read_mask(mask_path, return_all=True)
+    masks = FileHandler.read_mat(mask_path, return_all=True)
     cont = func(
         masks["inst_map"],
         img,

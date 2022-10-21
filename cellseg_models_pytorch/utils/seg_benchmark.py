@@ -234,8 +234,8 @@ class BenchMarker:
 
         masks = []
         for truef, predf in zip(trues, preds):
-            true = FileHandler.read_mask(truef, return_all=True)
-            pred = FileHandler.read_mask(predf, return_all=True)
+            true = FileHandler.read_mat(truef, return_all=True)
+            pred = FileHandler.read_mat(predf, return_all=True)
             name = truef.name
             masks.append((true, pred, name))
 

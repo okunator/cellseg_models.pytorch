@@ -86,7 +86,7 @@ class BaseWriter(ABC):
         """Read one image and corresponding masks and do tiling on them."""
         # im, masks = self._get_arrays()
         im = FileHandler.read_img(img_path)
-        masks = FileHandler.read_mask(mask_path, return_all=True)
+        masks = FileHandler.read_mat(mask_path, return_all=True)
 
         if pre_proc is not None:
             masks = pre_proc(masks)

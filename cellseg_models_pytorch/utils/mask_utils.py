@@ -195,7 +195,9 @@ def fix_duplicates(inst_map: np.ndarray) -> np.ndarray:
     """
     current_max_id = np.amax(inst_map)
     inst_list = list(np.unique(inst_map))
-    inst_list.remove(0)  # 0 is background
+    if 0 in inst_list:
+        inst_list.remove(0)
+
     for inst_id in inst_list:
         inst = np.array(inst_map == inst_id, np.uint8)
         remapped_ids = ndi.label(inst)[0]

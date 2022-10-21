@@ -115,7 +115,7 @@ def test_postproc_dran(inst_map):
 
 def test_postproc_stardist(mask_patch_dir):
     mask_path = sorted(mask_patch_dir.glob("*"))[0]
-    inst_map = FileHandler.read_mask(mask_path)
+    inst_map = FileHandler.read_mat(mask_path)
     stardist = gen_stardist_maps(inst_map, 32)
     dist = gen_dist_maps(inst_map)
     rebuild = post_proc_stardist(dist, stardist)

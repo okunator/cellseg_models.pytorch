@@ -136,7 +136,7 @@ class SegmentationFolderDataset(TrainDatasetBase):
         """
         out = OrderedDict()
         out["image"] = FileHandler.read_img(self.fnames_imgs[ix])
-        masks = FileHandler.read_mask(self.fnames_masks[ix], return_all=True)
+        masks = FileHandler.read_mat(self.fnames_masks[ix], return_all=True)
 
         try:
             out["inst"] = masks["inst_map"]
