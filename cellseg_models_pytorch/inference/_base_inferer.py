@@ -1,3 +1,4 @@
+import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from itertools import chain
@@ -8,12 +9,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 import yaml
-from pathos.multiprocessing import ThreadPool as Pool
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from ..utils import tensor_to_ndarray
-from ..utils.save_utils import mask2mat
+from ..utils import FileHandler, tensor_to_ndarray
 from .folder_dataset import FolderDataset
 from .post_processor import PostProcessor
 from .predictor import Predictor
@@ -33,14 +32,14 @@ class BaseInferer(ABC):
         normalization: str = None,
         device: str = "cuda",
         n_devices: int = 1,
-        save_masks: bool = True,
         save_intermediate: bool = False,
         save_dir: Union[Path, str] = None,
+        save_format: str = ".mat",
         checkpoint_path: Union[Path, str] = None,
         n_images: int = None,
         type_post_proc: Callable = None,
         sem_post_proc: Callable = None,
-        **postproc_kwargs,
+        **kwargs,
     ) -> None:
         """Inference for an image folder.
 
@@ -77,16 +76,14 @@ class BaseInferer(ABC):
             n_devices : int, default=1
                 Number of devices (cpus/gpus) used for inference.
                 The model will be copied into these devices.
-            save_masks : bool, default=False
-                If True, the resulting segmentation masks will be saved into `out_masks`
-                variable.
-            save_intermediate : bool, default=False
-                If True, intermediate soft masks will be saved into `soft_masks` var.
             save_dir : bool, optional
                 Path to save directory. If None, no masks will be saved to disk as .mat
-                files. If not None, overrides `save_masks`, thus for every batch the
-                segmentation results are saved into disk and the intermediate results
-                are flushed.
+                or .json files. Instead the masks will be saved in `self.out_masks`.
+            save_intermediate : bool, default=False
+                If True, intermediate soft masks will be saved into `soft_masks` var.
+            save_format : str, default=".mat"
+                The file format for the saved output masks. One of (".mat", ".json").
+                The ".json" option will save masks into geojson format.
             checkpoint_path : Path | str, optional
                 Path to the model weight checkpoints.
             n_images : int, optional
@@ -97,8 +94,8 @@ class BaseInferer(ABC):
             sem_post_proc : Callable, optional
                 A post-processing function for the semantc seg maps. If not None,
                 overrides the default.
-            **postproc_kwargs:
-                Arbitrary keyword arguments for the post-processing.
+            **kwargs:
+                Arbitrary keyword arguments expecially for post-processing and saving.
         """
         # basic inits
         self.model = model
@@ -109,14 +106,25 @@ class BaseInferer(ABC):
         self.out_activations = out_activations
         self.out_boundary_weights = out_boundary_weights
         self.head_kwargs = self._check_and_set_head_args()
+        self.kwargs = kwargs
 
         self.save_dir = Path(save_dir) if save_dir is not None else None
-        self.save_masks = save_masks
         self.save_intermediate = save_intermediate
+        self.save_format = save_format
 
         # dataloader
         self.path = Path(input_folder)
+
         folder_ds = FolderDataset(self.path, n_images=n_images)
+        if self.save_dir is None and len(folder_ds.fnames) > 40:
+            warnings.warn(
+                "`save_dir` is None. Thus, the outputs are be saved in `out_masks` "
+                "class variable. If the input folder contains many images, running "
+                "inference will likely flood the memory depending on the size and "
+                "number of the images. Consider saving outputs to disk by providing "
+                "`save_dir` argument."
+            )
+
         self.dataloader = DataLoader(
             folder_ds, batch_size=batch_size, shuffle=False, pin_memory=True
         )
@@ -128,7 +136,7 @@ class BaseInferer(ABC):
             aux_key=self.model.aux_key,
             type_post_proc=type_post_proc,
             sem_post_proc=sem_post_proc,
-            **postproc_kwargs,
+            **kwargs,
         )
 
         # load weights and set devices
@@ -188,10 +196,16 @@ class BaseInferer(ABC):
     def infer(self) -> None:
         """Run inference and post-processing for the images.
 
-        NOTE: Saves outputs in `self.out_masks` or to disk (.mat) files.
-
-        `self.out_masks` is a nested dict: E.g.
-            {"image1": {"inst": [H, W], "type": [H, W], "sem": [H, W]}}
+        NOTE:
+        - Saves outputs in `self.out_masks` or to disk (.mat/.json) files.
+        - If `save_intermediate` is set to True, also intermiediate model outputs are
+            saved to `self.soft_masks`
+        - `self.out_masks` and `self.soft_masks` are nested dicts: E.g.
+                {"sample1": {"inst": [H, W], "type": [H, W], "sem": [H, W]}}
+        - If masks are saved to geojson .json files, more key word arguments
+            need to be given at class initialization. Namely: `geo_format`,
+            `classes_type`, `classes_sem`, `offsets`. See more in the
+            `FileHandler.save_masks` docs.
         """
         self.soft_masks = {}
         self.out_masks = {}
@@ -223,89 +237,25 @@ class BaseInferer(ABC):
                             self.soft_masks[n] = m
 
                     if self.save_dir is None:
-                        if self.save_masks:
-                            for n, m in zip(names, seg_results):
-                                self.out_masks[n] = m
+                        for n, m in zip(names, seg_results):
+                            self.out_masks[n] = m
                     else:
                         loader.set_postfix_str("Saving results to disk")
                         if self.batch_size > 1:
-                            self.save_parallel(seg_results, names, self.save_dir)
+                            fnames = [Path(self.save_dir) / n for n in names]
+                            FileHandler.save_masks_parallel(
+                                maps=seg_results,
+                                fnames=fnames,
+                                **{**self.kwargs, "format": self.save_format},
+                            )
                         else:
                             for n, m in zip(names, seg_results):
-                                self.save_mask(m, n, self.save_dir)
-
-    @staticmethod
-    def save_mask(
-        maps: Dict[str, np.ndarray],
-        fname: str,
-        save_dir: Union[str, Path],
-        format: str = ".mat",
-    ) -> None:
-        """Save model outputs to .mat or geojson.
-
-        Parameters
-        ----------
-            maps : Dict[str, np.ndarray]
-                model output names mapped to model outputs.
-                E.g. {"sem": np.ndarray, "type": np.ndarray, "inst": np.ndarray}
-            fname : str
-                Name for the output-file.
-            save_dir : Path or str
-                Path to the save directory.
-            format : str
-                One of ".mat" or "geojson"
-        """
-        allowed = (".mat", ".json")
-        if format not in allowed:
-            raise ValueError(
-                f"Illegal file-format. Got: {format}. Allowed formats: {allowed}"
-            )
-
-        if format == ".mat":
-            mask2mat(fname, save_dir, **maps)
-        else:
-            pass
-
-        return True
-
-    @staticmethod
-    def save_parallel(
-        maps: List[Dict[str, np.ndarray]],
-        fnames: List[str],
-        save_dir: Union[Path, str],
-        format: str = ".mat",
-        progress_bar: bool = False,
-    ) -> None:
-        """Save the model output masks to a folder. (multi-threaded).
-
-        Parameters
-        ----------
-            maps : List[Dict[str, np.ndarray]]
-                The model output map dictionaries in a list.
-            fnames : List[str]
-                Name for the output-files. (In the same order with `maps`)
-            save_dir : Path or str
-                Path to the save directory.
-            format : str
-                One of ".mat" or "geojson"
-            progress_bar : bool, default=False
-                If True, a tqdm progress bar is shown.
-        """
-        args = tuple(zip(maps, fnames, [save_dir] * len(maps), [format] * len(maps)))
-
-        with Pool() as pool:
-            if progress_bar:
-                it = tqdm(pool.imap(BaseInferer._save_mask, args), total=len(maps))
-            else:
-                it = pool.imap(BaseInferer._save_mask, args)
-
-            for _ in it:
-                pass
-
-    @staticmethod
-    def _save_mask(args: Tuple[Dict[str, np.ndarray], str, str]) -> None:
-        """Unpacks the args for `save_mask` to enable multi-threading."""
-        return BaseInferer.save_mask(*args)
+                                fname = Path(self.save_dir) / n
+                                FileHandler.save_masks(
+                                    fname=fname,
+                                    maps=m,
+                                    **{**self.kwargs, "format": self.save_format},
+                                )
 
     def _strip_state_dict(self, ckpt: Dict) -> OrderedDict:
         """Strip te first 'model.' (generated by lightning) from the state dict keys."""

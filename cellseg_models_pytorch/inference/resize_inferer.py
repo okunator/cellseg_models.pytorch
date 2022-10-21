@@ -22,14 +22,14 @@ class ResizeInferer(BaseInferer):
         normalization: str = None,
         device: str = "cuda",
         n_devices: int = 1,
-        save_masks: bool = True,
         save_intermediate: bool = False,
         save_dir: Union[Path, str] = None,
+        save_format: str = ".mat",
         checkpoint_path: Union[Path, str] = None,
         n_images: int = None,
         type_post_proc: Callable = None,
         sem_post_proc: Callable = None,
-        **postproc_kwargs,
+        **kwargs,
     ) -> None:
         """Resize inference for a folder of images.
 
@@ -73,16 +73,13 @@ class ResizeInferer(BaseInferer):
             n_devices : int, default=1
                 Number of devices (cpus/gpus) used for inference.
                 The model will be copied into these devices.
-            save_masks : bool, default=False
-                If True, the resulting segmentation masks will be saved into `out_masks`
-                variable.
             save_intermediate : bool, default=False
                 If True, intermediate soft masks will be saved into `soft_masks` var.
-            save_dir : bool, optional
-                Path to save directory. If None, no masks will be saved to disk as .mat
-                files. If not None, overrides `save_masks`, thus for every batch the
-                segmentation results are saved into disk and the intermediate results
-                are flushed.
+            save_intermediate : bool, default=False
+                If True, intermediate soft masks will be saved into `soft_masks` var.
+            save_format : str, default=".mat"
+                The file format for the saved output masks. One of (".mat", ".json").
+                The ".json" option will save masks into geojson format.
             checkpoint_path : Path | str, optional
                 Path to the model weight checkpoints.
             n_images : int, optional
@@ -93,8 +90,8 @@ class ResizeInferer(BaseInferer):
             sem_post_proc : Callable, optional
                 A post-processing function for the semantc seg maps. If not None,
                 overrides the default.
-            **postproc_kwargs:
-                Arbitrary keyword arguments for the post-processing.
+            **kwargs:
+                Arbitrary keyword arguments expecially for post-processing and saving.
         """
         super().__init__(
             model=model,
@@ -108,14 +105,14 @@ class ResizeInferer(BaseInferer):
             instance_postproc=instance_postproc,
             device=device,
             n_devices=n_devices,
-            save_masks=save_masks,
             save_intermediate=save_intermediate,
             save_dir=save_dir,
+            save_format=save_format,
             checkpoint_path=checkpoint_path,
             n_images=n_images,
             type_post_proc=type_post_proc,
             sem_post_proc=sem_post_proc,
-            **postproc_kwargs,
+            **kwargs,
         )
 
     def _infer_batch(self, input_batch: torch.Tensor) -> Dict[str, torch.Tensor]:
