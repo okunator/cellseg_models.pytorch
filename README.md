@@ -24,11 +24,21 @@
 
 ## Introduction
 
-Contains multi-task encoder-decoder architectures along with dedicated post-processing methods for segmenting cell/nuclei instances. As the name suggests, this library is heavily inspired by [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch) library for semantic segmentation.
+**cellseg-models.pytorch** is a library built upon [PyTorch](https://pytorch.org/) that contains multi-task encoder-decoder architectures along with dedicated post-processing methods for segmenting cell/nuclei instances. As the name might suggest, this library is heavily inspired by [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch) library for semantic segmentation.
 
-<br><br>
+## Features
 
-![Architecture](./images/architecture_overview.png)
+- High level API to define cell/nuclei instance segmentation models.
+- 4 cell/nuclei instance segmentation models and more to come.
+- Open source datasets for training and benchmarking.
+- Pre-trained backbones/encoders from the [timm](https://github.com/rwightman/pytorch-image-models) library.
+- All the architectures can be augmented to **panoptic segmentation**.
+- A lot of flexibility to modify the components of the model architectures.
+- Sliding window inference for large images.
+- Multi-GPU inference.
+- Popular training losses and benchmarking metrics.
+- Simple model training with [pytorch-lightning](https://www.pytorchlightning.ai/).
+- Benchmarking utilities both for model latency & segmentation performance.
 
 ## Installation
 
@@ -43,17 +53,6 @@ pip install cellseg-models-pytorch
 ```shell
 pip install cellseg-models-pytorch[all]
 ```
-
-## Features
-
-- High level API to define cell/nuclei instance segmentation models.
-- 4 cell/nuclei instance segmentation models and more to come.
-- Pre-trained backbones/encoders from the [timm](https://github.com/rwightman/pytorch-image-models) library.
-- All the architectures can be augmented to output semantic segmentation outputs along with instance semgentation outputs (panoptic segmentation).
-- A lot of flexibility to modify the components of the model architectures.
-- Multi-GPU inference.
-- Popular training losses and benchmarking metrics.
-- Simple model training with [pytorch-lightning](https://www.pytorchlightning.ai/).
 
 ## Models
 
@@ -109,10 +108,10 @@ y = model(x) # {"cellpose": [1, 2, 256, 256], "type": [1, 5, 256, 256], "sem": [
 ```python
 import cellseg_models_pytorch as csmp
 
-# two decoder branches.
+# the model will include two decoder branches.
 decoders = ("cellpose", "sem")
 
-# three segmentation heads from the decoders.
+# and in total three segmentation heads emerging from the decoders.
 heads = {
     "cellpose": {"cellpose": 2, "type": 5},
     "sem": {"sem": 3}
@@ -148,32 +147,33 @@ y = model(x) # {"cellpose": [1, 2, 256, 256], "type": [1, 5, 256, 256], "sem": [
 ```python
 import cellseg_models_pytorch as csmp
 
+# define the model
 model = csmp.models.hovernet_base(type_classes=5)
-# returns {"hovernet": [B, 2, H, W], "type": [B, 5, H, W], "inst": [B, 2, H, W]}
 
-# the final activations for each model output
+# define the final activations for each model output
 out_activations = {"hovernet": "tanh", "type": "softmax", "inst": "softmax"}
 
-# models perform the poorest at the image boundaries, with overlapping patches this
-# causes issues which can be overcome by adding smoothing to the prediction boundaries
+# define whether to weight down the predictions at the image boundaries
+# typically, models perform the poorest at the image boundaries and with
+# overlapping patches this causes issues which can be overcome by down-
+# weighting the prediction boundaries
 out_boundary_weights = {"hovernet": True, "type": False, "inst": False}
 
-# Sliding window inference for big images using overlapping patches
+# define the inferer
 inferer = csmp.inference.SlidingWindowInferer(
     model=model,
     input_folder="/path/to/images/",
     checkpoint_path="/path/to/model/weights/",
     out_activations=out_activations,
     out_boundary_weights=out_boundary_weights,
-    instance_postproc="hovernet", # THE POST-PROCESSING METHOD
+    instance_postproc="hovernet",               # THE POST-PROCESSING METHOD
+    normalization="percentile",                 # same normalization as in training
     patch_size=(256, 256),
     stride=128,
     padding=80,
     batch_size=8,
-    normalization="percentile", # same normalization as in training
 )
 
-# Run sliding window inference.
 inferer.infer()
 
 inferer.out_masks
@@ -182,9 +182,14 @@ inferer.out_masks
 
 ## Models API
 
+Generally, the model building API enables the effortless creation of hard-parameter sharing multi-task encoder-decoder CNN architectures. The general architectural schema is illustrated in the below image.
+
+<br><br>
+![Architecture](./images/architecture_overview.png)
+
 ### Class API
 
-The class API enables the most flexibility in defining different model architectures. It allows for defining a multitude of hard-parameter sharing multi-task encoder-decoder architectures with (relatively) low effort. The class API is borrowing a lot from [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch) models API.
+The class API enables the most flexibility in defining different model architectures. It borrows a lot from [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch) models API.
 
 **Model classes**:
 

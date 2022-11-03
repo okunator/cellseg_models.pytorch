@@ -424,7 +424,7 @@ class FileHandler:
                 save_dir = fname.parent / "cells"
                 if not Path(save_dir).exists():
                     Path(save_dir).mkdir(parents=True, exist_ok=True)
-                # print(save_dir)
+
                 fn = save_dir / f"{fname.name}_cells"
                 FileHandler.write_gson(
                     fname=fn,
