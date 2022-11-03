@@ -124,8 +124,8 @@ class SlidingWindowInferer(BaseInferer):
         self, first_endpoint: int, img_size: int, stride: int, pad: int = None
     ) -> Tuple[int, int]:
         """Get the number of slices needed for one direction and the overlap."""
-        if pad is not None:
-            img_size += int(pad)
+        pad = int(pad) if pad is not None else 20  # at least some padding needed
+        img_size += pad
 
         n = 1
         mod = 0
