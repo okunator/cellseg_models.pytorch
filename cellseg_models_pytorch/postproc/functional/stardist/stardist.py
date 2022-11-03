@@ -1,4 +1,4 @@
-"""Imported most of the stuff from stardist repo. Minor modifications.
+"""Copied the polygons to label utilities from stardist repo (with minor modifications).
 
 BSD 3-Clause License
 
@@ -34,15 +34,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from typing import Tuple
 
 import numpy as np
-import scipy.ndimage as ndi
-from skimage import img_as_ubyte
 from skimage.draw import polygon
-from skimage.measure import regionprops
+from skimage.morphology import disk, erosion
 
-from ...utils import bounding_box, remap_label, remove_small_objects
-from .drfns import find_maxima, h_minima_reconstruction
+from .nms import get_bboxes, nms_stardist
 
-__all__ = ["post_proc_stardist", "post_proc_stardist_orig", "polygons_to_label"]
+__all__ = ["post_proc_stardist_orig", "polygons_to_label"]
 
 
 def polygons_to_label_coord(
@@ -191,42 +188,25 @@ def polygons_to_label(
     return polygons_to_label_coord(coord, shape=shape, labels=ind)
 
 
-def _clean_up(inst_map: np.ndarray, size: int = 150, **kwargs) -> np.ndarray:
-    """Clean up overlapping instances."""
-    mask = remap_label(inst_map.copy())
-    mask_connected = ndi.label(mask)[0]
-
-    labels_connected = np.unique(mask_connected)[1:]
-    for lab in labels_connected:
-        inst = np.array(mask_connected == lab, copy=True)
-        y1, y2, x1, x2 = bounding_box(inst)
-        y1 = y1 - 2 if y1 - 2 >= 0 else y1
-        x1 = x1 - 2 if x1 - 2 >= 0 else x1
-        x2 = x2 + 2 if x2 + 2 <= mask_connected.shape[1] - 1 else x2
-        y2 = y2 + 2 if y2 + 2 <= mask_connected.shape[0] - 1 else y2
-
-        box_insts = mask[y1:y2, x1:x2]
-        if len(np.unique(ndi.label(box_insts)[0])) <= 2:
-            real_labels, counts = np.unique(box_insts, return_counts=True)
-            real_labels = real_labels[1:]
-            counts = counts[1:]
-            max_pixels = np.max(counts)
-            max_label = real_labels[np.argmax(counts)]
-            for real_lab, count in list(zip(list(real_labels), list(counts))):
-                if count < max_pixels:
-                    if count < size:
-                        mask[mask == real_lab] = max_label
-
-    return mask
-
-
 def post_proc_stardist(
-    dist_map: np.ndarray, stardist_map: np.ndarray, thresh: float = 0.4, **kwargs
+    dist_map: np.ndarray,
+    stardist_map: np.ndarray,
+    score_thresh: float = 0.5,
+    iou_thresh: float = 0.5,
+    trim_bboxes: bool = True,
+    **kwargs,
 ) -> np.ndarray:
-    """Run post-processing for stardist.
+    """Run post-processing for stardist outputs.
 
-    NOTE: This is not the original version that uses NMS.
-    This is rather a workaround that is a little slower.
+    NOTE: This is not the original cpp version.
+    This is a python re-implementation of the stardidst post-processing
+    pipeline that uses non-maximum-suppression. Here, critical parts of the
+    nms are accelerated with `numba` and `scipy.spatial.KDtree`.
+
+    NOTE:
+    This implementaiton of the stardist post-processing is actually nearly twice
+    faster than the original version if `trim_bboxes` is set to True. The resulting
+    segmentation is not an exact match but the differences are mostly neglible.
 
     Parameters
     ----------
@@ -236,37 +216,75 @@ def post_proc_stardist(
             Predicted radial distances. Shape: (n_rays, H, W).
         thresh : float, default=0.4
             Threshold for the regressed distance transform.
+        trim_bboxes : bool, default=True
+            If True, The non-zero pixels are computed only from the cell contours
+            which prunes down the pixel search space drastically.
 
     Returns
     -------
         np.ndarray:
             Instance labelled mask. Shape: (H, W).
     """
-    stardist_map = stardist_map.transpose(1, 2, 0)
-    mask = _ind_prob_thresh(dist_map, thresh, b=2)
+    if (
+        not dist_map.ndim == 2
+        and not stardist_map.ndim == 3
+        and not dist_map.shape == stardist_map.shape[:2]
+    ):
+        raise ValueError(
+            "Illegal input shapes. Make sure that: "
+            f"`dist_map` has to have shape: (H, W). Got: {dist_map.shape} "
+            f"`stardist_map` has to have shape (H, W, nrays). Got: {stardist_map.shape}"
+        )
 
-    # invert distmap
-    inv_dist_map = 255 - img_as_ubyte(dist_map)
+    dist = np.asarray(stardist_map).transpose(1, 2, 0)
+    prob = np.asarray(dist_map)
 
-    # find markers from minima erosion reconstructed maxima of inv dist map
-    reconstructed = h_minima_reconstruction(inv_dist_map)
-    markers = find_maxima(reconstructed, mask=mask)
-    markers = ndi.label(markers)[0]
-    markers = remove_small_objects(markers, min_size=5)
-    points = np.array(
-        tuple(np.array(r.centroid).astype(int) for r in regionprops(markers))
+    # threshold the edt distance transform map
+    mask = _ind_prob_thresh(prob, score_thresh)
+
+    # get only the mask contours to trim down bbox search space
+    if trim_bboxes:
+        fp = disk(2)
+        mask -= erosion(mask, fp)
+
+    points = np.stack(np.where(mask), axis=1)
+
+    # Get only non-zero pixels of the transforms
+    dist = dist[mask > 0]
+    scores = prob[mask > 0]
+
+    # sort descendingly
+    ind = np.argsort(scores)[::-1]
+    dist = dist[ind]
+    scores = scores[ind]
+    points = points[ind]
+
+    # get bounding boxes
+    x1, y1, x2, y2, areas, max_dist = get_bboxes(dist, points)
+    boxes = np.stack([x1, y1, x2, y2], axis=1)
+
+    # consider only boxes above score threshold
+    score_cond = scores >= score_thresh
+    boxes = boxes[score_cond]
+    scores = scores[score_cond]
+    areas = areas[score_cond]
+
+    # run nms
+    inds = nms_stardist(
+        boxes,
+        points,
+        scores,
+        areas,
+        max_dist,
+        score_threshold=score_thresh,
+        iou_threshold=iou_thresh,
     )
 
-    if len(points) == 0:
-        return np.zeros_like(mask)
-
-    dist = stardist_map[tuple(points.T)]
-    scores = dist_map[tuple(points.T)]
-
-    labels = polygons_to_label(
-        dist, points, prob=scores, shape=mask.shape, scale_dist=(1, 1)
-    )
-    labels = _clean_up(labels, **kwargs)
+    # get the centroids
+    points = points[inds]
+    scores = scores[inds]
+    dist = dist[inds]
+    labels = polygons_to_label(dist, points, prob=scores, shape=dist_map.shape)
 
     return labels
 

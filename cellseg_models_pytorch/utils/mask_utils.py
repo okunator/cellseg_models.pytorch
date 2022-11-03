@@ -59,6 +59,7 @@ __all__ = [
     "majority_vote_sequential",
     "med_filt_parallel",
     "med_filt_sequential",
+    "intersection",
 ]
 
 
@@ -1016,3 +1017,34 @@ def med_filt_sequential(sem_map: np.ndarray, kernel_width: int = 15) -> np.ndarr
         sem[i] = rank.median(sem_map[i], footprint=square(kernel_width))
 
     return sem
+
+
+@njit(cache=True, fastmath=True)
+def intersection(boxA: np.ndarray, boxB: np.ndarray):
+    """Compute area of intersection of two boxes.
+
+    Parameters
+    ----------
+        boxA : np.ndarray
+            First boxes
+        boxB : np.ndarray
+            Second box
+
+    Returns
+    -------
+        float64:
+            Area of intersection
+    """
+    xA = max(boxA[..., 0], boxB[..., 0])
+    xB = min(boxA[..., 2], boxB[..., 2])
+    dx = xB - xA
+    if dx <= 0:
+        return 0.0
+
+    yA = max(boxA[..., 1], boxB[..., 1])
+    yB = min(boxA[..., 3], boxB[..., 3])
+    dy = yB - yA
+    if dy <= 0.0:
+        return 0.0
+
+    return dx * dy

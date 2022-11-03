@@ -17,6 +17,7 @@ from .mask_utils import (
     get_inst_centroid,
     get_inst_types,
     get_type_instances,
+    intersection,
     label_semantic,
     majority_vote_parallel,
     majority_vote_sequential,
@@ -132,4 +133,5 @@ __all__ = [
     "majority_vote_parallel",
     "med_filt_parallel",
     "med_filt_sequential",
+    "intersection",
 ]

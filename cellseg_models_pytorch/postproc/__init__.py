@@ -13,7 +13,8 @@ from .functional.dran import post_proc_dran
 from .functional.drfns import post_proc_drfns
 from .functional.hovernet import post_proc_hovernet
 from .functional.omnipose import get_masks_omnipose, post_proc_omnipose
-from .functional.stardist import post_proc_stardist, post_proc_stardist_orig
+from .functional.stardist.nms import get_bboxes
+from .functional.stardist.stardist import post_proc_stardist, post_proc_stardist_orig
 
 POSTPROC_LOOKUP = {
     "stardist_orig": post_proc_stardist_orig,
@@ -44,4 +45,5 @@ __all__ = [
     "post_proc_drfns",
     "post_proc_dcan",
     "post_proc_dran",
+    "get_bboxes",
 ]
