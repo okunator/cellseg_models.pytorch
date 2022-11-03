@@ -1,10 +1,22 @@
+<a id='changelog-0.1.12'></a>
 
-<a id='changelog-0.1.11'></a>
+# 0.1.12 — 2022-11-03
+
+## Performance
+
+- Reverse engineered the `stardist` post-processing pipeline to python. Accelerated it with Numba and optimized it even further. Now it runs almost 2x faster than the original C++ verion.
+
+## Fixes
+
+- Fix bug with padding in `SlidingWindowInferer`
+  <a id='changelog-0.1.11'></a>
+
 # 0.1.11 — 2022-10-21
 
 ## Removed
 
 - unnecessary torchvision dependency
+
 <a id='changelog-0.1.10'></a>
 
 # 0.1.10 — 2022-10-21
