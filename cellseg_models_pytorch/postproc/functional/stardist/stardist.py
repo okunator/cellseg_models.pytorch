@@ -204,7 +204,7 @@ def post_proc_stardist(
     nms are accelerated with `numba` and `scipy.spatial.KDtree`.
 
     NOTE:
-    This implementaiton of the stardist post-processing is actually nearly twice
+    This implementaiton of the stardist post-processing is actually nearly 2x
     faster than the original version if `trim_bboxes` is set to True. The resulting
     segmentation is not an exact match but the differences are mostly neglible.
 

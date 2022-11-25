@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -199,11 +199,42 @@ class CellPoseUnet(BaseMultiTaskSegModel):
         if enc_freeze:
             self.freeze_encoder()
 
-    def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
-        """Forward pass of Cellpose U-net."""
-        feats = self.forward_encoder(x)
-        style = self.forward_style(feats[0])
-        dec_feats = self.forward_dec_features(feats, style)
+    def forward(
+        self,
+        x: torch.Tensor,
+        return_feats: bool = False,
+    ) -> Union[
+        Dict[str, torch.Tensor],
+        Tuple[
+            List[torch.Tensor],
+            Dict[str, torch.Tensor],
+            Dict[str, torch.Tensor],
+        ],
+    ]:
+        """Forward pass of Cellpose U-net.
+
+        Parameters
+        ----------
+            x : torch.Tensor
+                Input image batch. Shape: (B, C, H, W).
+            return_feats : bool, default=False
+                If True, encoder, decoder, and head outputs will all be returned
+
+        Returns
+        -------
+        Union[
+            Dict[str, torch.Tensor],
+            Tuple[
+                List[torch.Tensor],
+                Dict[str, torch.Tensor],
+                Dict[str, torch.Tensor],
+            ],
+        ]:
+            Dictionary mapping of output names to outputs or if `return_feats == True`
+            returns also the encoder features in a list, decoder features as a dict
+            mapping decoder names to outputs and the final head outputs dict.
+        """
+        feats, dec_feats = self.forward_features(x)
 
         for decoder_name in self.heads.keys():
             for head_name in self.heads[decoder_name].keys():
@@ -211,6 +242,9 @@ class CellPoseUnet(BaseMultiTaskSegModel):
                 dec_feats[head_name] = dec_feats[k]
 
         out = self.forward_heads(dec_feats)
+
+        if return_feats:
+            return feats, dec_feats, out
 
         return out
 

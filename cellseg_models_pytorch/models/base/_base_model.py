@@ -10,6 +10,19 @@ __all__ = ["BaseMultiTaskSegModel"]
 
 
 class BaseMultiTaskSegModel(nn.ModuleDict):
+    def forward_features(
+        self, x: torch.Tensor
+    ) -> Tuple[List[torch.Tensor], Dict[str, torch.Tensor]]:
+        """Forward pass for encoder, style and decoders.
+
+        NOTE: Returns both encoder and decoder features, not style.
+        """
+        feats = self.forward_encoder(x)
+        style = self.forward_style(feats[0])
+        dec_feats = self.forward_dec_features(feats, style)
+
+        return feats, dec_feats
+
     def forward_encoder(self, x: torch.Tensor) -> List[torch.Tensor]:
         """Forward the model encoder."""
         self._check_input_shape(x)
