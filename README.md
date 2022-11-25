@@ -9,10 +9,8 @@
 [![Python - Version](https://img.shields.io/badge/PYTHON-3.7+-red?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 <br>
 [![Github Test](https://img.shields.io/github/workflow/status/okunator/cellseg_models.pytorch/Tests?label=Tests&logo=github&style=for-the-badge)](https://github.com/okunator/cellseg_models.pytorch/actions/workflows/tests.yml)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge)](https://github.com/psf/black)
-[![Codecov](https://img.shields.io/codecov/c/github/okunator/cellseg_models.pytorch?logo=codecov&style=for-the-badge&token=oGSj7FZ1lm)](https://codecov.io/gh/okunator/cellseg_models.pytorch)
-<br>
 [![Pypi](https://img.shields.io/pypi/v/cellseg-models-pytorch?color=blue&logo=pypi&style=for-the-badge)](https://pypi.org/project/cellseg-models-pytorch/)
+[![Codecov](https://img.shields.io/codecov/c/github/okunator/cellseg_models.pytorch?logo=codecov&style=for-the-badge&token=oGSj7FZ1lm)](https://codecov.io/gh/okunator/cellseg_models.pytorch)
 <br>
 [![DOI](https://zenodo.org/badge/450787123.svg)](https://zenodo.org/badge/latestdoi/450787123)
 
@@ -39,6 +37,7 @@
 - Popular training losses and benchmarking metrics.
 - Simple model training with [pytorch-lightning](https://www.pytorchlightning.ai/).
 - Benchmarking utilities both for model latency & segmentation performance.
+- Regularization techniques to tackle batch effects/domain shifts.
 
 ## Installation
 
@@ -203,6 +202,7 @@ The class API enables the most flexibility in defining different model architect
 - `model.{decoder_name}_decoder` - Models can have multiple decoders with unique names.
 - `model.{head_name}_seg_head` - Model decoders can have multiple segmentation heads with unique names.
 - `model.forward(x)` - forward pass.
+- `model.forward_features(x)` - forward pass of the encoder and decoders. Returns enc and dec features
 
 **Defining your own multi-task architecture**
 

@@ -1,3 +1,14 @@
+
+<a id='changelog-0.1.12'></a>
+# 0.1.12 — 2022-11-25
+
+## Features
+
+- Add option to return encoder features, and decoder features along the outputs in the forward pass of any model.
+
+## Fixes
+
+- Turn the `cellpose` and `stardist` postproc dirs into modules.
 <a id='changelog-0.1.12'></a>
 
 # 0.1.12 — 2022-11-03
