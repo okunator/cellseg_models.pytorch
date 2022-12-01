@@ -1,9 +1,7 @@
 from typing import Callable, Dict, List
 
 import numpy as np
-from pathos.multiprocessing import ThreadPool as Pool
 from skimage.util import img_as_ubyte
-from tqdm import tqdm
 
 from ..postproc import POSTPROC_LOOKUP
 from ..utils import (
@@ -13,6 +11,7 @@ from ..utils import (
     med_filt_parallel,
     med_filt_sequential,
     remove_debris_semantic,
+    run_pool,
 )
 
 __all__ = ["PostProcessor"]
@@ -166,7 +165,10 @@ class PostProcessor:
         return res
 
     def run_parallel(
-        self, maps: List[Dict[str, np.ndarray]], progress_bar: bool = False
+        self,
+        maps: List[Dict[str, np.ndarray]],
+        pooltype: str = "thread",
+        maptype: str = "amap",
     ) -> List[Dict[str, np.ndarray]]:
         """Run the full post-processing pipeline in parallel for many model outputs.
 
@@ -174,22 +176,21 @@ class PostProcessor:
         ----------
             maps : List[Dict[str, np.ndarray]]
                 The model output map dictionaries in a list.
-            progress_bar : bool, default=False
-                If True, a tqdm progress bar is shown.
+            pooltype : str, default="thread"
+                The pathos pooltype. Allowed: ("process", "thread", "serial").
+                Defaults to "thread". (Fastest in benchmarks.)
+            maptype : str, default="amap"
+                The map type of the pathos Pool object.
+                Allowed: ("map", "amap", "imap", "uimap")
+                Defaults to "amap". (Fastest in benchmarks).
 
         Returns
         -------
             List[Dict[str, np.ndarray]]:
                 The post-processed output map dictionaries in a list.
         """
-        seg_results = []
-        with Pool() as pool:
-            if progress_bar:
-                it = tqdm(pool.imap(self.post_proc_pipeline, maps), total=len(maps))
-            else:
-                it = pool.imap(self.post_proc_pipeline, maps)
-
-            for x in it:
-                seg_results.append(x)
+        seg_results = run_pool(
+            self.post_proc_pipeline, maps, ret=True, pooltype=pooltype, maptype=maptype
+        )
 
         return seg_results

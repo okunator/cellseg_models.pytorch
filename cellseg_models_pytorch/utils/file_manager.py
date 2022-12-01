@@ -1,12 +1,11 @@
 import re
+from functools import partial
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Union
 
 import cv2
 import numpy as np
 import scipy.io as sio
-from pathos.multiprocessing import ThreadPool as Pool
-from tqdm import tqdm
 
 from .mask_utils import (
     bounding_box,
@@ -15,6 +14,7 @@ from .mask_utils import (
     get_inst_types,
     label_semantic,
 )
+from .multiproc import run_pool
 
 
 class FileHandler:
@@ -58,7 +58,7 @@ class FileHandler:
         key: str = "inst_map",
         retype: bool = True,
         return_all: bool = False,
-    ) -> Union[np.ndarray, None]:
+    ) -> Union[np.ndarray, Dict[str, np.ndarray], None]:
         """Read a mask from a .mat file.
 
         If a mask is not found, return None
@@ -66,7 +66,7 @@ class FileHandler:
         Parameters
         ----------
             path : str or Path
-                Path to the image file.
+                Path to the .mat file.
             key : str, default="inst_map"
                 Name/key of the mask type that is being read from .mat
             retype : bool, default=True
@@ -74,14 +74,18 @@ class FileHandler:
             return_all : bool, default=False
                 Return the whole dict. Overrides the `key` arg.
 
-        Returns
-        -------
-            np.ndarray or None:
-                The mask indice matrix. Shape (H, W)
 
         Raises
         ------
             ValueError: If an illegal key is given.
+
+        Returns
+        -------
+            Union[np.ndarray, List[np.ndarray], None]:
+                if return_all == False:
+                    The instance/type/semantic labelled mask. Shape: (H, W).
+                if return_all == True:
+                    All the masks in the .mat file returned in a dictionary.
         """
         dtypes = {
             "inst_map": "int32",
@@ -468,7 +472,8 @@ class FileHandler:
         classes_type: Dict[str, str] = None,
         classes_sem: Dict[str, str] = None,
         offsets: bool = False,
-        progress_bar: bool = False,
+        pooltype: str = "thread",
+        maptype: str = "amap",
         **kwargs,
     ) -> None:
         """Save the model output masks to a folder. (multi-threaded).
@@ -493,31 +498,44 @@ class FileHandler:
             offsets : bool, default=False
                 If True, geojson coords are shifted by the offsets that are encoded in
                 the filenames (e.g. "x-1000_y-4000.png"). Ignored if `format` != ".json"
-            progress_bar : bool, default=False
-                If True, a tqdm progress bar is shown.
+            pooltype : str, default="thread"
+                The pathos pooltype. Allowed: ("process", "thread", "serial").
+                Defaults to "thread". (Fastest in benchmarks.)
+            maptype : str, default="amap"
+                The map type of the pathos Pool object.
+                Allowed: ("map", "amap", "imap", "uimap")
+                Defaults to "amap". (Fastest in benchmarks).
         """
-        formats = [format] * len(maps)
-        geo_formats = [geo_format] * len(maps)
-        classes_type = [classes_type] * len(maps)
-        classes_sem = [classes_sem] * len(maps)
-        offsets = [offsets] * len(maps)
-        args = tuple(
-            zip(fnames, maps, formats, geo_formats, classes_type, classes_sem, offsets)
+        func = partial(
+            FileHandler._save_masks,
+            format=format,
+            geo_format=geo_format,
+            classes_type=classes_type,
+            classes_sem=classes_sem,
+            offsets=offsets,
         )
 
-        with Pool() as pool:
-            if progress_bar:
-                it = tqdm(pool.imap(FileHandler._save_masks, args), total=len(maps))
-            else:
-                it = pool.imap(FileHandler._save_masks, args)
-
-            for _ in it:
-                pass
+        args = tuple(zip(fnames, maps))
+        run_pool(func, args, ret=False, pooltype=pooltype, maptype=maptype)
 
     @staticmethod
-    def _save_masks(args: Tuple[Dict[str, np.ndarray], str, str]) -> None:
+    def _save_masks(
+        args: Tuple[str, Dict[str, np.ndarray]],
+        format: str,
+        geo_format: str,
+        classes_type: Dict[str, str],
+        classes_sem: Dict[str, str],
+        offsets: bool,
+    ) -> None:
         """Unpacks the args for `save_mask` to enable multi-threading."""
-        return FileHandler.save_masks(*args)
+        return FileHandler.save_masks(
+            *args,
+            format=format,
+            geo_format=geo_format,
+            classes_type=classes_type,
+            classes_sem=classes_sem,
+            offsets=offsets,
+        )
 
     @staticmethod
     def get_split(string: str) -> List[str]:

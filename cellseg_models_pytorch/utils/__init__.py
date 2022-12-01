@@ -33,6 +33,7 @@ from .mask_utils import (
     soft_type_flatten,
     type_map_flatten,
 )
+from .multiproc import run_pool
 from .patching import (
     TilerStitcher,
     TilerStitcherTorch,
@@ -134,4 +135,5 @@ __all__ = [
     "med_filt_parallel",
     "med_filt_sequential",
     "intersection",
+    "run_pool",
 ]
