@@ -967,14 +967,14 @@ diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
 name = "pyproject-flake8"
-version = "0.0.1a5"
+version = "4.0.1"
 description = "pyproject-flake8 (`pflake8`), a monkey patching wrapper to connect flake8 with pyproject.toml configuration"
 category = "dev"
 optional = false
 python-versions = "*"
 
 [package.dependencies]
-flake8 = "<5.0.0"
+flake8 = "4.0.1"
 tomli = {version = "*", markers = "python_version < \"3.11\""}
 
 [[package]]
@@ -1564,7 +1564,7 @@ all = ["pytorch-lightning", "tables", "requests", "albumentations", "geojson", "
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1,<3.11"
-content-hash = "bf8d4740b1ad78297f30cfc02ea523e2d015f6264034f6537e82d17ab1d885ef"
+content-hash = "cc603ee1b67c7f11549298fdb998de7d30b0b36a38d9ff33bb15dc16fe61301c"
 
 [metadata.files]
 absl-py = [
@@ -2544,8 +2544,8 @@ pyparsing = [
     {file = "pyparsing-3.0.9.tar.gz", hash = "sha256:2b020ecf7d21b687f219b71ecad3631f644a47f01403fa1d1036b0c6416d70fb"},
 ]
 pyproject-flake8 = [
-    {file = "pyproject-flake8-0.0.1a5.tar.gz", hash = "sha256:22542080ba90d4bd80ee060852db15a24aeea61c9a29ed7c16f5b59b0e47a03a"},
-    {file = "pyproject_flake8-0.0.1a5-py2.py3-none-any.whl", hash = "sha256:c843d760c49d7b270e9abda58a57765c031918a9d10da25aa43572f5d77cac43"},
+    {file = "pyproject-flake8-4.0.1.tar.gz", hash = "sha256:5b57b70aa9a3ec0c51279c1292253dc6914902a4ac9ce484d5684d6f7d5fd436"},
+    {file = "pyproject_flake8-4.0.1-py2.py3-none-any.whl", hash = "sha256:b36d51ee2bdcbb7cb9d022d8690eb236a3de17c4448fbf65514cde8ac6a1f7ad"},
 ]
 pytest = [
     {file = "pytest-7.2.0-py3-none-any.whl", hash = "sha256:892f933d339f068883b6fd5a459f03d85bfcb355e4981e146d2c7616c21fef71"},
