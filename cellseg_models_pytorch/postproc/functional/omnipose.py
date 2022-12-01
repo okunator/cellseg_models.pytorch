@@ -182,7 +182,7 @@ def post_proc_omnipose(
         binary_mask = binarize(inst_map).astype(bool)
 
     dP = div_rescale(flow_map, binary_mask)
-    pixel_loc, inds = follow_flows(dP, niter=300, mask=binary_mask, suppress_euler=True)
+    pixel_loc, inds = follow_flows(dP, niter=200, mask=binary_mask, suppress_euler=True)
 
     mask = get_masks_omnipose(p=pixel_loc, mask=binary_mask, inds=inds)
 

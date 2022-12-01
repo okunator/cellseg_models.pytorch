@@ -37,19 +37,29 @@ def test_fill_holes(inst_map):
 
 
 @pytest.mark.parametrize("return_flows", [True, False])
-def test_postproc_cellpose(inst_map, return_flows):
+@pytest.mark.parametrize("interp", [True, False])
+def test_postproc_cellpose(inst_map, return_flows, interp):
     flows = gen_flow_maps(inst_map)
 
     if not return_flows:
-        rebuild = post_proc_cellpose(inst_map, flows, min_size=0)
+        rebuild = post_proc_cellpose(
+            inst_map, flows, min_size=0, interp=interp, use_gpu=False
+        )
     else:
         rebuild, _ = post_proc_cellpose(
-            inst_map, flows, min_size=0, return_flows=return_flows
+            inst_map,
+            flows,
+            min_size=0,
+            return_flows=return_flows,
+            interp=interp,
+            use_gpu=False,
         )
 
     assert rebuild.shape == inst_map.shape
     assert rebuild.dtype == "int32"
-    assert len(np.unique(rebuild)) == 4
+
+    if interp:
+        assert len(np.unique(rebuild)) == 4
 
 
 @pytest.mark.parametrize("return_flows", [True, False])

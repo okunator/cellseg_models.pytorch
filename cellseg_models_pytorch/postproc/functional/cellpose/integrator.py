@@ -37,8 +37,9 @@ from typing import Tuple
 
 import numpy as np
 import torch
+from numba import njit, prange
 
-__all__ = ["steps2D_interp", "follow_flows"]
+__all__ = ["steps2D_interp", "steps2D", "follow_flows"]
 
 
 def steps2D_interp(
@@ -46,8 +47,13 @@ def steps2D_interp(
     dP: np.ndarray,
     niter: int = 200,
     suppress_euler: bool = False,
+    use_gpu: bool = True,
 ) -> np.ndarray:
-    """Run Euler integration.
+    """Run bilinear interpolation on non-zero pixel locations.
+
+    NOTE: uses torch.nn.functional.grid_sample.
+
+    Run Euler integration.
 
     "run a dynamical system starting at that pixel location and
      following the spatial derivatives specified by the horizontal and
@@ -63,6 +69,10 @@ def steps2D_interp(
             Flow maps. Shape: (2, H, W). Dtype: float64
         niter : int, default=200
             Number of iterations of dynamics to run
+        suppress_euler : bool, default=False
+            Suppress euler step. Used for omnipose.
+        use_gpu : bool, default = True
+            Flag, wheter to use gpu.
 
     Returns
     -------
@@ -70,7 +80,7 @@ def steps2D_interp(
             The pixel locations after dynamics. Shape (2, H, W).
 
     """
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cuda" if torch.cuda.is_available() and use_gpu else "cpu"
 
     shape = dP.shape[1:]
     shape = np.array(shape)[[1, 0]].astype("double") - 1
@@ -109,11 +119,63 @@ def steps2D_interp(
     return pt[..., [1, 0]].cpu().numpy().squeeze().T
 
 
+@njit(parallel=True)
+def steps2D(
+    p: np.ndarray,
+    dP: np.ndarray,
+    inds: np.ndarray,
+    niter: int = 200,
+    suppress_euler: bool = False,
+) -> np.ndarray:
+    """Run dynamics of pixels to recover masks in 2D.
+
+    Euler integration of dynamics dP for niter steps
+
+    Parameters
+    ----------
+        p : np.ndarray
+            All the pixel locations for the pixels in the flow maps.
+            Including zero-pixels. Shape: (2, H, W). Dtype: float32
+        dP : np.ndarray
+            Flow maps. Shape: (2, H, W). Dtype: float64
+        inds: np.ndarray
+            Non-zero pixels to run dynamics on. Shape: (npixels, 2). Dtype: int32.
+        niter : int, default=200
+            Number of iterations of dynamics to run.
+        suppress_euler : bool, default=False
+            Suppress euler step. Used for omnipose.
+
+    Returns
+    -------
+        np.ndarray:
+            Final locations of each pixel after dynamics. Shape (2, H, W).
+            Dtype: float32.
+    """
+    shape = p.shape[1:]
+    for t in prange(niter):
+        for j in range(inds.shape[0]):
+            # starting coordinates
+            y = inds[j, 0]
+            x = inds[j, 1]
+            p0, p1 = int(p[0, y, x]), int(p[1, y, x])
+            step = dP[:, p0, p1]
+
+            if suppress_euler:
+                step /= 1 + t
+
+            for k in range(p.shape[0]):
+                p[k, y, x] = min(shape[k] - 1, max(0, p[k, y, x] + step[k]))
+
+    return p
+
+
 def follow_flows(
     dP: np.ndarray,
     mask: np.ndarray = None,
     niter: int = 200,
     suppress_euler: bool = False,
+    interp: bool = True,
+    use_gpu: bool = True,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Define pixels and run dynamics to recover masks in 2D.
 
@@ -129,8 +191,12 @@ def follow_flows(
         niter : int, default=200
             Number of iterations of dynamics to run.
         suppress_euler : bool, default=False
-            Suppression factor for the euler intergator. Used for
-            omnipose.
+            Suppression factor for the euler intergator. Used for omnipose.
+        interp : bool, default=True
+            Use bilinear interpolation when integrating.
+        use_gpu : bool, default=True
+            Use gpu accelerated bilinear interpolation. If `interp` == False, this is
+            ignored.
 
     Returns
     ---------------
@@ -156,14 +222,21 @@ def follow_flows(
     inds = np.array(pixel_loc).astype(np.int32).T
 
     # Sometimes a random error in empty images.. errr... dunno...
-    try:
-        p[:, inds[:, 0], inds[:, 1]] = steps2D_interp(
-            p=p[:, inds[:, 0], inds[:, 1]],
-            dP=dP,
-            niter=niter,
-            suppress_euler=suppress_euler,
-        )
-    except Exception:
-        pass
+    if interp:
+        try:
+            p[:, inds[:, 0], inds[:, 1]] = steps2D_interp(
+                p=p[:, inds[:, 0], inds[:, 1]],
+                dP=dP,
+                niter=niter,
+                suppress_euler=suppress_euler,
+                use_gpu=use_gpu,
+            )
+        except Exception:
+            pass
+    else:
+        try:
+            p = steps2D(p, dP.astype(np.float32), inds, niter)
+        except Exception:
+            pass
 
     return p, inds
