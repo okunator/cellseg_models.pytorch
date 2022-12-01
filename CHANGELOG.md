@@ -1,6 +1,30 @@
 
-<a id='changelog-0.1.12'></a>
-# 0.1.12 — 2022-11-25
+<a id='changelog-0.1.14'></a>
+# 0.1.14 — 2022-12-01
+
+## Performance
+
+- Throw away some unnecessary parts of the cellpose post-proc pipeline that just brought overhead and did nothing.
+
+## Refactor
+
+- Refactor the whole cellpose post-processing pipeline for readability.
+
+- Refactored multiprocessing code to be reusable and moved it under `utils`.
+
+## Features
+
+- Add exact euler integration (on CPU) for cellpose post-processing.
+
+- added more pathos.Pool options for parallel processing. Added `ThreadPool`, `ProcessPool` & `SerialPool`
+- add all the mapping methods for each Pool obj. I.e. `amap`, `imap`, `uimap` and `map`
+
+## Tests
+
+- added tests for the multiprocessing tools.
+<a id='changelog-0.1.13'></a>
+
+# 0.1.13 — 2022-11-25
 
 ## Features
 
@@ -9,7 +33,7 @@
 ## Fixes
 
 - Turn the `cellpose` and `stardist` postproc dirs into modules.
-<a id='changelog-0.1.12'></a>
+  <a id='changelog-0.1.13'></a>
 
 # 0.1.12 — 2022-11-03
 
