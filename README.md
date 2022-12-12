@@ -38,6 +38,7 @@
 - Simple model training with [pytorch-lightning](https://www.pytorchlightning.ai/).
 - Benchmarking utilities both for model latency & segmentation performance.
 - Regularization techniques to tackle batch effects/domain shifts.
+- Ability to add transformers to the decoder layers.
 
 ## Installation
 
