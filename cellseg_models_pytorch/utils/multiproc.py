@@ -46,7 +46,7 @@ def run_pool(
     Parameters
     ----------
         func : Callable
-            The function that will be copied to existing core and run in parallel.
+            The function that will be copied to existing cores and run in parallel.
         args : List[Any]
             A list of arguments for each of the parallelly executed functions.
         ret : bool, default=True
