@@ -9,7 +9,7 @@ from .merging import Merge
 __all__ = ["UnetSkip"]
 
 
-class UnetSkip(nn.ModuleDict):
+class UnetSkip(nn.Module):
     def __init__(
         self,
         stage_ix: int,
