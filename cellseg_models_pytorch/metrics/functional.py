@@ -311,8 +311,21 @@ def aggregated_jaccard_index(
     return aji
 
 
+def _absent_inds(true: np.ndarray, pred: np.ndarray, num_classes: int) -> np.ndarray:
+    """Get the class indices that are not present in either `true` or `pred`."""
+    t = np.unique(true)
+    p = np.unique(pred)
+    not_pres = np.setdiff1d(np.arange(num_classes), np.union1d(t, p))
+
+    return not_pres
+
+
 def iou_multiclass(
-    true: np.ndarray, pred: np.ndarray, num_classes: int, eps: float = 1e-8
+    true: np.ndarray,
+    pred: np.ndarray,
+    num_classes: int,
+    eps: float = 1e-8,
+    clamp_absent: bool = True,
 ) -> np.ndarray:
     """Compute multi-class intersection over union for semantic segmentation masks.
 
@@ -326,6 +339,9 @@ def iou_multiclass(
             Number of classes in the training dataset.
         eps : float, default=1e-8:
             Epsilon to avoid zero div errors.
+        clamp_absent : bool, default=True
+            If a class is not present in either true or pred, the value of that ix
+            in the result array will be clamped to -1.0.
 
     Returns
     -------
@@ -337,11 +353,21 @@ def iou_multiclass(
     fp = fp.diagonal()
     fn = fn.diagonal()
 
-    return tp / (tp + fp + fn + eps)
+    iou = tp / (tp + fp + fn + eps)
+
+    if clamp_absent:
+        not_pres = _absent_inds(true, pred, num_classes)
+        iou[not_pres] = -1.0
+
+    return iou
 
 
 def accuracy_multiclass(
-    true: np.ndarray, pred: np.ndarray, num_classes: int, eps: float = 1e-8
+    true: np.ndarray,
+    pred: np.ndarray,
+    num_classes: int,
+    eps: float = 1e-8,
+    clamp_absent: bool = True,
 ) -> np.ndarray:
     """Compute multi-class accuracy for semantic segmentation masks.
 
@@ -355,6 +381,9 @@ def accuracy_multiclass(
             Number of classes in the training dataset.
         eps : float, default=1e-8:
             Epsilon to avoid zero div errors.
+        clamp_absent: bool = True
+            If a class is not present in either true or pred, the value of that ix
+            in the result array will be clamped to -1.0.
 
     Returns
     -------
@@ -367,11 +396,21 @@ def accuracy_multiclass(
     fn = fn.diagonal()
     tn = np.prod(true.shape) - (tp + fn + fp)
 
-    return (tp + tn) / (tp + fp + fn + tn + eps)
+    accuracy = (tp + tn) / (tp + fp + fn + tn + eps)
+
+    if clamp_absent:
+        not_pres = _absent_inds(true, pred, num_classes)
+        accuracy[not_pres] = -1.0
+
+    return accuracy
 
 
 def f1score_multiclass(
-    true: np.ndarray, pred: np.ndarray, num_classes: int, eps: float = 1e-8
+    true: np.ndarray,
+    pred: np.ndarray,
+    num_classes: int,
+    eps: float = 1e-8,
+    clamp_absent: bool = True,
 ) -> np.ndarray:
     """Compute multi-class f1-score for semantic segmentation masks.
 
@@ -385,6 +424,9 @@ def f1score_multiclass(
             Number of classes in the training dataset.
         eps : float, default=1e-8:
             Epsilon to avoid zero div errors.
+        clamp_absent: bool = True
+            If a class is not present in either true or pred, the value of that ix
+            in the result array will be clamped to -1.0.
 
     Returns
     -------
@@ -396,11 +438,21 @@ def f1score_multiclass(
     fp = fp.diagonal()
     fn = fn.diagonal()
 
-    return tp / (0.5 * fp + 0.5 * fn + tp + eps)
+    f1 = tp / (0.5 * fp + 0.5 * fn + tp + eps)
+
+    if clamp_absent:
+        not_pres = _absent_inds(true, pred, num_classes)
+        f1[not_pres] = -1.0
+
+    return f1
 
 
 def dice_multiclass(
-    true: np.ndarray, pred: np.ndarray, num_classes: int, eps: float = 1e-8
+    true: np.ndarray,
+    pred: np.ndarray,
+    num_classes: int,
+    eps: float = 1e-8,
+    clamp_absent: bool = True,
 ) -> np.ndarray:
     """Compute multi-class dice for semantic segmentation masks.
 
@@ -414,6 +466,9 @@ def dice_multiclass(
             Number of classes in the training dataset.
         eps : float, default=1e-8:
             Epsilon to avoid zero div errors.
+        clamp_absent: bool = True
+            If a class is not present in either true or pred, the value of that ix
+            in the result array will be clamped to -1.0.
 
     Returns
     -------
@@ -425,11 +480,21 @@ def dice_multiclass(
     fp = fp.diagonal()
     fn = fn.diagonal()
 
-    return 2 * tp / (2 * tp + fp + fn + eps)
+    dice = 2 * tp / (2 * tp + fp + fn + eps)
+
+    if clamp_absent:
+        not_pres = _absent_inds(true, pred, num_classes)
+        dice[not_pres] = -1.0
+
+    return dice
 
 
 def sensitivity_multiclass(
-    true: np.ndarray, pred: np.ndarray, num_classes: int, eps: float = 1e-8
+    true: np.ndarray,
+    pred: np.ndarray,
+    num_classes: int,
+    eps: float = 1e-8,
+    clamp_absent: bool = True,
 ) -> np.ndarray:
     """Compute multi-class sensitivity for semantic segmentation masks.
 
@@ -443,6 +508,9 @@ def sensitivity_multiclass(
             Number of classes in the training dataset.
         eps : float, default=1e-8:
             Epsilon to avoid zero div errors.
+        clamp_absent: bool = True
+            If a class is not present in either true or pred, the value of that ix
+            in the result array will be clamped to -1.0.
 
     Returns
     -------
@@ -454,11 +522,21 @@ def sensitivity_multiclass(
     fp = fp.diagonal()
     fn = fn.diagonal()
 
-    return tp / (tp + fn + eps)
+    sensitivity = tp / (tp + fn + eps)
+
+    if clamp_absent:
+        not_pres = _absent_inds(true, pred, num_classes)
+        sensitivity[not_pres] = -1.0
+
+    return sensitivity
 
 
 def specificity_multiclass(
-    true: np.ndarray, pred: np.ndarray, num_classes: int, eps: float = 1e-8
+    true: np.ndarray,
+    pred: np.ndarray,
+    num_classes: int,
+    eps: float = 1e-8,
+    clamp_absent: bool = True,
 ) -> np.ndarray:
     """Compute multi-class specificity for semantic segmentation masks.
 
@@ -472,6 +550,9 @@ def specificity_multiclass(
             Number of classes in the training dataset.
         eps : float, default=1e-8:
             Epsilon to avoid zero div errors.
+        clamp_absent: bool = True
+            If a class is not present in either true or pred, the value of that ix
+            in the result array will be clamped to -1.0.
 
     Returns
     -------
@@ -483,4 +564,10 @@ def specificity_multiclass(
     fp = fp.diagonal()
     fn = fn.diagonal()
 
-    return tp / (tp + fp + eps)
+    specificity = tp / (tp + fp + eps)
+
+    if clamp_absent:
+        not_pres = _absent_inds(true, pred, num_classes)
+        specificity[not_pres] = -1.0
+
+    return specificity
