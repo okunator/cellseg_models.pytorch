@@ -5,6 +5,8 @@ import numpy as np
 from pathos.multiprocessing import ThreadPool as Pool
 from tqdm import tqdm
 
+from cellseg_models_pytorch.inference import BaseInferer
+
 from ..metrics import (
     accuracy_multiclass,
     aggregated_jaccard_index,
@@ -43,24 +45,60 @@ SEM_METRIC_LOOKUP = {
 
 class BenchMarker:
     def __init__(
-        self, pred_dir: str, true_dir: str, classes: Dict[str, int] = None
+        self,
+        true_dir: str,
+        pred_dir: str = None,
+        inferer: BaseInferer = None,
+        type_classes: Dict[str, int] = None,
+        sem_classes: Dict[str, int] = None,
     ) -> None:
         """Run benchmarking, given prediction and ground truth mask folders.
 
+        NOTE: Can also take in an Inferer object.
+
         Parameters
         ----------
-            pred_dir : str
-                Path to the prediction .mat files. The pred files have to have matching
-                names to the gt filenames.
             true_dir : str
                 Path to the ground truth .mat files. The gt files have to have matching
                 names to the pred filenames.
-            classes : Dict[str, int], optional
-                Class dict. E.g. {"bg": 0, "epithelial": 1, "immmune": 2}
+            pred_dir : str, optional
+                Path to the prediction .mat files. The pred files have to have matching
+                names to the gt filenames. If None, the inferer object storing the
+                predictions will be used instead.
+            inferer : BaseInferer, optional
+                Infere object storing predictions of a model. If None, the `pred_dir`
+                will be used to load the predictions instead.
+            type_classes : Dict[str, int], optional
+                Cell type class dict. E.g. {"bg": 0, "epithelial": 1, "immmune": 2}
+            sem_classes : Dict[str, int], optional
+                Tissue type class dict. E.g. {"bg": 0, "epithel": 1, "stroma": 2}
         """
-        self.pred_dir = Path(pred_dir)
+        if pred_dir is None and inferer is None:
+            raise ValueError(
+                "Both `inferer` and `pred_dir` cannot be set to None at the same time."
+            )
+
         self.true_dir = Path(true_dir)
-        self.classes = classes
+        self.type_classes = type_classes
+        self.sem_classes = sem_classes
+
+        if pred_dir is not None:
+            self.pred_dir = Path(pred_dir)
+        else:
+            self.pred_dir = None
+
+        self.inferer = inferer
+
+        if inferer is not None and pred_dir is None:
+            try:
+                self.inferer.out_masks
+                self.inferer.soft_masks
+            except AttributeError:
+                raise AttributeError(
+                    "Did not find `out_masks` or `soft_masks` attributes. "
+                    "To get these, run inference with `inferer.infer()`. "
+                    "Remember to set `save_intermediate` to True for the inferer.`"
+                )
 
     @staticmethod
     def compute_inst_metrics(
@@ -100,8 +138,9 @@ class BenchMarker:
                 f"An illegal metric was given. Got: {metrics}, allowed: {allowed}"
             )
 
-        # Skip empty GTs
-        if len(np.unique(true)) > 1:
+        # Do not run metrics computation if there are no instances in neither of masks
+        res = {}
+        if len(np.unique(true)) > 1 or len(np.unique(pred)) > 1:
             true = remap_label(true)
             pred = remap_label(pred)
 
@@ -109,7 +148,6 @@ class BenchMarker:
             for m in metrics:
                 met[m] = INST_METRIC_LOOKUP[m]
 
-            res = {}
             for k, m in met.items():
                 score = m(true, pred)
 
@@ -121,8 +159,19 @@ class BenchMarker:
 
             res["name"] = name
             res["type"] = type
+        else:
+            res["name"] = name
+            res["type"] = type
 
-            return res
+            for m in metrics:
+                if m == "pq":
+                    res["pq"] = -1.0
+                    res["sq"] = -1.0
+                    res["dq"] = -1.0
+                else:
+                    res[m] = -1.0
+
+        return res
 
     @staticmethod
     def compute_sem_metrics(
@@ -158,6 +207,9 @@ class BenchMarker:
                 A dictionary where metric names are mapped to metric values.
                 e.g. {"iou": 0.5, "f1score": 0.55, "name": "sample1"}
         """
+        if not isinstance(metrics, tuple) and not isinstance(metrics, list):
+            raise ValueError("`metrics` must be either a list or tuple of values.")
+
         allowed = list(SEM_METRIC_LOOKUP.keys())
         if not all([m in allowed for m in metrics]):
             raise ValueError(
@@ -227,20 +279,6 @@ class BenchMarker:
 
         return metrics
 
-    def _read_files(self) -> List[Tuple[np.ndarray, np.ndarray, str]]:
-        """Read in the files from the input folders."""
-        preds = sorted(self.pred_dir.glob("*"))
-        trues = sorted(self.true_dir.glob("*"))
-
-        masks = []
-        for truef, predf in zip(trues, preds):
-            true = FileHandler.read_mat(truef, return_all=True)
-            pred = FileHandler.read_mat(predf, return_all=True)
-            name = truef.name
-            masks.append((true, pred, name))
-
-        return masks
-
     def run_inst_benchmark(
         self, how: str = "binary", metrics: Tuple[str, ...] = ("pq",)
     ) -> None:
@@ -268,17 +306,32 @@ class BenchMarker:
         if how not in allowed:
             raise ValueError(f"Illegal arg `how`. Got: {how}, Allowed: {allowed}")
 
-        masks = self._read_files()
+        trues = sorted(self.true_dir.glob("*"))
+
+        preds = None
+        if self.pred_dir is not None:
+            preds = sorted(self.pred_dir.glob("*"))
+
+        ik = "inst" if self.pred_dir is None else "inst_map"
+        tk = "type" if self.pred_dir is None else "type_map"
 
         res = []
-        if how == "multi" and self.classes is not None:
-            for c, i in list(self.classes.items())[1:]:
+        if how == "multi" and self.type_classes is not None:
+            for c, i in list(self.type_classes.items())[1:]:
                 args = []
-                for true, pred, name in masks:
+                for j, true_fn in enumerate(trues):
+                    name = true_fn.name
+                    true = FileHandler.read_mat(true_fn, return_all=True)
+
+                    if preds is None:
+                        pred = self.inferer.out_masks[name[:-4]]
+                    else:
+                        pred = FileHandler.read_mat(preds[j], return_all=True)
+
                     true_inst = true["inst_map"]
-                    pred_inst = pred["inst_map"]
                     true_type = true["type_map"]
-                    pred_type = pred["type_map"]
+                    pred_inst = pred[ik]
+                    pred_type = pred[tk]
 
                     pred_type = get_type_instances(pred_inst, pred_type, i)
                     true_type = get_type_instances(true_inst, true_type, i)
@@ -287,9 +340,17 @@ class BenchMarker:
                 res.extend([metric for metric in met if metric])
         else:
             args = []
-            for true, pred, name in masks:
+            for i, true_fn in enumerate(trues):
+                name = true_fn.name
+                true = FileHandler.read_mat(true_fn, return_all=True)
+
+                if preds is None:
+                    pred = self.inferer.out_masks[name[:-4]]
+                else:
+                    pred = FileHandler.read_mat(preds[i], return_all=True)
+
                 true = true["inst_map"]
-                pred = pred["inst_map"]
+                pred = pred[ik]
                 args.append((true, pred, name, metrics))
             met = self.run_metrics(args, "inst", "binary instance seg")
             res.extend([metric for metric in met if metric])
@@ -310,14 +371,40 @@ class BenchMarker:
             Dict[str, Any]:
                 Dictionary mapping the metrics to values + metadata.
         """
-        masks = self._read_files()
+        trues = sorted(self.true_dir.glob("*"))
+
+        preds = None
+        if self.pred_dir is not None:
+            preds = sorted(self.pred_dir.glob("*"))
+
+        sk = "sem" if self.pred_dir is None else "sem_map"
 
         args = []
-        for true, pred, name in masks:
+        for i, true_fn in enumerate(trues):
+            name = true_fn.name
+            true = FileHandler.read_mat(true_fn, return_all=True)
+
+            if preds is None:
+                pred = self.inferer.out_masks[name[:-4]]
+            else:
+                pred = FileHandler.read_mat(preds[i], return_all=True)
             true = true["sem_map"]
-            pred = pred["sem_map"]
-            args.append((true, pred, name, len(self.classes), metrics))
+            pred = pred[sk]
+            args.append((true, pred, name, len(self.sem_classes), metrics))
+
         met = self.run_metrics(args, "sem", "semantic seg")
-        res = [metric for metric in met if metric]
+        ires = [metric for metric in met if metric]
+
+        # re-format
+        res = []
+        for r in ires:
+            for k, val in self.sem_classes.items():
+                cc = {
+                    "name": r["name"],
+                    "type": k,
+                }
+                for m in metrics:
+                    cc[m] = r[m][val]
+                res.append(cc)
 
         return res

@@ -30,6 +30,8 @@ class LatencyBenchmarker:
     ) -> List[Dict[str, Any]]:
         """Compute the inference-pipeline latency.
 
+        NOTE: computes only inference not post-processing latency.
+
         Parameters
         ----------
             reps : int, defalt=1

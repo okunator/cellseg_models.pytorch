@@ -15,7 +15,12 @@ classes = {
 
 @pytest.mark.parametrize("how", ["binary", "multi", None])
 def test_sem_seg_bm(mask_patch_dir, how):
-    bm = BenchMarker(pred_dir=mask_patch_dir, true_dir=mask_patch_dir, classes=classes)
+    bm = BenchMarker(
+        pred_dir=mask_patch_dir,
+        true_dir=mask_patch_dir,
+        type_classes=classes,
+        sem_classes=classes,
+    )
 
     if how == "binary":
         res = bm.run_inst_benchmark(how, metrics=("dice2",))
