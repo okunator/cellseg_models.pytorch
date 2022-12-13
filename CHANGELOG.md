@@ -1,5 +1,13 @@
+<a id='changelog-0.1.15'></a>
+
+# 0.1.15 — 2022-12-13
+
+## Features
+
+- Use the inferer class as input to segmentation benchmarker class
 
 <a id='changelog-0.1.14'></a>
+
 # 0.1.14 — 2022-12-01
 
 ## Performance
@@ -22,7 +30,7 @@
 ## Tests
 
 - added tests for the multiprocessing tools.
-<a id='changelog-0.1.13'></a>
+  <a id='changelog-0.1.13'></a>
 
 # 0.1.13 — 2022-11-25
 
