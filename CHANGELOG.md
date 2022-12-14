@@ -1,5 +1,13 @@
 <a id='changelog-0.1.15'></a>
 
+# 0.1.16 — 2022-12-14
+
+## Dependencies
+
+- Bump old versions of numpy & scipy
+
+<a id='changelog-0.1.15'></a>
+
 # 0.1.15 — 2022-12-13
 
 ## Features
