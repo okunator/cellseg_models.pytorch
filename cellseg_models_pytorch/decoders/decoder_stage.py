@@ -1,10 +1,9 @@
-from typing import Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
 
-from ..modules.base_modules import Up
-from ..modules.conv_layer import ConvLayer
+from ..modules import ChannelPool, ConvLayer, Transformer2D, Up
 from .long_skips import LongSkip
 
 __all__ = ["DecoderStage"]
@@ -37,15 +36,22 @@ class DecoderStage(nn.Module):
         long_skip: str = "unet",
         merge_policy: str = "sum",
         layer_residual: bool = False,
-        skip_params: Optional[Dict] = None,
+        skip_params: Optional[Dict[str, Any]] = None,
+        n_transformers: Optional[int] = None,
+        n_transformer_blocks: Optional[Tuple[int, ...]] = (1,),
+        self_attentions: Optional[Tuple[Tuple[str, ...], ...]] = (("basic",),),
+        transformer_biases: Optional[Tuple[Tuple[bool, ...], ...]] = ((False,),),
+        transformer_dropouts: Optional[Tuple[Tuple[float, ...], ...]] = ((0.0,),),
+        transformer_params: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> None:
         """Build a decoder stage.
 
         Operations in each decoder stage:
-        1. Upsample
+        1. Upsample.
         2. Long skip from encoder to decoder if not the last stage.
-        3. Conv block
+        3. Conv block (optional, applied by default).
+        4. Transformer block (optional, not applied by default).
 
         Parameters
         ----------
@@ -62,34 +68,48 @@ class DecoderStage(nn.Module):
                 `long_skip` == None.
             style_channels : int, default=None
                 Number of style vector channels. If None, style vectors are ignored.
+                Also, ignored if `n_layers` is None.
             n_layers : int, default=1
                 The number of conv layers inside one decoder stage.
-            n_blocks : int, default=2
-                Number of conv-blocks inside one conv layer.
+            n_blocks : Tuple[int, ...], default=(2,)
+                Number of conv-blocks inside each conv layer. The tuple-length has to
+                match `n_layers`. Ignored if `n_layers` is None.
             short_skips : str, default=("residual", )
-                The short skip methods used inside the conv layers.
+                The short skip methods used inside the conv layers. Ignored if
+                `n_layers` is None.
             expand_ratios : Tuple[float, ...], default=((1.0, 1.0),):
                 Expansion/Squeeze ratios for the out channels of each conv block.
+                The tuple-length has to match `n_layers`. Ignored if `n_layers` is None.
             block_types : Tuple[Tuple[str, ...], ...], default=(("basic", "basic"), )
                 The type of the convolution blocks in the conv blocks inside the layers.
+                The tuple-length has to match `n_layers`. Ignored if `n_layers` is None.
             normalizations : Tuple[Tuple[str, ...], ...], default: (("bn", "bn"), )
                 Normalization methods used in the conv blocks inside the conv layers.
+                The tuple-length has to match `n_layers`. Ignored if `n_layers` is None.
             activations : Tuple[Tuple[str, ...], ...], default: (("relu", "relu"), )
                 Activation methods used inside the conv layers.
+                The tuple-length has to match `n_layers`. Ignored if `n_layers` is None.
             attentions : Tuple[Tuple[str, ...], ...], default: ((None, "se"), )
                 Attention methods used inside the conv layers.
+                The tuple-length has to match `n_layers`. Ignored if `n_layers` is None.
             preactivates Tuple[Tuple[bool, ...], ...], default: ((False, False), )
                 Boolean flags for the conv layers to use pre-activation.
+                The tuple-length has to match `n_layers`. Ignored if `n_layers` is None.
             preattends Tuple[Tuple[bool, ...], ...], default: ((False, False), )
                 Boolean flags for the conv layers to use pre-activation.
+                The tuple-length has to match `n_layers`. Ignored if `n_layers` is None.
             use_styles : Tuple[Tuple[bool, ...], ...], default=((False, False), )
                 Boolean flags for the conv layers to add style vectors at each block.
+                The tuple-length has to match `n_layers`. Ignored if `n_layers` is None.
             kernel_sizes : Tuple[int, ...], default=((3, 3),)
                 The size of the convolution kernels in each conv block.
+                The tuple-length has to match `n_layers`. Ignored if `n_layers` is None.
             groups : int, default=((1, 1),)
                 Number of groups for the kernels in each convolution blocks.
+                The tuple-length has to match `n_layers`. Ignored if `n_layers` is None.
             biases : bool, default=((False, False),)
                 Include bias terms in the convolution blocks.
+                The tuple-length has to match `n_layers`. Ignored if `n_layers` is None.
             upsampling : str, default="fixed-unpool"
                 Name of the upsampling method.
             long_skip : str, default="unet"
@@ -102,29 +122,38 @@ class DecoderStage(nn.Module):
             skip_params : Optional[Dict]
                 Extra keyword arguments for the skip-connection module. These depend
                 on the skip module. Refer to specific skip modules for more info.
+            n_transformers : int, optional
+                Number of self-attention tranformers applied after the conv-layer.
+                If this is None, no transformers will be added.
+            n_transformer_blocks : int, default=(2, ), optional
+                Number of multi-head self attention blocks used in the transformer
+                layers. Ignored if `n_transformers` is None.
+            self_attentions : Tuple[Tuple[str, ...], ...], default=(("basic",),)
+                The self-attention mechanisms used in the transformer layers.
+                Allowed values: "basic", "slice", "flash". Ignored if `n_transformers`
+                is None.
+            transformer_biases : Tuple[Tuple[bool, ...], ...], default=((False,),)
+                Flags, whether to use biases in the transformer layers. Ignored if
+                `n_transformers` is None.
+            transformer_dropoouts : Tuple[Tuple[float, ...], ...], default=((0.0,),)
+                Dropout probabilities in the transformer layers. Ignored if
+                `n_transformers` is None.
+            transformer_params : List[Dict[str, Any]]
+                Extra keyword arguments for the transformer layers. Refer to
+                `Transformer2D` module for more info. Ignored if `n_transformers`
+                is None.
 
         Raises
         ------
             ValueError:
-                If lengths of the tuple arguments are not equal to `n_layers`.
+                If lengths of the conv layer tuple args are not equal to `n_layers`.
+                If lengths of the transformer layer tuple args are not equal to
+                `n_transformers`.
         """
         super().__init__()
 
-        illegal_args = [
-            (k, a)
-            for k, a in locals().items()
-            if isinstance(a, tuple)
-            and a not in (skip_channels, dec_channels, dec_dims)
-            and len(a) != n_layers
-        ]
-
-        if illegal_args:
-            raise ValueError(
-                f"""
-                All the tuple-arg lengths need to be equal to `n_layers`={n_layers}.
-                Illegal args: {illegal_args}"""
-            )
-
+        self.n_layers = n_layers
+        self.n_transformers = n_transformers
         self.long_skip = long_skip
         self.stage_ix = stage_ix
         self.in_channels = dec_channels[stage_ix]
@@ -147,33 +176,130 @@ class DecoderStage(nn.Module):
 
         # Set up n layers of conv blocks
         layer = None  # placeholder
-        self.conv_layers = nn.ModuleDict()
-        for i in range(n_layers):
-            n_in_feats = self.skip.out_channels if i == 0 else layer.out_channels
-            layer = ConvLayer(
-                in_channels=n_in_feats,
-                out_channels=self.out_channels,
-                n_blocks=n_blocks[i],
-                layer_residual=layer_residual,
-                style_channels=style_channels,
-                short_skip=short_skips[i],
-                expand_ratios=expand_ratios[i],
-                block_types=block_types[i],
-                normalizations=normalizations[i],
-                activations=activations[i],
-                convolutions=convolutions[i],
-                preactivates=preactivates[i],
-                preattends=preattends[i],
-                use_styles=use_styles[i],
-                attentions=attentions[i],
-                kernel_sizes=kernel_sizes[i],
-                groups=groups[i],
-                biases=biases[i],
-                **kwargs,
-            )
-            self.conv_layers[f"conv_layer{i + 1}"] = layer
+        if n_layers is not None:
 
-        self.out_channels = layer.out_channels
+            # check that the conv-layer tuple-args are not illegal.
+            self._check_tuple_args(
+                "conv-layer related",
+                "n_layers",
+                n_layers,
+                all_args=locals(),
+                skip_args=(
+                    skip_channels,
+                    dec_channels,
+                    dec_dims,
+                    self_attentions,
+                    n_transformer_blocks,
+                    transformer_biases,
+                    transformer_dropouts,
+                ),
+            )
+
+            # set up the conv-layers.
+            self.conv_layers = nn.ModuleDict()
+            for i in range(n_layers):
+                n_in_feats = self.skip.out_channels if i == 0 else layer.out_channels
+                layer = ConvLayer(
+                    in_channels=n_in_feats,
+                    out_channels=self.out_channels,
+                    n_blocks=n_blocks[i],
+                    layer_residual=layer_residual,
+                    style_channels=style_channels,
+                    short_skip=short_skips[i],
+                    expand_ratios=expand_ratios[i],
+                    block_types=block_types[i],
+                    normalizations=normalizations[i],
+                    activations=activations[i],
+                    convolutions=convolutions[i],
+                    preactivates=preactivates[i],
+                    preattends=preattends[i],
+                    use_styles=use_styles[i],
+                    attentions=attentions[i],
+                    kernel_sizes=kernel_sizes[i],
+                    groups=groups[i],
+                    biases=biases[i],
+                    **kwargs,
+                )
+                self.conv_layers[f"conv_layer{i + 1}"] = layer
+
+            self.out_channels = layer.out_channels
+
+        # set in_channels for final operations
+        in_channels = self.skip.out_channels if n_layers is None else self.out_channels
+
+        if n_transformers is not None:
+
+            # check that the transformer-layer tuple args are not illegal.
+            self._check_tuple_args(
+                "transformer related",
+                "n_transformers",
+                n_transformers,
+                all_args=locals(),
+                skip_args=(
+                    skip_channels,
+                    dec_channels,
+                    dec_dims,
+                    n_blocks,
+                    short_skips,
+                    expand_ratios,
+                    block_types,
+                    normalizations,
+                    activations,
+                    convolutions,
+                    attentions,
+                    preactivates,
+                    preattends,
+                    use_styles,
+                    kernel_sizes,
+                    groups,
+                    biases,
+                ),
+            )
+
+            # set up the transformer layers
+            self.transformers = nn.ModuleDict()
+            for i in range(n_transformers):
+                tr = Transformer2D(
+                    in_channels=in_channels,
+                    n_blocks=n_transformer_blocks[i],
+                    block_types=self_attentions[i],
+                    biases=transformer_biases[i],
+                    dropouts=transformer_dropouts[i],
+                    **transformer_params
+                    if transformer_params is not None
+                    else {"k": None},
+                )
+                self.transformers[f"tr_layer_{i + 1}"] = tr
+
+        # add a channel pooling layer at the end if no conv-layers are set up
+        if n_layers is None:
+            self.ch_pool = ChannelPool(
+                in_channels=in_channels,
+                out_channels=self.out_channels,
+                normalization=normalizations[0][0],
+                convolution=convolutions[0][0],
+            )
+
+    def _check_tuple_args(
+        self,
+        case: str,
+        var: str,
+        n: int,
+        all_args: Dict[str, Any],
+        skip_args: Tuple[Any, ...],
+    ) -> None:
+        """Check for illegal tuple-args."""
+        illegal_args = [
+            (k, a)
+            for k, a in all_args.items()
+            if isinstance(a, tuple) and a not in skip_args and len(a) != n
+        ]
+
+        if illegal_args:
+            raise ValueError(
+                f"All {case} tuple-arg lengths need to be equal to `{var}`={n}. "
+                f"Illegal args: {illegal_args}"
+            )
 
     def forward(
         self,
@@ -211,8 +337,18 @@ class DecoderStage(nn.Module):
         extra_skips = x[1] if self.long_skip == "unetpp" else None
         x = x[0] if self.long_skip == "unetpp" else x
 
-        # conv layer
-        for _, conv_layer in self.conv_layers.items():
-            x = conv_layer(x, style)
+        # conv layers
+        if self.n_layers is not None:
+            for conv_layer in self.conv_layers.values():
+                x = conv_layer(x, style)
+
+        # transformer layers
+        if self.n_transformers is not None:
+            for transformer in self.transformers.values():
+                x = transformer(x)
+
+        # channel pool if conv-layers are skipped.
+        if self.n_layers is None:
+            x = self.ch_pool(x)
 
         return x, extra_skips
