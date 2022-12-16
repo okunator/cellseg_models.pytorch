@@ -21,8 +21,9 @@ class GroupNorm(nn.GroupNorm):
             num_groups : int, default=None
                 Number of groups to group the channels.
         """
-        num_groups, remainder = divmod(num_features, 16)
-        if remainder:
-            num_groups = num_features // remainder
+        if num_groups is None:
+            num_groups, remainder = divmod(num_features, 16)
+            if remainder:
+                num_groups = num_features // remainder
 
         super().__init__(num_groups=num_groups, num_channels=num_features)
