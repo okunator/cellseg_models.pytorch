@@ -25,7 +25,7 @@ SOFTWARE.
 """
 
 import numpy as np
-from scipy.ndimage.morphology import distance_transform_cdt, distance_transform_edt
+from scipy.ndimage import distance_transform_cdt, distance_transform_edt
 
 from cellseg_models_pytorch.utils import bounding_box
 

@@ -62,7 +62,7 @@ def smooth_distance(
         np.ndarray:
             Smooth distance transform. Shape: (H, W).
     """
-    dists = ndi.morphology.distance_transform_edt(inst_map)
+    dists = ndi.distance_transform_edt(inst_map)
     inst_map = np.pad(inst_map, pad)
     H, W = inst_map.shape
 

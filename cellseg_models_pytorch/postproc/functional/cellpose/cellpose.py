@@ -33,7 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from typing import List, Tuple
 
 import numpy as np
-from scipy.ndimage.filters import maximum_filter1d
+from scipy.ndimage import maximum_filter1d
 from skimage.filters import apply_hysteresis_threshold
 
 from cellseg_models_pytorch.utils import binarize

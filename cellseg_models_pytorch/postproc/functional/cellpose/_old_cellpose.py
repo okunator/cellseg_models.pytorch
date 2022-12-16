@@ -35,7 +35,7 @@ from typing import Union
 
 import numpy as np
 import torch
-from scipy.ndimage.filters import maximum_filter1d
+from scipy.ndimage import maximum_filter1d
 
 from cellseg_models_pytorch.utils import binarize
 
