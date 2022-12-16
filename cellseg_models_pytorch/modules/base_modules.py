@@ -1,12 +1,12 @@
 import torch
 import torch.nn as nn
 
-from .act import ACT_LOOKUP
+from .act import ACT_LOOKUP, TR_ACT_LOOKUP
 from .conv import CONV_LOOKUP
 from .norm import NORM_LOOKUP
 from .upsample import UP_LOOKUP
 
-__all__ = ["Activation", "Norm", "Up", "Conv", "Identity"]
+__all__ = ["Activation", "Norm", "Up", "Conv", "Identity", "TransformerAct"]
 
 
 class Identity(nn.Module):
@@ -151,3 +151,32 @@ class Conv(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass for the convolution function."""
         return self.conv(x)
+
+
+class TransformerAct(nn.Module):
+    def __init__(self, name: str, **kwargs) -> None:
+        """Activation function for transformer outputs wrapper class.
+
+        Parameters:
+        -----------
+            name : str
+                Name of the transformer activation method.
+
+        Raises
+        ------
+            ValueError: if the transformer activation name is illegal.
+        """
+        super().__init__()
+
+        allowed = list(TR_ACT_LOOKUP.keys())
+        if name not in allowed:
+            raise ValueError(
+                "Illegal transformer activation method given. "
+                f"Allowed: {allowed}. Got: '{name}'"
+            )
+
+        self.tr_act = TR_ACT_LOOKUP[name](**kwargs)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass for the convolution function."""
+        return self.tr_act(x)

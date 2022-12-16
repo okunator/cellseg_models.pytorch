@@ -17,6 +17,7 @@ from torch.nn import (
     Tanhshrink,
 )
 
+from .gated_gelu import GEGLU, ApproximateGELU
 from .mish import Mish
 from .swish import Swish
 
@@ -41,6 +42,8 @@ ACT_LOOKUP = {
     "hardsigmoid": Hardsigmoid,
 }
 
+TR_ACT_LOOKUP = {"geglu": GEGLU, "approximate_geglu": ApproximateGELU}
+
 
 __all__ = [
     "Mish",
@@ -63,4 +66,7 @@ __all__ = [
     "Hardsigmoid",
     "Activation",
     "ACT_LOOKUP",
+    "GEGLU",
+    "ApproximateGELU",
+    "TR_ACT_LOOKUP",
 ]
