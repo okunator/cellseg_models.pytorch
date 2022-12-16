@@ -29,11 +29,11 @@ class SelfAttention(nn.Module):
             query_dim : int
                 The number of channels in the query. Typically: num_heads*head_dim
             self_attention : str, default="basic"
-                One of ("basic", "flash", "sliced").
-                "basic" is the normal O(N^2) self attention.
-                "flash" is the flash attention (by xformers library),
-                "slice" is self attention implemented with sliced matmul operation
-                on the batch dimension to save memory.
+                One of ("basic", "flash", "slice", "memeff").
+                "basic": the normal O(N^2) self attention.
+                "flash": the flash attention (by xformers library),
+                "slice": batch sliced attention operation to save mem.
+                "memeff" xformers.memory_efficient_attention.
             cross_attention_dim : int, optional
                 Number of channels in the context tensor. Cross attention combines
                 asymmetrically two separate embeddings (context and input embeddings).
@@ -204,11 +204,11 @@ class SelfAttentionBlock(nn.Module):
         Parameters
         ----------
             name : str
-                One of ("basic", "flash", "sliced").
-                "basic" is the normal O(N^2) self attention.
-                "flash" is the flash attention (by xformers library),
-                "slice" is self attention implemented with sliced matmul operation
-                on the batch dimension to save memory.
+                One of ("basic", "flash", "slice", "memeff").
+                "basic": the normal O(N^2) self attention.
+                "flash": the flash attention (by xformers library),
+                "slice": batch sliced attention operation to save mem.
+                "memeff" xformers.memory_efficient_attention.
             query_dim : int
                 The number of channels in the query. Typically: num_heads*head_dim
             cross_attention_dim : int, optional

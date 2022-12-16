@@ -1,6 +1,11 @@
 import torch
 import torch.nn as nn
 
+try:
+    from xformers.ops import memory_efficient_attention
+except ModuleNotFoundError:
+    pass
+
 
 class ExactSelfAttention(nn.Module):
     def __init__(
@@ -15,26 +20,37 @@ class ExactSelfAttention(nn.Module):
         Three variants:
         - basic self-attention implementation with torch.matmul O(N^2)
         - slice-attention - Computes the attention matrix in slices to save mem.
-        - flash attention from xformers package:
-            Citation..
+        - `xformers.ops.memory_efficient_attention` from xformers package.
 
         Parameters
         ----------
             head_dim : int
                 Out dim per attention head.
             self_attention : str, default="basic"
-                One of ("basic", "flash", "sliced"). Basic is the normal O(N^2)
-                self attention. "flash" is the flash attention (by xformes library),
-                "slice" is self attention implemented with sliced matmul operation
-                to save memory.
+                One of ("basic", "flash", "sliced", "memeff").
+                "basic": the normal O(N^2) self attention.
+                "flash": the flash attention (by xformers library),
+                "slice": batch sliced attention operation to save mem.
+                "memeff" xformers.memory_efficient_attention.
             num_heads : int, optional
                 Number of heads. Used only if `slice_attention = True`.
             slice_size, int, optional
                 The size of the slice. Used only if `slice_attention = True`.
+
+        Raises
+        ------
+            - ValueError:
+                - If illegal self attention method is given.
+                - If `self_attention` is set to `slice` while `num_heads` | `slice_size`
+                    args are not given proper integer values.
+                - If `self_attention` is set to `memeff` but cuda is not available.
+            - ModuleNotFoundError:
+                - If `self_attention` is set to `memeff` and `xformers` package is not
+                installed
         """
         super().__init__()
 
-        allowed = ("basic", "flash", "slice")
+        allowed = ("basic", "flash", "slice", "memeff")
         if self_attention not in allowed:
             raise ValueError(
                 f"Illegal exact self attention type given. Got: {self_attention}. "
@@ -57,6 +73,21 @@ class ExactSelfAttention(nn.Module):
                     "If `slice_attention` is set to True, `slice_size`, `num_heads`, "
                     f"need to be given integer values. Got: `slice_size`: {slice_size} "
                     f"and `num_heads`: {num_heads}."
+                )
+
+        if self_attention == "memeff":
+            try:
+                import xformers  # noqa F401
+            except ModuleNotFoundError:
+                raise ModuleNotFoundError(
+                    "`self_attention` was set to `memeff`. The method requires the "
+                    "xformers package. See how to install xformers: "
+                    "https://github.com/facebookresearch/xformers"
+                )
+            if not torch.cuda.is_available():
+                raise ValueError(
+                    "`self_attention` was set to `memeff`. The method is implemented "
+                    "with `xformers.memory_efficient_attention` that requires cuda."
                 )
 
     def _attention(
@@ -161,7 +192,9 @@ class ExactSelfAttention(nn.Module):
             torch.Tensor:
                 The self-attention matrix. Same shape as inputs.
         """
-        if self.self_attention == "flash":
+        if self.self_attention == "memeff":
+            attn = memory_efficient_attention(query, key, value)
+        elif self.self_attention == "flash":
             raise NotImplementedError
         elif self.self_attention == "slice":
             attn = self._slice_attention(query, key, value)

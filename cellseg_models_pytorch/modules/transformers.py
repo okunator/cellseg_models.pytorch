@@ -50,7 +50,7 @@ class Transformer2D(nn.Module):
             block_types : Tuple[str, ...], default=("basic", "basic")
                 The name of the SelfAttentionBlocks in the TransformerLayer.
                 Length of the tuple has to equal `n_blocks`
-                Allowed names: "basic". "slice", "flash".
+                Allowed names: "basic". "slice", "flash", "memeff".
             dropouts : Tuple[float, ...], default=(False, False)
                 Dropout probabilities for the SelfAttention blocks.
             biases : bool, default=(True, True)
