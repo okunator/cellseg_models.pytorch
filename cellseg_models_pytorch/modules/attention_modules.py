@@ -1,7 +1,7 @@
 """
 Spatial attention modules for CNNs.
 
-Most of these are simplified and adapted from:
+Most of these are simplified and adapted to fit our framework from:
 https://github.com/rwightman/pytorch-image-models
 
 License:
@@ -230,7 +230,7 @@ class GlobalContext(nn.Module):
         ----------
             in_channels : int
                 Number of input channels.
-            squeeze_ratio : float, default=0.25
+            squeeze_ratio : float, default=0.125
                 Ratio of squeeze.
             conv : str, default="conv"
                 Convolution layer type.
