@@ -328,9 +328,9 @@ class DecoderStage(nn.Module):
                 Output torch.Tensor and extra skip torch.Tensors. If no extra
                 skips are present, returns None as the second return value.
         """
-        x = self.upsample(x)
+        x = self.upsample(x)  # (B, in_channels, H, W)
 
-        # long skip
+        # long skip (B, in_channels(+skip_channels), H, W)
         x = self.skip(x, ix=self.stage_ix, skips=skips, extra_skips=extra_skips)
 
         # unetpp returns extra skips
@@ -340,15 +340,15 @@ class DecoderStage(nn.Module):
         # conv layers
         if self.n_layers is not None:
             for conv_layer in self.conv_layers.values():
-                x = conv_layer(x, style)
+                x = conv_layer(x, style)  # (B, out_channels, H, W)
 
         # transformer layers
         if self.n_transformers is not None:
             for transformer in self.transformers.values():
-                x = transformer(x)
+                x = transformer(x)  # (B, long_skip_channels/out_channels, H, W)
 
         # channel pool if conv-layers are skipped.
         if self.n_layers is None:
-            x = self.ch_pool(x)
+            x = self.ch_pool(x)  # (B, out_channels, H, W)
 
         return x, extra_skips

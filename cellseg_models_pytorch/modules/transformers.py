@@ -5,8 +5,8 @@ import torch.nn as nn
 
 from cellseg_models_pytorch.modules import SelfAttentionBlock
 
-from .base_modules import TransformerAct
-from .misc_modules import Proj2Attention
+from .mlp import MlpBlock
+from .patch_embeddings import ContiguousEmbed
 
 __all__ = ["Transformer2D", "TransformerLayer"]
 
@@ -25,7 +25,7 @@ class Transformer2D(nn.Module):
         act: str = "geglu",
         num_groups: int = 32,
         slice_size: int = 4,
-        fc_projection_mult: int = 4,
+        mlp_ratio: int = 4,
         **kwargs,
     ) -> None:
         """Create a transformer for 2D-image-like (B, C, H, W) inputs.
@@ -69,15 +69,19 @@ class Transformer2D(nn.Module):
                 layer.
         """
         super().__init__()
-        self.proj_in = Proj2Attention(
+        patch_norm = "gn" if in_channels >= 32 else None
+        self.patch_embed = ContiguousEmbed(
             in_channels=in_channels,
-            num_groups=num_groups,
+            patch_size=1,
             head_dim=head_dim,
             num_heads=num_heads,
+            normalization=patch_norm,
+            norm_kwargs={"num_features": in_channels, "num_groups": num_groups},
         )
+        self.proj_dim = self.patch_embed.proj_dim
 
         self.transformer = TransformerLayer(
-            query_dim=self.proj_in.proj_dim,
+            query_dim=self.proj_dim,
             num_heads=num_heads,
             head_dim=head_dim,
             cross_attention_dim=cross_attention_dim,
@@ -87,11 +91,11 @@ class Transformer2D(nn.Module):
             biases=biases,
             act=act,
             slice_size=slice_size,
-            fc_projection_mult=fc_projection_mult,
+            mlp_ratio=mlp_ratio,
         )
 
         self.proj_out = nn.Conv2d(
-            self.proj_in.proj_dim, in_channels, kernel_size=1, stride=1, padding=0
+            self.proj_dim, in_channels, kernel_size=1, stride=1, padding=0
         )
 
     def forward(self, x: torch.Tensor, context: torch.Tensor = None) -> torch.Tensor:
@@ -114,13 +118,13 @@ class Transformer2D(nn.Module):
         residual = x
 
         # 1. project
-        x = self.proj_in(x)
+        x = self.patch_embed(x)
 
         # 2. transformer
         x = self.transformer(x, context)
 
         # 3. Reshape back to image-like shape and project to original input channels.
-        x = x.reshape(B, H, W, self.proj_in.proj_dim).permute(0, 3, 1, 2)
+        x = x.reshape(B, H, W, self.proj_dim).permute(0, 3, 1, 2)
         x = self.proj_out(x)
 
         # 4. residual
@@ -134,13 +138,13 @@ class TransformerLayer(nn.Module):
         num_heads: int = 8,
         head_dim: int = 64,
         cross_attention_dim: int = None,
-        act: str = "geglu",
+        activation: str = "star_relu",
         n_blocks: int = 2,
         block_types: Tuple[str, ...] = ("basic", "basic"),
         dropouts: Tuple[float, ...] = (0.0, 0.0),
         biases: Tuple[bool, ...] = (False, False),
         slice_size: int = 4,
-        fc_projection_mult: int = 4,
+        mlp_ratio: int = 4,
         **kwargs,
     ) -> None:
         """Chain transformer blocks to compose a full generic transformer.
@@ -217,11 +221,12 @@ class TransformerLayer(nn.Module):
             )
             self.tr_blocks[f"transformer_{block_types[i]}_{i + 1}"] = att_block
 
-        proj_dim = int(query_dim * fc_projection_mult)
-        self.fc = nn.Sequential(
-            nn.LayerNorm(query_dim),
-            TransformerAct(act, dim_in=query_dim, dim_out=proj_dim),
-            nn.Linear(proj_dim, query_dim),
+        self.mlp = MlpBlock(
+            in_channels=query_dim,
+            mlp_ratio=mlp_ratio,
+            activation=activation,
+            normalization="ln",
+            norm_kwargs={"normalized_shape": query_dim},
         )
 
     def forward(self, x: torch.Tensor, context: torch.Tensor = None) -> torch.Tensor:
@@ -249,4 +254,4 @@ class TransformerLayer(nn.Module):
 
             x = tr_block(x, con)
 
-        return self.fc(x) + x
+        return self.mlp(x) + x

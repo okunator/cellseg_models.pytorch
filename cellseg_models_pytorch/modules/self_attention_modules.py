@@ -19,6 +19,7 @@ class SelfAttention(nn.Module):
         dropout: float = 0.0,
         bias: bool = False,
         slice_size: int = 4,
+        **kwargs,
     ) -> None:
         """Compute self-attention.
 
@@ -52,6 +53,7 @@ class SelfAttention(nn.Module):
                 `self_attention = "slice"`.
         """
         super().__init__()
+        self.out_channels = query_dim
         proj_channels = head_dim * num_heads
 
         # cross attention dim
