@@ -257,7 +257,7 @@ class GlobalContext(nn.Module):
             padding=0,
             bias=True,
         )
-        self.norm = Norm("ln", num_features=squeeze_channels)
+        self.norm = Norm("ln2d", num_features=squeeze_channels)
         self.act = Activation(activation)
         self.conv_excite = Conv(
             conv,

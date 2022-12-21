@@ -13,7 +13,7 @@ def test_act_forward(activation):
     assert output.dtype == input.dtype
 
 
-@pytest.mark.parametrize("normalization", ["bn", "bcn", "gn", "ln", None])
+@pytest.mark.parametrize("normalization", ["bn", "bcn", "gn", "ln2d", None])
 def test_norm(normalization):
     norm = Norm(normalization, num_features=3)
     input = torch.rand([1, 3, 16, 16])
