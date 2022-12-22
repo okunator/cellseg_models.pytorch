@@ -22,7 +22,7 @@ class Transformer2D(nn.Module):
         block_types: Tuple[str, ...] = ("basic", "basic"),
         dropouts: Tuple[float, ...] = (0.0, 0.0),
         biases: Tuple[bool, ...] = (False, False),
-        act: str = "geglu",
+        activation: str = "star_relu",
         num_groups: int = 32,
         slice_size: int = 4,
         mlp_ratio: int = 4,
@@ -55,16 +55,16 @@ class Transformer2D(nn.Module):
                 Dropout probabilities for the SelfAttention blocks.
             biases : bool, default=(True, True)
                 Include bias terms in the SelfAttention blocks.
-            act : str, default="geglu"
+            activation : str, default="star_relu"
                 The activation function applied at the end of the transformer layer fc.
-                One of ("geglu", "approximate_gelu").
+                One of ("geglu", "approximate_gelu", "star_relu").
             num_groups : int, default=32
                 Number of groups in the first group-norm op before the input is
                 projected to be suitable for self-attention.
             slice_size : int, default=4
                 Slice size for sliced self-attention. This is used only if
                 `name = "slice"` for a SelfAttentionBlock.
-            fc_projection_mult : int, default=4
+            mlp_ratio : int, default=4
                 Multiplier that defines the out dimension of the final fc projection
                 layer.
         """
@@ -89,7 +89,7 @@ class Transformer2D(nn.Module):
             block_types=block_types,
             dropouts=dropouts,
             biases=biases,
-            act=act,
+            activation=activation,
             slice_size=slice_size,
             mlp_ratio=mlp_ratio,
         )
@@ -166,9 +166,9 @@ class TransformerLayer(nn.Module):
                 asymmetrically two separate embeddings (context and input embeddings).
                 E.g. passage from transformer encoder to transformer decoder. If this is
                 set to None, no cross attention is applied.
-            act : str, default="geglu"
+            activation : str, default="star_relu"
                 The activation function applied at the end of the transformer layer fc.
-                One of ("geglu", "approximate_gelu").
+                One of ("gelu", "geglu", "approximate_gelu", "star_relu").
             n_blocks : int, default=2
                 Number of SelfAttentionBlocks used in this layer.
             block_types : Tuple[str, ...], default=("basic", "basic")
@@ -182,9 +182,11 @@ class TransformerLayer(nn.Module):
             slice_size : int, default=4
                 Slice size for sliced self-attention. This is used only if
                 `name = "slice"` for a SelfAttentionBlock.
-            fc_projection_mult : int, default=4
+            mlp_proj : int, default=4
                 Multiplier that defines the out dimension of the final fc projection
                 layer.
+            **kwargs:
+                Arbitrary key-word arguments (e.g. for activation function.).
 
         Raises
         ------
@@ -227,6 +229,7 @@ class TransformerLayer(nn.Module):
             activation=activation,
             normalization="ln",
             norm_kwargs={"normalized_shape": query_dim},
+            activation_kwargs=kwargs,
         )
 
     def forward(self, x: torch.Tensor, context: torch.Tensor = None) -> torch.Tensor:
@@ -251,7 +254,7 @@ class TransformerLayer(nn.Module):
             con = None
             if i == n_blocks:
                 con = context
-
+            print("context: ", con.shape)
             x = tr_block(x, con)
 
         return self.mlp(x) + x

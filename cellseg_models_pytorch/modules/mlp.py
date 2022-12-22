@@ -17,7 +17,7 @@ class Mlp(nn.Module):
         dropout: float = 0.0,
         bias: bool = False,
         out_channels: int = None,
-        **kwargs
+        **act_kwargs
     ) -> None:
         """MLP token mixer.
 
@@ -41,13 +41,15 @@ class Mlp(nn.Module):
                 Flag whether to use bias terms in the nn.Linear modules.
             out_channels : int, optional
                 Number of out channels. If None `out_channels = in_channels`
+            **act_kwargs:
+                Arbitrary key-word arguments for the activation function.
         """
         super().__init__()
         self.out_channels = in_channels if out_channels is None else out_channels
         hidden_channels = int(mlp_ratio * in_channels)
 
         self.fc1 = nn.Linear(in_channels, hidden_channels, bias=bias)
-        self.act = Activation(activation)
+        self.act = Activation(activation, **act_kwargs)
         self.drop1 = nn.Dropout(dropout)
         self.fc2 = nn.Linear(hidden_channels, self.out_channels, bias=bias)
         self.drop2 = nn.Dropout(dropout)
@@ -69,6 +71,7 @@ class MlpBlock(nn.Module):
         in_channels: int,
         mlp_ratio: int = 4,
         activation: str = "star_relu",
+        activation_kwargs: Dict[str, Any] = None,
         dropout: float = 0.0,
         bias: bool = False,
         normalization: str = "ln",
@@ -105,6 +108,7 @@ class MlpBlock(nn.Module):
             activation=activation,
             dropout=dropout,
             bias=bias,
+            **activation_kwargs
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
