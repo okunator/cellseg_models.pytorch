@@ -161,21 +161,27 @@ class ConvBlock(nn.Module, ShortSkipMixIn):
                 f"Illegal `short_skip` given. Got: '{short_skip}'. Allowed: {allowed}."
             )
 
-        self.block = CONVBLOCK_LOOKUP[name](
-            in_channels=in_channels,
-            out_channels=out_channels,
-            same_padding=same_padding,
-            normalization=normalization,
-            activation=activation,
-            convolution=convolution,
-            preactivate=preactivate,
-            kernel_size=kernel_size,
-            groups=groups,
-            bias=bias,
-            attention=attention,
-            preattend=preattend,
-            **kwargs,
-        )
+        try:
+            self.block = CONVBLOCK_LOOKUP[name](
+                in_channels=in_channels,
+                out_channels=out_channels,
+                same_padding=same_padding,
+                normalization=normalization,
+                activation=activation,
+                convolution=convolution,
+                preactivate=preactivate,
+                kernel_size=kernel_size,
+                groups=groups,
+                bias=bias,
+                attention=attention,
+                preattend=preattend,
+                **kwargs,
+            )
+        except Exception as e:
+            raise Exception(
+                "Encountered an error when trying to init ConvBlock module: "
+                f"ConvBlock(name='{name}'): {e.__class__.__name__}: {e}"
+            )
 
         self.downsample = None
         if short_skip == "residual" and in_channels != self.out_channels:

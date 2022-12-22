@@ -325,7 +325,13 @@ class Attention(nn.Module):
             )
 
         if name is not None:
-            self.att = ATT_LOOKUP[name](**kwargs)
+            try:
+                self.att = ATT_LOOKUP[name](**kwargs)
+            except Exception as e:
+                raise Exception(
+                    "Encountered an error when trying to init chl attention function: "
+                    f"Attention(name='{name}'): {e.__class__.__name__}: {e}"
+                )
         else:
             self.att = Identity()
 

@@ -193,7 +193,13 @@ class ExactSelfAttention(nn.Module):
                 The self-attention matrix. Same shape as inputs.
         """
         if self.self_attention == "memeff":
-            attn = memory_efficient_attention(query, key, value)
+            if all([query.is_cuda, key.is_cuda, value.is_cuda]):
+                attn = memory_efficient_attention(query, key, value)
+            else:
+                raise RuntimeError(
+                    "`xformers.ops.memory_efficient_attention` is only implemented "
+                    "for cuda. Make sure your inputs & model devices are set to cuda."
+                )
         elif self.self_attention == "flash":
             raise NotImplementedError
         elif self.self_attention == "slice":

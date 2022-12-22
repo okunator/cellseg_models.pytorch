@@ -50,7 +50,13 @@ class Activation(nn.Module):
             try:
                 self.act = ACT_LOOKUP[name](**kwargs, inplace=True)
             except Exception:
-                self.act = ACT_LOOKUP[name](**kwargs)
+                try:
+                    self.act = ACT_LOOKUP[name](**kwargs)
+                except Exception as e:
+                    raise Exception(
+                        "Encountered an error when trying to init activation function: "
+                        f"Activation(name='{name}'): {e.__class__.__name__}: {e}"
+                    )
         else:
             self.act = Identity()
 
@@ -81,7 +87,13 @@ class Norm(nn.Module):
             )
 
         if name is not None:
-            self.norm = NORM_LOOKUP[name](**kwargs)
+            try:
+                self.norm = NORM_LOOKUP[name](**kwargs)
+            except Exception as e:
+                raise Exception(
+                    "Encountered an error when trying to init normalization function: "
+                    f"Norm(name='{name}'): {e.__class__.__name__}: {e}"
+                )
         else:
             self.norm = Identity()
 
@@ -118,7 +130,14 @@ class Up(nn.Module):
             kwargs["align_corners"] = True
 
         kwargs["scale_factor"] = scale_factor
-        self.up = UP_LOOKUP[name](**kwargs)
+
+        try:
+            self.up = UP_LOOKUP[name](**kwargs)
+        except Exception as e:
+            raise Exception(
+                "Encountered an error when trying to init upsampling function: "
+                f"Up(name='{name}'): {e.__class__.__name__}: {e}"
+            )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass for the upsampling function."""
@@ -146,7 +165,13 @@ class Conv(nn.Module):
                 f"Illegal convolution method given. Allowed: {allowed}. Got: '{name}'"
             )
 
-        self.conv = CONV_LOOKUP[name](**kwargs)
+        try:
+            self.conv = CONV_LOOKUP[name](**kwargs)
+        except Exception as e:
+            raise Exception(
+                "Encountered an error when trying to init convolution function: "
+                f"Conv(name='{name}'): {e.__class__.__name__}: {e}"
+            )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass for the convolution function."""
