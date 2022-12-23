@@ -1,12 +1,10 @@
 import torch
+import torch.nn as nn
 
-from .attention_ops import compute_mha
-from .base_attention import BaseSelfAttention
-
-__all__ = ["ExactSelfAttention"]
+__all__ = ["BaseSelfAttention"]
 
 
-class ExactSelfAttention(BaseSelfAttention):
+class BaseSelfAttention(nn.Module):
     def __init__(
         self,
         head_dim: int,
@@ -15,7 +13,7 @@ class ExactSelfAttention(BaseSelfAttention):
         slice_size: int = None,
         **kwargs,
     ) -> None:
-        """Compute exact attention.
+        """Initialize a base class for self-attention modules.
 
         Four variants:
         - basic: self-attention implementation with torch.matmul O(N^2)
@@ -52,48 +50,44 @@ class ExactSelfAttention(BaseSelfAttention):
                 - If `self_attention` is set to `memeff` and `xformers` package is not
                 installed
         """
-        super().__init__(
-            head_dim=head_dim,
-            num_heads=num_heads,
-            how=how,
-            slice_size=slice_size,
-        )
+        super().__init__()
 
-    def forward(
-        self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor
-    ) -> torch.Tensor:
-        """Compute exact self-attention.
+        allowed = ("basic", "flash", "slice", "memeff", "slice-memeff")
+        if how not in allowed:
+            raise ValueError(
+                f"Illegal exact self attention type given. Got: {how}. "
+                f"Allowed: {allowed}."
+            )
 
-        I.e softmax(Q @ K'/sqrt(head_dim)) @ V
+        self.how = how
+        self.head_dim = head_dim
+        self.num_heads = num_heads
 
-        Parameters
-        ----------
-            query : torch.Tensor
-                Query tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-            key : torch.Tensor
-                Key tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-            value : torch.Tensor
-                Value tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+        if how == "slice":
+            if any(s is None for s in (slice_size, num_heads)):
+                raise ValueError(
+                    "If `how` is set to 'slice', `slice_size`, `num_heads`, "
+                    f"need to be given integer values. Got: `slice_size`: {slice_size} "
+                    f"and `num_heads`: {num_heads}."
+                )
 
-        Returns
-        -------
-            torch.Tensor:
-                The self-attention matrix. Same shape as inputs.
-        """
-        attn = compute_mha(
-            query,
-            key,
-            value,
-            self.how,
-            slice_size=self.slice_size,  # used only for slice-att
-            num_heads=self.num_heads,  # used only for slice-att
-            proj_channels=self.proj_channels,  # used only for slice-att
-        )
+        if how in ("memeff", "slice-memeff"):
+            try:
+                import xformers  # noqa F401
+            except ModuleNotFoundError:
+                raise ModuleNotFoundError(
+                    "`self_attention` was set to `memeff`. The method requires the "
+                    "xformers package. See how to install xformers: "
+                    "https://github.com/facebookresearch/xformers"
+                )
+            if not torch.cuda.is_available():
+                raise ValueError(
+                    f"`how` was set to {how}. This method for computing self attentiton"
+                    " is implemented  with `xformers.memory_efficient_attention` that "
+                    "requires cuda."
+                )
 
-        return attn
-
-    def __repr__(self) -> str:
-        """Add extra info to print."""
-        s = "ExactSelfAttention(self_attention='{self_attention}', head_dim={head_dim}, num_heads={num_heads})"  # noqa: E501
-        s = s.format(**self.__dict__)
-        return s
+        # for slice_size > 0 the attention score computation
+        # is split across the batch axis to save memory
+        self.slice_size = slice_size
+        self.proj_channels = self.head_dim * self.num_heads
