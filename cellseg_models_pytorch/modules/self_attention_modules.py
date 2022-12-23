@@ -3,7 +3,7 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 
-from .self_attention import ExactSelfAttention
+from .base_modules import MultiHeadSelfAttention
 
 __all__ = ["SelfAttention", "SelfAttentionBlock"]
 
@@ -12,7 +12,8 @@ class SelfAttention(nn.Module):
     def __init__(
         self,
         query_dim: int,
-        self_attention: str = "basic",
+        name: str = "exact",
+        how: str = "basic",
         cross_attention_dim: int = None,
         num_heads: int = 8,
         head_dim: int = 64,
@@ -29,12 +30,16 @@ class SelfAttention(nn.Module):
         ----------
             query_dim : int
                 The number of channels in the query. Typically: num_heads*head_dim
-            self_attention : str, default="basic"
-                One of ("basic", "flash", "slice", "memeff").
+            name : str
+                Name of the attention method. One of ("exact", "linformer").
+            how : str, default="basic"
+                How to compute the self-attention matrix.
+                One of ("basic", "flash", "slice", "memeff", "slice-memeff").
                 "basic": the normal O(N^2) self attention.
                 "flash": the flash attention (by xformers library),
                 "slice": batch sliced attention operation to save mem.
-                "memeff" xformers.memory_efficient_attention.
+                "memeff": xformers.memory_efficient_attention.
+                "slice-memeff": Conmbine slicing and memory_efficient_attention.
             cross_attention_dim : int, optional
                 Number of channels in the context tensor. Cross attention combines
                 asymmetrically two separate embeddings (context and input embeddings).
@@ -51,27 +56,29 @@ class SelfAttention(nn.Module):
             slice_size : int, default=4
                 Slice size for sliced self-attention. This is used only if
                 `self_attention = "slice"`.
+            **kwargs:
+                Extra key-word arguments for the MHSA-module
         """
         super().__init__()
         self.out_channels = query_dim
+        self.num_heads = num_heads
         proj_channels = head_dim * num_heads
 
         # cross attention dim
         if cross_attention_dim is None:
             cross_attention_dim = query_dim
 
-        self.scale = head_dim**-0.5
-        self.num_heads = num_heads
-
         self.to_q = nn.Linear(query_dim, proj_channels, bias=bias)
         self.to_k = nn.Linear(cross_attention_dim, proj_channels, bias=bias)
         self.to_v = nn.Linear(cross_attention_dim, proj_channels, bias=bias)
 
-        self.self_attn = ExactSelfAttention(
+        self.self_attn = MultiHeadSelfAttention(
+            name=name,
             head_dim=head_dim,
-            self_attention=self_attention,
             num_heads=self.num_heads,
+            how=how,
             slice_size=slice_size,
+            **kwargs,
         )
 
         self.to_out = nn.Linear(proj_channels, query_dim)
@@ -187,8 +194,9 @@ class SelfAttention(nn.Module):
 class SelfAttentionBlock(nn.Module):
     def __init__(
         self,
-        name: str,
+        how: str,
         query_dim: int,
+        name: str = "exact",
         cross_attention_dim: int = None,
         num_heads: int = 8,
         head_dim: int = 64,
@@ -206,11 +214,15 @@ class SelfAttentionBlock(nn.Module):
         Parameters
         ----------
             name : str
-                One of ("basic", "flash", "slice", "memeff").
+                Name of the attention method. One of ("exact", "linformer").
+            how : str, default="basic"
+                How to compute the self-attention matrix.
+                One of ("basic", "flash", "slice", "memeff", "slice-memeff").
                 "basic": the normal O(N^2) self attention.
                 "flash": the flash attention (by xformers library),
                 "slice": batch sliced attention operation to save mem.
-                "memeff" xformers.memory_efficient_attention.
+                "memeff": xformers.memory_efficient_attention.
+                "slice-memeff": Conmbine slicing and memory_efficient_attention.
             query_dim : int
                 The number of channels in the query. Typically: num_heads*head_dim
             cross_attention_dim : int, optional
@@ -234,7 +246,8 @@ class SelfAttentionBlock(nn.Module):
 
         self.norm = nn.LayerNorm(query_dim)
         self.att = SelfAttention(
-            self_attention=name,
+            name=name,
+            how=how,
             query_dim=query_dim,
             cross_attention_dim=cross_attention_dim,
             head_dim=head_dim,
@@ -242,6 +255,7 @@ class SelfAttentionBlock(nn.Module):
             dropout=dropout,
             bias=bias,
             slice_size=slice_size,
+            **kwargs,
         )
 
     def forward(self, x: torch.Tensor, context: torch.Tensor = None) -> torch.Tensor:

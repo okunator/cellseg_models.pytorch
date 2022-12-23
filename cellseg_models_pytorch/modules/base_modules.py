@@ -4,9 +4,10 @@ import torch.nn as nn
 from .act import ACT_LOOKUP
 from .conv import CONV_LOOKUP
 from .norm import NORM_LOOKUP
+from .self_attention import SELFATT_LOOKUP
 from .upsample import UP_LOOKUP
 
-__all__ = ["Activation", "Norm", "Up", "Conv", "Identity"]
+__all__ = ["Activation", "Norm", "Up", "Conv", "Identity", "MultiHeadSelfAttention"]
 
 
 class Identity(nn.Module):
@@ -176,3 +177,44 @@ class Conv(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass for the convolution function."""
         return self.conv(x)
+
+
+class MultiHeadSelfAttention(nn.Module):
+    def __init__(self, name: str, **kwargs) -> None:
+        """Multi-head self-attention wrapper class.
+
+        Parameters:
+        -----------
+            name : str
+                Name of the mhsa method.
+
+        Raises
+        ------
+            ValueError: if the mhsa method name is illegal.
+        """
+        super().__init__()
+
+        allowed = list(SELFATT_LOOKUP.keys())
+        if name not in allowed:
+            raise ValueError(
+                "Illegal multi-head attention method given. "
+                f"Allowed: {allowed}. Got: '{name}'"
+            )
+
+        try:
+            self.att = SELFATT_LOOKUP[name](**kwargs)
+        except Exception as e:
+            raise Exception(
+                "Encountered an error when trying to init convolution function: "
+                f"MultiHeadSelfAttention(name='{name}'): {e.__class__.__name__}: {e}"
+            )
+
+    def forward(
+        self,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        **kwargs,
+    ) -> torch.Tensor:
+        """Forward pass for the convolution function."""
+        return self.att(query, key, value, **kwargs)

@@ -19,7 +19,8 @@ class Transformer2D(nn.Module):
         head_dim: int = 64,
         cross_attention_dim: int = None,
         n_blocks: int = 2,
-        block_types: Tuple[str, ...] = ("basic", "basic"),
+        block_types: Tuple[str, ...] = ("exact", "exact"),
+        computation_types: Tuple[str, ...] = ("basic", "basic"),
         dropouts: Tuple[float, ...] = (0.0, 0.0),
         biases: Tuple[bool, ...] = (False, False),
         activation: str = "star_relu",
@@ -47,10 +48,14 @@ class Transformer2D(nn.Module):
                 set to None, no cross attention is applied.
             n_blocks : int, default=2
                 Number of Multihead attention blocks in the transformer.
-            block_types : Tuple[str, ...], default=("basic", "basic")
+            block_types : Tuple[str, ...], default=("exact", "exact")
                 The name of the SelfAttentionBlocks in the TransformerLayer.
-                Length of the tuple has to equal `n_blocks`
-                Allowed names: "basic". "slice", "flash", "memeff".
+                Length of the tuple has to equal `n_blocks`.
+                Allowed names: ("exact", "linformer").
+            computation_types : Tuple[str, ...], default=("basic", "basic")
+                The way of computing the attention matrices in the SelfAttentionBlocks
+                in the TransformerLayer. Length of the tuple has to equal `n_blocks`
+                Allowed styles: "basic". "slice", "flash", "memeff", "slice_memeff".
             dropouts : Tuple[float, ...], default=(False, False)
                 Dropout probabilities for the SelfAttention blocks.
             biases : bool, default=(True, True)
@@ -87,11 +92,13 @@ class Transformer2D(nn.Module):
             cross_attention_dim=cross_attention_dim,
             n_blocks=n_blocks,
             block_types=block_types,
+            computation_types=computation_types,
             dropouts=dropouts,
             biases=biases,
             activation=activation,
             slice_size=slice_size,
             mlp_ratio=mlp_ratio,
+            **kwargs,
         )
 
         self.proj_out = nn.Conv2d(
@@ -140,7 +147,8 @@ class TransformerLayer(nn.Module):
         cross_attention_dim: int = None,
         activation: str = "star_relu",
         n_blocks: int = 2,
-        block_types: Tuple[str, ...] = ("basic", "basic"),
+        block_types: Tuple[str, ...] = ("exact", "exact"),
+        computation_types: Tuple[str, ...] = ("basic", "basic"),
         dropouts: Tuple[float, ...] = (0.0, 0.0),
         biases: Tuple[bool, ...] = (False, False),
         slice_size: int = 4,
@@ -171,10 +179,14 @@ class TransformerLayer(nn.Module):
                 One of ("gelu", "geglu", "approximate_gelu", "star_relu").
             n_blocks : int, default=2
                 Number of SelfAttentionBlocks used in this layer.
-            block_types : Tuple[str, ...], default=("basic", "basic")
+            block_types : Tuple[str, ...], default=("exact", "exact")
+                The name of the SelfAttentionBlocks in the TransformerLayer.
+                Length of the tuple has to equal `n_blocks`.
+                Allowed names: ("exact", "linformer").
+            computation_types : Tuple[str, ...], default=("basic", "basic")
                 The name of the SelfAttentionBlocks in the TransformerLayer.
                 Length of the tuple has to equal `n_blocks`
-                Allowed names: "basic". "slice", "flash".
+                Allowed styles: "basic". "slice", "flash", "memeff", "slice_memeff".
             dropouts : Tuple[float, ...], default=(False, False)
                 Dropout probabilities for the SelfAttention blocks.
             biases : bool, default=(True, True)
@@ -186,7 +198,7 @@ class TransformerLayer(nn.Module):
                 Multiplier that defines the out dimension of the final fc projection
                 layer.
             **kwargs:
-                Arbitrary key-word arguments (e.g. for activation function.).
+                Arbitrary key-word arguments.
 
         Raises
         ------
@@ -213,6 +225,7 @@ class TransformerLayer(nn.Module):
 
             att_block = SelfAttentionBlock(
                 name=block_types[i],
+                how=computation_types[i],
                 query_dim=query_dim,
                 num_heads=num_heads,
                 head_dim=head_dim,
@@ -220,6 +233,7 @@ class TransformerLayer(nn.Module):
                 dropout=dropouts[i],
                 biases=biases[i],
                 slice_size=slice_size,
+                **kwargs,
             )
             self.tr_blocks[f"transformer_{block_types[i]}_{i + 1}"] = att_block
 
@@ -254,7 +268,7 @@ class TransformerLayer(nn.Module):
             con = None
             if i == n_blocks:
                 con = context
-            print("context: ", con.shape)
+
             x = tr_block(x, con)
 
         return self.mlp(x) + x
