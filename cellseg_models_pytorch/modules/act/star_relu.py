@@ -12,6 +12,7 @@ class StarReLU(nn.Module):
         scale_learnable: bool = True,
         bias_learnable: bool = True,
         inplace: bool = False,
+        **kwargs
     ) -> None:
         """Apply StarReLU activation.
 

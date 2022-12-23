@@ -39,7 +39,7 @@ def swish(x: torch.Tensor) -> torch.Tensor:
 
 
 class Swish(nn.Module):
-    def __init__(self, inplace: bool = False) -> None:
+    def __init__(self, inplace: bool = False, **kwargs) -> None:
         """Apply the element-wise swish function.
 
         Parameters

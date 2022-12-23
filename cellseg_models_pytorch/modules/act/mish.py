@@ -50,7 +50,7 @@ def mish(x: torch.Tensor):
 
 
 class Mish(nn.Module):
-    def __init__(self, inplace: bool = False) -> None:
+    def __init__(self, inplace: bool = False, **kwargs) -> None:
         """
         Element-wise mish.
 

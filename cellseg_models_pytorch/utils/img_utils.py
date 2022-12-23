@@ -131,7 +131,7 @@ def normalize(
     im = im - im.mean(axis=axis, keepdims=True)
 
     if standardize:
-        im /= im.std(axis=axis, keepdims=True)
+        im = im / (im.std(axis=axis, keepdims=True) + 1e-8)
 
     # clamp
     if not any(x is None for x in (amin, amax)):
@@ -170,7 +170,7 @@ def minmax_normalize(
         )
 
     im = img.copy()
-    im = (im - im.min()) / (im.max() - im.min())
+    im = (im - im.min()) / (im.max() - im.min() + 1e-8)
 
     # clamp
     if not any(x is None for x in (amin, amax)):

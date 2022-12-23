@@ -26,7 +26,7 @@ __all__ = ["GEGLU", "ApproximateGELU"]
 
 
 class GEGLU(nn.Module):
-    def __init__(self, dim_in: int, dim_out: int):
+    def __init__(self, dim_in: int, dim_out: int, **kwargs) -> None:
         """Apply a variant of the gated linear unit activation function.
 
         https://arxiv.org/abs/2002.05202.
@@ -52,7 +52,7 @@ class GEGLU(nn.Module):
 
 
 class ApproximateGELU(nn.Module):
-    def __init__(self, dim_in: int, dim_out: int):
+    def __init__(self, dim_in: int, dim_out: int, **kwargs) -> None:
         """Apply the approximate form of Gaussian Error Linear Unit (GELU).
 
         https://arxiv.org/abs/1606.08415
