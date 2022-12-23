@@ -78,7 +78,7 @@ def gen_hv_maps(inst_map: np.ndarray, min_size: int = 5) -> np.ndarray:
         inst = inst[y1:y2, x1:x2]
 
         # instance center of mass, rounded to nearest pixel
-        inst_com = list(ndi.measurements.center_of_mass(inst))
+        inst_com = list(ndi.center_of_mass(inst))
         inst_com[0] = int(inst_com[0] + 0.5)
         inst_com[1] = int(inst_com[1] + 0.5)
 

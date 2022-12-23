@@ -168,8 +168,8 @@ class HoverNet(BaseMultiTaskSegModel):
                 style_channels=style_channels,
                 long_skip=long_skip,
                 merge_policy=merge_policy,
-                n_layers=n_layers,
-                n_blocks=n_blocks,
+                n_conv_layers=n_layers,
+                n_conv_blocks=n_blocks,
                 stage_params=dec_params[decoder_name],
             )
             self.add_module(f"{decoder_name}_decoder", decoder)

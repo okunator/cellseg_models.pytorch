@@ -14,8 +14,8 @@ class Decoder(nn.ModuleDict):
         enc_channels: Tuple[int, ...],
         out_channels: Tuple[int, ...] = (256, 128, 64, 32, 16),
         style_channels: int = None,
-        n_layers: Tuple[int, ...] = (1, 1, 1, 1, 1),
-        n_blocks: Tuple[Tuple[int, ...], ...] = ((2,), (2,), (2,), (2,), (2,)),
+        n_conv_layers: Tuple[int, ...] = (1, 1, 1, 1, 1),
+        n_conv_blocks: Tuple[Tuple[int, ...], ...] = ((2,), (2,), (2,), (2,), (2,)),
         long_skip: str = "unet",
         n_transformers: Tuple[int, ...] = None,
         n_transformer_blocks: Tuple[Tuple[int], ...] = ((1,), (1,), (1,), (1,), (1,)),
@@ -32,9 +32,9 @@ class Decoder(nn.ModuleDict):
                 Number of channels at each decoder layer output.
             style_channels : int, default=None
                 Number of style vector channels. If None, style vectors are ignored.
-            n_layers : Tuple[int, ...], default=(1, 1, 1, 1, 1)
+            n_conv_layers : Tuple[int, ...], default=(1, 1, 1, 1, 1)
                 The number of conv layers inside each of the decoder stages.
-            n_blocks : Tuple[Tuple[int, ...], ...] = ((2, ),(2, ),(2, ),(2, ),(2, ))
+            n_conv_blocks : Tuple[Tuple[int, ...], ...] =((2, ),(2, ),(2, ),(2, ),(2, ))
                 The number of blocks inside each conv-layer at each decoder stage.
             long_skip : str, default="unet"
                 long skip method to be used. One of: "unet", "unetpp", "unet3p",
@@ -76,14 +76,14 @@ class Decoder(nn.ModuleDict):
         # Build decoder
         for i in range(depth - 1):
             # number of conv layers
-            n_conv_layers = None
-            if n_layers is not None:
-                n_conv_layers = n_layers[i]
+            n_clayers = None
+            if n_conv_layers is not None:
+                n_clayers = n_conv_layers[i]
 
             # number of conv blocks inside each layer
-            n_conv_blocks = None
-            if n_blocks is not None:
-                n_conv_blocks = n_blocks[i]
+            n_cblocks = None
+            if n_conv_blocks is not None:
+                n_cblocks = n_conv_blocks[i]
 
             # number of transformer layers
             n_tr_layers = None
@@ -102,8 +102,8 @@ class Decoder(nn.ModuleDict):
                 skip_channels=skip_channels,
                 style_channels=style_channels,
                 long_skip=long_skip,
-                n_layers=n_conv_layers,
-                n_blocks=n_conv_blocks,
+                n_conv_layers=n_clayers,
+                n_conv_blocks=n_cblocks,
                 n_transformers=n_tr_layers,
                 n_transformer_blocks=n_tr_blocks,
                 **stage_params[i] if stage_params is not None else {"k": None},
