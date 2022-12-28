@@ -47,10 +47,10 @@ class BCNorm(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Batch-channel norm forward pass."""
         out = self.bn(x)
-        out = out.view(1, x.size(0) * self.num_groups, -1)
+        out = out.reshape(1, x.size(0) * self.num_groups, -1)
         out = torch.batch_norm(out, None, None, None, None, True, 0, self.eps, True)
-        out = out.view(x.size(0), self.num_groups, -1)
+        out = out.reshape(x.size(0), self.num_groups, -1)
         out = self.weight * out + self.bias
-        out = out.view_as(x)
+        out = out.reshape_as(x)
 
         return out
