@@ -26,6 +26,9 @@ class SelfAttention(nn.Module):
 
         Includes all the data wrangling on the input before attention computation.
 
+        Input Shape: (B, H'*W', query_dim).
+        Output Shape: (B, H'*W', query_dim).
+
         Parameters
         ----------
             query_dim : int
@@ -62,15 +65,15 @@ class SelfAttention(nn.Module):
         super().__init__()
         self.out_channels = query_dim
         self.num_heads = num_heads
-        proj_channels = head_dim * num_heads
+        proj_dim = head_dim * num_heads
 
         # cross attention dim
         if cross_attention_dim is None:
             cross_attention_dim = query_dim
 
-        self.to_q = nn.Linear(query_dim, proj_channels, bias=bias)
-        self.to_k = nn.Linear(cross_attention_dim, proj_channels, bias=bias)
-        self.to_v = nn.Linear(cross_attention_dim, proj_channels, bias=bias)
+        self.to_q = nn.Linear(query_dim, proj_dim, bias=bias)
+        self.to_k = nn.Linear(cross_attention_dim, proj_dim, bias=bias)
+        self.to_v = nn.Linear(cross_attention_dim, proj_dim, bias=bias)
 
         self.self_attn = MultiHeadSelfAttention(
             name=name,
@@ -81,7 +84,7 @@ class SelfAttention(nn.Module):
             **kwargs,
         )
 
-        self.to_out = nn.Linear(proj_channels, query_dim)
+        self.to_out = nn.Linear(proj_dim, query_dim)
         self.dropout = nn.Dropout(dropout) if bool(dropout) else None
 
     def to_qkv(
@@ -139,10 +142,10 @@ class SelfAttention(nn.Module):
             torch.Tensor
                 A reshaped input of shape: (B*num_heads, H*W, proj_dim//num_heads).
         """
-        B, seq_len, proj_channels = x.shape
-        x = x.reshape(B, seq_len, self.num_heads, proj_channels // self.num_heads)
+        B, seq_len, proj_dim = x.shape
+        x = x.reshape(B, seq_len, self.num_heads, proj_dim // self.num_heads)
         x = x.permute(0, 2, 1, 3).reshape(
-            B * self.num_heads, seq_len, proj_channels // self.num_heads
+            B * self.num_heads, seq_len, proj_dim // self.num_heads
         )
 
         return x
@@ -180,7 +183,7 @@ class SelfAttention(nn.Module):
         # compute self-attention. Output has same shape as q, k, v
         features = self.self_attn(query, key, value)
 
-        # (B*num_heads, H*W, proj_dim//num_heads) -> (B, H*W, proj_channels)
+        # (B*num_heads, H*W, proj_dim//num_heads) -> (B, H*W, proj_dim)
         features = self._batch2heads(features)
 
         # linear projection + dropout
@@ -210,6 +213,9 @@ class SelfAttentionBlock(nn.Module):
         These can be stacked to form a tranformer block.
 
         NOTE: Can be used as a cross-attention block if `cross_attention_dim` is given.
+
+        Input Shape: (B, H'*W', query_dim).
+        Output Shape: (B, H'*W', query_dim).
 
         Parameters
         ----------
@@ -262,5 +268,6 @@ class SelfAttentionBlock(nn.Module):
         """Forward pass of one transformer block."""
         residual = x
         x = self.norm(x)
+        x = self.att(x, context) + residual  # residual post-layernorm
 
-        return self.att(x, context) + residual  # residual post-layernorm
+        return x

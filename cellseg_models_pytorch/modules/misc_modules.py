@@ -3,55 +3,37 @@ import torch.nn as nn
 
 from .base_modules import Conv, Norm
 
-__all__ = ["ChannelPool", "StyleBlock", "StyleReshape", "Proj2Attention"]
+__all__ = ["ChannelPool", "StyleBlock", "StyleReshape", "LayerScale"]
 
 
-class Proj2Attention(nn.Module):
+class LayerScale(nn.Module):
     def __init__(
-        self,
-        in_channels: int,
-        num_groups: int = 32,
-        head_dim: int = 64,
-        num_heads: int = 8,
+        self, dim: int, init_values: float = 1e-5, inplace: bool = False
     ) -> None:
-        """Project image-like data (B, C, H, W) to right shape for a transformer.
+        """Learnable scaling factor for transformer components.
 
-        Output shape: (B, H*W, head_dim*num_heads)
+        I.e. this is used to scale the attention matrix and the mlp head
+        of the transformer.
 
-        NOTE: Group normalizes input before projecting and reshaping.
+        NOTE: Copied from timm vision_transformer.py
+
 
         Parameters
         ----------
-            in_channels : int
-                Number of input channels in the input tensor.
-            num_groups : int, default=32
-                Number of groups for the group normalization.
-            head_dim : int, default=64
-                Number of channels per each head.
-            num_heads : int, default=8
-                Number of heads in multi-head self-attention.
+            dim : int
+                The dimensionality of the input.
+            init_values : float, default=1e-5
+                Initialization values for the learnable weights.
+            inplace : bool, default=False
+                Flag, whether the scaling is an inplace operation.
         """
         super().__init__()
-        self.proj_dim = head_dim * num_heads
-        self.norm = Norm("gn", num_features=in_channels, num_groups=num_groups)
-        self.proj_in = nn.Conv2d(
-            in_channels, self.proj_dim, kernel_size=1, stride=1, padding=0
-        )
+        self.inplace = inplace
+        self.gamma = nn.Parameter(init_values * torch.ones(dim))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass for projection."""
-        B, _, H, W = x.shape
-
-        x = self.norm(x)
-        projection = self.proj_in(x)
-
-        # reshape to a query. Every pixel value has been projected into a `proj_dim`
-        # long vector. I.e every pixel value is represented by a projection vector.
-        projection = projection.permute(0, 2, 3, 1).reshape(
-            B, H * W, self.proj_dim
-        )  # (B, H*W, proj_dim)
-
-        return projection
+        """Forward pass of the layer scaling."""
+        return x.mul_(self.gamma) if self.inplace else x * self.gamma
 
 
 class ChannelPool(nn.Module):

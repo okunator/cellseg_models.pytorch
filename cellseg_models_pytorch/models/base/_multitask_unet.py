@@ -1,6 +1,8 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Union
 
 import torch
+import torch.nn as nn
+import yaml
 
 from ...decoders import Decoder
 from ...modules.misc_modules import StyleReshape
@@ -16,11 +18,13 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
         self,
         decoders: Tuple[str, ...],
         heads: Dict[str, Dict[str, int]],
-        n_layers: Dict[str, Tuple[int, ...]],
-        n_blocks: Dict[str, Tuple[Tuple[int, ...], ...]],
+        long_skips: Dict[str, Union[str, Tuple[str, ...]]],
         out_channels: Dict[str, Tuple[int, ...]],
-        long_skips: Dict[str, str],
-        dec_params: Dict[str, Tuple[Dict[str, Any], ...]],
+        n_conv_layers: Dict[str, Tuple[int, ...]] = None,
+        n_conv_blocks: Dict[str, Tuple[Tuple[int, ...], ...]] = None,
+        n_transformers: Dict[str, Tuple[int, ...]] = None,
+        n_transformer_blocks: Dict[str, Tuple[Tuple[int, ...], ...]] = None,
+        dec_params: Dict[str, Tuple[Dict[str, Any], ...]] = None,
         depth: int = 4,
         style_channels: int = 256,
         enc_name: str = "resnet50",
@@ -41,16 +45,24 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
                 Names of the decoder branches (has to match `decoders`) mapped to dicts
                  of output name - number of output classes. E.g.
                 {"cellpose": {"type": 4, "cellpose": 2}, "sem": {"sem": 5}}
-            n_layers : Dict[str, Tuple[int, ...]]
-                The number of conv layers inside each of the decoder stages.
-            n_blocks : Dict[str, Tuple[Tuple[int, ...], ...]]
-                The number of blocks inside each conv-layer in each decoder stage.
             out_channels : Tuple[int, ...]
                 Out channels for each decoder stage.
             long_skips : Dict[str, str]
-                long skip method to be used. One of: "unet", "unetpp", "unet3p",
-                "unet3p-lite", None
-            dec_params : Dict[str, Tuple[Dict[str, Any], ...]])
+                Dictionary mapping decoder branch-names to tuples defining the long skip
+                method to be used inside each of the decoder stages.
+                Allowed: "cross-attn", "unet", "unetpp", "unet3p", "unet3p-lite", None
+            n_conv_layers : Dict[str, Tuple[int, ...]], optional
+                Dictionary mapping decoder branch-names to tuples defining the number of
+                conv layers inside each of the decoder stages.
+            n_conv_blocks : Dict[str, Tuple[Tuple[int, ...], ...]], optional
+                The number of blocks inside each conv-layer in each decoder stage.
+            n_transformers : Tuple[int, ...], optional
+                Dictionary mapping decoder branch-names to tuples defining the number of
+                transformer layers inside each of the decoder stages.
+            n_transformer_blocks : Tuple[Tuple[int]], optional
+                The number of transformer blocks inside each transformer-layer at each
+                decoder stage.
+            dec_params : Dict[str, Tuple[Dict[str, Any], ...]], optional
                 The keyword args for each of the distinct decoder stages. Incudes the
                 parameters for the long skip connections and convolutional layers of the
                 decoder itself. See the `DecoderStage` documentation for more info.
@@ -76,6 +88,7 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
         self.enc_freeze = enc_freeze
         use_style = style_channels is not None
         self.heads = heads
+        self.decoders = decoders
         self.inst_key = inst_key
         self.aux_key = aux_key
 
@@ -91,15 +104,17 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
         if use_style:
             self.make_style = StyleReshape(self.encoder.out_channels[0], style_channels)
 
-            # set decoders
+        # set decoders
         for decoder_name in decoders:
             decoder = Decoder(
                 enc_channels=list(self.encoder.out_channels),
-                style_channels=style_channels,
                 out_channels=out_channels[decoder_name],
                 long_skip=long_skips[decoder_name],
-                n_layers=n_layers[decoder_name],
-                n_blocks=n_blocks[decoder_name],
+                n_conv_layers=self._kwarg(n_conv_layers)[decoder_name],
+                n_conv_blocks=self._kwarg(n_conv_blocks)[decoder_name],
+                n_transformers=self._kwarg(n_transformers)[decoder_name],
+                n_transformer_blocks=self._kwarg(n_transformer_blocks)[decoder_name],
+                style_channels=style_channels,
                 stage_params=dec_params[decoder_name],
             )
             self.add_module(f"{decoder_name}_decoder", decoder)
@@ -122,6 +137,26 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
         # freeze encoder if specified
         if enc_freeze:
             self.freeze_encoder()
+
+    def _kwarg(self, kw: Union[None, Dict[str, Any]]) -> Dict[str, Any]:
+        """Return a placeholder dict kwarg if `kw` is None. Else return `kw`."""
+        if kw is None:
+            kw = {d: None for d in self.decoders}
+        return kw
+
+    @classmethod
+    def from_yaml(cls, yaml_path: str) -> nn.Module:
+        """Initialize the multi-tasks U-net from a yaml-file.
+
+        Parameters
+        ----------
+            yaml_path : str
+                Path to the yaml file containing rest of the params
+        """
+        with open(yaml_path, "r") as stream:
+            kwargs = yaml.full_load(stream)
+
+        return cls(**kwargs)
 
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         """Forward pass of Multi-task U-net."""

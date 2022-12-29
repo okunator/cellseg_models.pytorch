@@ -16,33 +16,34 @@ class DecoderStage(nn.Module):
         dec_channels: Tuple[int, ...],
         dec_dims: Tuple[int, ...],
         skip_channels: Tuple[int, ...],
-        style_channels: int = None,
-        n_conv_layers: int = 1,
-        n_conv_blocks: Tuple[int, ...] = (2,),
-        short_skips: Tuple[str, ...] = ("residual",),
-        expand_ratios: Tuple[float, float] = ((1.0, 1.0),),
-        block_types: Tuple[Tuple[str, ...], ...] = (("basic", "basic"),),
-        normalizations: Tuple[Tuple[str, ...], ...] = (("bn", "bn"),),
-        activations: Tuple[Tuple[str, ...], ...] = (("relu", "relu"),),
-        convolutions: Tuple[Tuple[str, ...], ...] = (("conv", "conv"),),
-        attentions: Tuple[Tuple[str, ...], ...] = ((None, "se"),),
-        preactivates: Tuple[Tuple[bool, ...], ...] = ((False, False),),
-        preattends: Tuple[Tuple[bool, ...], ...] = ((False, False),),
-        use_styles: Tuple[Tuple[bool, ...], ...] = ((False, False),),
-        kernel_sizes: Tuple[Tuple[int, ...]] = ((3, 3),),
-        groups: Tuple[Tuple[int, ...]] = ((1, 1),),
-        biases: Tuple[Tuple[bool, ...]] = ((False, False),),
-        layer_residual: bool = False,
-        upsampling: str = "fixed-unpool",
         long_skip: str = "unet",
         merge_policy: str = "sum",
         skip_params: Optional[Dict[str, Any]] = None,
+        upsampling: str = "fixed-unpool",
+        n_conv_layers: Optional[int] = 1,
+        style_channels: Optional[int] = None,
+        layer_residual: Optional[bool] = False,
+        n_conv_blocks: Optional[Tuple[int, ...]] = (2,),
+        short_skips: Optional[Tuple[str, ...]] = ("residual",),
+        expand_ratios: Optional[Tuple[float, float]] = ((1.0, 1.0),),
+        block_types: Optional[Tuple[Tuple[str, ...], ...]] = (("basic", "basic"),),
+        normalizations: Optional[Tuple[Tuple[str, ...], ...]] = (("bn", "bn"),),
+        activations: Optional[Tuple[Tuple[str, ...], ...]] = (("relu", "relu"),),
+        convolutions: Optional[Tuple[Tuple[str, ...], ...]] = (("conv", "conv"),),
+        attentions: Optional[Tuple[Tuple[str, ...], ...]] = ((None, "se"),),
+        preactivates: Optional[Tuple[Tuple[bool, ...], ...]] = ((False, False),),
+        preattends: Optional[Tuple[Tuple[bool, ...], ...]] = ((False, False),),
+        use_styles: Optional[Tuple[Tuple[bool, ...], ...]] = ((False, False),),
+        kernel_sizes: Optional[Tuple[Tuple[int, ...]]] = ((3, 3),),
+        groups: Optional[Tuple[Tuple[int, ...]]] = ((1, 1),),
+        biases: Optional[Tuple[Tuple[bool, ...]]] = ((False, False),),
         n_transformers: Optional[int] = None,
         n_transformer_blocks: Optional[Tuple[int, ...]] = (1,),
         transformer_blocks: Optional[Tuple[Tuple[str, ...], ...]] = (("exact",),),
         transformer_computations: Optional[Tuple[Tuple[str, ...], ...]] = (("basic",),),
         transformer_biases: Optional[Tuple[Tuple[bool, ...], ...]] = ((False,),),
         transformer_dropouts: Optional[Tuple[Tuple[float, ...], ...]] = ((0.0,),),
+        transformer_layer_scales: Optional[Tuple[Tuple[bool, ...], ...]] = ((False,),),
         transformer_params: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> None:
@@ -67,15 +68,28 @@ class DecoderStage(nn.Module):
             skip_channels : Tuple[int, ...]
                 List of the number of channels in the encoder skip tensors. Ignored if
                 `long_skip` == None.
+            long_skip : str, default="unet"
+                long skip method to be used.
+                Allowed: "cross-attn", "unet", "unetpp", "unet3p", "unet3p-lite", None
+            merge_policy : str, default="sum"
+                The long skip merge policy. One of: "sum", "cat"
+            skip_params : Optional[Dict]
+                Extra keyword arguments for the skip-connection module. These depend
+                on the skip module. Refer to specific skip modules for more info.
+            upsampling : str, default="fixed-unpool"
+                Name of the upsampling method.
+            n_conv_layers : int, default=1
+                The number of conv layers inside one decoder stage.
             style_channels : int, default=None
                 Number of style vector channels. If None, style vectors are ignored.
                 Also, ignored if `n_conv_layers` is None.
-            n_conv_layers : int, default=1
-                The number of conv layers inside one decoder stage.
+            layer_residual : bool, optional, default=False
+                Apply a layer level residual short skip at each layer. I.e x + layer(x).
+                Ignored if `n_conv_layers` is None.
             n_conv_blocks : Tuple[int, ...], default=(2,)
                 Number of conv-blocks inside each conv layer. The tuple-length has to
                 match `n_conv_layers`. Ignored if `n_conv_layers` is None.
-            short_skips : str, default=("residual", )
+            short_skips : str, optional,  default=("residual", )
                 The short skip methods used inside the conv layers. Ignored if
                 `n_conv_layers` is None.
             expand_ratios : Tuple[float, ...], default=((1.0, 1.0),):
@@ -122,18 +136,6 @@ class DecoderStage(nn.Module):
                 Include bias terms in the convolution blocks.
                 The tuple-length has to match `n_conv_layers`. Ignored if
                 `n_conv_layers` is None.
-            upsampling : str, default="fixed-unpool"
-                Name of the upsampling method.
-            long_skip : str, default="unet"
-                long skip method to be used. One of: "unet", "unetpp", "unet3p",
-                 "unet3p-lite", None,
-            merge_policy : str, default="sum"
-                The long skip merge policy. One of: "sum", "cat"
-            layer_residual : bool, default=False
-                Apply a layer level residual skip at each layer. I.e x + layer(x)
-            skip_params : Optional[Dict]
-                Extra keyword arguments for the skip-connection module. These depend
-                on the skip module. Refer to specific skip modules for more info.
             n_transformers : int, optional
                 Number of self-attention tranformers applied after the conv-layer.
                 If this is None, no transformers will be added.
@@ -155,6 +157,9 @@ class DecoderStage(nn.Module):
                 `n_transformers` is None.
             transformer_dropoouts : Tuple[Tuple[float, ...], ...], default=((0.0,),)
                 Dropout probabilities in the transformer layers. Ignored if
+                `n_transformers` is None.
+            transformer_layer_scales : Tuple[Tuple[bool, ...], ...], default=((False,),)
+                Flags, whether to use layer scales in the transformer layers. Ignored if
                 `n_transformers` is None.
             transformer_params : List[Dict[str, Any]]
                 Extra keyword arguments for the transformer layers. Refer to
@@ -211,6 +216,7 @@ class DecoderStage(nn.Module):
                     n_transformer_blocks,
                     transformer_biases,
                     transformer_dropouts,
+                    transformer_layer_scales,
                 ),
             )
 
@@ -287,6 +293,7 @@ class DecoderStage(nn.Module):
                     computation_types=transformer_computations[i],
                     biases=transformer_biases[i],
                     dropouts=transformer_dropouts[i],
+                    layer_scales=transformer_layer_scales[i],
                     **transformer_params
                     if transformer_params is not None
                     else {"k": None},
