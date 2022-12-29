@@ -203,12 +203,12 @@ class TransformerLayer(nn.Module):
             n_blocks : int, default=2
                 Number of SelfAttentionBlocks used in this layer.
             block_types : Tuple[str, ...], default=("exact", "exact")
-                The name of the SelfAttentionBlocks in the TransformerLayer.
+                The name/type of the SelfAttentionBlocks in the TransformerLayer.
                 Length of the tuple has to equal `n_blocks`.
                 Allowed names: ("exact", "linformer").
             computation_types : Tuple[str, ...], default=("basic", "basic")
-                The name of the SelfAttentionBlocks in the TransformerLayer.
-                Length of the tuple has to equal `n_blocks`
+                The way of computing the attention matrices in the SelfAttentionBlocks
+                in the TransformerLayer. Length of the tuple has to equal `n_blocks`
                 Allowed styles: "basic". "slice", "flash", "memeff", "slice_memeff".
             dropouts : Tuple[float, ...], default=(False, False)
                 Dropout probabilities for the SelfAttention blocks.
