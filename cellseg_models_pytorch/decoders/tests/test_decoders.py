@@ -4,12 +4,14 @@ import torch
 from cellseg_models_pytorch.decoders import Decoder
 
 
-@pytest.mark.parametrize("long_skip", ["unet", "unetpp", "unet3p", "unet3p-lite"])
+@pytest.mark.parametrize(
+    "long_skip", ["unet", "unetpp", "unet3p", "unet3p-lite", "cross-attn"]
+)
 @pytest.mark.parametrize("merge_policy", ["cat", "sum"])
 @pytest.mark.parametrize("use_conv", [True, False])
 @pytest.mark.parametrize("use_tr", [True, False])
 def test_decoder_fwdbwd(long_skip, merge_policy, use_conv, use_tr):
-    enc_channels = (64, 32, 64, 32)
+    enc_channels = (32, 32, 32, 32)
     out_dims = [32 // 2**i for i in range(4)][::-1]
 
     decoder1_kwargs = {"merge_policy": merge_policy}
@@ -40,8 +42,8 @@ def test_decoder_fwdbwd(long_skip, merge_policy, use_conv, use_tr):
     decoder = Decoder(
         enc_channels=enc_channels,
         out_channels=(32, 32, 32, 32),
-        n_layers=n_layers,
-        n_blocks=n_blocks,
+        n_conv_layers=n_layers,
+        n_conv_blocks=n_blocks,
         n_transformers=n_tr_layers,
         n_transformer_blocks=n_tr_blocks,
         long_skip=long_skip,

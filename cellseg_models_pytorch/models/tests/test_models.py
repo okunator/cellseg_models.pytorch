@@ -84,8 +84,8 @@ def test_multitaskunet_fwdbwd():
     m = MultiTaskUnet(
         decoders=("sem",),
         heads={"sem": {"sem": 3}},
-        n_layers={"sem": (1, 1, 1, 1)},
-        n_blocks={"sem": ((2,), (2,), (2,), (2,))},
+        n_conv_layers={"sem": (1, 1, 1, 1)},
+        n_conv_blocks={"sem": ((2,), (2,), (2,), (2,))},
         out_channels={"sem": (128, 64, 32, 16)},
         long_skips={"sem": "unet"},
         dec_params={"sem": None},

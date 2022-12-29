@@ -21,6 +21,7 @@ def test_transformer(block_type, computation_type):
         computation_types=(computation_type,),
         biases=(False,),
         dropouts=(0.0,),
+        layer_scales=(False,),
         slice_size=4,
         seq_len=H * W,
     )
