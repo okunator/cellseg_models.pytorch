@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 
 from ...modules import Identity
+from .cross_attn_skip import CrossAttentionSkip
 from .unet import UnetSkip
 from .unet3p import Unet3pSkip
 from .unetpp import UnetppSkip
@@ -16,6 +17,7 @@ LONGSKIP_LOOKUP = {
     "unet3p": Unet3pSkip,
     "unet3p-lite": Unet3pSkip,
     "unetpp": UnetppSkip,
+    "cross-attn": CrossAttentionSkip,
 }
 
 
@@ -44,7 +46,13 @@ class LongSkip(nn.Module):
         if name is not None:
             if name == "unet3p-lite":
                 kwargs["lite_version"] = True
-            self.skip = LONGSKIP_LOOKUP[name](**kwargs)
+            try:
+                self.skip = LONGSKIP_LOOKUP[name](**kwargs)
+            except Exception as e:
+                raise Exception(
+                    "Encountered an error when trying to init long-skip module: "
+                    f"LongSkip(name='{name}'): {e.__class__.__name__}: {e}"
+                )
         else:
             self.skip = Identity()
 
