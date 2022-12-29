@@ -12,7 +12,7 @@ class Mlp(nn.Module):
     def __init__(
         self,
         in_channels: int,
-        mlp_ratio: int = 4,
+        mlp_ratio: int = 2,
         activation: str = "star_relu",
         dropout: float = 0.0,
         bias: bool = False,
@@ -31,7 +31,7 @@ class Mlp(nn.Module):
         ----------
             in_channels : int
                 Number of input features.
-            mlp_ratio : int, default=4
+            mlp_ratio : int, default=2
                 Scaling factor to get the number hidden features from the `in_features`.
             activation : str, default="star_relu"
                 The name of the activation function.
@@ -69,7 +69,7 @@ class MlpBlock(nn.Module):
     def __init__(
         self,
         in_channels: int,
-        mlp_ratio: int = 4,
+        mlp_ratio: int = 2,
         activation: str = "star_relu",
         activation_kwargs: Dict[str, Any] = None,
         dropout: float = 0.0,
@@ -85,7 +85,7 @@ class MlpBlock(nn.Module):
         ----------
             in_channels : int
                 Number of input features.
-            mlp_ratio : int, default=4
+            mlp_ratio : int, default=2
                 Scaling factor to get the number hidden features from the `in_features`.
             activation : str, default="star_relu"
                 The name of the activation function.

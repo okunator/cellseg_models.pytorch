@@ -21,7 +21,7 @@ class ContiguousEmbed(nn.Module):
         flatten: bool = True,
         normalization: str = None,
         norm_kwargs: Dict[str, Any] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Patch an image with nn.Conv2d and then embed.
 
@@ -153,7 +153,7 @@ class PatchEmbed(nn.Module):
         head_dim: int = 64,
         num_heads: int = 8,
         normalization: int = None,
-        **norm_kwargs
+        **norm_kwargs,
     ) -> None:
         """Patch an input image and then embed/project.
 
