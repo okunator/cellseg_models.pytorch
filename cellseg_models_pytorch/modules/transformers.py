@@ -1,12 +1,14 @@
-from typing import Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-from cellseg_models_pytorch.modules import SelfAttentionBlock
-
+from .base_modules import Identity
+from .misc_modules import LayerScale
 from .mlp import MlpBlock
 from .patch_embeddings import ContiguousEmbed
+from .self_attention_modules import SelfAttentionBlock
 
 __all__ = ["Transformer2D", "TransformerLayer"]
 
@@ -23,10 +25,12 @@ class Transformer2D(nn.Module):
         computation_types: Tuple[str, ...] = ("basic", "basic"),
         dropouts: Tuple[float, ...] = (0.0, 0.0),
         biases: Tuple[bool, ...] = (False, False),
+        layer_scales: Tuple[bool, ...] = (False, False),
         activation: str = "star_relu",
         num_groups: int = 32,
-        slice_size: int = 4,
-        mlp_ratio: int = 4,
+        mlp_ratio: int = 2,
+        slice_size: Optional[int] = 4,
+        patch_embed_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> None:
         """Create a transformer for 2D-image-like (B, C, H, W) inputs.
@@ -49,7 +53,7 @@ class Transformer2D(nn.Module):
             n_blocks : int, default=2
                 Number of Multihead attention blocks in the transformer.
             block_types : Tuple[str, ...], default=("exact", "exact")
-                The name of the SelfAttentionBlocks in the TransformerLayer.
+                The names/types of the SelfAttentionBlocks in the TransformerLayer.
                 Length of the tuple has to equal `n_blocks`.
                 Allowed names: ("exact", "linformer").
             computation_types : Tuple[str, ...], default=("basic", "basic")
@@ -60,18 +64,23 @@ class Transformer2D(nn.Module):
                 Dropout probabilities for the SelfAttention blocks.
             biases : bool, default=(True, True)
                 Include bias terms in the SelfAttention blocks.
+            layer_scales : bool, default=(False, False)
+                Learnable layer weights for the self-attention matrix.
             activation : str, default="star_relu"
                 The activation function applied at the end of the transformer layer fc.
                 One of ("geglu", "approximate_gelu", "star_relu").
             num_groups : int, default=32
                 Number of groups in the first group-norm op before the input is
                 projected to be suitable for self-attention.
-            slice_size : int, default=4
+            mlp_ratio : int, default=2
+                Scaling factor for the number of input features to get the number of
+                hidden features in the final `Mlp` layer of the transformer.
+            slice_size : int, optional, default=4
                 Slice size for sliced self-attention. This is used only if
                 `name = "slice"` for a SelfAttentionBlock.
-            mlp_ratio : int, default=4
-                Multiplier that defines the out dimension of the final fc projection
-                layer.
+            patch_embed_kwargs: Dict[str, Any], optional
+                Extra key-word arguments for the patch embedding module. See the
+                `ContiguousEmbed` module for more info.
         """
         super().__init__()
         patch_norm = "gn" if in_channels >= 32 else None
@@ -82,6 +91,7 @@ class Transformer2D(nn.Module):
             num_heads=num_heads,
             normalization=patch_norm,
             norm_kwargs={"num_features": in_channels, "num_groups": num_groups},
+            **patch_embed_kwargs if patch_embed_kwargs is not None else {},
         )
         self.proj_dim = self.patch_embed.proj_dim
 
@@ -95,6 +105,7 @@ class Transformer2D(nn.Module):
             computation_types=computation_types,
             dropouts=dropouts,
             biases=biases,
+            layer_scales=layer_scales,
             activation=activation,
             slice_size=slice_size,
             mlp_ratio=mlp_ratio,
@@ -130,11 +141,22 @@ class Transformer2D(nn.Module):
         # 2. transformer
         x = self.transformer(x, context)
 
-        # 3. Reshape back to image-like shape and project to original input channels.
-        x = x.reshape(B, H, W, self.proj_dim).permute(0, 3, 1, 2)
+        # 3. Reshape back to image-like shape.
+        p_H = self.patch_embed.get_patch_size(H)
+        p_W = self.patch_embed.get_patch_size(W)
+        x = x.reshape(B, p_H, p_W, self.proj_dim).permute(0, 3, 1, 2)
+
+        # Upsample to input dims if patch size less than orig inp size
+        # assumes that the input is square mat.
+        # NOTE: the kernel_size, pad, & stride has to be set correctly for this to work
+        if p_H < H:
+            scale_factor = H // p_H
+            x = F.interpolate(x, scale_factor=scale_factor, mode="bilinear")
+
+        # 4. project to original input channels
         x = self.proj_out(x)
 
-        # 4. residual
+        # 5. residual
         return x + residual
 
 
@@ -151,8 +173,9 @@ class TransformerLayer(nn.Module):
         computation_types: Tuple[str, ...] = ("basic", "basic"),
         dropouts: Tuple[float, ...] = (0.0, 0.0),
         biases: Tuple[bool, ...] = (False, False),
-        slice_size: int = 4,
-        mlp_ratio: int = 4,
+        layer_scales: Tuple[bool, ...] = (False, False),
+        mlp_ratio: int = 2,
+        slice_size: Optional[int] = 4,
         **kwargs,
     ) -> None:
         """Chain transformer blocks to compose a full generic transformer.
@@ -191,12 +214,14 @@ class TransformerLayer(nn.Module):
                 Dropout probabilities for the SelfAttention blocks.
             biases : bool, default=(True, True)
                 Include bias terms in the SelfAttention blocks.
-            slice_size : int, default=4
+            layer_scales : bool, default=(False, False)
+                Learnable layer weights for the self-attention matrix.
+            mlp_ratio : int, default=2
+                Scaling factor for the number of input features to get the number of
+                hidden features in the final `Mlp` layer of the transformer.
+            slice_size : int, optional, default=4
                 Slice size for sliced self-attention. This is used only if
                 `name = "slice"` for a SelfAttentionBlock.
-            mlp_proj : int, default=4
-                Multiplier that defines the out dimension of the final fc projection
-                layer.
             **kwargs:
                 Arbitrary key-word arguments.
 
@@ -218,7 +243,9 @@ class TransformerLayer(nn.Module):
                 f"Illegal args: {illegal_args}"
             )
 
-        self.tr_blocks = nn.ModuleDict()
+        # self.tr_blocks = nn.ModuleDict()
+        self.tr_blocks = nn.ModuleList()
+        self.layer_scales = nn.ModuleList()
         blocks = list(range(n_blocks))
         for i in blocks:
             cross_dim = cross_attention_dim if i == blocks[-1] else None
@@ -235,7 +262,13 @@ class TransformerLayer(nn.Module):
                 slice_size=slice_size,
                 **kwargs,
             )
-            self.tr_blocks[f"transformer_{block_types[i]}_{i + 1}"] = att_block
+            self.tr_blocks.append(att_block)
+
+            # add layer scale. (Optional)
+            ls = LayerScale(query_dim) if layer_scales[i] else Identity()
+            self.layer_scales.append(ls)
+
+            # self.tr_blocks[f"transformer_{block_types[i]}_{i + 1}"] = tr_block
 
         self.mlp = MlpBlock(
             in_channels=query_dim,
@@ -263,12 +296,14 @@ class TransformerLayer(nn.Module):
                 Self-attended input tensor. Shape (B, H*W, query_dim).
         """
         n_blocks = len(self.tr_blocks)
-        for i, tr_block in enumerate(self.tr_blocks.values(), 1):
+
+        for i, (tr_block, ls) in enumerate(zip(self.tr_blocks, self.layer_scales), 1):
             # apply context only at the last transformer block
             con = None
             if i == n_blocks:
                 con = context
 
             x = tr_block(x, con)
+            x = ls(x)
 
         return self.mlp(x) + x
