@@ -1,4 +1,23 @@
-<a id='changelog-0.1.15'></a>
+<a id='changelog-0.1.17'></a>
+
+# 0.1.17 — 2022-12-29
+
+## Features
+
+- Add transformer modules
+- Add exact, slice, and memory efficient (xformers) self attention computations
+- Add transformers modules to `Decoder` modules
+- Add common transformer mlp activation functions: star-relu, geglu, approximate-gelu.
+- Add Linformer self-attention mechanism.
+- Add support for model intialization from yaml-file in `MultiTaskUnet`.
+- Add a new cross-attention long-skip module. Works with `long_skip='cross-attn'`
+
+## Refactor
+
+- Added more verbose error messages for the abstract wrapper-modules in `modules.base_modules`
+- Added more verbose error catching for xformers.ops.memory_efficient_attention.
+
+<a id='changelog-0.1.16'></a>
 
 # 0.1.16 — 2022-12-14
 
