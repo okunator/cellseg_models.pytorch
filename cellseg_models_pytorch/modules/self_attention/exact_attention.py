@@ -94,6 +94,6 @@ class ExactSelfAttention(BaseSelfAttention):
 
     def __repr__(self) -> str:
         """Add extra info to print."""
-        s = "ExactSelfAttention(self_attention='{self_attention}', head_dim={head_dim}, num_heads={num_heads})"  # noqa: E501
+        s = "ExactSelfAttention(how='{how}', head_dim={head_dim}, num_heads={num_heads})"  # noqa: E501
         s = s.format(**self.__dict__)
         return s
