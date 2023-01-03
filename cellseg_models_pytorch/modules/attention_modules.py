@@ -36,7 +36,70 @@ __all__ = [
     "SCSqueezeAndExcite",
     "ECA",
     "GlobalContext",
+    "MSCA",
 ]
+
+
+class MSCA(nn.Module):
+    def __init__(self, in_channels: int, **kwargs) -> None:
+        """Multi-scale convolutional attention (MSCA).
+
+        - SegNeXt: http://arxiv.org/abs/2209.08575
+
+        Parameters
+        ----------
+            in_channels : int
+                The number of input channels.
+        """
+        super().__init__()
+        # depth-wise projection
+        self.proj = nn.Conv2d(
+            in_channels, in_channels, 5, padding=2, groups=in_channels
+        )
+
+        # scale1
+        self.conv0_1 = nn.Conv2d(
+            in_channels, in_channels, (1, 7), padding=(0, 3), groups=in_channels
+        )
+        self.conv0_2 = nn.Conv2d(
+            in_channels, in_channels, (7, 1), padding=(3, 0), groups=in_channels
+        )
+
+        # scale2
+        self.conv1_1 = nn.Conv2d(
+            in_channels, in_channels, (1, 11), padding=(0, 5), groups=in_channels
+        )
+        self.conv1_2 = nn.Conv2d(
+            in_channels, in_channels, (11, 1), padding=(5, 0), groups=in_channels
+        )
+
+        # scale3
+        self.conv2_1 = nn.Conv2d(
+            in_channels, in_channels, (1, 21), padding=(0, 10), groups=in_channels
+        )
+        self.conv2_2 = nn.Conv2d(
+            in_channels, in_channels, (21, 1), padding=(10, 0), groups=in_channels
+        )
+        self.conv3 = nn.Conv2d(in_channels, in_channels, 1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the MSCA-attention."""
+        residual = x
+        attn = self.proj(x)
+
+        attn_0 = self.conv0_1(attn)
+        attn_0 = self.conv0_2(attn_0)
+
+        attn_1 = self.conv1_1(attn)
+        attn_1 = self.conv1_2(attn_1)
+
+        attn_2 = self.conv2_1(attn)
+        attn_2 = self.conv2_2(attn_2)
+        attn = attn + attn_0 + attn_1 + attn_2
+
+        attn = self.conv3(attn)
+
+        return attn * residual
 
 
 class SqueezeAndExcite(nn.Module):
@@ -304,6 +367,7 @@ ATT_LOOKUP = {
     "scse": SCSqueezeAndExcite,
     "eca": ECA,
     "gc": GlobalContext,
+    "msca": MSCA,
 }
 
 
