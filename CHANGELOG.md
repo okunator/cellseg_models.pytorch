@@ -1,3 +1,12 @@
+<a id='changelog-0.1.18'></a>
+
+# 0.1.18 — 2023-01-03
+
+## Features
+
+- Add Multi-scale-convolutional-attention (MSCA) module (SegNexT).
+- Add TokenMixer & MetaFormer modules.
+
 <a id='changelog-0.1.17'></a>
 
 # 0.1.17 — 2022-12-29
