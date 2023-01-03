@@ -28,12 +28,17 @@ class LayerScale(nn.Module):
                 Flag, whether the scaling is an inplace operation.
         """
         super().__init__()
+        self.dim = dim
         self.inplace = inplace
         self.gamma = nn.Parameter(init_values * torch.ones(dim))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the layer scaling."""
         return x.mul_(self.gamma) if self.inplace else x * self.gamma
+
+    def extra_repr(self) -> str:
+        """Add extra to repr."""
+        return f"dim={self.dim}, inplace={self.inplace}"
 
 
 class ChannelPool(nn.Module):

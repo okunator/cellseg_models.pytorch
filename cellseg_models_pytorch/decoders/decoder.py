@@ -49,14 +49,14 @@ class Decoder(nn.ModuleDict):
                 The number of convolution layers inside each of the decoder stages. The
                 argument can be given as a tuple, where each value indicates the number
                 of conv-layers inside each stage of the decoder allowing the mixing of
-                different sized layers inside the stages in the decoder. If set to None,
-                no conv-layers will be included in the decoder.
+                different sized layers inside the stages. If set to None, no conv-layers
+                will be included in the decoder.
             n_transformers : Union[None, int, Tuple[int, ...]] , optional
                 The number of transformer layers inside each of the decoder stages. The
                 argument can be given as a tuple, where each value indicates the number
-                of transformer-layers inside each stage of the decoder allowing the
-                mixing of different sized layers inside the stages in the decoder. If
-                set to None, no transformer layers will be included in the decoder.
+                of transformer-layers inside each stage of the decoder stages allowing
+                the mixing of different sized layers inside the stages. If set to None,
+                no transformer layers will be included in the decoder.
             n_conv_blocks : Union[int, Tuple[Tuple[int, ...], ...]], default=2
                 The number of blocks inside each conv-layer at each decoder stage. The
                 argument can be given as a nested tuple, where each value indicates the

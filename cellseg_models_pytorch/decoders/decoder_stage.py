@@ -109,9 +109,10 @@ class DecoderStage(nn.Module):
                 The tuple-length has to match `n_conv_layers`. Ignored if
                 `n_conv_layers` is None.
             attentions : Tuple[Tuple[str, ...], ...], default: ((None, "se"), )
-                Attention methods used inside the conv layers.
+                Channel-attention methods used inside the conv layers.
                 The tuple-length has to match `n_conv_layers`. Ignored if
-                `n_conv_layers` is None.
+                `n_conv_layers` is None. Allowed methods.: "se", "scse", "gc", "eca",
+                "msca", None.
             preactivates Tuple[Tuple[bool, ...], ...], default: ((False, False), )
                 Boolean flags for the conv layers to use pre-activation.
                 The tuple-length has to match `n_conv_layers`. Ignored if

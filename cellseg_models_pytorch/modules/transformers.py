@@ -135,7 +135,7 @@ class Transformer2D(nn.Module):
         B, _, H, W = x.shape
         residual = x
 
-        # 1. project
+        # 1. embed and project
         x = self.patch_embed(x)
 
         # 2. transformer
@@ -151,7 +151,7 @@ class Transformer2D(nn.Module):
         # NOTE: the kernel_size, pad, & stride has to be set correctly for this to work
         if p_H < H:
             scale_factor = H // p_H
-            x = F.interpolate(x, scale_factor=scale_factor, mode="bilinear")
+            x = F.interpolate(x, scale_factor=int(scale_factor), mode="bilinear")
 
         # 4. project to original input channels
         x = self.proj_out(x)
@@ -268,15 +268,13 @@ class TransformerLayer(nn.Module):
             ls = LayerScale(query_dim) if layer_scales[i] else Identity()
             self.layer_scales.append(ls)
 
-            # self.tr_blocks[f"transformer_{block_types[i]}_{i + 1}"] = tr_block
-
         self.mlp = MlpBlock(
             in_channels=query_dim,
             mlp_ratio=mlp_ratio,
             activation=activation,
             normalization="ln",
             norm_kwargs={"normalized_shape": query_dim},
-            activation_kwargs=kwargs,
+            act_kwargs=kwargs,
         )
 
     def forward(self, x: torch.Tensor, context: torch.Tensor = None) -> torch.Tensor:

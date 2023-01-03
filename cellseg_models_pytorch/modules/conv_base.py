@@ -64,7 +64,7 @@ class BasicConv(nn.Module):
             bias : bool, default=False,
                 Include bias term in the convolution.
             attention : str, default=None
-                Attention method. One of: "se", "scse", "gc", "eca", None
+                Attention method. One of: "se", "scse", "gc", "eca", "msca", None
             preattend : bool, default=False
                 If True, Attention is applied at the beginning of forward pass.
         """
@@ -186,7 +186,7 @@ class BottleneckConv(nn.Module):
             bias : bool, default=False,
                 Include bias term in the convolution.
             attention : str, default=None
-                Attention method. One of: "se", "scse", "gc", "eca", None
+                Attention method. One of: "se", "scse", "gc", "eca", "msca", None
             preattend : bool, default=False
                 If True, Attention is applied at the beginning of forward pass.
         """
@@ -336,7 +336,7 @@ class DepthWiseSeparableConv(nn.Module):
             kernel_size : int, default=3
                 The size of the convolution kernel.
             attention : str, default=None
-                Attention method. One of: "se", "scse", "gc", "eca", None
+                Attention method. One of: "se", "scse", "gc", "eca", "msca", None
             preattend : bool, default=False
                 If True, Attention is applied at the beginning of forward pass.
         """
@@ -375,7 +375,7 @@ class DepthWiseSeparableConv(nn.Module):
         self.act2 = Activation(activation)
 
     def forward_features(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass with pre-activation."""
+        """Forward pass."""
         if self.preattend:
             x = self.att(x)
 
@@ -394,7 +394,7 @@ class DepthWiseSeparableConv(nn.Module):
         return x
 
     def forward_features_preact(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass."""
+        """Forward pass ith pre-activation."""
         if self.preattend:
             x = self.att(x)
 
@@ -459,7 +459,7 @@ class InvertedBottleneckConv(nn.Module):
             kernel_size : int, default=3
                 The size of the convolution kernel.
             attention : str, default=None
-                Attention method. One of: "se", "scse", "gc", "eca", None
+                Attention method. One of: "se", "scse", "gc", "eca", "msca", None
             preattend : bool, default=False
                 If True, Attention is applied at the beginning of forward pass.
         """
@@ -615,7 +615,7 @@ class FusedMobileInvertedConv(nn.Module):
             preactivate : bool, default=False
                 If True, normalization will be applied before convolution.
             attention : str, default=None
-                Attention method. One of: "se", "scse", "gc", "eca", None
+                Attention method. One of: "se", "scse", "gc", "eca", "msca", None
             preattend : bool, default=False
                 If True, Attention is applied at the beginning of forward pass.
         """
@@ -750,7 +750,7 @@ class HoverNetDenseConv(nn.Module):
             kernel_size : int, default=3
                 The size of the convolution kernel.
             attention : str, default=None
-                Attention method. One of: "se", "scse", "gc", "eca", None
+                Attention method. One of: "se", "scse", "gc", "eca", "msca", None
             preattend : bool, default=False
                 If True, Attention is applied at the beginning of forward pass.
         """
@@ -880,7 +880,7 @@ class BasicConvOld(nn.Module):
             bias : bool, default=False,
                 Include bias term in the convolution.
             attention : str, default=None
-                Attention method. One of: "se", "scse", "gc", "eca", None
+                Attention method. One of: "se", "scse", "gc", "eca", "msca", None
             preattend : bool, default=False
                 If True, Attention is applied at the beginning of forward pass.
         """

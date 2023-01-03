@@ -73,7 +73,7 @@ class ConvLayer(nn.ModuleDict):
             biases : bool, default=(True, True)
                 Include bias terms in the convolution blocks.
             attentions : Tuple[str, ...], default=(None, None)
-                Attention method. One of: "se", "scse", "gc", "eca", None
+                Attention method. One of: "se", "scse", "gc", "eca", "msca", None
             preattends : Tuple[bool, ...], default=(False, False)
                 If True, Attention is applied at the beginning of forward pass.
             use_styles : bool, default=(False, False)

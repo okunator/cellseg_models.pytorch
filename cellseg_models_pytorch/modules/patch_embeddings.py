@@ -59,7 +59,9 @@ class ContiguousEmbed(nn.Module):
             num_heads : int, default=8
                 Number of heads in multi-head self-attention.
             flatten : bool, default=True
-                If True, the output will be flattened to a sequence.
+                If True, the output will be flattened to a sequence. After flattening
+                output will have shape (B, H'*W', head_dim*num_heads). If False, the
+                output shape will remain (B, C, H', W').
             normalization : str, optional
                 The name of the normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", "lrn", None
@@ -105,6 +107,7 @@ class ContiguousEmbed(nn.Module):
         self.kernel_size = patch_size if kernel_size is None else kernel_size
         self.pad = pad
         self.stride = stride
+        norm_kwargs = norm_kwargs if norm_kwargs is not None else {}
 
         self.norm = Norm(normalization, **norm_kwargs)
         self.proj = nn.Conv2d(

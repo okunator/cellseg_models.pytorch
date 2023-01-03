@@ -134,7 +134,7 @@ class ConvBlock(nn.Module, ShortSkipMixIn):
             bias : bool, default=True,
                 Include bias term in the convolution block. Only used for `BaasicConv`.
             attention : str, default=None
-                Attention method. One of: "se", "scse", "gc", "eca", None
+                Attention method. One of: "se", "scse", "gc", "eca", "msca", None
             preattend : bool, default=False
                 If True, Attention is applied at the beginning of forward pass.
             use_style : bool, default=False
