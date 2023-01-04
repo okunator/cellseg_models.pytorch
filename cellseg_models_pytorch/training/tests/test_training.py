@@ -9,8 +9,7 @@ from cellseg_models_pytorch.models import cellpose_plus
 from cellseg_models_pytorch.training.lit import SegmentationExperiment
 
 
-# @pytest.mark.parametrize
-def test_training(img_patch_dir, mask_patch_dir):
+def test_training(img_patch_dir, mask_patch_dir, auto_lr):
     train_ds = SegmentationFolderDataset(
         path=img_patch_dir.as_posix(),
         mask_path=mask_patch_dir.as_posix(),

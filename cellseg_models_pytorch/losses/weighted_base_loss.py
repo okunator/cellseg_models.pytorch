@@ -71,6 +71,8 @@ class WeightedBaseLoss(nn.Module):
     ) -> torch.Tensor:
         """Apply regular label smoothing to the target map.
 
+        https://arxiv.org/abs/1512.00567
+
         Parameters
         ----------
             target : torch.Tensor

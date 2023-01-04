@@ -142,7 +142,8 @@ class SegmentationFolderDataset(TrainDatasetBase):
             out["inst"] = masks["inst_map"]
         except KeyError:
             raise KeyError(
-                f"The file {self.fnames_masks[ix]} does not contain key `inst_map`."
+                f"The file {self.fnames_masks[ix]} does not contain key `inst_map`. "
+                "Try setting `return_inst=False`."
             )
 
         if return_type:
@@ -151,6 +152,7 @@ class SegmentationFolderDataset(TrainDatasetBase):
             except KeyError:
                 raise KeyError(
                     f"The file {self.fnames_masks[ix]} does not contain key `type_map`."
+                    " Try setting `return_type=False`."
                 )
 
         if return_sem:
@@ -159,6 +161,7 @@ class SegmentationFolderDataset(TrainDatasetBase):
             except KeyError:
                 raise KeyError(
                     f"The file {self.fnames_masks[ix]} does not contain key `sem_map`."
+                    "Try setting `return_sem=False`."
                 )
 
         return out

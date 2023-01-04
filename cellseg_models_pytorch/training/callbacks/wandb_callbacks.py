@@ -147,7 +147,7 @@ class WandbIoUCallback(pl.Callback):
         outputs: Dict[str, torch.Tensor],
         batch: Dict[str, torch.Tensor],
         batch_idx: int,
-        dataloader_idx: int,
+        dataloader_idx: int = 0,
     ) -> None:
         """Log the inputs and outputs of the model to wandb."""
         self.batch_end(trainer, outputs["soft_masks"], batch, batch_idx, phase="train")
@@ -159,7 +159,7 @@ class WandbIoUCallback(pl.Callback):
         outputs: Dict[str, torch.Tensor],
         batch: Dict[str, torch.Tensor],
         batch_idx: int,
-        dataloader_idx: int,
+        dataloader_idx: int = 0,
     ) -> None:
         """Log the inputs and outputs of the model to wandb."""
         self.batch_end(trainer, outputs["soft_masks"], batch, batch_idx, phase="val")
@@ -171,7 +171,7 @@ class WandbIoUCallback(pl.Callback):
         outputs: Dict[str, torch.Tensor],
         batch: Dict[str, torch.Tensor],
         batch_idx: int,
-        dataloader_idx: int,
+        dataloader_idx: int = 0,
     ) -> None:
         """Log the inputs and outputs of the model to wandb."""
         self.batch_end(trainer, outputs["soft_masks"], batch, batch_idx, phase="test")
@@ -198,6 +198,7 @@ class WandbClassLineCallback(WandbIoUCallback):
         batch: Dict[str, torch.Tensor],
         batch_idx: int,
         phase: str,
+        dataloader_idx: int = None,
     ) -> None:
         """Log metrics at every 100th step to wandb."""
         if batch_idx % self.freq == 0:
@@ -223,7 +224,7 @@ class WandbClassLineCallback(WandbIoUCallback):
         outputs: Dict[str, torch.Tensor],
         batch: Dict[str, torch.Tensor],
         batch_idx: int,
-        dataloader_idx: int,
+        dataloader_idx: int = 0,
     ) -> None:
         """Call the callback at val time."""
         self.validation_batch_end(
@@ -237,7 +238,7 @@ class WandbClassLineCallback(WandbIoUCallback):
         outputs: Dict[str, torch.Tensor],
         batch: Dict[str, torch.Tensor],
         batch_idx: int,
-        dataloader_idx: int,
+        dataloader_idx: int = 0,
     ) -> None:
         """Call the callback at val time."""
         self.train_batch_end(

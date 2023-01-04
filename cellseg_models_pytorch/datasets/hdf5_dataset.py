@@ -119,20 +119,27 @@ class SegmentationHDF5Dataset(TrainDatasetBase):
                 out["inst"] = h5.root.insts[ix, ...]
             except Exception:
                 raise IOError(
-                    "The HDF5 database does not contain instance labelled masks."
+                    "The HDF5 database does not contain instance labelled masks. Try "
+                    "setting `return_inst=False`"
                 )
 
             if return_type:
                 try:
                     out["type"] = h5.root.types[ix, ...]
                 except Exception:
-                    raise IOError("The HDF5 database does not contain type masks.")
+                    raise IOError(
+                        "The HDF5 database does not contain type masks. Try setting "
+                        "`return_type = False` "
+                    )
 
             if return_sem:
                 try:
                     out["sem"] = h5.root.areas[ix, ...]
                 except Exception:
-                    raise IOError("The HDF5 database does not contain semantic masks.")
+                    raise IOError(
+                        "The HDF5 database does not contain semantic masks. Try "
+                        "setting `return_sem = False`"
+                    )
 
             return out
 
