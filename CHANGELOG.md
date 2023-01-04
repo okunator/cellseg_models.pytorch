@@ -1,3 +1,11 @@
+<a id='changelog-0.1.19'></a>
+
+# 0.1.19 — 2023-01-04
+
+## Features
+
+- Add pytorch lightning in-built `auto_lr_finder` option to `SegmentationExperiment`
+
 <a id='changelog-0.1.18'></a>
 
 # 0.1.18 — 2023-01-03
