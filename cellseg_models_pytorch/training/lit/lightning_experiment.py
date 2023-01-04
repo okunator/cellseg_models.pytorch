@@ -31,6 +31,8 @@ class SegmentationExperiment(pl.LightningModule):
         scheduler: str = "reduce_on_plateau",
         scheduler_params: Dict[str, Any] = None,
         log_freq: int = 100,
+        auto_lr_finder: bool = False,
+        **kwargs,
     ) -> None:
         """Segmentation model training experiment.
 
@@ -64,6 +66,7 @@ class SegmentationExperiment(pl.LightningModule):
                 optim paramas like learning rates, weight decays etc for diff parts of
                 the network.
                 E.g. {"encoder": {"weight_decay: 0.1, "lr": 0.1}, "sem": {"lr": 0.01}}
+                or {"learning_rate": 0.005, "weight_decay": 0.03}
             lookahead : bool, default=False
                 Flag whether the optimizer uses lookahead.
             scheduler : str, default="reduce_on_plateau"
@@ -75,6 +78,8 @@ class SegmentationExperiment(pl.LightningModule):
                 for the possible scheduler arguments.
             log_freq : int, default=100
                 Return logs every n batches in logging callbacks.
+            auto_lr_finder : bool, default=False
+                Flag, whether to use the lightning in-built auto-lr-finder.
 
         Raises
         ------
@@ -83,6 +88,8 @@ class SegmentationExperiment(pl.LightningModule):
             ValueError if illegal metric names are given.
             ValueError if illegal optimizer name is given.
             ValueError if illegal scheduler name is given.
+            KeyError if `auto_lr_finder` is set to True and `optim_params` does not
+                contain `lr`-key.
         """
         super().__init__()
         self.model = model
@@ -95,6 +102,16 @@ class SegmentationExperiment(pl.LightningModule):
         self.scheduler = scheduler
         self.scheduler_params = scheduler_params
         self.lookahead = lookahead
+        self.auto_lr_finder = auto_lr_finder
+
+        if auto_lr_finder:
+            try:
+                self.lr = optim_params["lr"]
+            except KeyError:
+                raise KeyError(
+                    "To use lightning in-built auto_lr_finder, the `optim_params` "
+                    "config variable has to contain 'lr'-key for learning-rate."
+                )
 
         self.branch_losses = branch_losses
         self.branch_metrics = branch_metrics
@@ -309,15 +326,20 @@ class SegmentationExperiment(pl.LightningModule):
                 f"Illegal scheduler given. Got {self.scheduler}. Allowed: {allowed}."
             )
 
-        # set sensible default if None.
-        if self.optim_params is None:
-            self.optim_params = {
-                "encoder": {"lr": 0.00005, "weight_decay": 0.00003},
-                "decoder": {"lr": 0.0005, "weight_decay": 0.0003},
-            }
+        if not self.auto_lr_finder:
+            # set sensible default if None.
+            if self.optim_params is None:
+                self.optim_params = {
+                    "encoder": {"lr": 0.00005, "weight_decay": 0.00005},
+                    "decoder": {"lr": 0.0005, "weight_decay": 0.0005},
+                }
 
-        params = adjust_optim_params(self.model, self.optim_params)
-        optimizer = OPTIM_LOOKUP[self.optimizer](params)
+            params = adjust_optim_params(self.model, self.optim_params)
+            optimizer = OPTIM_LOOKUP[self.optimizer](params)
+        else:
+            optimizer = OPTIM_LOOKUP[self.optimizer](
+                self.model.parameters(), lr=self.lr
+            )
 
         if self.lookahead:
             optimizer = OPTIM_LOOKUP["lookahead"](optimizer, k=5, alpha=0.5)
