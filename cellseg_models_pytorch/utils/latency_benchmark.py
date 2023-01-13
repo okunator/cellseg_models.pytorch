@@ -12,7 +12,13 @@ __all__ = ["LatencyBenchmarker"]
 
 class LatencyBenchmarker:
     def __init__(self, inferer: BaseInferer) -> None:
-        """Benchmark latencies of the model an post-processing pipelines."""
+        """Benchmark latencies of the model an post-processing pipelines.
+
+        Parameters
+        ----------
+            inferer : BaseInferer
+                An inferer object that contains model outputs.
+        """
         self.inferer = inferer
 
         try:
@@ -178,7 +184,7 @@ class LatencyBenchmarker:
                 Height and width of the input.
             batch_size : int, default=1
                 Batch size.
-            reps : int, default=300
+            reps : int, default=100
                 Number of repetitions to run the latency measurement.
             warmup_reps : int, default=3
                 Number of repetitions that are used for warming up the gpu.
