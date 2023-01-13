@@ -14,7 +14,7 @@ class SlidingWindowInferer(BaseInferer):
     def __init__(
         self,
         model: nn.Module,
-        input_folder: Union[Path, str],
+        input_path: Union[Path, str],
         out_activations: Dict[str, str],
         out_boundary_weights: Dict[str, bool],
         stride: int,
@@ -44,8 +44,8 @@ class SlidingWindowInferer(BaseInferer):
         ----------
             model : nn.Module
                 A segmentation model.
-            input_folder : Path | str
-                Path to a folder of images.
+            input_path : Path | str
+                Path to a folder of images or to hdf5 db.
             out_activations : Dict[str, str]
                 Dictionary of head names mapped to a string value that specifies the
                 activation applied at the head. E.g. {"type": "tanh", "cellpose": None}
@@ -86,7 +86,7 @@ class SlidingWindowInferer(BaseInferer):
             checkpoint_path : Path | str, optional
                 Path to the model weight checkpoints.
             n_images : int, optional
-                First n-number of images used from the `ìnput_folder`.
+                First n-number of images used from the `input_path`.
             type_post_proc : Callable, optional
                 A post-processing function for the type maps. If not None, overrides
                 the default.
@@ -95,10 +95,35 @@ class SlidingWindowInferer(BaseInferer):
                 overrides the default.
             **kwargs:
                 Arbitrary keyword arguments expecially for post-processing and saving.
+
+        Examples
+        --------
+            >>> # initialize model and paths
+            >>> model = cellpose_plus(len(type_classes), len(area_classes))
+            >>> inputs = "/path/to/images"
+            >>> ckpt_path = "/path/to/my_weights.ckpt"
+
+            >>> # initialize output head args
+            >>> out_activations={"type": "softmax", "cellpose": None, "sem": "softmax"}
+            >>> out_boundary_weights={"type": False, "cellpose": True, "sem": False}
+
+            >>> # Run inference
+            >>> inferer = SlidingWindowInferer(
+                    model=model,
+                    input_path=inputs,
+                    checkpoint_path=ckpt_path,
+                    out_activations=out_activations,
+                    out_boundary_weights=out_boundary_weights,
+                    stride=256,
+                    patch_size=(320, 320),
+                    instance_postproc="cellpose",
+                    normalization="minmax" # This needs to be same as during training
+                )
+            >>> inferer.infer()
         """
         super().__init__(
             model=model,
-            input_folder=input_folder,
+            input_path=input_path,
             out_activations=out_activations,
             out_boundary_weights=out_boundary_weights,
             patch_size=patch_size,

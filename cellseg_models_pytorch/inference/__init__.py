@@ -1,5 +1,5 @@
 from ._base_inferer import BaseInferer
-from .folder_dataset import FolderDataset
+from .folder_dataset_infer import FolderDatasetInfer
 from .post_processor import PostProcessor
 from .predictor import Predictor
 from .resize_inferer import ResizeInferer
@@ -11,5 +11,5 @@ __all__ = [
     "PostProcessor",
     "ResizeInferer",
     "SlidingWindowInferer",
-    "FolderDataset",
+    "FolderDatasetInfer",
 ]

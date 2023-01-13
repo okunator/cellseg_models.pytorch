@@ -9,10 +9,10 @@ from ..utils import FileHandler
 SUFFIXES = (".jpeg", ".jpg", ".tif", ".tiff", ".png")
 
 
-__all__ = ["FolderDataset"]
+__all__ = ["FolderDatasetInfer"]
 
 
-class FolderDataset(Dataset, FileHandler):
+class FolderDatasetInfer(Dataset, FileHandler):
     def __init__(
         self, path: Union[str, Path], pattern: str = "*", n_images: int = None
     ) -> None:
@@ -55,10 +55,10 @@ class FolderDataset(Dataset, FileHandler):
         """Length of folder."""
         return len(self.fnames)
 
-    def __getitem__(self, index: int) -> torch.Tensor:
+    def __getitem__(self, ix: int) -> torch.Tensor:
         """Read image."""
-        fn = self.fnames[index]
+        fn = self.fnames[ix]
         im = FileHandler.read_img(fn.as_posix())
         im = torch.from_numpy(im.transpose(2, 0, 1))
 
-        return {"im": im, "file": fn.name[:-4]}
+        return {"im": im, "file": fn.with_suffix("").name}

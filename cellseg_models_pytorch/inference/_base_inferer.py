@@ -13,7 +13,8 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from ..utils import FileHandler, tensor_to_ndarray
-from .folder_dataset import FolderDataset
+from .folder_dataset_infer import FolderDatasetInfer
+from .hdf5_dataset_infer import HDF5DatasetInfer
 from .post_processor import PostProcessor
 from .predictor import Predictor
 
@@ -22,7 +23,7 @@ class BaseInferer(ABC):
     def __init__(
         self,
         model: nn.Module,
-        input_folder: Union[Path, str],
+        input_path: Union[Path, str],
         out_activations: Dict[str, str],
         out_boundary_weights: Dict[str, bool],
         patch_size: Tuple[int, int],
@@ -47,8 +48,8 @@ class BaseInferer(ABC):
         ----------
             model : nn.Module
                 A segmentation model.
-            input_folder : Path | str
-                Path to a folder of images.
+            input_path : Path | str
+                Path to a folder of images or to hdf5 db.
             out_activations : Dict[str, str]
                 Dictionary of head names mapped to a string value that specifies the
                 activation applied at the head. E.g. {"type": "tanh", "cellpose": None}
@@ -87,7 +88,7 @@ class BaseInferer(ABC):
             checkpoint_path : Path | str, optional
                 Path to the model weight checkpoints.
             n_images : int, optional
-                First n-number of images used from the `input_folder`.
+                First n-number of images used from the `input_path`.
             type_post_proc : Callable, optional
                 A post-processing function for the type maps. If not None, overrides
                 the default.
@@ -112,21 +113,28 @@ class BaseInferer(ABC):
         self.save_intermediate = save_intermediate
         self.save_format = save_format
 
-        # dataloader
-        self.path = Path(input_folder)
-
-        folder_ds = FolderDataset(self.path, n_images=n_images)
-        if self.save_dir is None and len(folder_ds.fnames) > 40:
-            warnings.warn(
-                "`save_dir` is None. Thus, the outputs are be saved in `out_masks` "
-                "class variable. If the input folder contains many images, running "
-                "inference will likely flood the memory depending on the size and "
-                "number of the images. Consider saving outputs to disk by providing "
-                "`save_dir` argument."
+        # dataset & dataloader
+        self.path = Path(input_path)
+        if self.path.is_dir():
+            ds = FolderDatasetInfer(self.path, n_images=n_images)
+            if self.save_dir is None and len(ds.fnames) > 40:
+                warnings.warn(
+                    "`save_dir` is None. Thus, the outputs are be saved in `out_masks` "
+                    "class attribute. If the input folder contains many images, running"
+                    " inference will likely flood the memory depending on the size and "
+                    "number of the images. Consider saving outputs to disk by providing"
+                    " `save_dir` argument."
+                )
+        elif self.path.is_file() and self.path.suffix in (".h5", ".hdf5"):
+            ds = HDF5DatasetInfer(self.path, n_images=n_images)
+        else:
+            raise ValueError(
+                f"Given `input_path`: {input_path} is neither an image folder or a h5 "
+                "database. Allowed suffices for h5 database are ('.h5', '.hdf5')"
             )
 
         self.dataloader = DataLoader(
-            folder_ds, batch_size=batch_size, shuffle=False, pin_memory=True
+            ds, batch_size=batch_size, shuffle=False, pin_memory=True
         )
 
         # Set post processor
