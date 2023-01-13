@@ -1,6 +1,6 @@
 import pytest
 
-from cellseg_models_pytorch.utils.seg_benchmark import BenchMarker
+from cellseg_models_pytorch.utils.seg_benchmark import SegBenchmarker
 
 classes = {
     "0": 0,
@@ -14,10 +14,16 @@ classes = {
 
 
 @pytest.mark.parametrize("how", ["binary", "multi", None])
-def test_sem_seg_bm(mask_patch_dir, how):
-    bm = BenchMarker(
-        pred_dir=mask_patch_dir,
-        true_dir=mask_patch_dir,
+@pytest.mark.parametrize("inputf", ["h5", "folder"])
+def test_sem_seg_bm(mask_patch_dir, hdf5db, how, inputf):
+    if inputf == "folder":
+        inpath = mask_patch_dir
+    else:
+        inpath = hdf5db
+
+    bm = SegBenchmarker(
+        true_path=inpath,
+        pred_path=inpath,
         type_classes=classes,
         sem_classes=classes,
     )
