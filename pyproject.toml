@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cellseg_models_pytorch"
-version = "0.1.19"
+version = "0.1.20"
 description = "Python library for 2D cell/nuclei instance segmentation models written with PyTorch."
 authors = ["Okunator <oskari.lehtonen@helsinki.fi>"]
 license = "MIT"

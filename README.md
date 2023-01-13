@@ -74,6 +74,7 @@ pip install cellseg-models-pytorch[all]
 
 - [Training Stardist with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_stardist.ipynb). Train the Stardist model with constant sized Pannuke patches.
 - [Training Cellpose with Lizard](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/lizard_nuclei_segmentation_cellpose.ipynb). Train the Cellpose model with Lizard dataset that is composed of varying sized images.
+- [Benchmarking Cellpose Trained on Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_cellpose_benchmark.ipynb). Benchmark Cellpose trained on Pannuke. Both the model performance and latency.
 
 ## Code Examples
 

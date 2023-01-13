@@ -1,3 +1,24 @@
+<a id='changelog-0.1.20'></a>
+
+# 0.1.20 — 2023-01-13
+
+## Fixes
+
+- Enable only writing folder&hdf5 datasets with only images
+- Enable writing datasets without patching.
+
+- Add long missing h5 reading utility function to `FileHandler`
+
+## Features
+
+- Add hdf5 input file reading to `Inferer` classes.
+
+- Add option to write pannuke dataset to h5 db in `PannukeDataModule` and `LizardDataModule`.
+
+- Add a generic model builder function `get_model` to `models.__init__.py`
+
+- Rewrite segmentation benchmarker. Now it can take in hdf5 datasets.
+
 <a id='changelog-0.1.19'></a>
 
 # 0.1.19 — 2023-01-04

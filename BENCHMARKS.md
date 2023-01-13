@@ -45,14 +45,6 @@ The model latencies depend on the hardware. I'll benhmark the latencies on my la
 
 **Pannuke** and **Lizard** datasets are divided in three splits. For these datasets, we report the mean of the 3-fold cross-validation. The **CIN2** and **HGSOC** datasets contain only a training splits and relatively small validation splits, thus, for those datasets we report the metrics on the validation split.
 
-#### Regularization methods
-
-The models are regularized during training via multiple regularization techniques to tackle distrubution shifts. Specific techniques (among augmentations) that are used in this benchmark are:
-
-- [Spectral decoupling](https://arxiv.org/abs/2011.09468)
-- [Label Smoothing](https://arxiv.org/abs/1512.00567)
-- [Spatially Varying Label Smoothing](https://arxiv.org/abs/2104.05788)
-
 #### Pre-trained backbone encoders
 
 All the models are trained/fine-tuned with an IMAGENET pre-trained backbone encoder that is naturally reported.
@@ -77,12 +69,11 @@ Note that even if these benchmarks are not SOTA or differ from the original manu
 | ---------------------- | ----------------------------------------- |
 | Optimizer              | [AdamP](https://arxiv.org/abs/2006.08217) |
 | Auxilliary Branch Loss | MSE-SSIM                                  |
-| Type Branch Loss       | Focal-DICE                                |
-| Encoder LR             | 0.00005                                   |
-| Decoder LR             | 0.0005                                    |
+| Type Branch Loss       | IoU-DICE                                  |
+| LR                     | Lightning in-built auto-lr-finder         |
 | Scheduler              | Reduce on plateau                         |
 | Batch Size             | 10                                        |
-| Training Epochs        | 50                                        |
+| Training Epochs        | 100                                       |
 | Augmentations          | Blur, Hue Saturation                      |
 
 #### Results Lizard
@@ -94,3 +85,5 @@ Same as above.
 ##### Patching Set-up
 
 ##### Sliding-window Inference Hyperparams
+
+## The Great Regularization Benchmark
