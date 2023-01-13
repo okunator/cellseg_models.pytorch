@@ -8,7 +8,8 @@ from tqdm import tqdm
 from ..utils import FileHandler, fix_duplicates
 
 try:
-    from ..datasets import SegmentationFolderDataset
+    from ..datasets import SegmentationFolderDataset, SegmentationHDF5Dataset
+    from ..datasets.dataset_writers.hdf5_writer import HDF5Writer
     from ._basemodule import BaseDataModule
     from .downloader import SimpleDownloader
 except ModuleNotFoundError:
@@ -26,6 +27,7 @@ class PannukeDataModule(BaseDataModule):
         fold_split: Dict[str, int],
         img_transforms: List[str],
         inst_transforms: List[str],
+        dataset_type: str = "folder",
         normalization: str = None,
         batch_size: int = 8,
         num_workers: int = 8,
@@ -65,6 +67,8 @@ class PannukeDataModule(BaseDataModule):
                 A list containg all the transformations that are applied to only the
                 instance labelled masks. Allowed ones: "cellpose", "contour", "dist",
                 "edgeweight", "hovernet", "omnipose", "smooth_dist", "binarize"
+            dataset_type : str, default="folder"
+                The dataset type. One of "folder", "hdf5".
             normalization : str, optional
                 Apply img normalization after all the transformations. One of "minmax",
                 "norm", "percentile", None.
@@ -107,6 +111,14 @@ class PannukeDataModule(BaseDataModule):
         self.normalization = normalization
         self.kwargs = kwargs if kwargs is not None else {}
 
+        if dataset_type not in ("folder", "hdf5"):
+            raise ValueError(
+                f"Illegal `dataset_type` arg. Got {dataset_type}. "
+                f"Allowed: {('folder', 'hdf5')}"
+            )
+
+        self.dataset_type = dataset_type
+
     @property
     def type_classes(self) -> Dict[str, int]:
         """Pannuke cell type classes."""
@@ -127,7 +139,7 @@ class PannukeDataModule(BaseDataModule):
             SimpleDownloader.download(url, root)
         PannukeDataModule.extract_zips(root, rm=True)
 
-    def prepare_data(self, rm_orig: bool = True) -> None:
+    def prepare_data(self, rm_orig: bool = False) -> None:
         """Prepare the pannuke datasets.
 
         1. Download pannuke folds from:
@@ -167,6 +179,18 @@ class PannukeDataModule(BaseDataModule):
                 self._process_pannuke_fold(
                     fold_paths, save_im_dir, save_mask_dir, fold_ix, phase
                 )
+
+                if self.dataset_type == "hdf5":
+                    writer = HDF5Writer(
+                        in_dir_im=save_im_dir,
+                        in_dir_mask=save_mask_dir,
+                        save_dir=self.save_dir / phase,
+                        file_name=f"pannuke_{phase}.h5",
+                        patch_size=None,
+                        stride=None,
+                        transforms=None,
+                    )
+                    writer.write(tiling=False, msg=phase)
         else:
             print(
                 "Found processed pannuke data. "
@@ -178,11 +202,25 @@ class PannukeDataModule(BaseDataModule):
                 if "fold" in d.name.lower():
                     shutil.rmtree(d)
 
+    def _get_path(self, phase: str, dstype: str, is_mask: bool = False) -> Path:
+        if dstype == "hdf5":
+            p = self.save_dir / phase / f"pannuke_{phase}.h5"
+        else:
+            dtype = "labels" if is_mask else "images"
+            p = self.save_dir / phase / dtype
+
+        return p
+
     def setup(self, stage: Optional[str] = None) -> None:
         """Set up the train, valid, and test datasets."""
-        self.trainset = SegmentationFolderDataset(
-            path=self.save_dir / "train" / "images",
-            mask_path=self.save_dir / "train" / "labels",
+        if self.dataset_type == "hdf5":
+            DS = SegmentationHDF5Dataset
+        else:
+            DS = SegmentationFolderDataset
+
+        self.trainset = DS(
+            path=self._get_path("train", self.dataset_type, is_mask=False),
+            mask_path=self._get_path("train", self.dataset_type, is_mask=True),
             img_transforms=self.img_transforms,
             inst_transforms=self.inst_transforms,
             return_sem=False,
@@ -190,9 +228,9 @@ class PannukeDataModule(BaseDataModule):
             **self.kwargs,
         )
 
-        self.validset = SegmentationFolderDataset(
-            path=self.save_dir / "valid" / "images",
-            mask_path=self.save_dir / "valid" / "labels",
+        self.validset = DS(
+            path=self._get_path("valid", self.dataset_type, is_mask=False),
+            mask_path=self._get_path("valid", self.dataset_type, is_mask=True),
             img_transforms=self.img_transforms,
             inst_transforms=self.inst_transforms,
             return_sem=False,
@@ -200,9 +238,9 @@ class PannukeDataModule(BaseDataModule):
             **self.kwargs,
         )
 
-        self.testset = SegmentationFolderDataset(
-            path=self.save_dir / "test" / "images",
-            mask_path=self.save_dir / "test" / "labels",
+        self.testset = DS(
+            path=self._get_path("test", self.dataset_type, is_mask=False),
+            mask_path=self._get_path("test", self.dataset_type, is_mask=True),
             img_transforms=self.img_transforms,
             inst_transforms=self.inst_transforms,
             return_sem=False,
@@ -256,7 +294,7 @@ class PannukeDataModule(BaseDataModule):
                     inst_map = self._get_inst_map(temp_mask[..., 0:5])
 
                     fn_mask = Path(save_mask_dir / name).with_suffix(".mat")
-                    FileHandler.write_mask(fn_mask, inst_map, type_map)
+                    FileHandler.write_mat(fn_mask, inst_map, type_map)
                     pbar.update(1)
 
     def _get_type_map(self, pannuke_mask: np.ndarray) -> np.ndarray:

@@ -6,8 +6,8 @@ import numpy as np
 
 try:
     from ..datasets import SegmentationFolderDataset, SegmentationHDF5Dataset
-    from ..datasets.dataset_writers.folder_writer import SlidingWindowFolderWriter
-    from ..datasets.dataset_writers.hdf5_writer import SlidingWindowHDF5Writer
+    from ..datasets.dataset_writers.folder_writer import FolderWriter
+    from ..datasets.dataset_writers.hdf5_writer import HDF5Writer
     from ._basemodule import BaseDataModule
     from .downloader import SimpleDownloader
 except ModuleNotFoundError:
@@ -50,7 +50,7 @@ class LizardDataModule(BaseDataModule):
         Parameters
         ----------
             save_dir : str
-                Path to directory where the pannuke data will be saved.
+                Path to directory where the lizard data will be saved.
             fold_split : Dict[str, int]
                 Defines how the folds are split into train, valid, and test sets.
                 E.g. {"train": 1, "valid": 2, "test": 3}
@@ -82,18 +82,20 @@ class LizardDataModule(BaseDataModule):
             >>> from cellseg_models_pytorch.datamodules import LizardDataModule
 
             >>> fold_split = {"train": 1, "valid": 2, "test": 3}
-            >>> save_dir = Path.home() / "pannuke"
+            >>> save_dir = Path.home() / "lizard"
             >>> lizard_module = LizardDataModule(
                     save_dir=save_dir,
                     fold_split=fold_split,
                     inst_transforms=["dist", "stardist"],
                     img_transforms=["blur", "hue_sat"],
                     normalization="percentile",
-                    dataset_type="hdf5"
+                    dataset_type="hdf5",
+                    patch_size=(320, 320),
+                    stride=128
                 )
 
             >>> # lizard_module.download(save_dir) # just the downloading
-            >>> lizard_module.prepare_data(do_patching=True) # downloading & processing
+            >>> lizard_module.prepare_data(tiling=True) # downloading & processing
         """
         super().__init__(batch_size, num_workers)
         self.save_dir = Path(save_dir)
@@ -115,7 +117,7 @@ class LizardDataModule(BaseDataModule):
 
     @property
     def type_classes(self) -> Dict[str, int]:
-        """Pannuke cell type classes."""
+        """Lizard cell type classes."""
         return {
             "bg": 0,
             "neutrophil": 1,
@@ -138,7 +140,7 @@ class LizardDataModule(BaseDataModule):
         SimpleDownloader.download(url, root)
         LizardDataModule.extract_zips(root, rm=True)
 
-    def prepare_data(self, rm_orig: bool = False, do_patching: bool = True) -> None:
+    def prepare_data(self, rm_orig: bool = False, tiling: bool = True) -> None:
         """Prepare the lizard datasets.
 
         1. Download lizard folds from:
@@ -151,9 +153,9 @@ class LizardDataModule(BaseDataModule):
             rm_orig : bool, default=False
                 After processing all the files, If True, removes the original
                 un-processed files.
-            do_patching : bool, default=True
-                Flag, whether to do patching at all. Can be used if you only want to
-                download and split the data and then work it out on your own.
+            tiling : bool, default=True
+                Flag, whether to cut images into tiles. Can be set to False if you only
+                want to download and split the data and then work it out on your own.
         """
         folders_found = [
             d.name
@@ -222,7 +224,7 @@ class LizardDataModule(BaseDataModule):
                 if "lizard" in d.name.lower() or "macosx" in d.name.lower():
                     shutil.rmtree(d)
 
-        if do_patching and not patches_found:
+        if tiling and not patches_found:
             print("Patch the data... This will take a while...")
             for phase in self.fold_split.keys():
                 save_im_dir = self.save_dir / phase / "images"
@@ -231,7 +233,7 @@ class LizardDataModule(BaseDataModule):
                 if self.dataset_type == "hdf5":
                     sdir = self.save_dir / phase / f"{phase}_patches"
                     sdir.mkdir(parents=True, exist_ok=True)
-                    writer = SlidingWindowHDF5Writer(
+                    writer = HDF5Writer(
                         in_dir_im=save_im_dir,
                         in_dir_mask=save_mask_dir,
                         save_dir=sdir,
@@ -245,7 +247,7 @@ class LizardDataModule(BaseDataModule):
                     sdir_mask = self.save_dir / phase / f"{phase}_mask_patches"
                     sdir_im.mkdir(parents=True, exist_ok=True)
                     sdir_mask.mkdir(parents=True, exist_ok=True)
-                    writer = SlidingWindowFolderWriter(
+                    writer = FolderWriter(
                         in_dir_im=save_im_dir,
                         in_dir_mask=save_mask_dir,
                         save_dir_im=sdir_im,
@@ -254,7 +256,7 @@ class LizardDataModule(BaseDataModule):
                         stride=self.stride,
                         transforms=["rigid"],
                     )
-                writer.write(pre_proc=self._process_label, msg=phase)
+                writer.write(tiling=True, pre_proc=self._process_label, msg=phase)
         else:
             print(
                 "Found processed Lizard data. "
