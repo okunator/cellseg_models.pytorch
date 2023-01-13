@@ -66,6 +66,12 @@ def run_pool(
     -------
         Union[List[Any], None]:
             A list of results or None.
+
+    Example
+    -------
+        >>> f = myfunc # any function.
+        >>> args = (1, 2, 3)
+        >>> res_list = run_pool(f, args)
     """
     allowed = ("process", "thread", "serial")
     if pooltype not in allowed:
