@@ -16,6 +16,13 @@ from .mask_utils import (
 )
 from .multiproc import run_pool
 
+try:
+    import tables as tb
+
+    _has_tb = True
+except ModuleNotFoundError:
+    _has_tb = False
+
 
 class FileHandler:
     """Class for handling file I/O."""
@@ -226,6 +233,128 @@ class FileHandler:
             geo_objs.append(geo_obj)
 
         return geo_objs
+
+    @staticmethod
+    def read_h5_patch(
+        path: Union[Path, str],
+        ix: int,
+        return_im: bool = True,
+        return_inst: bool = True,
+        return_type: bool = True,
+        return_sem: bool = False,
+        return_name: bool = False,
+        return_nitems: bool = False,
+        return_all_names: bool = False,
+    ) -> Dict[str, np.ndarray]:
+        """Read img & mask patches at index `ix` from a hdf5 db.
+
+        Parameters
+        ----------
+            path : Path or str
+                Path to the h5-db.
+            ix : int
+                Index for the hdf5 db-arrays.
+            return_im : bool, default=True
+                If True, returns an image. (If the db contains these.)
+            return_inst : bool, default=True
+                If True, returns a instance labelled mask. (If the db contains these.)
+            return_type : bool, default=True
+                If True, returns a type mask. (If the db contains these.)
+            return_sem : bool, default=False
+                If True, returns a semantic mask, (If the db contains these.)
+            return_name : bool, default=False
+                If True, returns a name for the patch, (If the db contains these.)
+            return_nitems : bool, default=False
+                If True, returns the number of items in the db.
+            return_all_names : bool, default=False
+                If True, returns all the names in the db.
+
+        Returns
+        -------
+            Dict[str, np.ndarray]:
+                A Dict of numpy matrices. Img shape: (H, W, 3), mask shapes: (H, W).
+                keys of the dict are: "im", "inst", "type", "sem"
+
+        Raises
+        ------
+            IOError: If a mask that does not exist in the db is being read.
+        """
+        if not _has_tb:
+            raise ModuleNotFoundError(
+                "`FileHandler.read_h5_patch` method requires pytables library. "
+                "Install with `pip install tables`."
+            )
+
+        path = Path(path)
+        with tb.open_file(path.as_posix(), "r") as h5:
+            out = {}
+
+            if return_im:
+                try:
+                    out["image"] = h5.root.imgs[ix, ...]
+                except Exception:
+                    raise IOError(
+                        "The HDF5 database does not contain images. Try "
+                        "setting `return_im=False`"
+                    )
+
+            if return_inst:
+                try:
+                    out["inst"] = h5.root.insts[ix, ...]
+                except Exception:
+                    raise IOError(
+                        "The HDF5 database does not contain instance labelled masks. "
+                        "Try setting `return_inst=False`"
+                    )
+
+            if return_type:
+                try:
+                    out["type"] = h5.root.types[ix, ...]
+                except Exception:
+                    raise IOError(
+                        "The HDF5 database does not contain type masks. Try setting "
+                        "`return_type = False` "
+                    )
+
+            if return_sem:
+                try:
+                    out["sem"] = h5.root.areas[ix, ...]
+                except Exception:
+                    raise IOError(
+                        "The HDF5 database does not contain semantic masks. Try "
+                        "setting `return_sem = False`"
+                    )
+
+            if return_name:
+                try:
+                    fn = h5.root.fnames[ix]
+                    out["name"] = Path(fn.decode("UTF-8"))
+                except Exception:
+                    raise IOError(
+                        "The HDF5 database does not contain patch names. Try "
+                        "setting `return_name = False`"
+                    )
+
+            if return_nitems:
+                try:
+                    out["nitems"] = h5.root._v_attrs.n_items
+                except Exception:
+                    raise IOError(
+                        "The HDF5 database does not contain attribute ``nitems. Try "
+                        "setting `return_nitems = False`"
+                    )
+
+            if return_all_names:
+                try:
+                    names = h5.root.fnames[:]
+                    out["names"] = [Path(n.decode("UTF-8")) for n in names]
+                except Exception:
+                    raise IOError(
+                        "The HDF5 database does not contain patch names. Try "
+                        "setting `return_all_names = False`"
+                    )
+
+            return out
 
     @staticmethod
     def write_mat(
