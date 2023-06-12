@@ -288,7 +288,7 @@ def _check_operation_bounds(name: str, low: MAGNITUDE, high: MAGNITUDE) -> None:
 
 def _magnitude_kwargs(
     operation_name: str, bounds: Tuple[MAGNITUDE, MAGNITUDE], rng: RandomState
-) -> Optional[dict[str, MAGNITUDE]]:
+) -> Optional[Dict[str, MAGNITUDE]]:
     """Generate magnitude kwargs for apply_operations."""
     if operation_name == "tone":
         return dict(
