@@ -14,7 +14,6 @@ from tqdm import tqdm
 
 from ..utils import FileHandler, tensor_to_ndarray
 from .folder_dataset_infer import FolderDatasetInfer
-from .hdf5_dataset_infer import HDF5DatasetInfer
 from .post_processor import PostProcessor
 from .predictor import Predictor
 
@@ -126,6 +125,8 @@ class BaseInferer(ABC):
                     " `save_dir` argument."
                 )
         elif self.path.is_file() and self.path.suffix in (".h5", ".hdf5"):
+            from .hdf5_dataset_infer import HDF5DatasetInfer
+
             ds = HDF5DatasetInfer(self.path, n_images=n_images)
         else:
             raise ValueError(
@@ -270,7 +271,9 @@ class BaseInferer(ABC):
         state_dict = OrderedDict()
         for k, w in ckpt["state_dict"].items():
             if "num_batches_track" not in k:
-                new_key = k.strip("model")[1:]
+                # new_key = k.strip("model")[1:]
+                spl = ["".join(kk) for kk in k.split(".")]
+                new_key = ".".join(spl[1:])
                 state_dict[new_key] = w
         ckpt["state_dict"] = state_dict
 

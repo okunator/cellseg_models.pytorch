@@ -49,6 +49,8 @@ class Mlp(nn.Module):
         act_kwargs = act_kwargs if act_kwargs is not None else {}
         self.out_channels = in_channels if out_channels is None else out_channels
         hidden_channels = int(mlp_ratio * in_channels)
+        act_kwargs["dim_in"] = hidden_channels
+        act_kwargs["dim_out"] = hidden_channels
 
         self.fc1 = nn.Linear(in_channels, hidden_channels, bias=bias)
         self.act = Activation(activation, **act_kwargs)
