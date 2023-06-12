@@ -45,6 +45,10 @@ class MinMaxNormalization(ImageOnlyTransform):
         """
         return minmax_normalize(image, self.amin, self.amax)
 
+    def get_transform_init_args_names(self):
+        """Get the names of the transformation arguments."""
+        return ("amin", "amax")
+
 
 class PercentileNormalization(ImageOnlyTransform):
     def __init__(
@@ -82,6 +86,10 @@ class PercentileNormalization(ImageOnlyTransform):
                 Normalized image. Same shape as input. dtype: float32.
         """
         return percentile_normalize(image, self.lower, self.upper)
+
+    def get_transform_init_args_names(self):
+        """Get the names of the transformation arguments."""
+        return ("lower", "upper")
 
 
 class ImgNormalization(ImageOnlyTransform):
@@ -126,6 +134,10 @@ class ImgNormalization(ImageOnlyTransform):
                 Normalized image. Same shape as input. dtype: float32.
         """
         return normalize(image, self.standardize, self.amin, self.amax)
+
+    def get_transform_init_args_names(self):
+        """Get the names of the transformation arguments."""
+        return ("amin", "amax", "standardize")
 
 
 def imgnorm_transform(**kwargs) -> List[ImageOnlyTransform]:
