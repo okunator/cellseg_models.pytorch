@@ -1,3 +1,13 @@
+<a id='changelog-0.1.21'></a>
+# 0.1.21 — 2023-06-12
+
+## Features
+
+- Add StrongAugment data augmentation pipeline to data-loading pipeline: https://arxiv.org/abs/2206.15274
+
+## Fixes
+
+- Minor bug fixes
 <a id='changelog-0.1.20'></a>
 
 # 0.1.20 — 2023-01-13
