@@ -8,6 +8,7 @@ try:
         IMG_TRANSFORMS,
         INST_TRANSFORMS,
         NORM_TRANSFORMS,
+        StrongAugment,
         apply_each,
         compose,
         to_tensorv3,
@@ -41,7 +42,8 @@ class TrainDatasetBase(Dataset):
             img_transforms : List[str]
                 A list containing all the transformations that are applied to the input
                 images and corresponding masks. Allowed ones: "blur", "non_spatial",
-                "non_rigid", "rigid", "hue_sat", "random_crop", "center_crop", "resize"
+                "non_rigid", "rigid", "hue_sat", "random_crop", "center_crop", "resize",
+                "strong_augment"
             inst_transforms : List[str]
                 A list containg all the transformations that are applied to only the
                 instance labelled masks. Allowed ones: "cellpose", "contour", "dist",
@@ -87,8 +89,17 @@ class TrainDatasetBase(Dataset):
         self.return_type = return_type
         self.return_sem = return_sem
 
-        # Set transformations
-        img_transforms = [IMG_TRANSFORMS[tr](**kwargs) for tr in img_transforms]
+        # add strong augment pipeline
+        self.strong_aug = None
+        if "strong_augment" in img_transforms:
+            self.strong_aug = StrongAugment()
+
+        # Set rest of the transforms, (these are applied before straonaug in _getitem)
+        img_transforms = [
+            IMG_TRANSFORMS[tr](**kwargs)
+            for tr in img_transforms
+            if tr != "strong_augment"
+        ]
         if normalization is not None:
             img_transforms.append(NORM_TRANSFORMS[normalization]())
 
@@ -123,7 +134,6 @@ class TrainDatasetBase(Dataset):
                 A dictionary containing all the augmented data patches.
                 Keys are: "im", "inst", "type", "sem". Image shape: (B, 3, H, W).
                 Mask shapes: (B, C_mask, H, W).
-
         """
         inputs = read_input_func(ix, self.return_type, self.return_sem)
 
@@ -133,7 +143,11 @@ class TrainDatasetBase(Dataset):
         data = dict(image=inputs["image"], masks=masks)
 
         # transform + convert to tensor
+        if self.strong_aug is not None:
+            data = self.strong_aug(**data)
+
         aug = self.img_transforms(**data)
+
         aux = self.inst_transforms(image=aug["image"], inst_map=aug["masks"][0])
         data = self.to_tensor(image=aug["image"], masks=aug["masks"], aux=aux)
 

@@ -27,6 +27,7 @@ try:
         minmaxnorm_transform,
         percentilenorm_transform,
     )
+    from .strong_augment import StrongAugment
 
     IMG_TRANSFORMS = {
         "blur": blur_transforms,
@@ -37,6 +38,7 @@ try:
         "non_spatial": non_spatial_transforms,
         "resize": resize,
         "random_crop": random_crop,
+        "strong_augment": StrongAugment,
     }
 
     INST_TRANSFORMS = {
