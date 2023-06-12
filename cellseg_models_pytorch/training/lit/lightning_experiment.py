@@ -49,7 +49,7 @@ class SegmentationExperiment(pl.LightningModule):
                 Use underscores to create joint loss functions. e.g. "dice_ce_tversky".
             branch_loss_params : Dict[str, Dict[str, Any]], optional
                 Params for the different losses at different branches. For example to
-                use LS or class weighting when computing the losses.
+                use label smoothing or class weighting when computing the losses.
                 E.g. {"inst": {"apply_ls": True}, "sem": {"edge_weight": False}}
             branch_metrics : Dict[str, List[str]], optional
                 A Dict of branch names mapped to a list of strings specifying a metrics.
@@ -65,7 +65,7 @@ class SegmentationExperiment(pl.LightningModule):
             optim_params : Dict[str, Dict[str, Any]]
                 optim paramas like learning rates, weight decays etc for diff parts of
                 the network.
-                E.g. {"encoder": {"weight_decay: 0.1, "lr": 0.1}, "sem": {"lr": 0.01}}
+                E.g. {"encoder": {"weight_decay": 0.1, "lr": 0.1}, "sem": {"lr": 0.01}}
                 or {"learning_rate": 0.005, "weight_decay": 0.03}
             lookahead : bool, default=False
                 Flag whether the optimizer uses lookahead.

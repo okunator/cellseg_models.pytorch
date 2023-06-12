@@ -243,7 +243,6 @@ class TransformerLayer(nn.Module):
                 f"Illegal args: {illegal_args}"
             )
 
-        # self.tr_blocks = nn.ModuleDict()
         self.tr_blocks = nn.ModuleList()
         self.layer_scales = nn.ModuleList()
         blocks = list(range(n_blocks))

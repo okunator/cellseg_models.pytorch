@@ -469,8 +469,8 @@ class FileHandler:
             import geojson
         except ModuleNotFoundError:
             raise ModuleNotFoundError(
-                "To use the `FileHandler.mask2geojson`, pytorch-lightning is required. "
-                "Install with `pip install pytorch-lightning`"
+                "To use the `FileHandler.mask2geojson`, geojson is required. "
+                "Install with `pip install geojson`"
             )
 
         fname = Path(fname)
