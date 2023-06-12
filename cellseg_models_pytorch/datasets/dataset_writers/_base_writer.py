@@ -6,7 +6,7 @@ import numpy as np
 from pathos.multiprocessing import ThreadPool as Pool
 
 from ...transforms.albu_transforms import IMG_TRANSFORMS, compose
-from ...utils import FileHandler, TilerStitcher, fix_duplicates, remap_label
+from ...utils import FileHandler, fix_duplicates, get_patches, remap_label
 
 __all__ = ["BaseWriter"]
 
@@ -184,11 +184,7 @@ class BaseWriter(ABC):
         masks: Union[Dict[str, np.ndarray], None] = None,
     ) -> Tuple[Dict[str, np.ndarray], Union[Dict[str, np.ndarray], None]]:
         """Do tiling on an image and corresponding masks if there are such."""
-        # Init Tilers
-        im_tiler = TilerStitcher(
-            im_shape=im.shape, patch_shape=self.patch_size + (3,), stride=self.stride
-        )
-        im_tiles = im_tiler.patch(im)
+        im_tiles = get_patches(im, self.stride, self.patch_size)[0]
 
         # Tile masks if there are such.
         mask_tiles = None
@@ -204,18 +200,18 @@ class BaseWriter(ABC):
             if "sem_map" in masks.keys():
                 sem = masks["sem_map"]
 
-            mask_tiler = TilerStitcher(
-                im_shape=inst.shape,
-                patch_shape=self.patch_size + (1,),
-                stride=self.stride,
-            )
-
             if inst is not None:
-                mask_tiles["inst_map"] = mask_tiler.patch(inst).squeeze()
+                mask_tiles["inst_map"] = get_patches(
+                    inst, self.stride, self.patch_size
+                )[0]
             if types is not None:
-                mask_tiles["type_map"] = mask_tiler.patch(types).squeeze()
+                mask_tiles["type_map"] = get_patches(
+                    types, self.stride, self.patch_size
+                )[0]
             if sem is not None:
-                mask_tiles["sem_map"] = mask_tiler.patch(sem).squeeze()
+                mask_tiles["sem_map"] = get_patches(sem, self.stride, self.patch_size)[
+                    0
+                ]
 
         return im_tiles, mask_tiles
 

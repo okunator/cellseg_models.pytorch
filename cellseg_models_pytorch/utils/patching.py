@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 import torch
@@ -10,6 +10,7 @@ __all__ = [
     "extract_patches_numpy",
     "stitch_patches_numpy",
     "TilerStitcher",
+    "get_patches",
 ]
 
 
@@ -244,6 +245,143 @@ def stitch_patches_torch(
     output = output[:, :, pad_y : H - pad_y, pad_x : W - pad_x]
 
     return output
+
+
+def _get_margins_and_pad(
+    first_endpoint: int, img_size: int, stride: int, pad: int = None
+) -> Tuple[int, int]:
+    """Get the number of slices needed for one direction and the overlap."""
+    pad = int(pad) if pad is not None else 20  # at least some padding needed
+    img_size += pad
+
+    n = 1
+    mod = 0
+    end = first_endpoint
+    while True:
+        n += 1
+        end += stride
+
+        if end > img_size:
+            mod = end - img_size
+            break
+        elif end == img_size:
+            break
+
+    return n, mod + pad
+
+
+def _get_slices(
+    stride: int,
+    patch_size: Tuple[int, int],
+    img_size: Tuple[int, int],
+    pad: int = None,
+) -> Tuple[Dict[str, slice], int, int]:
+    """Get all the overlapping slices in a dictionary and the needed paddings."""
+    y_end, x_end = patch_size
+    nrows, pady = _get_margins_and_pad(y_end, img_size[0], stride, pad=pad)
+    ncols, padx = _get_margins_and_pad(x_end, img_size[1], stride, pad=pad)
+
+    xyslices = {}
+    for row in range(nrows):
+        for col in range(ncols):
+            y_start = row * stride
+            y_end = y_start + patch_size[0]
+            x_start = col * stride
+            x_end = x_start + patch_size[1]
+            xyslices[f"y-{y_start}_x-{x_start}"] = (
+                slice(y_start, y_end),
+                slice(x_start, x_end),
+            )
+
+    return xyslices, pady, padx, nrows, ncols
+
+
+def get_patches(
+    arr: np.ndarray, stride: int, patch_size: Tuple[int, int], padding: int = None
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Tuple[int, ...], int, int]:
+    """Patch an input array to overlapping or non-overlapping patches.
+
+    NOTE: some padding is applied by default to make the arr divisible by patch_size.
+
+    Parameters
+    ----------
+        arr : np.ndarray
+            An array of shape: (H, W, C) or (H, W).
+        stride : int
+            Stride of the sliding window.
+        patch_size : Tuple[int, int]
+            Height and width of the patch
+        padding : int, optional
+            Size of reflection padding.
+
+    Returns
+    --------
+        Tuple[np.ndarray, np.ndarray, np.ndarray, Tuple[int, ...], int, int]:
+            - Batched input array of shape: (n_patches, ph, pw)|(n_patches, ph, pw, C)
+            - Batched repeats array of shape: (n_patches, ph, pw) int32
+            - Repeat matrix of shape (H + pady, W + padx). Dtype: int32
+            - The shape of the padded input array.
+            - nrows
+            - ncols
+    """
+    shape = arr.shape
+    if len(shape) == 2:
+        arr_type = "HW"
+    elif len(shape) == 3:
+        arr_type = "HWC"
+    else:
+        raise ValueError("`arr` needs to be either 'HW' or 'HWC' shape.")
+
+    slices, pady, padx, nrows, ncols = _get_slices(
+        stride, patch_size, (shape[0], shape[1]), padding
+    )
+
+    padx, modx = divmod(padx, 2)
+    pady, mody = divmod(pady, 2)
+    padx += modx
+    pady += mody
+
+    pad = [(pady, pady), (padx, padx)]
+    if arr_type == "HWC":
+        pad.append((0, 0))
+
+    arr = np.pad(arr, pad, mode="reflect")
+
+    # init repeats matrix + add padding repeats
+    if padding != 0 or padding is None:
+        repeats = np.ones(arr.shape[:2])
+        repeats[pady:-pady, padx:-padx] = 0
+
+        # corner pads
+        repeats[:pady, :padx] += 1
+        repeats[-pady:, -padx:] += 1
+        repeats[-pady:, :padx] += 1
+        repeats[:pady, -padx:] += 1
+    else:
+        repeats = np.zeros(arr.shape[:2])
+
+    patches = []
+    rep_patches = []
+    for yslice, xslice in slices.values():
+        if arr_type == "HW":
+            patch = arr[yslice, xslice]
+        elif arr_type == "HWC":
+            patch = arr[yslice, xslice, ...]
+
+        rep_patch = repeats[yslice, xslice]
+        repeats[yslice, xslice] += 1
+
+        patches.append(patch)
+        rep_patches.append(rep_patch)
+
+    return (
+        np.array(patches, dtype="uint8"),
+        np.array(rep_patches, dtype="int32"),
+        repeats.astype("int32"),
+        arr.shape,
+        nrows,
+        ncols,
+    )
 
 
 class TilerStitcher:

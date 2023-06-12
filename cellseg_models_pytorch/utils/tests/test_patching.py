@@ -7,6 +7,7 @@ from cellseg_models_pytorch.utils import (
     TilerStitcherTorch,
     extract_patches_numpy,
     extract_patches_torch,
+    get_patches,
     stitch_patches_numpy,
     stitch_patches_torch,
 )
@@ -102,3 +103,16 @@ def test_tilerstitchertorch(rand_tensor, padding):
     stitched = ts.backstitch(patches)
 
     assert stitched.shape == rand_tensor.shape
+
+
+@pytest.mark.parametrize("padding", [10, None])
+def test_dict_patching(img_sample, padding):
+    stride = 32
+    patch_size = (64, 64)
+    padding = None
+    patches, _, repeats, padded_shape, _, _ = get_patches(
+        img_sample, stride, patch_size, padding
+    )
+
+    assert patches.shape[1:-1] == patch_size
+    assert repeats.shape == padded_shape[:-1]
