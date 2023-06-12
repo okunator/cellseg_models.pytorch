@@ -40,6 +40,7 @@ from .patching import (
     _get_margins,
     extract_patches_numpy,
     extract_patches_torch,
+    get_patches,
     stitch_patches_numpy,
     stitch_patches_torch,
 )
@@ -113,6 +114,7 @@ __all__ = [
     "stitch_patches_numpy",
     "extract_patches_torch",
     "stitch_patches_torch",
+    "get_patches",
     "_get_margins",
     "gaussian",
     "gaussian_kernel2d",
