@@ -1,7 +1,7 @@
 # augmentations from the StrongAugment paper: https://github.com/jopo666/StrongAugment
 
 import functools
-from typing import Optional, Union
+from typing import Dict, Optional, Tuple, Union
 
 import cv2
 import numpy as np
@@ -236,7 +236,7 @@ def _apply_operation(image: np.ndarray, operation_name: str, **kwargs) -> np.nda
     return operation_fn(image, **kwargs)
 
 
-def _check_augment_space(space: dict[str, tuple[MAGNITUDE, MAGNITUDE]]) -> None:
+def _check_augment_space(space: Dict[str, Tuple[MAGNITUDE, MAGNITUDE]]) -> None:
     """Check that passed augmentation space is valid."""
     if not isinstance(space, dict):
         raise TypeError(f"Augment space should be a dict, not {type(space)}")
@@ -287,7 +287,7 @@ def _check_operation_bounds(name: str, low: MAGNITUDE, high: MAGNITUDE) -> None:
 
 
 def _magnitude_kwargs(
-    operation_name: str, bounds: tuple[MAGNITUDE, MAGNITUDE], rng: RandomState
+    operation_name: str, bounds: Tuple[MAGNITUDE, MAGNITUDE], rng: RandomState
 ) -> Optional[dict[str, MAGNITUDE]]:
     """Generate magnitude kwargs for apply_operations."""
     if operation_name == "tone":
