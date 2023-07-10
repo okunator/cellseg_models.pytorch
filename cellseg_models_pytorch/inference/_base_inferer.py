@@ -162,14 +162,15 @@ class BaseInferer(ABC):
             except BaseException as e:
                 print(e)
 
-        assert device in ("cuda", "cpu")
+        assert device in ("cuda", "cpu", "mps")
         if device == "cpu":
             self.device = torch.device("cpu")
-        if torch.cuda.is_available() and device == "cuda":
+        elif torch.cuda.is_available() and device == "cuda":
             self.device = torch.device("cuda")
-
             if torch.cuda.device_count() > 1 and n_devices > 1:
                 self.model = nn.DataParallel(self.model, device_ids=range(n_devices))
+        elif torch.backends.mps.is_available() and device == "mps":
+            self.device = torch.device("mps")
 
         self.model.to(self.device)
         self.model.eval()
@@ -245,6 +246,14 @@ class BaseInferer(ABC):
                         for n, m in zip(names, soft_masks):
                             self.soft_masks[n] = m
 
+                    # Quick kludge to add soft type and sem to seg_results
+                    for soft, seg in zip(soft_masks, seg_results):
+                        if "type" in soft.keys():
+                            seg["soft_type"] = soft["type"]
+                        if "sem" in soft.keys():
+                            seg["soft_sem"] = soft["sem"]
+
+                    # save to cache or disk
                     if self.save_dir is None:
                         for n, m in zip(names, seg_results):
                             self.out_masks[n] = m
