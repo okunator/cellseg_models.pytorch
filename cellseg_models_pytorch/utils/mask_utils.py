@@ -568,13 +568,11 @@ def remove_debris_semantic(sem_map: np.ndarray, min_size: int = 10000):
         classes = classes[1:]
 
     for i in classes:
-
         area = np.array(res == i, np.int32)
         inst_map = ndi.label(area)[0]
         labels, counts = np.unique(inst_map, return_counts=True)
 
         for label, npixls in zip(labels, counts):
-
             if npixls < min_size:
                 res[inst_map == label] = 0
 
@@ -922,10 +920,7 @@ def majority_vote_parallel(type_map: np.ndarray, inst_map: np.ndarray) -> np.nda
     return tmap
 
 
-def majority_vote_sequential(
-    type_map: np.ndarray,
-    inst_map: np.ndarray,
-) -> np.ndarray:
+def majority_vote_sequential(type_map: np.ndarray, inst_map: np.ndarray) -> np.ndarray:
     """Do a majority voting on the type_map pixels by broadcasting.
 
     Adapted from:

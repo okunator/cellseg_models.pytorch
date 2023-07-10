@@ -47,7 +47,8 @@ class TrainDatasetBase(Dataset):
             inst_transforms : List[str]
                 A list containg all the transformations that are applied to only the
                 instance labelled masks. Allowed ones: "cellpose", "contour", "dist",
-                "edgeweight", "hovernet", "omnipose", "smooth_dist", "binarize"
+                "edgeweight", "hovernet", "omnipose", "smooth_dist", "binarize",
+                "strong_augment
             normalization : str, optional
                 Apply img normalization after all the transformations. One of "minmax",
                 "norm", "percentile", None.
