@@ -168,6 +168,7 @@ class FileHandler:
         inst: np.ndarray,
         type: np.ndarray,
         classes: Dict[str, int],
+        soft_type: np.ndarray = None,
         x_offset: int = 0,
         y_offset: int = 0,
         geo_format: str = "qupath",
@@ -182,6 +183,8 @@ class FileHandler:
                 Cell type labelled semantic segmentation mask. Shape: (H, W).
             classes : Dict[str, int]
                 Class dict e.g. {"inflam":1, "epithelial":2, "connec":3}
+            soft_type : np.ndarray, default=None
+                Softmax type mask. Shape: (C, H, W). C is the number of classes.
             x_offset : int, default=0
                 x-coordinate offset. (to set geojson to .mrxs wsi coordinates)
             y_offset : int, default=0
@@ -211,6 +214,14 @@ class FileHandler:
 
             inst_type = [key for key in classes.keys() if classes[key] == inst_type][0]
 
+            # type probabilities
+            if soft_type is not None:
+                type_probs = soft_type[..., inst_map == inst_id].mean(axis=1)
+                inst_type_soft = dict(zip(classes.keys(), type_probs))
+                # convert to float for json serialization
+                for key in inst_type_soft.keys():
+                    inst_type_soft[key] = float(inst_type_soft[key])
+
             # get the cell contour coordinates
             contours, _ = cv2.findContours(inst, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -230,6 +241,11 @@ class FileHandler:
             poly.append(poly[0])  # close the polygon
             geo_obj["geometry"]["coordinates"] = [poly]
             geo_obj["properties"]["classification"]["name"] = inst_type
+            if soft_type is not None:
+                geo_obj["properties"]["classification"][
+                    "probabilities"
+                ] = inst_type_soft
+
             geo_objs.append(geo_obj)
 
         return geo_objs
@@ -364,6 +380,7 @@ class FileHandler:
         sem: np.ndarray = None,
         compute_centorids: bool = False,
         compute_bboxes: bool = False,
+        **kwargs,
     ) -> None:
         """
         Write multiple masks to .mat file.
@@ -429,6 +446,7 @@ class FileHandler:
         inst: np.ndarray,
         type: np.ndarray = None,
         classes: Dict[str, int] = None,
+        soft_type: np.ndarray = None,
         x_offset: int = 0,
         y_offset: int = 0,
         geo_format: str = "qupath",
@@ -444,6 +462,8 @@ class FileHandler:
             type : np.ndarray, optional
                 Cell type labelled semantic segmentation mask. Shape: (H, W). If None,
                 the classes of the objects will be set to {background: 0, foreground: 1}
+            soft_type : np.ndarray, default=None
+                Softmax type mask. Shape: (C, H, W). C is the number of classes.
             classes : Dict[str, int], optional
                 Class dict e.g. {"inflam":1, "epithelial":2, "connec":3}. Ignored if
                 `type` is None.
@@ -489,7 +509,7 @@ class FileHandler:
                 )
 
         geo_objs = FileHandler.get_gson(
-            inst, type, classes, x_offset, y_offset, geo_format
+            inst, type, classes, soft_type, x_offset, y_offset, geo_format
         )
 
         fname = fname.with_suffix(".json")
@@ -564,6 +584,7 @@ class FileHandler:
                     inst=maps["inst"],
                     type=type_map,
                     classes=classes_type,
+                    soft_type=maps["soft_type"] if "soft_type" in maps.keys() else None,
                     geo_format=json_format,
                     x_offset=offs["x"],
                     y_offset=offs["y"],
@@ -587,6 +608,7 @@ class FileHandler:
                     inst=label_semantic(maps["sem"]),
                     type=maps["sem"],
                     classes=classes_sem,
+                    soft_type=maps["soft_sem"] if "soft_sem" in maps.keys() else None,
                     geo_format=json_format,
                     x_offset=offs["x"],
                     y_offset=offs["y"],
