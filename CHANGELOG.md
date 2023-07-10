@@ -1,3 +1,11 @@
+
+<a id='changelog-0.1.21'></a>
+# 0.1.21 — 2023-07-10
+
+## Features
+
+- Add mps (Mac) support for inference
+- Add cell calss porbabilities to geojson saving utilities
 <a id='changelog-0.1.21'></a>
 # 0.1.21 — 2023-06-12
 
