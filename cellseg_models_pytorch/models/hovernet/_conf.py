@@ -15,6 +15,7 @@ def _create_hovernet_args(
     use_style: bool,
     merge_policy: str,
     skip_params: Dict[str, Any],
+    upsampling: str,
 ) -> Tuple[Dict[str, Any], ...]:
     """Create the correct args to build HoVerNet architecture."""
     skip_params = skip_params if skip_params is not None else {"k": None}
@@ -22,6 +23,7 @@ def _create_hovernet_args(
     d12 = tuple(
         {
             "merge_policy": merge_policy,
+            "upsampling": upsampling,
             "short_skips": ("basic", "dense", "basic"),
             "block_types": (
                 ("basic",),
@@ -55,6 +57,7 @@ def _create_hovernet_args(
     d3 = (
         {
             "merge_policy": merge_policy,
+            "upsampling": upsampling,
             "short_skips": ("basic",),
             "block_types": (("basic",),),
             "kernel_sizes": ((3,),),
@@ -83,6 +86,7 @@ def _create_hovernet_args(
     d45 = (
         {
             "merge_policy": merge_policy,
+            "upsampling": upsampling,
             "short_skips": ("basic",),
             "block_types": (("basic",),),
             "kernel_sizes": ((3,),),

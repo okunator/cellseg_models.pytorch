@@ -15,6 +15,7 @@ def _create_cellpose_args(
     use_style: bool,
     merge_policy: str,
     skip_params: Dict[str, Any],
+    upsampling: str,
 ) -> Tuple[Dict[str, Any], ...]:
     """Create the args to build CellPose-Unet architecture."""
     skip_params = skip_params if skip_params is not None else {"k": None}
@@ -22,6 +23,7 @@ def _create_cellpose_args(
     return tuple(
         {
             "layer_residual": True,
+            "upsampling": upsampling,
             "merge_policy": merge_policy,
             "short_skips": (short_skip,),
             "block_types": (("basic",) * ld,),

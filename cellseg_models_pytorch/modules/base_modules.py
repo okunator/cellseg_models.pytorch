@@ -110,7 +110,8 @@ class Up(nn.Module):
         Parameters:
         -----------
             name : str
-                Name of the upsampling method.
+                Name of the upsampling method. One of: 'bilinear', 'bicubic',
+                'fixed-unpool', 'transconv', 'nearest'
             scale_factor : int, default=2
                 Upsampling scale factor. scale_factor*(H, W)
 
@@ -130,15 +131,26 @@ class Up(nn.Module):
             kwargs["mode"] = name
             kwargs["align_corners"] = True
 
-        kwargs["scale_factor"] = scale_factor
+        if name == "transconv":
+            kwargs["kernel_size"] = scale_factor
+            kwargs["stride"] = scale_factor
+            kwargs["padding"] = 0
+            kwargs["output_padding"] = 0
+        else:
+            kwargs["scale_factor"] = scale_factor
+            kwargs.pop("in_channels", None)
+            kwargs.pop("out_channels", None)
 
-        try:
-            self.up = UP_LOOKUP[name](**kwargs)
-        except Exception as e:
-            raise Exception(
-                "Encountered an error when trying to init upsampling function: "
-                f"Up(name='{name}'): {e.__class__.__name__}: {e}"
-            )
+        if scale_factor == 1:
+            self.up = Identity()
+        else:
+            try:
+                self.up = UP_LOOKUP[name](**kwargs)
+            except Exception as e:
+                raise Exception(
+                    "Encountered an error when trying to init upsampling function: "
+                    f"Up(name='{name}'): {e.__class__.__name__}: {e}"
+                )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass for the upsampling function."""

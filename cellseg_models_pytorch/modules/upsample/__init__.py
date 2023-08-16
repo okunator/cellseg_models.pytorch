@@ -6,6 +6,7 @@ UP_LOOKUP = {
     "fixed-unpool": FixedUnpool,
     "bilinear": Upsample,
     "bicubic": Upsample,
+    "nearest": Upsample,
     "transconv": ConvTranspose2d,
 }
 

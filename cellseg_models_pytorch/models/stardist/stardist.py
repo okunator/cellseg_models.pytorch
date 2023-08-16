@@ -4,10 +4,11 @@ import torch
 import torch.nn as nn
 
 from ...decoders import Decoder
+from ...decoders.long_skips import StemSkip
+from ...encoders import Encoder
 from ...modules.misc_modules import StyleReshape
 from ..base._base_model import BaseMultiTaskSegModel
 from ..base._seg_head import SegHead
-from ..base._timm_encoder import TimmEncoder
 from ._conf import _create_stardist_args
 
 __all__ = ["StarDistUnet", "stardist_base", "stardist_base_multiclass", "stardist_plus"]
@@ -26,6 +27,7 @@ class StarDistUnet(BaseMultiTaskSegModel):
         enc_name: str = "resnet50",
         enc_pretrain: bool = True,
         enc_freeze: bool = False,
+        upsampling: str = "fixed-unpool",
         long_skip: str = "unet",
         merge_policy: str = "cat",
         short_skip: str = "basic",
@@ -36,7 +38,9 @@ class StarDistUnet(BaseMultiTaskSegModel):
         preactivate: bool = False,
         attention: str = None,
         preattend: bool = False,
+        add_stem_skip: bool = False,
         skip_params: Optional[Dict] = None,
+        encoder_params: Optional[Dict] = None,
         **kwargs,
     ) -> None:
         """Stardist (2D) U-Net model implementation.
@@ -85,6 +89,9 @@ class StarDistUnet(BaseMultiTaskSegModel):
                 Whether to use imagenet pretrained weights in the encoder.
             enc_freeze : bool, default=False
                 Freeze encoder weights for training.
+            upsampling : str, default="fixed-unpool"
+                The upsampling method. One of: "fixed-unpool", "nearest", "bilinear",
+                "bicubic", "transconv"
             long_skip : str, default="unet"
                 long skip method to be used. One of: "unet", "unetpp", "unet3p",
                 "unet3p-lite", None
@@ -92,6 +99,9 @@ class StarDistUnet(BaseMultiTaskSegModel):
                 The long skip merge policy. One of: "sum", "cat"
             short_skip : str, default="basic"
                 The name of the short skip method. One of: "residual", "dense", "basic"
+            block_type : str, default="basic"
+                The type of the convolution block type. One of: "basic". "mbconv",
+                "fmbconv" "dws", "bottleneck".
             normalization : str, default="bn":
                 Normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", None
@@ -108,9 +118,17 @@ class StarDistUnet(BaseMultiTaskSegModel):
                 Attention method. One of: "se", "scse", "gc", "eca", None
             preattend : bool, default=False
                 If True, Attention is applied at the beginning of forward pass.
+            add_stem_skip : bool, default=False
+                If True, a stem conv block is added to the model whose output is used
+                as a long skip input at the final decoder layer that is the highest
+                resolution layer and the same resolution as the input image.
             skip_params : Optional[Dict]
-                Extra keyword arguments for the skip-connection module. These depend
-                on the skip module. Refer to specific skip modules for more info.
+                Extra keyword arguments for the skip-connection modules. These depend
+                on the skip module. Refer to specific skip modules for more info. I.e.
+                `UnetSkip`, `UnetppSkip`, `Unet3pSkip`.
+            encoder_params : Optional[Dict]
+                Extra keyword arguments for the encoder. These depend on the encoder.
+                Refer to specific encoders for more info.
 
         Raises
         ------
@@ -129,6 +147,7 @@ class StarDistUnet(BaseMultiTaskSegModel):
         use_style = style_channels is not None
         self.extra_convs = extra_convs
         self.heads = heads
+        self.add_stem_skip = add_stem_skip
 
         n_layers = (1,) * depth
         n_blocks = ((2,),) * depth
@@ -146,16 +165,28 @@ class StarDistUnet(BaseMultiTaskSegModel):
                 block_type,
                 merge_policy,
                 skip_params,
+                upsampling,
             )
             for d in decoders
         }
 
-        # set timm encoder
-        self.encoder = TimmEncoder(
+        # set encoder
+        self.encoder = Encoder(
             enc_name,
             depth=depth,
             pretrained=enc_pretrain,
+            checkpoint_path=kwargs.get("checkpoint_path", None),
+            unettr_kwargs={  # Only used for transformer encoders, ignored otherwise
+                "convolution": convolution,
+                "activation": activation,
+                "normalization": normalization,
+                "attention": attention,
+            },
+            **encoder_params if encoder_params is not None else {},
         )
+
+        # get the reduction factors for the encoder
+        enc_reductions = tuple([inf["reduction"] for inf in self.encoder.feature_info])
 
         # style
         self.make_style = None
@@ -165,7 +196,8 @@ class StarDistUnet(BaseMultiTaskSegModel):
         # set decoder
         for decoder_name in decoders:
             decoder = Decoder(
-                enc_channels=list(self.encoder.out_channels),
+                enc_channels=self.encoder.out_channels,
+                enc_reductions=enc_reductions,
                 out_channels=out_channels,
                 style_channels=style_channels,
                 long_skip=long_skip,
@@ -174,6 +206,24 @@ class StarDistUnet(BaseMultiTaskSegModel):
                 stage_params=dec_params[decoder_name],
             )
             self.add_module(f"{decoder_name}_decoder", decoder)
+
+        # optional stem skip
+        if add_stem_skip:
+            for decoder_name in decoders:
+                stem_skip = StemSkip(
+                    out_channels=out_channels[-1],
+                    merge_policy=merge_policy,
+                    n_blocks=2,
+                    short_skip=short_skip,
+                    block_type=block_type,
+                    normalization=normalization,
+                    activation=activation,
+                    convolution=convolution,
+                    attention=attention,
+                    preactivate=preactivate,
+                    preattend=preattend,
+                )
+                self.add_module(f"{decoder_name}_stem_skip", stem_skip)
 
         # set additional conv blocks ('avoid “fight over features”'.)
         for decoder_name in extra_convs.keys():
@@ -243,6 +293,10 @@ class StarDistUnet(BaseMultiTaskSegModel):
             mapping decoder names to outputs and the final head outputs dict.
         """
         feats, dec_feats = self.forward_features(x)
+        # print([ff.shape for ff in dec_feats[f] for f in dec_feats.keys()])
+        for k in dec_feats.keys():
+            for ff in dec_feats[k]:
+                print([f.shape for f in ff])
 
         # Extra convs after decoders
         for e in self.extra_convs.keys():

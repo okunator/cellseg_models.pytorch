@@ -1,14 +1,15 @@
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
 import yaml
 
 from ...decoders import Decoder
+from ...decoders.long_skips import StemSkip
+from ...encoders import Encoder
 from ...modules.misc_modules import StyleReshape
 from ._base_model import BaseMultiTaskSegModel
 from ._seg_head import SegHead
-from ._timm_encoder import TimmEncoder
 
 __all__ = ["MultiTaskUnet"]
 
@@ -32,6 +33,11 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
         enc_freeze: bool = False,
         inst_key: str = None,
         aux_key: str = None,
+        add_stem_skip: bool = False,
+        stem_params: Dict[str, Any] = None,
+        encoder_params: Optional[Dict] = None,
+        unettr_kwargs: Optional[Dict] = None,
+        **kwargs,
     ) -> None:
         """Create a universal multi-task (2D) unet.
 
@@ -83,6 +89,19 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
             aux_key : str, optional
                 The key for the model output that will be used in the instance
                 segmentation post-processing pipeline as the auxilliary map.
+            add_stem_skip : bool, default=False
+                If True, a stem conv block is added to the model whose output is used
+                as a long skip input at the final decoder layer that is the highest
+                resolution layer and the same resolution as the input image.
+            stem_params : Dict[str, Any], optional
+                The keyword args for the stem conv block. See `StemSkip` for more info.
+            encoder_params : Optional[Dict]
+                Extra keyword arguments for the encoder. These depend on the encoder.
+                Refer to specific encoders for more info.
+            unettr_kwargs : Dict[str, Any]
+                Key-word arguments for the transformer encoder. These arguments are used
+                only if the encoder is transformer based. Refer to the docstring of the
+                `EncoderUnetTR`
         """
         super().__init__()
         self.enc_freeze = enc_freeze
@@ -91,13 +110,20 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
         self.decoders = decoders
         self.inst_key = inst_key
         self.aux_key = aux_key
+        self.add_stem_skip = add_stem_skip
 
-        # set timm encoder
-        self.encoder = TimmEncoder(
+        # set encoder
+        self.encoder = Encoder(
             enc_name,
             depth=depth,
             pretrained=enc_pretrain,
+            checkpoint_path=kwargs.get("checkpoint_path", None),
+            unettr_kwargs=unettr_kwargs,
+            **encoder_params if encoder_params is not None else {},
         )
+
+        # get the reduction factors for the encoder
+        enc_reductions = tuple([inf["reduction"] for inf in self.encoder.feature_info])
 
         # style
         self.make_style = None
@@ -107,7 +133,8 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
         # set decoders
         for decoder_name in decoders:
             decoder = Decoder(
-                enc_channels=list(self.encoder.out_channels),
+                enc_channels=self.encoder.out_channels,
+                enc_reductions=enc_reductions,
                 out_channels=out_channels[decoder_name],
                 long_skip=long_skips[decoder_name],
                 n_conv_layers=self._kwarg(n_conv_layers)[decoder_name],
@@ -118,6 +145,16 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
                 stage_params=dec_params[decoder_name],
             )
             self.add_module(f"{decoder_name}_decoder", decoder)
+
+        # optional stem skip
+        if add_stem_skip:
+            for decoder_name in decoders:
+                stem_skip = StemSkip(
+                    out_channels=decoder.out_channels,
+                    n_blocks=2,
+                    **stem_params if stem_params is not None else {},
+                )
+                self.add_module(f"{decoder_name}_stem_skip", stem_skip)
 
         # set heads
         for decoder_name in heads.keys():

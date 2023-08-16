@@ -4,10 +4,11 @@ import torch
 import torch.nn as nn
 
 from ...decoders import Decoder
+from ...decoders.long_skips import StemSkip
+from ...encoders import Encoder
 from ...modules.misc_modules import StyleReshape
 from ..base._base_model import BaseMultiTaskSegModel
 from ..base._seg_head import SegHead
-from ..base._timm_encoder import TimmEncoder
 from ._conf import _create_hovernet_args
 
 __all__ = [
@@ -31,6 +32,7 @@ class HoverNet(BaseMultiTaskSegModel):
         enc_name: str = "resnet50",
         enc_pretrain: bool = True,
         enc_freeze: bool = False,
+        upsampling: str = "fixed-unpool",
         long_skip: str = "unet",
         merge_policy: str = "sum",
         n_dense: Tuple[int, int] = (8, 4),
@@ -40,7 +42,9 @@ class HoverNet(BaseMultiTaskSegModel):
         preactivate: bool = True,
         attention: str = None,
         preattend: bool = False,
+        add_stem_skip: bool = False,
         skip_params: Optional[Dict] = None,
+        encoder_params: Optional[Dict] = None,
         **kwargs,
     ) -> None:
         """Hover-Net implementation.
@@ -85,6 +89,9 @@ class HoverNet(BaseMultiTaskSegModel):
                 Whether to use imagenet pretrained weights in the encoder.
             enc_freeze : bool, default=False
                 Freeze encoder weights for training.
+            upsampling : str, default="fixed-unpool"
+                The upsampling method to be used. One of: "fixed-unpool", "nearest",
+                "bilinear", "bicubic", "transconv"
             long_skip : str, default="unet"
                 long skip method to be used. One of: "unet", "unetpp", "unet3p",
                 "unet3p-lite", None
@@ -108,9 +115,17 @@ class HoverNet(BaseMultiTaskSegModel):
                 Attention method. One of: "se", "scse", "gc", "eca", None
             preattend : bool, default=False
                 If True, Attention is applied at the beginning of forward pass.
+            add_stem_skip : bool, default=False
+                If True, a stem conv block is added to the model whose output is used
+                as a long skip input at the final decoder layer that is the highest
+                resolution layer and the same resolution as the input image.
             skip_params : Optional[Dict]
-                Extra keyword arguments for the skip-connection module. These depend
-                on the skip module. Refer to specific skip modules for more info.
+                Extra keyword arguments for the skip-connection modules. These depend
+                on the skip module. Refer to specific skip modules for more info. I.e.
+                `UnetSkip`, `UnetppSkip`, `Unet3pSkip`.
+            encoder_params : Optional[Dict]
+                Extra keyword arguments for the encoder. These depend on the encoder.
+                Refer to specific encoders for more info.
 
         Raises
         ------
@@ -124,11 +139,12 @@ class HoverNet(BaseMultiTaskSegModel):
         self._check_head_args(heads, decoders)
         self._check_depth(depth, {"out_channels": out_channels})
 
+        self.add_stem_skip = add_stem_skip
         self.enc_freeze = enc_freeze
         use_style = style_channels is not None
         self.heads = heads
 
-        # Create build args
+        # Create decoder build args
         n_layers = (3, 3) + (1,) * (depth - 2)
         n_blocks = ((1, n_dense[0], 1), (1, n_dense[1], 1)) + ((1,),) * (depth - 2)
         dec_params = {
@@ -144,16 +160,28 @@ class HoverNet(BaseMultiTaskSegModel):
                 use_style,
                 merge_policy,
                 skip_params,
+                upsampling,
             )
             for d in decoders
         }
 
-        # set timm encoder
-        self.encoder = TimmEncoder(
+        # set encoder
+        self.encoder = Encoder(
             enc_name,
             depth=depth,
             pretrained=enc_pretrain,
+            checkpoint_path=kwargs.get("checkpoint_path", None),
+            unettr_kwargs={  # Only used for transformer encoders
+                "convolution": convolution,
+                "activation": activation,
+                "normalization": normalization,
+                "attention": attention,
+            },
+            **encoder_params if encoder_params is not None else {},
         )
+
+        # get the reduction factors for the encoder
+        enc_reductions = tuple([inf["reduction"] for inf in self.encoder.feature_info])
 
         # Style
         self.make_style = None
@@ -163,7 +191,8 @@ class HoverNet(BaseMultiTaskSegModel):
         # set decoders and heads
         for decoder_name in decoders:
             decoder = Decoder(
-                enc_channels=list(self.encoder.out_channels),
+                enc_channels=self.encoder.out_channels,
+                enc_reductions=enc_reductions,
                 out_channels=out_channels,
                 style_channels=style_channels,
                 long_skip=long_skip,
@@ -174,6 +203,25 @@ class HoverNet(BaseMultiTaskSegModel):
             )
             self.add_module(f"{decoder_name}_decoder", decoder)
 
+        # optional stem skip
+        if add_stem_skip:
+            for decoder_name in decoders:
+                stem_skip = StemSkip(
+                    out_channels=out_channels[-1],
+                    merge_policy=merge_policy,
+                    n_blocks=2,
+                    short_skip="residual",
+                    block_type="basic",
+                    normalization=normalization,
+                    activation=activation,
+                    convolution=convolution,
+                    attention=attention,
+                    preactivate=preactivate,
+                    preattend=preattend,
+                )
+                self.add_module(f"{decoder_name}_stem_skip", stem_skip)
+
+        # output heads
         for decoder_name in heads.keys():
             for output_name, n_classes in heads[decoder_name].items():
                 seg_head = SegHead(
