@@ -21,7 +21,22 @@ class BaseMultiTaskSegModel(nn.ModuleDict):
         style = self.forward_style(feats[0])
         dec_feats = self.forward_dec_features(feats, style)
 
+        # final input resolution skip connection
+        if self.add_stem_skip:
+            dec_feats = self.forward_stem_skip(x, dec_feats)
+
         return feats, dec_feats
+
+    def forward_stem_skip(
+        self, x: torch.Tensor, dec_feats: Dict[str, torch.Tensor]
+    ) -> Dict[str, torch.Tensor]:
+        """Forward the stem skip connection."""
+        stems = [k for k in self.keys() if "stem_skip" in k]
+        for stem in stems:
+            branch = stem.split("_")[0]
+            dec_feats[branch][-1] = self[stem](x, dec_feats[branch][-1])
+
+        return dec_feats
 
     def forward_encoder(self, x: torch.Tensor) -> List[torch.Tensor]:
         """Forward the model encoder."""
