@@ -1,17 +1,18 @@
 
-<a id='changelog-0.1.21'></a>
-# 0.1.21 — 2023-07-10
+<a id='changelog-0.1.22'></a>
+# 0.1.22 — 2023-07-10
 
 ## Features
 
 - Add mps (Mac) support for inference
-- Add cell calss porbabilities to geojson saving utilities
+- Add cell class probabilities to saved geojson files
+
 <a id='changelog-0.1.21'></a>
 # 0.1.21 — 2023-06-12
 
 ## Features
 
-- Add StrongAugment data augmentation pipeline to data-loading pipeline: https://arxiv.org/abs/2206.15274
+- Add StrongAugment data augmentation to data-loading pipeline: https://arxiv.org/abs/2206.15274
 
 ## Fixes
 
@@ -22,7 +23,7 @@
 
 ## Fixes
 
-- Enable only writing folder&hdf5 datasets with only images
+- Enable writing folder & hdf5 datasets with only images (previously needed image-mask pairs)
 - Enable writing datasets without patching.
 
 - Add long missing h5 reading utility function to `FileHandler`
