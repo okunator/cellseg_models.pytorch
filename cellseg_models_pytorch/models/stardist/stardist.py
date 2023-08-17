@@ -293,15 +293,15 @@ class StarDistUnet(BaseMultiTaskSegModel):
             mapping decoder names to outputs and the final head outputs dict.
         """
         feats, dec_feats = self.forward_features(x)
-        # print([ff.shape for ff in dec_feats[f] for f in dec_feats.keys()])
-        for k in dec_feats.keys():
-            for ff in dec_feats[k]:
-                print([f.shape for f in ff])
+
+        if return_feats:
+            ret_dec_feats = dec_feats.copy()
 
         # Extra convs after decoders
         for e in self.extra_convs.keys():
             for extra_conv in self.extra_convs[e].keys():
                 k = self.aux_key if extra_conv not in dec_feats.keys() else extra_conv
+
                 dec_feats[extra_conv] = [
                     self[f"{extra_conv}_features"](dec_feats[k][-1])
                 ]  # use last decoder feat
@@ -316,7 +316,7 @@ class StarDistUnet(BaseMultiTaskSegModel):
         out = self.forward_heads(dec_feats)
 
         if return_feats:
-            return feats, dec_feats, out
+            return feats, ret_dec_feats, out
 
         return out
 
