@@ -15,7 +15,7 @@ class UnetppSkip(nn.ModuleDict):
         stage_ix: int,
         dec_channels: Tuple[int, ...],
         skip_channels: Tuple[int, ...],
-        dec_dims: Tuple[int, ...],
+        up_factors: Tuple[int, ...],
         hid_channels: int = 256,
         n_layers: int = 1,
         n_blocks: Tuple[int, ...] = (1,),
@@ -49,9 +49,8 @@ class UnetppSkip(nn.ModuleDict):
                 is the number of channels in the encoder head or bottleneck.
             skip_channels : Tuple[int, ...]
                 List of the number of channels in the encoder skip tensors.
-            dec_dims : Tuple[int, ...]
-                List of the heights/widths of each encoder/decoder feature map
-                e.g. [256, 128, 64, 32, 16]. Assumption is that feature maps are square.
+            up_factors : Tuple[int, ...]
+                The upscaling factors for each decoder stage.
             hid_channels : int, default=256
                 Number of output channels from the hidden middle blocks of unet++.
             n_layers : int, default=1
@@ -103,7 +102,7 @@ class UnetppSkip(nn.ModuleDict):
             (k, a)
             for k, a in locals().items()
             if isinstance(a, tuple)
-            and a not in (skip_channels, dec_channels, dec_dims)
+            and a not in (skip_channels, dec_channels, up_factors)
             and len(a) != n_layers
         ]
 
@@ -115,7 +114,6 @@ class UnetppSkip(nn.ModuleDict):
             )
 
         if stage_ix < len(skip_channels):
-
             curr_channels = skip_channels[stage_ix]
             prev_channels = skip_channels[stage_ix - 1]
 
@@ -123,7 +121,7 @@ class UnetppSkip(nn.ModuleDict):
             fin_channels = [curr_channels]
 
             for i in range(stage_ix):
-                up_scale = Up("fixed-unpool", scale_factor=2)
+                up_scale = Up("fixed-unpool", scale_factor=up_factors[self.stage_ix])
                 self.add_module(f"up_scale{i + 1}", up_scale)
 
                 channels = [prev_channels] if i == 0 else mid_channels + [hid_channels]

@@ -12,6 +12,7 @@ class Decoder(nn.ModuleDict):
     def __init__(
         self,
         enc_channels: Tuple[int, ...],
+        enc_reductions: Tuple[int, ...],
         out_channels: Tuple[int, ...] = (256, 128, 64, 32, 16),
         long_skip: Union[None, str, Tuple[str, ...]] = "unet",
         n_conv_layers: Union[None, int, Tuple[int, ...]] = 1,
@@ -38,6 +39,8 @@ class Decoder(nn.ModuleDict):
         ----------
             enc_channels : Tuple[int, ...]
                 Number of channels at each encoder layer.
+            enc_reductions : Tuple[int, ...]
+                The reduction factor from the input image size at each encoder layer.
             out_channels : Tuple[int, ...], default=(256, 128, 64, 32, 16)
                 Number of channels at each decoder layer output.
             long_skip : Union[None, str, Tuple[str, ...]], default="unet"
@@ -94,11 +97,13 @@ class Decoder(nn.ModuleDict):
 
         out_channels = [enc_channels[0]] + list(out_channels)
         skip_channels = enc_channels[1:]
-
-        # scaling factor assumed to be 2 for the spatial dims and the input
-        # has to be divisible by 32. 256 used here just for convenience.
         self.depth = len(out_channels)
-        out_dims = [256 // 2**i for i in range(self.depth)][::-1]
+
+        # convert the reduction factors to upsample factors for the decoder
+        enc_reductions = list(enc_reductions)
+        enc_reductions.append(1)  # add the final resolution
+        up_factors = torch.tensor(enc_reductions)
+        up_factors = (up_factors[:-1] // up_factors[1:]).tolist()  # consecutive ratios
 
         # set layer-level tuple-args
         self.long_skips = self._layer_tuple(long_skip)
@@ -114,7 +119,7 @@ class Decoder(nn.ModuleDict):
             decoder_block = DecoderStage(
                 stage_ix=i,
                 dec_channels=tuple(out_channels),
-                dec_dims=tuple(out_dims),
+                up_factors=tuple(up_factors),
                 skip_channels=skip_channels,
                 long_skip=self._tup_arg(self.long_skips, i),
                 n_conv_layers=self._tup_arg(n_conv_layers, i),

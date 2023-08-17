@@ -14,7 +14,7 @@ class DecoderStage(nn.Module):
         self,
         stage_ix: int,
         dec_channels: Tuple[int, ...],
-        dec_dims: Tuple[int, ...],
+        up_factors: Tuple[int, ...],
         skip_channels: Tuple[int, ...],
         long_skip: str = "unet",
         merge_policy: str = "sum",
@@ -62,9 +62,9 @@ class DecoderStage(nn.Module):
             dec_channels : Tuple[int, ...]
                 The number of output channels in the decoder output stages. First elem
                 is the number of channels in the encoder head or bottleneck.
-            dec_dims : Tuple[int, ...]
-                Tuple of the heights/widths of each encoder/decoder feature map
-                e.g. (8, 16, 32, 64, 128, 256). Feature maps are assumed to be square.
+            up_factors : Tuple[int, ...]
+                The upsampling factors for each decoder stage. The tuple-length has to
+                match `dec_channels`.
             skip_channels : Tuple[int, ...]
                 List of the number of channels in the encoder skip tensors. Ignored if
                 `long_skip` == None.
@@ -77,7 +77,8 @@ class DecoderStage(nn.Module):
                 Extra keyword arguments for the skip-connection module. These depend
                 on the skip module. Refer to specific skip modules for more info.
             upsampling : str, default="fixed-unpool"
-                Name of the upsampling method.
+                Name of the upsampling method. One of: "fixed-unpool", "bilinear",
+                "nearest", "bicubic", "transconv"
             n_conv_layers : int, default=1
                 The number of conv layers inside one decoder stage.
             style_channels : int, default=None
@@ -184,7 +185,12 @@ class DecoderStage(nn.Module):
         self.out_channels = dec_channels[stage_ix + 1]
 
         # upsampling method
-        self.upsample = Up(upsampling)
+        self.upsample = Up(
+            upsampling,
+            scale_factor=up_factors[stage_ix],
+            in_channels=self.in_channels,  # needed for transconv (otherwise ignored)
+            out_channels=self.in_channels,  # needed for transconv (otherwise ignored)
+        )
 
         # long skip connection method
         self.skip = LongSkip(
@@ -194,14 +200,13 @@ class DecoderStage(nn.Module):
             in_channels=self.in_channels,
             dec_channels=dec_channels,
             skip_channels=skip_channels,
-            dec_dims=dec_dims,
+            up_factors=up_factors,
             **skip_params if skip_params is not None else {"k": None},
         )
 
         # Set up n layers of conv blocks
         layer = None  # placeholder
         if n_conv_layers is not None:
-
             # check that the conv-layer tuple-args are not illegal.
             self._check_tuple_args(
                 "conv-layer related",
@@ -211,7 +216,7 @@ class DecoderStage(nn.Module):
                 skip_args=(
                     skip_channels,
                     dec_channels,
-                    dec_dims,
+                    up_factors,
                     transformer_blocks,
                     transformer_computations,
                     n_transformer_blocks,
@@ -256,7 +261,6 @@ class DecoderStage(nn.Module):
         )
 
         if n_transformers is not None:
-
             # check that the transformer-layer tuple args are not illegal.
             self._check_tuple_args(
                 "transformer related",
@@ -266,7 +270,7 @@ class DecoderStage(nn.Module):
                 skip_args=(
                     skip_channels,
                     dec_channels,
-                    dec_dims,
+                    up_factors,
                     n_conv_blocks,
                     short_skips,
                     expand_ratios,

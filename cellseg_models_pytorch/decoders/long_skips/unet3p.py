@@ -15,7 +15,7 @@ class Unet3pSkip(nn.ModuleDict):
         stage_ix: int,
         dec_channels: Tuple[int, ...],
         skip_channels: Tuple[int, ...],
-        dec_dims: Tuple[int, ...],
+        up_factors: Tuple[int, ...],
         hid_channels: int = 320,
         n_layers: int = 1,
         n_blocks: Tuple[int, ...] = (1,),
@@ -58,9 +58,8 @@ class Unet3pSkip(nn.ModuleDict):
                 is the number of channels in the encoder head or bottleneck.
             skip_channels : Tuple[int, ...]
                 List of the number of channels in the encoder skip tensors.
-            dec_dims : Tuple[int, ...]
-                List of the heights/widths of each encoder/decoder feature map
-                e.g. [256, 128, 64, 32, 16]. Assumption is that feature maps are square.
+            up_factors : Tuple[int, ...]
+                The upsample factors for the decoder stages.
             hid_channels : int
                 Number of output channels from this module.
             n_layers : int, default=1
@@ -107,7 +106,7 @@ class Unet3pSkip(nn.ModuleDict):
             (k, a)
             for k, a in locals().items()
             if isinstance(a, tuple)
-            and a not in (skip_channels, dec_channels, dec_dims)
+            and a not in (skip_channels, dec_channels, up_factors)
             and len(a) != n_layers
         ]
 
@@ -131,11 +130,19 @@ class Unet3pSkip(nn.ModuleDict):
         self.encoder_skip_channels = skip_channels[stage_ix:]
 
         if stage_ix < len(skip_channels):
-            decoder_out_dims = dec_dims[1:]
-            decoder_skip_dims = dec_dims[:stage_ix]
+            # get downsampling factors for the encoder2decoder connections
+            feat_ups = torch.tensor(up_factors[:-1][::-1])
+            down_factors = []
+            for i, upf in enumerate(feat_ups):
+                down_factors.append(int(upf * feat_ups[i + 1 :].prod() / feat_ups[-1]))
+
+            down_factors = down_factors[::-1]
+
+            # get upsampling factors for the decoder2decoder connections
+            up_fax = torch.tensor(up_factors).cumprod(0).tolist()[:-1][::-1]
+
+            # decoder skip channels for the decoder2decoder connections
             decoder_skip_channels = dec_channels[:stage_ix]
-            encoder_skip_dims = decoder_out_dims[stage_ix:]
-            target_size = decoder_out_dims[stage_ix]  # target size for pooling
 
             conv_channels = self.conv_channels
             out = conv_channels[0]  # out channels for the first conv op
@@ -165,10 +172,10 @@ class Unet3pSkip(nn.ModuleDict):
 
             # down-sampling blocks and conv-layers for the encoder2decoder connections
             if self.encoder_skip_channels:
-                for i, (in_, d) in enumerate(
-                    zip(self.encoder_skip_channels, encoder_skip_dims)
+                for i, (in_, down_factor) in enumerate(
+                    zip(self.encoder_skip_channels, down_factors)
                 ):
-                    scale_op = self.get_scale_op(d, target_size)
+                    scale_op = self.get_scale_op(down_factor)
                     self.add_module(f"enc2dec_downscale{i + 1}", scale_op)
 
                     for j in range(n_layers):
@@ -193,12 +200,12 @@ class Unet3pSkip(nn.ModuleDict):
                         self.add_module(f"enc2dec_layer{i + 1}", layer)
 
             # up-sampling blocks and conv-layers for the decoder2decoder connections
+            up_fax = up_fax[::-1][: len(decoder_skip_channels)][::-1]  # don't ask
             if self.encoder_skip_channels and not lite_version:
-                for i, (in_, d) in enumerate(
-                    zip(decoder_skip_channels, decoder_skip_dims)
-                ):
-
-                    scale_op = self.get_scale_op(d, target_size)
+                for i, in_ in enumerate(decoder_skip_channels):
+                    # works only for consecutively 2x upsampled feature maps so will
+                    # fail with the transformer decoders
+                    scale_op = self.get_scale_op(1 / (up_fax[i] * 2))
                     self.add_module(f"dec2dec_upscale{i + 1}", scale_op)
 
                     for j in range(n_layers):
@@ -279,9 +286,10 @@ class Unet3pSkip(nn.ModuleDict):
         return conv_channels
 
     @staticmethod
-    def get_scale_op(in_size: int, target_size: int) -> nn.Module:
+    # def get_scale_op(in_size: int, target_size: int) -> nn.Module:
+    def get_scale_op(scale_factor: int) -> nn.Module:
         """Get the up/down scaling operation for the feature maps."""
-        scale_factor = in_size / target_size
+        # scale_factor = in_size / target_size
 
         if scale_factor > 1:
             scale_op = nn.MaxPool2d(kernel_size=int(scale_factor), ceil_mode=True)
@@ -343,6 +351,7 @@ class Unet3pSkip(nn.ModuleDict):
 
         # Merge all the feature maps
         skip_features = encoder_features + decoder_features
+        print(x.shape, [f.shape for f in skip_features])
         x = self.merge_block(x, skip_features)
 
         return x
