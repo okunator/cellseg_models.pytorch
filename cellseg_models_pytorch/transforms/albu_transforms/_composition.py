@@ -112,11 +112,20 @@ def apply_each(transforms: List[OnlyInstMapTransform]) -> Callable:
     return result
 
 
-def compose(transforms_to_compose: List[A.BasicTransform]) -> Callable:
+def compose(
+    transforms_to_compose: List[A.BasicTransform], is_check_shapes: bool = False
+) -> Callable:
     """Compose transforms with albumentations Compose.
 
     Takes in a list of albumentation transforms and composes them to one
     transformation pipeline.
+
+    Parameters
+    ----------
+        transforms_to_compose : List[A.BasicTransform]
+            A list of albumentation transforms.
+        is_check_shapes : bool, default=False
+            Whether to check the shapes of the input and output images.
 
     Example
     -------
@@ -134,7 +143,10 @@ def compose(transforms_to_compose: List[A.BasicTransform]) -> Callable:
         Callable:
             A composed pipeline of albumentation transforms.
     """
-    result = A.Compose([item for sublist in transforms_to_compose for item in sublist])
+    result = A.Compose(
+        [item for sublist in transforms_to_compose for item in sublist],
+        is_check_shapes=is_check_shapes,
+    )
     return result
 
 

@@ -6,6 +6,8 @@ from ..functional.train_metrics import accuracy, iou
 
 try:
     from torchmetrics import (
+        Dice,
+        JaccardIndex,
         MeanSquaredError,
         Metric,
         StructuralSimilarityIndexMeasure,
@@ -28,32 +30,33 @@ class Accuracy(Metric):
 
     def __init__(
         self,
-        compute_on_step: bool = True,
+        compute_on_cpu: bool = True,
         dist_sync_on_step: bool = False,
         progress_group: Any = None,
-        dist_sync_func: Callable = None,
+        dist_sync_fn: Callable = None,
         **kwargs
     ) -> None:
         """Create a custom torchmetrics accuracy callback.
 
         Parameters
         ----------
-            compute_on_step : bool, default=True
-                Forward only calls update() and returns None if this is set to False.
+            compute_on_cpu : bool, default=True
+                If metric state should be stored on CPU during computations.
+                Only works for list states.
             dist_sync_on_step : bool, default=False
                 Synchronize computed values in distributed setting
             process_group : any, optional
                 Specify the process group on which synchronization is called.
                 default: None (which selects the entire world)
-            dist_sync_func : Callable, optional
+            dist_sync_fn : Callable, optional
                 Callback that performs the allgather operation on the metric state.
                 When None, DDP will be used to perform the allgather.
         """
         super().__init__(
-            compute_on_step=compute_on_step,
+            compute_on_cpu=compute_on_cpu,
             dist_sync_on_step=dist_sync_on_step,
             process_group=progress_group,
-            dist_sync_fn=dist_sync_func,
+            dist_sync_fn=dist_sync_fn,
         )
 
         self.add_state(
@@ -100,32 +103,33 @@ class MeanIoU(Metric):
 
     def __init__(
         self,
-        compute_on_step: bool = True,
+        compute_on_cpu: bool = True,
         dist_sync_on_step: bool = False,
-        progress_grouo: Any = None,
-        dist_sync_func: Callable = None,
+        progress_group: Any = None,
+        dist_sync_fn: Callable = None,
         **kwargs
     ) -> None:
         """Create a custom torchmetrics mIoU callback.
 
         Parameters
         ----------
-            compute_on_step : bool, default=True
-                Forward only calls update() and returns None if this is set to False.
+            compute_on_cpu : bool, default=True
+                If metric state should be stored on CPU during computations.
+                Only works for list states.
             dist_sync_on_step : bool, default=False
                 Synchronize computed values in distributed setting
             process_group : any, optional
                 Specify the process group on which synchronization is called.
                 default: None (which selects the entire world)
-            dist_sync_func : Callable, optional
+            dist_sync_fn : Callable, optional
                 Callback that performs the allgather operation on the metric state.
                 When None, DDP will be used to perform the allgather.
         """
         super().__init__(
-            compute_on_step=compute_on_step,
+            compute_on_cpu=compute_on_cpu,
             dist_sync_on_step=dist_sync_on_step,
-            process_group=progress_grouo,
-            dist_sync_fn=dist_sync_func,
+            process_group=progress_group,
+            dist_sync_fn=dist_sync_fn,
         )
 
         self.add_state("batch_ious", default=torch.tensor(0.0), dist_reduce_fx="sum")
@@ -164,8 +168,10 @@ class MeanIoU(Metric):
 
 
 METRIC_LOOKUP = {
-    "acc": Accuracy,
-    "miou": MeanIoU,
+    # "acc": Accuracy,
+    # "miou": MeanIoU,
+    "jaccard": JaccardIndex,
+    "dice": Dice,
     "mse": MeanSquaredError,
     "ssim": StructuralSimilarityIndexMeasure,
     "iqi": UniversalImageQualityIndex,

@@ -2,6 +2,8 @@ from typing import Any, Dict, List
 
 import torch.nn as nn
 
+__all__ = ["adjust_optim_params"]
+
 
 def adjust_optim_params(
     model: nn.Module, optim_params: Dict[str, Dict[str, Any]]
@@ -13,7 +15,7 @@ def adjust_optim_params(
         model : nn.Module
             The encoder-decoder segmentation model.
         optim_params : Dict[str, Dict[str, Any]]
-            optim paramas like learning rates, weight decays etc for diff parts of
+            optim params like learning rates, weight decays etc for diff parts of
             the network. E.g.
             {"encoder": {"weight_decay: 0.1, "lr":0.1}, "sem": {"lr": 0.1}}
 

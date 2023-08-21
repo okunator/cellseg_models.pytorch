@@ -177,5 +177,5 @@ class WeightedBaseLoss(nn.Module):
 
     def extra_repr(self) -> str:
         """Add info to print."""
-        s = "class_weights={class_weights}, edge_weight={edge_weight}"
+        s = "apply_sd={apply_sd}, apply_ls={apply_ls}, apply_svls={apply_svls}, class_weights={class_weights}, edge_weight={edge_weight}"  # noqa
         return s.format(**self.__dict__)

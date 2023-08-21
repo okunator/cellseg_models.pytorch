@@ -26,7 +26,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from timm.models.layers.helpers import make_divisible
+from timm.layers import make_divisible
 
 from .base_modules import Activation, Conv, Identity, Norm
 

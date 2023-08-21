@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from timm.models.layers.helpers import make_divisible
+from timm.layers import make_divisible
 
 from .attention_modules import Attention
 from .base_modules import Activation, Conv, Norm
