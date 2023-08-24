@@ -12,6 +12,7 @@ class MSE(WeightedBaseLoss):
         apply_sd: bool = False,
         apply_ls: bool = False,
         apply_svls: bool = False,
+        apply_mask: bool = False,
         edge_weight: float = None,
         class_weights: torch.Tensor = None,
         **kwargs,
@@ -20,25 +21,30 @@ class MSE(WeightedBaseLoss):
 
         Parameters
         ----------
-            apply_sd : bool, default=False
-                If True, Spectral decoupling regularization will be applied  to the
-                loss matrix.
-            apply_ls : bool, default=False
-                If True, Label smoothing will be applied to the target.
-            apply_svls : bool, default=False
-                If True, spatially varying label smoothing will be applied to the target
-            edge_weight : float, default=none
-                Weight that is added to object borders.
-            class_weights : torch.Tensor, default=None
-                Class weights. A tensor of shape (n_classes,).
+        apply_sd : bool, default=False
+            If True, Spectral decoupling regularization will be applied  to the
+            loss matrix.
+        apply_ls : bool, default=False
+            If True, Label smoothing will be applied to the target.
+        apply_svls : bool, default=False
+            If True, spatially varying label smoothing will be applied to the target
+        apply_mask : bool, default=False
+            If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
+        edge_weight : float, default=none
+            Weight that is added to object borders.
+        class_weights : torch.Tensor, default=None
+            Class weights. A tensor of shape (n_classes,).
         """
-        super().__init__(apply_sd, apply_ls, apply_svls, class_weights, edge_weight)
+        super().__init__(
+            apply_sd, apply_ls, apply_svls, apply_mask, class_weights, edge_weight
+        )
 
     def forward(
         self,
         yhat: torch.Tensor,
         target: torch.Tensor,
         target_weight: torch.Tensor = None,
+        mask: torch.Tensor = None,
         **kwargs,
     ) -> torch.Tensor:
         """Compute the MSE-loss.
@@ -51,6 +57,8 @@ class MSE(WeightedBaseLoss):
                 the ground truth annotations. Shape (B, H, W).
             target_weight : torch.Tensor, default=None
                 The edge weight map. Shape (B, H, W).
+            mask : torch.Tensor, default=None
+                The mask map. Shape (B, H, W).
 
         Returns
         -------
@@ -78,6 +86,9 @@ class MSE(WeightedBaseLoss):
 
         mse = F.mse_loss(yhat, target_one_hot, reduction="none")  # (B, C, H, W)
         mse = torch.mean(mse, dim=1)  # to (B, H, W)
+
+        if self.apply_mask and mask is not None:
+            mse = self.apply_mask_weight(mse, mask, norm=False)  # (B, H, W)
 
         if self.apply_sd:
             mse = self.apply_spectral_decouple(mse, yhat)

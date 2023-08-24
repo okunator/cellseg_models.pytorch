@@ -12,6 +12,7 @@ class IoULoss(WeightedBaseLoss):
         apply_sd: bool = False,
         apply_ls: bool = False,
         apply_svls: bool = False,
+        apply_mask: bool = False,
         edge_weight: float = None,
         class_weights: torch.Tensor = None,
         **kwargs,
@@ -22,19 +23,23 @@ class IoULoss(WeightedBaseLoss):
 
         Parameters
         ----------
-            apply_sd : bool, default=False
-                If True, Spectral decoupling regularization will be applied  to the
-                loss matrix.
-            apply_ls : bool, default=False
-                If True, Label smoothing will be applied to the target.
-            apply_svls : bool, default=False
-                If True, spatially varying label smoothing will be applied to the target
-            edge_weight : float, default=none
-                Weight that is added to object borders.
-            class_weights : torch.Tensor, default=None
-                Class weights. A tensor of shape (n_classes,).
+        apply_sd : bool, default=False
+            If True, Spectral decoupling regularization will be applied  to the
+            loss matrix.
+        apply_ls : bool, default=False
+            If True, Label smoothing will be applied to the target.
+        apply_svls : bool, default=False
+            If True, spatially varying label smoothing will be applied to the target
+        apply_mask : bool, default=False
+            If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
+        edge_weight : float, default=none
+            Weight that is added to object borders.
+        class_weights : torch.Tensor, default=None
+            Class weights. A tensor of shape (n_classes,).
         """
-        super().__init__(apply_sd, apply_ls, apply_svls, class_weights, edge_weight)
+        super().__init__(
+            apply_sd, apply_ls, apply_svls, apply_mask, class_weights, edge_weight
+        )
         self.eps = 1e-8
 
     def forward(
@@ -42,6 +47,7 @@ class IoULoss(WeightedBaseLoss):
         yhat: torch.Tensor,
         target: torch.Tensor,
         target_weight: torch.Tensor = None,
+        mask: torch.Tensor = None,
         **kwargs,
     ) -> torch.Tensor:
         """Compute the IoU loss.
@@ -54,6 +60,8 @@ class IoULoss(WeightedBaseLoss):
                 the ground truth annotations. Shape (B, H, W).
             target_weight : torch.Tensor, default=None
                 The edge weight map. Shape (B, H, W).
+            mask : torch.Tensor, default=None
+                The mask map. Shape (B, H, W).
 
         Returns
         -------
@@ -78,6 +86,9 @@ class IoULoss(WeightedBaseLoss):
         intersection = torch.sum(yhat_soft * target_one_hot, 1)  # to (B, H, W)
         union = torch.sum(yhat_soft + target_one_hot, 1)  # to (B, H, W)
         iou = intersection / union.clamp_min(self.eps)
+
+        if self.apply_mask and mask is not None:
+            iou = self.apply_mask_weight(iou, mask, norm=False)  # (B, H, W)
 
         if self.apply_sd:
             iou = self.apply_spectral_decouple(iou, yhat)

@@ -14,6 +14,7 @@ class TverskyLoss(WeightedBaseLoss):
         apply_sd: bool = False,
         apply_ls: bool = False,
         apply_svls: bool = False,
+        apply_mask: bool = False,
         edge_weight: float = None,
         class_weights: torch.Tensor = None,
         **kwargs
@@ -24,32 +25,37 @@ class TverskyLoss(WeightedBaseLoss):
 
         Parameters
         ----------
-            alpha : float, default=0.7
-                 False positive dice coefficient.
-            beta : float, default=0.3
-                False negative tanimoto coefficient.
-            apply_sd : bool, default=False
-                If True, Spectral decoupling regularization will be applied  to the
-                loss matrix.
-            apply_ls : bool, default=False
-                If True, Label smoothing will be applied to the target.
-            apply_svls : bool, default=False
-                If True, spatially varying label smoothing will be applied to the target
-            edge_weight : float, default=none
-                Weight that is added to object borders.
-            class_weights : torch.Tensor, default=None
-                Class weights. A tensor of shape (n_classes,).
+        alpha : float, default=0.7
+                False positive dice coefficient.
+        beta : float, default=0.3
+            False negative tanimoto coefficient.
+        apply_sd : bool, default=False
+            If True, Spectral decoupling regularization will be applied  to the
+            loss matrix.
+        apply_ls : bool, default=False
+            If True, Label smoothing will be applied to the target.
+        apply_svls : bool, default=False
+            If True, spatially varying label smoothing will be applied to the target
+        apply_mask : bool, default=False
+            If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
+        edge_weight : float, default=none
+            Weight that is added to object borders.
+        class_weights : torch.Tensor, default=None
+            Class weights. A tensor of shape (n_classes,).
         """
-        super().__init__(apply_sd, apply_ls, apply_svls, class_weights, edge_weight)
+        super().__init__(
+            apply_sd, apply_ls, apply_svls, apply_mask, class_weights, edge_weight
+        )
         self.alpha = alpha
         self.beta = beta
-        self.eps = 1e-7
+        self.eps = 1e-8
 
     def forward(
         self,
         yhat: torch.Tensor,
         target: torch.Tensor,
         target_weight: torch.Tensor = None,
+        mask: torch.Tensor = None,
         **kwargs
     ) -> torch.Tensor:
         """Compute the Tversky loss.
@@ -62,6 +68,8 @@ class TverskyLoss(WeightedBaseLoss):
                 the ground truth annotations. Shape (B, H, W).
             target_weight : torch.Tensor, default=None
                 The edge weight map. Shape (B, H, W).
+            mask : torch.Tensor, default=None
+                The mask map. Shape (B, H, W).
 
         Returns
         -------
@@ -88,6 +96,11 @@ class TverskyLoss(WeightedBaseLoss):
         fns = torch.sum(target_one_hot * (1.0 - yhat_soft), 1)
         denom = intersection + self.alpha * fps + self.beta * fns
         tversky_loss = intersection / denom.clamp_min(self.eps)
+
+        if self.apply_mask and mask is not None:
+            tversky_loss = self.apply_mask_weight(
+                tversky_loss, mask, norm=False
+            )  # (B, H, W)
 
         if self.apply_sd:
             tversky_loss = self.apply_spectral_decouple(tversky_loss, yhat)

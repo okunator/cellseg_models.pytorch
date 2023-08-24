@@ -1,13 +1,12 @@
 import torch
 import torch.nn.functional as F
 
-from ...utils import tensor_one_hot
-from ..weighted_base_loss import WeightedBaseLoss
+from cellseg_models_pytorch.losses.weighted_base_loss import WeightedBaseLoss
 
-__all__ = ["CELoss"]
+__all__ = ["BCELoss"]
 
 
-class CELoss(WeightedBaseLoss):
+class BCELoss(WeightedBaseLoss):
     def __init__(
         self,
         apply_sd: bool = False,
@@ -16,9 +15,9 @@ class CELoss(WeightedBaseLoss):
         apply_mask: bool = False,
         edge_weight: float = None,
         class_weights: torch.Tensor = None,
-        **kwargs,
+        **kwargs
     ) -> None:
-        """Cross-Entropy loss with weighting.
+        """Binary cross entropy loss with weighting and other tricks.
 
         Parameters
         ----------
@@ -47,9 +46,9 @@ class CELoss(WeightedBaseLoss):
         target: torch.Tensor,
         target_weight: torch.Tensor = None,
         mask: torch.Tensor = None,
-        **kwargs,
+        **kwargs
     ) -> torch.Tensor:
-        """Compute the cross entropy loss.
+        """Compute binary cross entropy loss.
 
         Parameters
         ----------
@@ -65,35 +64,35 @@ class CELoss(WeightedBaseLoss):
         Returns
         -------
             torch.Tensor:
-                Computed CE loss (scalar).
+                Computed BCE loss (scalar).
         """
-        input_soft = F.softmax(yhat, dim=1) + self.eps  # (B, C, H, W)
         num_classes = yhat.shape[1]
-        target_one_hot = tensor_one_hot(target, num_classes)  # (B, C, H, W)
-        assert target_one_hot.shape == yhat.shape
+        yhat = torch.clip(yhat, self.eps, 1.0 - self.eps)
+
+        if target.size() != yhat.size():
+            target = target.unsqueeze(1).repeat_interleave(num_classes, dim=1)
 
         if self.apply_svls:
-            target_one_hot = self.apply_svls_to_target(
-                target_one_hot, num_classes, **kwargs
-            )
+            target = self.apply_svls_to_target(target, num_classes, **kwargs)
 
         if self.apply_ls:
-            target_one_hot = self.apply_ls_to_target(
-                target_one_hot, num_classes, **kwargs
-            )
+            target = self.apply_ls_to_target(target, num_classes, **kwargs)
 
-        loss = -torch.sum(target_one_hot * torch.log(input_soft), dim=1)  # (B, H, W)
+        bce = F.binary_cross_entropy_with_logits(
+            yhat.float(), target.float(), reduction="none"
+        )  # (B, C, H, W)
+        bce = torch.mean(bce, dim=1)  # (B, H, W)
 
         if self.apply_mask and mask is not None:
-            loss = self.apply_mask_weight(loss, mask, norm=False)  # (B, H, W)
+            bce = self.apply_mask_weight(bce, mask, norm=False)  # (B, H, W)
 
         if self.apply_sd:
-            loss = self.apply_spectral_decouple(loss, yhat)
+            bce = self.apply_spectral_decouple(bce, yhat)
 
         if self.class_weights is not None:
-            loss = self.apply_class_weights(loss, target)
+            bce = self.apply_class_weights(bce, target)
 
         if self.edge_weight is not None:
-            loss = self.apply_edge_weights(loss, target_weight)
+            bce = self.apply_edge_weights(bce, target_weight)
 
-        return loss.mean()
+        return torch.mean(bce)

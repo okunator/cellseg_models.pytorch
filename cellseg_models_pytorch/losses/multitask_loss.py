@@ -53,7 +53,11 @@ class MultiTaskLoss(nn.ModuleDict):
             self.add_module(f"{branch}_loss", loss)
 
     def forward(
-        self, yhats: Dict[str, torch.Tensor], targets: Dict[str, torch.Tensor], **kwargs
+        self,
+        yhats: Dict[str, torch.Tensor],
+        targets: Dict[str, torch.Tensor],
+        mask: torch.Tensor = None,
+        **kwargs,
     ) -> torch.Tensor:
         """Compute the joint loss of the multi-task network.
 
@@ -63,6 +67,8 @@ class MultiTaskLoss(nn.ModuleDict):
                 Dictionary of branch names mapped to the predicted masks.
             targets : Dict[str, torch.Tensor]
                 Dictionary of branch names mapped to the GT masks.
+            mask : torch.Tensor, default=None
+                The mask for masked losses. Shape (B, H, W).
 
         Returns
         -------
@@ -80,6 +86,7 @@ class MultiTaskLoss(nn.ModuleDict):
                 yhat=yhats[branch],
                 target=targets[branch],
                 target_weight=weight_map,
+                mask=mask,
             )
             multitask_loss += branch_loss * self.weights[branch]
 

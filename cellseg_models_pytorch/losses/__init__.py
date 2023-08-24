@@ -1,10 +1,12 @@
 from itertools import permutations
 
 from .criterions import (
+    MAE,
     MSE,
     MSSSIM,
     SEG_LOSS_LOOKUP,
     SSIM,
+    BCELoss,
     CELoss,
     DiceLoss,
     FocalLoss,
@@ -27,6 +29,7 @@ __all__ = [
     "JOINT_SEG_LOSSES",
     "Loss",
     "JointLoss",
+    "MAE",
     "MultiTaskLoss",
     "MSE",
     "MSSSIM",
@@ -37,4 +40,5 @@ __all__ = [
     "FocalLoss",
     "DiceLoss",
     "IoULoss",
+    "BCELoss",
 ]

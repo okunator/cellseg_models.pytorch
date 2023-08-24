@@ -57,9 +57,22 @@ def _get_dummy_class_weights(n_classes: int) -> torch.Tensor:
 @pytest.mark.parametrize("apply_ls", [True, False])
 @pytest.mark.parametrize("apply_svls", [True, False])
 @pytest.mark.parametrize("apply_sd", [True, False])
+@pytest.mark.parametrize("apply_mask", [True, False])
 @pytest.mark.parametrize(
     "loss",
-    ["mse", "ssim", "msssim", "dice", "iou", "focal", "tversky", "ce", "sce"],
+    [
+        "sce",
+        "bce",
+        "mae",
+        "mse",
+        "ssim",
+        "msssim",
+        "dice",
+        "iou",
+        "focal",
+        "tversky",
+        "ce",
+    ],
 )
 def test_loss(
     n_classes: int,
@@ -69,6 +82,7 @@ def test_loss(
     apply_svls: bool,
     apply_ls: bool,
     apply_sd: bool,
+    apply_mask: bool,
 ) -> None:
     yhat, target = _get_dummy_pair(n_classes)
 
@@ -80,12 +94,17 @@ def test_loss(
     if class_weights:
         cw = _get_dummy_class_weights(n_classes)
 
+    mask = None
+    if apply_mask:
+        mask = (target > 0).long()
+
     criterion = Loss(
         name=loss,
         apply_sd=apply_sd,
         apply_ls=apply_ls,
         apply_svls=apply_svls,
+        apply_mask=apply_mask,
         edge_weight=edge_weight,
         class_weights=cw,
     )
-    criterion(yhat=yhat, target=target, target_weight=wmap)
+    criterion(yhat=yhat, target=target, target_weight=wmap, mask=mask)

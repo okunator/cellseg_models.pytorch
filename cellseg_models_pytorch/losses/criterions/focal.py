@@ -13,6 +13,7 @@ class FocalLoss(WeightedBaseLoss):
         apply_sd: bool = False,
         apply_ls: bool = False,
         apply_svls: bool = False,
+        apply_mask: bool = False,
         edge_weight: float = None,
         class_weights: torch.Tensor = None,
         **kwargs
@@ -26,23 +27,27 @@ class FocalLoss(WeightedBaseLoss):
 
         Parameters
         ----------
-            alpha : float, default=0.5
-                Weight factor b/w [0,1].
-            gamma : float, default=2.0
-                Focusing factor.
-            apply_sd : bool, default=False
-                If True, Spectral decoupling regularization will be applied  to the
-                loss matrix.
-            apply_ls : bool, default=False
-                If True, Label smoothing will be applied to the target.
-            apply_svls : bool, default=False
-                If True, spatially varying label smoothing will be applied to the target
-            edge_weight : float, default=none
-                Weight that is added to object borders.
-            class_weights : torch.Tensor, default=None
-                Class weights. A tensor of shape (n_classes,).
+        alpha : float, default=0.5
+            Weight factor b/w [0,1].
+        gamma : float, default=2.0
+            Focusing factor.
+        apply_sd : bool, default=False
+            If True, Spectral decoupling regularization will be applied  to the
+            loss matrix.
+        apply_ls : bool, default=False
+            If True, Label smoothing will be applied to the target.
+        apply_svls : bool, default=False
+            If True, spatially varying label smoothing will be applied to the target
+        apply_mask : bool, default=False
+            If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
+        edge_weight : float, default=none
+            Weight that is added to object borders.
+        class_weights : torch.Tensor, default=None
+            Class weights. A tensor of shape (n_classes,).
         """
-        super().__init__(apply_sd, apply_ls, apply_svls, class_weights, edge_weight)
+        super().__init__(
+            apply_sd, apply_ls, apply_svls, apply_mask, class_weights, edge_weight
+        )
         self.alpha = alpha
         self.gamma = gamma
         self.eps = 1e-8
@@ -52,6 +57,7 @@ class FocalLoss(WeightedBaseLoss):
         yhat: torch.Tensor,
         target: torch.Tensor,
         target_weight: torch.Tensor = None,
+        mask: torch.Tensor = None,
         **kwargs
     ) -> torch.Tensor:
         """Compute the focal loss.
@@ -64,6 +70,8 @@ class FocalLoss(WeightedBaseLoss):
                 the ground truth annotations. Shape (B, H, W).
             target_weight : torch.Tensor, default=None
                 The edge weight map. Shape (B, H, W).
+            mask : torch.Tensor, default=None
+                The mask map. Shape (B, H, W).
 
         Returns
         -------
@@ -90,6 +98,9 @@ class FocalLoss(WeightedBaseLoss):
         focal = target_one_hot * focal
 
         loss = -torch.sum(focal, dim=1)  # to (B, H, W)
+
+        if self.apply_mask and mask is not None:
+            loss = self.apply_mask_weight(loss, mask, norm=False)  # (B, H, W)
 
         if self.apply_sd:
             loss = self.apply_spectral_decouple(loss, yhat)

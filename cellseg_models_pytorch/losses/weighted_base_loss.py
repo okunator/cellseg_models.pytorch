@@ -10,6 +10,7 @@ class WeightedBaseLoss(nn.Module):
         apply_sd: bool = False,
         apply_ls: bool = False,
         apply_svls: bool = False,
+        apply_mask: bool = False,
         class_weights: torch.Tensor = None,
         edge_weight: float = None,
         **kwargs
@@ -20,22 +21,25 @@ class WeightedBaseLoss(nn.Module):
 
         Parameters
         ----------
-            apply_sd : bool, default=False
-                If True, Spectral decoupling regularization will be applied  to the
-                loss matrix.
-            apply_ls : bool, default=False
-                If True, Label smoothing will be applied to the target.
-            apply_svls : bool, default=False
-                If True, spatially varying label smoothing will be applied to the target
-            class_weights : torch.Tensor, default=None
-                Class weights. A tensor of shape (C, )
-            edge_weight : float, default=None
-                Weight for the object instance border pixels
+        apply_sd : bool, default=False
+            If True, Spectral decoupling regularization will be applied  to the
+            loss matrix.
+        apply_ls : bool, default=False
+            If True, Label smoothing will be applied to the target.
+        apply_svls : bool, default=False
+            If True, spatially varying label smoothing will be applied to the target
+        apply_mask : bool, default=False
+            If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
+        class_weights : torch.Tensor, default=None
+            Class weights. A tensor of shape (C, )
+        edge_weight : float, default=None
+            Weight for the object instance border pixels
         """
         super().__init__()
         self.apply_sd = apply_sd
         self.apply_ls = apply_ls
         self.apply_svls = apply_svls
+        self.apply_mask = apply_mask
         self.class_weights = class_weights
         self.edge_weight = edge_weight
 
@@ -126,7 +130,7 @@ class WeightedBaseLoss(nn.Module):
         gaussian_kernel[..., my, mx] = neighborsum
         svls_kernel = gaussian_kernel / neighborsum[0]
 
-        return filter2D(target, svls_kernel) / svls_kernel[0].sum()
+        return filter2D(target.float(), svls_kernel) / svls_kernel[0].sum()
 
     def apply_class_weights(
         self, loss_matrix: torch.Tensor, target: torch.Tensor
@@ -147,7 +151,7 @@ class WeightedBaseLoss(nn.Module):
             torch.Tensor:
                 The loss matrix scaled with the weight matrix. Shape (B, H, W).
         """
-        weight_mat = self.class_weights[target].to(target.device)  # to (B, H, W)
+        weight_mat = self.class_weights[target.long()].to(target.device)  # to (B, H, W)
         loss = loss_matrix * weight_mat
 
         return loss
@@ -175,7 +179,33 @@ class WeightedBaseLoss(nn.Module):
         """
         return loss_matrix * self.edge_weight**weight_map
 
+    def apply_mask_weight(
+        self, loss_matrix: torch.Tensor, mask: torch.Tensor, norm: bool = True
+    ) -> torch.Tensor:
+        """Apply a mask to the loss matrix.
+
+        Parameters
+        ----------
+            loss_matrix : torch.Tensor
+                Pixelwise losses. A tensor of shape (B, H, W).
+            mask : torch.Tensor
+                The mask. Shape (B, H, W).
+            norm : bool, default=True
+                If True, the loss matrix will be normalized by the mean of the mask.
+
+        Returns
+        -------
+            torch.Tensor:
+                The loss matrix scaled with the mask. Shape (B, H, W).
+        """
+        loss_matrix *= mask
+        if norm:
+            norm_mask = torch.mean(mask.float()) + 1e-7
+            loss_matrix /= norm_mask
+
+        return loss_matrix
+
     def extra_repr(self) -> str:
         """Add info to print."""
-        s = "apply_sd={apply_sd}, apply_ls={apply_ls}, apply_svls={apply_svls}, class_weights={class_weights}, edge_weight={edge_weight}"  # noqa
+        s = "apply_sd={apply_sd}, apply_ls={apply_ls}, apply_svls={apply_svls}, apply_mask={apply_mask}, class_weights={class_weights}, edge_weight={edge_weight}"  # noqa
         return s.format(**self.__dict__)
