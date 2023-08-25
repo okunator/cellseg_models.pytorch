@@ -161,7 +161,6 @@ class TrainDatasetBase(Dataset):
             out[n] = aux_map
 
         # remove redundant target (not needed in downstream).
-
         if self.return_inst:
             out["inst_map"] = out["inst"]
         else:

@@ -12,9 +12,9 @@ try:
     from .downloader import SimpleDownloader
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
-        "To use the LizardDataModule, requests, pytorch-lightning, & albumentations "
+        "To use the LizardDataModule, requests, lightning, & albumentations "
         "libraries are needed. Install with "
-        "`pip install requests pytorch-lightning albumentations`"
+        "`pip install requests lightning albumentations`"
     )
 
 

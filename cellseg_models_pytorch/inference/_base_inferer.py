@@ -116,7 +116,7 @@ class BaseInferer(ABC):
         self.path = Path(input_path)
         if self.path.is_dir():
             ds = FolderDatasetInfer(self.path, n_images=n_images)
-            if self.save_dir is None and len(ds.fnames) > 40:
+            if self.save_dir is None and len(ds.fnames) > 40 and n_images is None:
                 warnings.warn(
                     "`save_dir` is None. Thus, the outputs are be saved in `out_masks` "
                     "class attribute. If the input folder contains many images, running"

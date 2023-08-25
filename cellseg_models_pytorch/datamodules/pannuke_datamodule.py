@@ -16,7 +16,7 @@ except ModuleNotFoundError:
     raise ModuleNotFoundError(
         "To use the PannukeDataModule, requests, pytorch-lightning, & albumentations "
         "libraries are needed. Install with "
-        "`pip install requests pytorch-lightning albumentations`"
+        "`pip install requests lightning albumentations`"
     )
 
 
@@ -58,7 +58,7 @@ class PannukeDataModule(BaseDataModule):
                 Path to directory where the pannuke data will be saved.
             fold_split : Dict[str, int]
                 Defines how the folds are split into train, valid, and test sets.
-                E.g. {"train": 1, "valid": 2, "test": 3}
+                E.g. {"fold1": "train", "fold2": "valid", "fold3": "test"}
             img_transforms : List[str]
                 A list containing all the transformations that are applied to the input
                 images and corresponding masks. Allowed ones: "blur", "non_spatial",
@@ -98,10 +98,10 @@ class PannukeDataModule(BaseDataModule):
         """
         super().__init__(batch_size, num_workers)
         allowed = ("train", "valid", "test")
-        if not all([k in allowed for k in fold_split.keys()]):
+        if not all([k in allowed for k in fold_split.values()]):
             raise ValueError(
-                f"`fold_split` keys need to be in {allowed}. "
-                f"Got: {list(fold_split.keys())}"
+                f"`fold_split` values need to be in {allowed}. "
+                f"Got: {list(fold_split.values())}"
             )
 
         self.save_dir = Path(save_dir)
@@ -173,7 +173,13 @@ class PannukeDataModule(BaseDataModule):
             print("Processing files...")
             fold_paths = self._get_fold_paths(self.save_dir)
 
-            for phase, fold_ix in self.fold_split.items():
+            for fold, phase in self.fold_split.items():
+                # determine fold number
+                if isinstance(fold, int):
+                    fold_ix = fold
+                else:
+                    fold_ix = int(fold[-1])
+
                 save_im_dir = self.save_dir / phase / "images"
                 save_mask_dir = self.save_dir / phase / "labels"
                 self._process_pannuke_fold(
@@ -238,9 +244,14 @@ class PannukeDataModule(BaseDataModule):
             **self.kwargs,
         )
 
+        test_path_img = self._get_path("test", self.dataset_type, is_mask=False)
+        if not test_path_img.exists():
+            test_path_img = self._get_path("valid", self.dataset_type, is_mask=False)
+            test_path_mask = self._get_path("valid", self.dataset_type, is_mask=True)
+
         self.testset = DS(
-            path=self._get_path("test", self.dataset_type, is_mask=False),
-            mask_path=self._get_path("test", self.dataset_type, is_mask=True),
+            path=test_path_img,
+            mask_path=test_path_mask,
             img_transforms=self.img_transforms,
             inst_transforms=self.inst_transforms,
             return_sem=False,
@@ -317,7 +328,6 @@ class PannukeDataModule(BaseDataModule):
 
         inst_map = np.zeros(mask.shape[:2], dtype="int32")
         for i in range(mask.shape[-1]):
-
             insts = mask[..., i]
             inst_ids = np.unique(insts)[1:]
             for inst_id in inst_ids:

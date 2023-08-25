@@ -1,13 +1,13 @@
 import zipfile
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 try:
-    import pytorch_lightning as pl
+    import lightning.pytorch as pl
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
         "To use the `csmp.datamodules` module, the pytorch-lightning lib, is needed. "
-        "Install with `pip install pytorch-lightning`"
+        "Install with `pip install lightning`"
     )
 from torch.utils.data import DataLoader
 
@@ -62,6 +62,20 @@ class BaseDataModule(pl.LightningDataModule):
             pin_memory=True,
             num_workers=self.num_workers,
         )
+
+    def predict_dataloader(self) -> DataLoader:
+        """Initialize test dataloader."""
+        return DataLoader(
+            self.testset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            pin_memory=True,
+            num_workers=self.num_workers,
+        )
+
+    def teardown(self, stage: Optional[str] = None):
+        """Clean-up when the run is finished."""
+        print("gg")
 
     @staticmethod
     def extract_zips(path: Union[str, Path], rm: bool = False) -> None:
