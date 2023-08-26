@@ -78,7 +78,7 @@ class DecoderStage(nn.Module):
                 on the skip module. Refer to specific skip modules for more info.
             upsampling : str, default="fixed-unpool"
                 Name of the upsampling method. One of: "fixed-unpool", "bilinear",
-                "nearest", "bicubic", "transconv"
+                "nearest", "bicubic", "conv_transpose"
             n_conv_layers : int, default=1
                 The number of conv layers inside one decoder stage.
             style_channels : int, default=None
@@ -189,15 +189,21 @@ class DecoderStage(nn.Module):
             upsampling,
             scale_factor=up_factors[stage_ix],
             in_channels=self.in_channels,  # needed for transconv (otherwise ignored)
-            out_channels=self.in_channels,  # needed for transconv (otherwise ignored)
+            out_channels=self.out_channels,  # needed for transconv (otherwise ignored)
         )
 
         # long skip connection method
+        # if upsampling is conv_transpose, the skip_in_chans is the out_channels
+        # of convtranspose module
+        skip_in_chans = self.in_channels
+        if upsampling == "conv_transpose":
+            skip_in_chans = self.out_channels
+
         self.skip = LongSkip(
             name=long_skip,
             merge_policy=merge_policy,
             stage_ix=self.stage_ix,
-            in_channels=self.in_channels,
+            in_channels=skip_in_chans,
             dec_channels=dec_channels,
             skip_channels=skip_channels,
             up_factors=up_factors,
