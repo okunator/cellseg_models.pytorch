@@ -1,85 +1,129 @@
 import pytest
 import torch
 
-from cellseg_models_pytorch.models import (
-    MultiTaskUnet,
-    cellpose_base,
-    cellpose_plus,
-    hovernet_base,
-    hovernet_plus,
-    hovernet_small,
-    hovernet_small_plus,
-    omnipose_base,
-    omnipose_plus,
-    stardist_base,
-    stardist_base_multiclass,
-    stardist_plus,
-)
+from cellseg_models_pytorch.models import MultiTaskUnet, get_model
 
 
-@pytest.mark.parametrize(
-    "model", [hovernet_base, hovernet_plus, hovernet_small_plus, hovernet_small]
-)
+@pytest.mark.parametrize("model_type", ["base", "plus", "small_plus", "small"])
 @pytest.mark.parametrize("style_channels", [None, 32])
-def test_hovernet_fwdbwd(model, style_channels):
-    x = torch.rand([1, 3, 64, 64])
-    m = model(
-        type_classes=3,
-        sem_classes=3,
+@pytest.mark.parametrize("enc_name", ["sam_vit_b", "sam_vit_h", "sam_vit_l"])
+def test_cellvit_fwdbwd(model_type, style_channels, enc_name):
+    x = torch.rand([1, 3, 32, 32])
+    model = get_model(
+        name="cellvit",
+        type=model_type,
+        ntypes=3,
+        ntissues=3,
         style_channels=style_channels,
+        enc_name=enc_name,
+        enc_pretrain=False,
     )
-    y = m(x)
+    model.freeze_encoder()
+
+    y = model(x)
     y["hovernet"].mean().backward()
 
     assert y["type"].shape == x.shape
 
+    if "sem" in y.keys():
+        assert y["sem"].shape == torch.Size([1, 3, 32, 32])
 
-@pytest.mark.parametrize(
-    "model", [stardist_base, stardist_plus, stardist_base_multiclass]
-)
+
+@pytest.mark.parametrize("model_type", ["base", "plus", "small_plus", "small"])
 @pytest.mark.parametrize("style_channels", [None, 32])
-def test_stardist_fwdbwd(model, style_channels):
-    n_rays = 3
+@pytest.mark.parametrize("add_stem_skip", [False, True])
+def test_hovernet_fwdbwd(model_type, style_channels, add_stem_skip):
     x = torch.rand([1, 3, 64, 64])
-    m = model(
-        n_rays=n_rays,
-        type_classes=3,
-        sem_classes=3,
+    model = get_model(
+        name="hovernet",
+        type=model_type,
+        ntypes=3,
+        ntissues=3,
         style_channels=style_channels,
+        add_stem_skip=add_stem_skip,
     )
-    y = m(x)
+
+    y = model(x)
+    y["hovernet"].mean().backward()
+
+    assert y["type"].shape == x.shape
+
+    if "sem" in y.keys():
+        assert y["sem"].shape == torch.Size([1, 3, 64, 64])
+
+
+@pytest.mark.parametrize("model_type", ["base", "plus"])
+@pytest.mark.parametrize("style_channels", [None, 32])
+@pytest.mark.parametrize("add_stem_skip", [False, True])
+def test_stardist_fwdbwd(model_type, style_channels, add_stem_skip):
+    n_rays = 3
+    x = torch.rand([1, 3, 32, 32])
+    model = get_model(
+        name="stardist",
+        type=model_type,
+        n_rays=n_rays,
+        ntypes=3,
+        ntissues=3,
+        style_channels=style_channels,
+        add_stem_skip=add_stem_skip,
+    )
+
+    y = model(x)
     y["stardist"].mean().backward()
 
-    assert y["stardist"].shape == torch.Size([1, n_rays, 64, 64])
+    assert y["type"].shape == x.shape
+    assert y["stardist"].shape == torch.Size([1, n_rays, 32, 32])
+
+    if "sem" in y.keys():
+        assert y["sem"].shape == torch.Size([1, 3, 32, 32])
 
 
-@pytest.mark.parametrize("model", [cellpose_base, cellpose_plus])
-def test_cellpose_fwdbwd(model):
+@pytest.mark.parametrize("model_type", ["base", "plus"])
+@pytest.mark.parametrize("add_stem_skip", [False, True])
+def test_cellpose_fwdbwd(model_type, add_stem_skip):
     x = torch.rand([1, 3, 64, 64])
-    m = model(type_classes=3, sem_classes=3)
-    y = m(x)
+    model = get_model(
+        name="cellpose",
+        type=model_type,
+        ntypes=3,
+        ntissues=3,
+        add_stem_skip=add_stem_skip,
+    )
+
+    y = model(x)
     y["cellpose"].mean().backward()
 
-    if "sem" in y.keys():
-        assert y["sem"].shape == torch.Size([1, 3, 64, 64])
-
+    assert y["type"].shape == x.shape
     assert y["cellpose"].shape == torch.Size([1, 2, 64, 64])
 
+    if "sem" in y.keys():
+        assert y["sem"].shape == torch.Size([1, 3, 64, 64])
 
-@pytest.mark.parametrize("model", [omnipose_base, omnipose_plus])
-def test_omnipose_fwdbwd(model):
+
+@pytest.mark.parametrize("model_type", ["base", "plus"])
+@pytest.mark.parametrize("add_stem_skip", [False, True])
+def test_cellpose_fwdbwd(model_type, add_stem_skip):
     x = torch.rand([1, 3, 64, 64])
-    m = model(type_classes=3, sem_classes=3)
-    y = m(x)
+    model = get_model(
+        name="omnipose",
+        type=model_type,
+        ntypes=3,
+        ntissues=3,
+        add_stem_skip=add_stem_skip,
+    )
+
+    y = model(x)
     y["omnipose"].mean().backward()
+
+    assert y["type"].shape == x.shape
+    assert y["omnipose"].shape == torch.Size([1, 2, 64, 64])
 
     if "sem" in y.keys():
         assert y["sem"].shape == torch.Size([1, 3, 64, 64])
 
-    assert y["omnipose"].shape == torch.Size([1, 2, 64, 64])
 
-
-def test_multitaskunet_fwdbwd():
+@pytest.mark.parametrize("add_stem_skip", [False, True])
+def test_multitaskunet_fwdbwd(add_stem_skip):
     x = torch.rand([1, 3, 64, 64])
     m = MultiTaskUnet(
         decoders=("sem",),
@@ -89,6 +133,7 @@ def test_multitaskunet_fwdbwd():
         out_channels={"sem": (128, 64, 32, 16)},
         long_skips={"sem": "unet"},
         dec_params={"sem": None},
+        add_stem_skip=add_stem_skip,
     )
     y = m(x)
     y["sem"].mean().backward()
