@@ -111,7 +111,7 @@ class Up(nn.Module):
         -----------
             name : str
                 Name of the upsampling method. One of: 'bilinear', 'bicubic',
-                'fixed-unpool', 'transconv', 'nearest'
+                'fixed-unpool', 'conv_transpose', 'nearest'
             scale_factor : int, default=2
                 Upsampling scale factor. scale_factor*(H, W)
 
@@ -131,7 +131,7 @@ class Up(nn.Module):
             kwargs["mode"] = name
             kwargs["align_corners"] = True
 
-        if name == "transconv":
+        if name == "conv_transpose":
             kwargs["kernel_size"] = scale_factor
             kwargs["stride"] = scale_factor
             kwargs["padding"] = 0

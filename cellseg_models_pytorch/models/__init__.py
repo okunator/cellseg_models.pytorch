@@ -8,6 +8,13 @@ from .cellpose.cellpose import (
     omnipose_base,
     omnipose_plus,
 )
+from .cellvit.cellvit import (
+    CellVitSAM,
+    cellvit_sam_base,
+    cellvit_sam_plus,
+    cellvit_sam_small,
+    cellvit_sam_small_plus,
+)
 from .hovernet.hovernet import (
     HoverNet,
     hovernet_base,
@@ -34,6 +41,10 @@ MODEL_LOOKUP = {
     "stardist_base": stardist_base,
     "stardist_plus": stardist_plus,
     "stardist_base_multiclass": stardist_base_multiclass,
+    "cellvit_sam_base": cellvit_sam_base,
+    "cellvit_sam_plus": cellvit_sam_plus,
+    "cellvit_sam_small": cellvit_sam_small,
+    "cellvit_sam_small_plus": cellvit_sam_small_plus,
 }
 
 
@@ -62,11 +73,11 @@ def get_model(
     if name == "stardist":
         if type == "base":
             model = MODEL_LOOKUP["stardist_base_multiclass"](
-                n_rays=32, type_classes=ntypes, **kwargs
+                type_classes=ntypes, **kwargs
             )
         elif type == "plus":
             model = MODEL_LOOKUP["stardist_plus"](
-                n_rays=32, type_classes=ntypes, sem_classes=ntissues, **kwargs
+                type_classes=ntypes, sem_classes=ntissues, **kwargs
             )
     elif name == "cellpose":
         if type == "base":
@@ -95,6 +106,19 @@ def get_model(
             model = MODEL_LOOKUP["hovernet_small_plus"](
                 type_classes=ntypes, sem_classes=ntissues, **kwargs
             )
+    elif name == "cellvit":
+        if type == "base":
+            model = MODEL_LOOKUP["cellvit_sam_base"](type_classes=ntypes, **kwargs)
+        elif type == "small":
+            model = MODEL_LOOKUP["cellvit_sam_small"](type_classes=ntypes, **kwargs)
+        elif type == "plus":
+            model = MODEL_LOOKUP["cellvit_sam_plus"](
+                type_classes=ntypes, sem_classes=ntissues, **kwargs
+            )
+        elif type == "small_plus":
+            model = MODEL_LOOKUP["cellvit_sam_small_plus"](
+                type_classes=ntypes, sem_classes=ntissues, **kwargs
+            )
     else:
         raise ValueError("Unknown model type or name.")
 
@@ -119,4 +143,9 @@ __all__ = [
     "stardist_base_multiclass",
     "MODEL_LOOKUP",
     "get_model",
+    "CellVitSAM",
+    "cellvit_sam_base",
+    "cellvit_sam_plus",
+    "cellvit_sam_small",
+    "cellvit_sam_small_plus",
 ]

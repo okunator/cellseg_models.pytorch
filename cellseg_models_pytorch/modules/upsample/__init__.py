@@ -7,7 +7,7 @@ UP_LOOKUP = {
     "bilinear": Upsample,
     "bicubic": Upsample,
     "nearest": Upsample,
-    "transconv": ConvTranspose2d,
+    "conv_transpose": ConvTranspose2d,
 }
 
 __all__ = ["UP_LOOKUP", "FixedUnpool", "ConvTranspose2d", "Upsample"]
