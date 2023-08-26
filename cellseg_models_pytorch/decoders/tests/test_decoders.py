@@ -11,6 +11,7 @@ from cellseg_models_pytorch.decoders import Decoder
 @pytest.mark.parametrize("use_conv", [True, False])
 @pytest.mark.parametrize("use_tr", [True, False])
 def test_decoder_fwdbwd(long_skip, merge_policy, use_conv, use_tr):
+    enc_reductions = (8, 4, 2, 1)
     enc_channels = (32, 32, 32, 32)
     out_dims = [32 // 2**i for i in range(4)][::-1]
 
@@ -41,6 +42,7 @@ def test_decoder_fwdbwd(long_skip, merge_policy, use_conv, use_tr):
 
     decoder = Decoder(
         enc_channels=enc_channels,
+        enc_reductions=enc_reductions,
         out_channels=(32, 32, 32, 32),
         n_conv_layers=n_layers,
         n_conv_blocks=n_blocks,
@@ -78,6 +80,7 @@ def test_decoder_fwdbwd_all(
     attentions,
 ):
     enc_channels = (64, 32, 16, 8, 8)
+    enc_reductions = (32, 16, 8, 4, 2)
     out_dims = [256 // 2**i for i in range(6)][::-1]
 
     decoder1_kwargs = {
@@ -169,6 +172,7 @@ def test_decoder_fwdbwd_all(
 
     decoder = Decoder(
         enc_channels=enc_channels,
+        enc_reductions=enc_reductions,
         model_input_size=256,
         out_channels=(64, 32, 16, 8, 8),
         n_layers=(1, 1, 1, 1, 1),
