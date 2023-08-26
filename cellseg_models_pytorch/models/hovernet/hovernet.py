@@ -91,7 +91,7 @@ class HoverNet(BaseMultiTaskSegModel):
                 Freeze encoder weights for training.
             upsampling : str, default="fixed-unpool"
                 The upsampling method to be used. One of: "fixed-unpool", "nearest",
-                "bilinear", "bicubic", "transconv"
+                "bilinear", "bicubic", "conv_transpose"
             long_skip : str, default="unet"
                 long skip method to be used. One of: "unet", "unetpp", "unet3p",
                 "unet3p-lite", None

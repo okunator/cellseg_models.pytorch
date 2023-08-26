@@ -95,7 +95,7 @@ class CellPoseUnet(BaseMultiTaskSegModel):
                 Freeze encoder weights for training.
             upsampling : str, default="fixed-unpool"
                 The upsampling method. One of: "fixed-unpool", "bilinear", "nearest",
-                "transconv", "bicubic"
+                "conv_transpose", "bicubic"
             long_skip : str, default="unet"
                 long skip method to be used. One of: "unet", "unetpp", "unet3p",
                 "unet3p-lite", None
