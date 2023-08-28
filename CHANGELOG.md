@@ -1,5 +1,46 @@
 
 <a id='changelog-0.1.22'></a>
+# 0.1.22 — 2023-08-28
+
+## Features
+
+- add a stem-skip module. (Long skip for the input image resolution feature map)
+
+- add UnetTR transformer encoder wrapper class
+- add a new Encoder wrapper for timm and unetTR based encoders
+
+- Add stem skip support and upsampling block options to all current model architectures
+
+- Add masking option to all the criterions
+- Add `MAELoss`
+- Add `BCELoss`
+
+- Add base class for transformer based backbones
+- Add SAM-VitDet image encoder with support to load pre-trained SAM weights
+
+- Add `CellVIT-SAM` model.
+
+## Docs
+
+- Add notebook example on training Hover-Net with lightning from scratch.
+
+- Add notebook example on training StarDist with lightning from scratch.
+- Add notebook example on training CellPose with accelerate from scratch.
+- Add notebook example on training OmniPose with accelerate from scratch.
+
+- Add notebook example on finetuning CellVIT-SAM with accelerate.
+
+## Fixes
+
+- Fix current TimmEncoder to store feature info
+
+- Fix Up block to support transconv and bilinear upsampling and fix data flow issues.
+
+- Fix StardistUnet class to output all the decoder features.
+
+- Fix Decoder, DecoderStage and long-skip modules to work with up scale factors  instead of output dimensions.
+
+<a id='changelog-0.1.22'></a>
 # 0.1.22 — 2023-07-10
 
 ## Features
