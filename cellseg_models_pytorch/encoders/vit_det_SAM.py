@@ -628,6 +628,7 @@ class VitDetSAM(BaseTrEncoder):
             Indexes for blocks using global attention.
         """
         super().__init__(
+            name="SAM-VitDet",
             checkpoint_path=checkpoint_path,
             out_indices=out_indices,
         )

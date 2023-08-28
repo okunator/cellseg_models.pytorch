@@ -10,6 +10,7 @@ __all__ = ["BaseTrEncoder"]
 class BaseTrEncoder(nn.Module):
     def __init__(
         self,
+        name: str,
         checkpoint_path: Optional[Union[str, Path]] = None,
         out_indices: Optional[Tuple[int, ...]] = None,
         depth: int = 4,
@@ -19,6 +20,8 @@ class BaseTrEncoder(nn.Module):
 
         Parameters
         ----------
+        name : str
+            Name of the backbone.
         checkpoint_path : Optional[Union[Path, str]], optional
             Path to the weights of the backbone. If None, the backbone is initialized
             with random weights. Defaults to None.
@@ -31,6 +34,7 @@ class BaseTrEncoder(nn.Module):
             features will be the last `depth` features of the backbone. Defaults to 4.
         """
         super().__init__()
+        self.name = name
         self.depth = depth
 
         # set checkpoint path
@@ -80,5 +84,5 @@ class BaseTrEncoder(nn.Module):
             except BaseException as e:
                 raise RuntimeError(f"Error loading checkpoint: {e}")
 
-            print(f"Loading checkpoint: {msg}")
+            print(f"Loading pre-trained {self.name} checkpoint: {msg}")
         self.backbone = backbone
