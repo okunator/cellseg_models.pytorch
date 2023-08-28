@@ -44,9 +44,6 @@ class FolderDatasetInfer(Dataset, FileHandler):
         if not folder_path.is_dir():
             raise ValueError(f"path: {folder_path} is not a folder")
 
-        if not all([f.suffix in SUFFIXES for f in folder_path.iterdir()]):
-            raise ValueError(f"files formats in given folder need to be in {SUFFIXES}")
-
         self.fnames = sorted(folder_path.glob(pattern))
         if n_images is not None:
             self.fnames = self.fnames[:n_images]
@@ -58,7 +55,14 @@ class FolderDatasetInfer(Dataset, FileHandler):
     def __getitem__(self, ix: int) -> torch.Tensor:
         """Read image."""
         fn = self.fnames[ix]
-        im = FileHandler.read_img(fn.as_posix())
-        im = torch.from_numpy(im.transpose(2, 0, 1))
+        if fn.suffix in SUFFIXES:
+            im = FileHandler.read_img(fn.as_posix())
+            im = torch.from_numpy(im.transpose(2, 0, 1))
+        else:
+            raise ValueError(
+                f"Received an illegal file format in: {fn}."
+                f"file format {fn.suffix} not supported."
+                f"Supported formats: {SUFFIXES}."
+            )
 
         return {"im": im, "file": fn.with_suffix("").name}
