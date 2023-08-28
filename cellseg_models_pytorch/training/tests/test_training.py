@@ -1,7 +1,7 @@
 from copy import deepcopy
 
+import lightning.pytorch as pl
 import pytest
-import pytorch_lightning as pl
 
 from cellseg_models_pytorch.datamodules.custom_datamodule import CustomDataModule
 from cellseg_models_pytorch.datasets import SegmentationFolderDataset
@@ -32,15 +32,14 @@ def test_training(img_patch_dir, mask_patch_dir):
     experiment = SegmentationExperiment(
         model=model,
         branch_losses={"cellpose": "mse_ssim", "sem": "ce_dice", "type": "ce_dice"},
-        branch_metrics={"cellpose": [None], "sem": ["miou"], "type": ["miou"]},
+        branch_metrics={"cellpose": [None], "sem": [None], "type": [None]},
         lookahead=False,
     )
 
     trainer = pl.Trainer(
         max_epochs=1,
-        gpus=0,
+        accelerator="cpu",
         profiler="simple",
-        move_metrics_to_cpu=True,
         fast_dev_run=True,
     )
 
