@@ -202,6 +202,7 @@ The class API enables the most flexibility in defining different model architect
 - `csmp.CellPoseUnet`
 - `csmp.StarDistUnet`
 - `csmp.HoverNet`
+- `csmp.CellVitSAM`
 
 **All of the models contain**:
 
