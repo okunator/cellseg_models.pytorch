@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import yaml
 
-from ...decoders import Decoder
+from ...decoders import UnetDecoder
 from ...decoders.long_skips import StemSkip
 from ...encoders import Encoder
 from ...modules.misc_modules import StyleReshape
@@ -132,7 +132,7 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
 
         # set decoders
         for decoder_name in decoders:
-            decoder = Decoder(
+            decoder = UnetDecoder(
                 enc_channels=self.encoder.out_channels,
                 enc_reductions=enc_reductions,
                 out_channels=out_channels[decoder_name],

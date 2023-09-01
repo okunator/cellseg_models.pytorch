@@ -3,12 +3,12 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 
-from .decoder_stage import DecoderStage
+from .unet_decoder_stage import UnetDecoderStage
 
-__all__ = ["Decoder"]
+__all__ = ["UnetDecoder"]
 
 
-class Decoder(nn.ModuleDict):
+class UnetDecoder(nn.ModuleDict):
     def __init__(
         self,
         enc_channels: Tuple[int, ...],
@@ -116,7 +116,7 @@ class Decoder(nn.ModuleDict):
 
         # Build decoder
         for i in range(self.depth - 1):
-            decoder_block = DecoderStage(
+            decoder_block = UnetDecoderStage(
                 stage_ix=i,
                 dec_channels=tuple(out_channels),
                 up_factors=tuple(up_factors),

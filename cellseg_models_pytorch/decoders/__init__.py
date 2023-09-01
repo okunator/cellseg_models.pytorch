@@ -1,4 +1,4 @@
-from .decoder import Decoder
-from .decoder_stage import DecoderStage
+from .unet_decoder import UnetDecoder
+from .unet_decoder_stage import UnetDecoderStage
 
-__all__ = ["DecoderStage", "Decoder"]
+__all__ = ["UnetDecoderStage", "UnetDecoder"]

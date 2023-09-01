@@ -3,10 +3,11 @@ from typing import Dict, List, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 
-from ...decoders import Decoder
-from ...decoders.long_skips import StemSkip
-from ...encoders import Encoder
-from ...modules.misc_modules import StyleReshape
+from cellseg_models_pytorch.decoders import UnetDecoder
+from cellseg_models_pytorch.decoders.long_skips import StemSkip
+from cellseg_models_pytorch.encoders import Encoder
+from cellseg_models_pytorch.modules.misc_modules import StyleReshape
+
 from ..base._base_model import BaseMultiTaskSegModel
 from ..base._seg_head import SegHead
 from ._conf import _create_hovernet_args
@@ -190,7 +191,7 @@ class HoverNet(BaseMultiTaskSegModel):
 
         # set decoders and heads
         for decoder_name in decoders:
-            decoder = Decoder(
+            decoder = UnetDecoder(
                 enc_channels=self.encoder.out_channels,
                 enc_reductions=enc_reductions,
                 out_channels=out_channels,

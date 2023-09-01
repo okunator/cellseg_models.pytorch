@@ -6,10 +6,10 @@ import torch.nn as nn
 from ..modules import ChannelPool, ConvLayer, Transformer2D, Up
 from .long_skips import LongSkip
 
-__all__ = ["DecoderStage"]
+__all__ = ["UnetDecoderStage"]
 
 
-class DecoderStage(nn.Module):
+class UnetDecoderStage(nn.Module):
     def __init__(
         self,
         stage_ix: int,

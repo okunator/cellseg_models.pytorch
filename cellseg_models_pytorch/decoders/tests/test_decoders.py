@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from cellseg_models_pytorch.decoders import Decoder
+from cellseg_models_pytorch.decoders import UnetDecoder
 
 
 @pytest.mark.parametrize(
@@ -40,7 +40,7 @@ def test_decoder_fwdbwd(long_skip, merge_policy, use_conv, use_tr):
         n_tr_layers = (1, 1, 1, 1)
         n_tr_blocks = ((1,), (1,), (1,), (1,))
 
-    decoder = Decoder(
+    decoder = UnetDecoder(
         enc_channels=enc_channels,
         enc_reductions=enc_reductions,
         out_channels=(32, 32, 32, 32),
@@ -170,7 +170,7 @@ def test_decoder_fwdbwd_all(
         decoder5_kwargs,
     )
 
-    decoder = Decoder(
+    decoder = UnetDecoder(
         enc_channels=enc_channels,
         enc_reductions=enc_reductions,
         model_input_size=256,
