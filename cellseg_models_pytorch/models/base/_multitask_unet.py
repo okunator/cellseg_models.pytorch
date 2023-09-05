@@ -34,6 +34,7 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
         inst_key: str = None,
         aux_key: str = None,
         add_stem_skip: bool = False,
+        out_size: Optional[int] = None,
         stem_params: Dict[str, Any] = None,
         encoder_params: Optional[Dict] = None,
         unettr_kwargs: Optional[Dict] = None,
@@ -93,6 +94,9 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
                 If True, a stem conv block is added to the model whose output is used
                 as a long skip input at the final decoder layer that is the highest
                 resolution layer and the same resolution as the input image.
+            out_size : Optional[int], default=None
+                The output size of the model. If None, the output size is the same as
+                the input size.
             stem_params : Dict[str, Any], optional
                 The keyword args for the stem conv block. See `StemSkip` for more info.
             encoder_params : Optional[Dict]
@@ -104,6 +108,7 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
                 `EncoderUnetTR`
         """
         super().__init__()
+        self.out_size = out_size
         self.enc_freeze = enc_freeze
         use_style = style_channels is not None
         self.heads = heads
