@@ -211,6 +211,7 @@ def resize(height: int, width: int, **kwargs) -> List[BasicTransform]:
     """
     return [
         A.OneOf(
-            [A.Resize(height=height, width=width, interpolation=cv2.INTER_CUBIC, p=1)]
+            [A.Resize(height=height, width=width, interpolation=cv2.INTER_CUBIC, p=1)],
+            p=1.0,
         )
     ]
