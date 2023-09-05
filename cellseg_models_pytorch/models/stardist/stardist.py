@@ -40,6 +40,7 @@ class StarDistUnet(BaseMultiTaskSegModel):
         attention: str = None,
         preattend: bool = False,
         add_stem_skip: bool = False,
+        out_size: Optional[int] = None,
         skip_params: Optional[Dict] = None,
         encoder_params: Optional[Dict] = None,
         **kwargs,
@@ -123,6 +124,9 @@ class StarDistUnet(BaseMultiTaskSegModel):
                 If True, a stem conv block is added to the model whose output is used
                 as a long skip input at the final decoder layer that is the highest
                 resolution layer and the same resolution as the input image.
+            out_size : int, optional
+                If specified, the output size of the model will be (out_size, out_size).
+                I.e. the outputs will be interpolated to this size.
             skip_params : Optional[Dict]
                 Extra keyword arguments for the skip-connection modules. These depend
                 on the skip module. Refer to specific skip modules for more info. I.e.
@@ -138,6 +142,7 @@ class StarDistUnet(BaseMultiTaskSegModel):
             ValueError: If extra_convs names don't have a matching head name in `heads`.
         """
         super().__init__()
+        self.out_size = out_size
         self.aux_key = self._check_decoder_args(decoders, ("stardist",))
         self.inst_key = inst_key
         self._check_head_args(extra_convs, decoders)

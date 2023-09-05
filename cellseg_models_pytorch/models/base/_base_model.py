@@ -82,6 +82,12 @@ class BaseMultiTaskSegModel(nn.ModuleDict):
         for head in heads:
             branch = head.split("_")[0]
             x = self[head](dec_feats[branch][-1])  # the last decoder stage feat map
+
+            if self.out_size is not None:
+                x = nn.functional.interpolate(
+                    x, size=self.out_size, mode="bilinear", align_corners=False
+                )
+
             res[branch] = x
 
         return res
