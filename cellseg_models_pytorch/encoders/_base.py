@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Dict, Optional, Tuple, Union
+from urllib.parse import urlparse
 
 import torch
 import torch.nn as nn
@@ -40,7 +41,7 @@ class BaseTrEncoder(nn.Module):
         # set checkpoint path
         self.ckpt_path = checkpoint_path
         if checkpoint_path is not None:
-            if checkpoint_path.startswith("https://"):
+            if urlparse(checkpoint_path).scheme:
                 self.is_url = True
                 self.ckpt_path = checkpoint_path
             else:
