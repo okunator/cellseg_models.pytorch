@@ -3,6 +3,7 @@ from typing import Any, Dict, Tuple, Union
 import torch
 import torch.nn as nn
 
+from .dino_vit import build_dinov2_encoder
 from .histo_encoder import build_histo_encoder
 from .timm_encoder import TimmEncoder
 from .unettr_encoder import EncoderUnetTR
@@ -17,6 +18,10 @@ TR_ENCODERS = {
     "sam_vit_l": build_sam_encoder,
     "sam_vit_b": build_sam_encoder,
     "sam_vit_h": build_sam_encoder,
+    "dinov2_vit_small": build_dinov2_encoder,
+    "dinov2_vit_base": build_dinov2_encoder,
+    "dinov2_vit_large": build_dinov2_encoder,
+    "dinov2_vit_giant": build_dinov2_encoder,
 }
 
 
