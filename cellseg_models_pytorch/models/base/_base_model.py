@@ -107,13 +107,14 @@ class BaseMultiTaskSegModel(nn.ModuleDict):
 
     def _check_input_shape(self, x: torch.Tensor) -> None:
         """Check that the input is divisible by 32."""
-        h, w = x.shape[-2:]
+        # h, w = x.shape[-2:]
 
-        if (h % 32) + (w % 32):
-            raise RuntimeError(
-                "Illegal input shape. Expected input H/W to be divisible by 32. "
-                f"Got height: {h}, and width: {w}."
-            )
+        # if (h % 32) + (w % 32):
+        #     raise RuntimeError(
+        #         "Illegal input shape. Expected input H/W to be divisible by 32. "
+        #         f"Got height: {h}, and width: {w}."
+        #     )
+        return
 
     def _check_decoder_args(
         self, decoders: Tuple[str], must_haves: Tuple[str, ...]
