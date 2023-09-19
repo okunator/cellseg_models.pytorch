@@ -30,13 +30,14 @@
 - 5 cell/nuclei instance segmentation models and more to come.
 - Open source datasets for training and benchmarking.
 - Pre-trained backbones/encoders from the [timm](https://github.com/huggingface/pytorch-image-models) library.
-- All the architectures can be augmented to **panoptic segmentation**.
-- A lot of flexibility to modify the components of the model architectures.
+- Pre-trained transformer backbones like [DinoV2](https://arxiv.org/abs/2304.07193) and [SAM](https://ai.facebook.com/research/publications/segment-anything/).
+- All the architectures can be augmented to [panoptic segmentation](https://arxiv.org/abs/1801.00868).
+- Flexibility to modify the components of the model architectures.
 - Sliding window inference for large images.
 - Multi-GPU inference.
 - Popular training losses and benchmarking metrics.
 - Benchmarking utilities both for model latency & segmentation performance.
-- Regularization techniques to tackle batch effects/domain shifts.
+- Regularization techniques to tackle batch effects/domain shifts such as [Strong Augment](https://arxiv.org/abs/2206.15274), [Spectral decpupling](ttps://arxiv.org/abs/2011.09468), [Label smoothing](https://arxiv.org/abs/1512.00567).
 - Ability to add transformers to the decoder layers.
 - Example notebooks to train models with [lightning](https://lightning.ai/docs/pytorch/latest/) or [accelerate](https://huggingface.co/docs/accelerate/index).
 
@@ -77,7 +78,8 @@ pip install cellseg-models-pytorch[all]
 - [Training Stardist with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_stardist.ipynb). Here we train the Stardist multi-class nuclei segmentation model with an `imagenet` pretrained `efficientnetv2_s` backbone from the `timm` library. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained by utilizing [lightning](https://lightning.ai/docs/pytorch/latest/).
 - [Training CellPose with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cellpose.ipynb). Here we train the CellPose multi-class nuclei segmentation model with an `imagenet` pretrained `convnext_small` backbone from the `timm` library. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [accelerate](https://huggingface.co/docs/accelerate/index) by hugginface.
 - [Training OmniPose with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_omnipose.ipynb). Here we train the OmniPose multi-class nuclei segmentation model with an `imagenet` pretrained `focalnet_small_lrf` backbone from the `timm` library. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [accelerate](https://huggingface.co/docs/accelerate/index) by hugginface.
-- [Finetuning CellVit-SAM with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cellvit.ipynb). Here we finetune the CellVit-SAM multi-class nuclei segmentation model with a `SA-1B` pretrained SAM-image-encoder backbone. The encoder is transformer based `VitDet`-model. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [accelerate](https://huggingface.co/docs/accelerate/index) by hugginface.
+- [Finetuning CellPose with DINOv2 backbone for Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cellpose_dinov2.ipynb). Here we finetune the CellPose multi-class nuclei segmentation model with a `LVD-142M` pretrained `DINOv2` backbone. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [lightning](https://lightning.ai/docs/pytorch/latest/).
+- [Finetuning CellVit-SAM with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cellvit.ipynb). Here we finetune the CellVit-SAM multi-class nuclei segmentation model with a `SA-1B` pretrained SAM-image-encoder backbone (checkout [`SAM`](https://github.com/facebookresearch/segment-anything)). The encoder is transformer based `VitDet`-model. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [accelerate](https://huggingface.co/docs/accelerate/index) by hugginface.
 - [Training CellPose with Lizard](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/lizard_nuclei_segmentation_cellpose.ipynb). Train the Cellpose model with Lizard dataset that is composed of varying sized images.
 - [Benchmarking Cellpose Trained on Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_cellpose_benchmark.ipynb). Benchmark Cellpose trained on Pannuke. Both the model performance and latency.
 
