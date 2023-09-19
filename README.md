@@ -37,7 +37,7 @@
 - Multi-GPU inference.
 - Popular training losses and benchmarking metrics.
 - Benchmarking utilities both for model latency & segmentation performance.
-- Regularization techniques to tackle batch effects/domain shifts such as [Strong Augment](https://arxiv.org/abs/2206.15274), [Spectral decpupling](ttps://arxiv.org/abs/2011.09468), [Label smoothing](https://arxiv.org/abs/1512.00567).
+- Regularization techniques to tackle batch effects/domain shifts such as [Strong Augment](https://arxiv.org/abs/2206.15274), [Spectral decoupling](https://arxiv.org/abs/2011.09468), [Label smoothing](https://arxiv.org/abs/1512.00567).
 - Ability to add transformers to the decoder layers.
 - Example notebooks to train models with [lightning](https://lightning.ai/docs/pytorch/latest/) or [accelerate](https://huggingface.co/docs/accelerate/index).
 
