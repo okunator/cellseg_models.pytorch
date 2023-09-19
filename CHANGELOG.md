@@ -1,5 +1,18 @@
 
 <a id='changelog-0.1.23'></a>
+# 0.1.23 — 2023-09-19
+
+## Features
+
+- Add option to interpolate model outputs to a given size to all of the segmentation models.
+
+- Add DINOv2 Backbone
+
+## Fixes
+
+- Fix resize transformation bug.
+
+<a id='changelog-0.1.23'></a>
 # 0.1.23 — 2023-08-28
 
 ## Features
