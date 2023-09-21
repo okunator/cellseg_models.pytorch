@@ -27,7 +27,7 @@
 ## Features
 
 - High level API to define cell/nuclei instance segmentation models.
-- 5 cell/nuclei instance segmentation models and more to come.
+- 6 cell/nuclei instance segmentation models and more to come.
 - Open source datasets for training and benchmarking.
 - Pre-trained backbones/encoders from the [timm](https://github.com/huggingface/pytorch-image-models) library.
 - Pre-trained transformer backbones like [DinoV2](https://arxiv.org/abs/2304.07193) and [SAM](https://ai.facebook.com/research/publications/segment-anything/).
@@ -64,24 +64,107 @@ pip install cellseg-models-pytorch[all]
 | [[3](#Citation)] Omnipose  | https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2                    |
 | [[4](#Citation)] Stardist  | https://arxiv.org/abs/1806.03535                                               |
 | [[5](#Citation)] CellVit-SAM  | https://arxiv.org/abs/2306.15350.03535                                               |
+| [[6](#Citation)] CPP-Net  | https://arxiv.org/abs/2102.0686703535                                               |
 
 ## Datasets
 
 | Dataset                       | Paper                                                                                            |
 | ----------------------------- | ------------------------------------------------------------------------------------------------ |
-| [[6, 7](#References)] Pannuke | https://arxiv.org/abs/2003.10778 , https://link.springer.com/chapter/10.1007/978-3-030-23937-4_2 |
-| [[8](#References)] Lizard     | http://arxiv.org/abs/2108.11195                                                                  |
+| [[7, 8](#References)] Pannuke | https://arxiv.org/abs/2003.10778 , https://link.springer.com/chapter/10.1007/978-3-030-23937-4_2 |
+| [[9](#References)] Lizard     | http://arxiv.org/abs/2108.11195                                                                  |
 
 ## Notebook examples
 
-- [Training Hover-Net with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_hovernet.ipynb). Here we train the Hover-Net nuclei segmentation model with an `imagenet` pretrained `resnet50` backbone from the `timm` library. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained by utilizing [lightning](https://lightning.ai/docs/pytorch/latest/) (with checkpointing).
-- [Training Stardist with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_stardist.ipynb). Here we train the Stardist multi-class nuclei segmentation model with an `imagenet` pretrained `efficientnetv2_s` backbone from the `timm` library. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained by utilizing [lightning](https://lightning.ai/docs/pytorch/latest/).
-- [Training CellPose with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cellpose.ipynb). Here we train the CellPose multi-class nuclei segmentation model with an `imagenet` pretrained `convnext_small` backbone from the `timm` library. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [accelerate](https://huggingface.co/docs/accelerate/index) by hugginface.
+<details>
+<summary style="margin-left: 25px;"> Training Hover-Net with Pannuke</summary>
+<div style="margin-left: 25px;">
+
+- [Training Hover-Net with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_hovernet.ipynb). Here we train the `Hover-Net` nuclei segmentation model with an `imagenet` pretrained `resnet50` backbone from the `timm` library. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained by utilizing [lightning](https://lightning.ai/docs/pytorch/latest/).
+
+</div>
+</details>
+
+<details>
+<summary style="margin-left: 25px;">Training Stardist with Pannuke</summary>
+<div style="margin-left: 25px;">
+
+- [Training Stardist with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_stardist.ipynb). Here we train the `Stardist` multi-class nuclei segmentation model with an `imagenet` pretrained `efficientnetv2_s` backbone from the `timm` library. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained by utilizing [lightning](https://lightning.ai/docs/pytorch/latest/).
+
+</div>
+</details>
+
+<details>
+<summary style="margin-left: 25px;">Training CellPose with Pannuke</summary>
+<div style="margin-left: 25px;">
+
+- [Training CellPose with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cellpose.ipynb). Here we train the `CellPose` multi-class nuclei segmentation model with an `imagenet` pretrained `convnext_small` backbone from the `timm` library. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [accelerate](https://huggingface.co/docs/accelerate/index) by hugginface.
+
+</div>
+</details>
+
+<details>
+<summary style="margin-left: 25px;">Training OmniPose with Pannuke</summary>
+<div style="margin-left: 25px;">
+
 - [Training OmniPose with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_omnipose.ipynb). Here we train the OmniPose multi-class nuclei segmentation model with an `imagenet` pretrained `focalnet_small_lrf` backbone from the `timm` library. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [accelerate](https://huggingface.co/docs/accelerate/index) by hugginface.
+
+</div>
+</details>
+
+<details>
+<summary style="margin-left: 25px;">Training CPP-Net with Pannuke</summary>
+<div style="margin-left: 25px;">
+
+- [Training CPP-Net with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cppnet.ipynb). Here we train the CPP-Net multi-class nuclei segmentation model with an `imagenet` pretrained `efficientnetv2_s` backbone from the `timm` library. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained by utilizing [lightning](https://lightning.ai/docs/pytorch/latest/).
+
+</div>
+</details>
+
+<details>
+<summary style="margin-left: 25px;">Finetuning CellPose with DINOv2 backbone</summary>
+<div style="margin-left: 25px;">
+
 - [Finetuning CellPose with DINOv2 backbone for Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cellpose_dinov2.ipynb). Here we finetune the CellPose multi-class nuclei segmentation model with a `LVD-142M` pretrained `DINOv2` backbone. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [lightning](https://lightning.ai/docs/pytorch/latest/).
-- [Finetuning CellVit-SAM with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cellvit.ipynb). Here we finetune the CellVit-SAM multi-class nuclei segmentation model with a `SA-1B` pretrained SAM-image-encoder backbone (checkout [`SAM`](https://github.com/facebookresearch/segment-anything)). The encoder is transformer based `VitDet`-model. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [accelerate](https://huggingface.co/docs/accelerate/index) by hugginface.
-- [Training CellPose with Lizard](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/lizard_nuclei_segmentation_cellpose.ipynb). Train the Cellpose model with Lizard dataset that is composed of varying sized images.
-- [Benchmarking Cellpose Trained on Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_cellpose_benchmark.ipynb). Benchmark Cellpose trained on Pannuke. Both the model performance and latency.
+
+</div>
+</details>
+
+<details>
+<summary style="margin-left: 25px;">Finetuning CellVit-SAM with Pannuke</summary>
+<div style="margin-left: 25px;">
+
+- [Finetuning CellVit-SAM with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cellvit.ipynb). Here we finetune the CellVit-SAM multi-class nuclei segmentation model with a `SA-1B` pretrained `SAM`-image-encoder backbone (checkout [`SAM`](https://github.com/facebookresearch/segment-anything)). The encoder is transformer based `VitDet`-model. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [accelerate](https://huggingface.co/docs/accelerate/index) by hugginface.
+
+</div>
+</details>
+
+
+<details>
+<summary style="margin-left: 25px;">Benchmarking Cellpose Trained on Pannuke</summary>
+<div style="margin-left: 25px;">
+
+- [Benchmarking Cellpose Trained on Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_cellpose_benchmark.ipynb). Here we run benchmarking for `Cellpose` that was trained on Pannuke. Both the model performance and latency benchmarking are covered.
+
+</div>
+</details>
+
+<details>
+<summary style="margin-left: 25px;">Training CellPose with Lizard</summary>
+<div style="margin-left: 25px;">
+
+- [Training CellPose with Lizard](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/lizard_nuclei_segmentation_cellpose.ipynb). Here we train the `Cellpose` model with Lizard dataset that is composed of varying sized images. This example is old and might not be up to date.
+
+</div>
+</details>
+
+
+
+
+
+
+
+
+
 
 ## Code Examples
 
@@ -260,10 +343,13 @@ With the function API, you can build models with low effort by calling the below
 | `csmp.models.stardist_base`            | `"stardist"`, `"dist"`                    | **binary instance segmentation** |
 | `csmp.models.stardist_base_multiclass` | `"stardist"`, `"dist"`, `"type"`          | **instance segmentation**        |
 | `csmp.models.stardist_plus`            | `"stardist"`, `"dist"`, `"type"`, `"sem"` | **panoptic segmentation**        |
-| `csmp.models.cellvit_sam_base`            | `"type"`, `"inst"`, `"hovernet"`          | **instance segmentation**        |
-| `csmp.models.cellvit_sam_plus`            | `"type"`, `"inst"`, `"hovernet"`, `"sem"` | **panoptic segmentation**        |
-| `csmp.models.cellvit_sam_small`           | `"type"`,`"hovernet"`                     | **instance segmentation**        |
-| `csmp.models.cellvit_sam_small_plus`      | `"type"`, `"hovernet"`, `"sem"`           | **panoptic segmentation**        |
+| `csmp.models.cppnet_base`              | `"stardist_refined"`, `"dist"`                    | **binary instance segmentation** |
+| `csmp.models.cppnet_base_multiclass`   | `"stardist_refined"`, `"dist"`, `"type"`          | **instance segmentation**        |
+| `csmp.models.cppnet_plus`              | `"stardist_refined"`, `"dist"`, `"type"`, `"sem"` | **panoptic segmentation**        |
+| `csmp.models.cellvit_sam_base`         | `"type"`, `"inst"`, `"hovernet"`          | **instance segmentation**        |
+| `csmp.models.cellvit_sam_plus`         | `"type"`, `"inst"`, `"hovernet"`, `"sem"` | **panoptic segmentation**        |
+| `csmp.models.cellvit_sam_small`        | `"type"`,`"hovernet"`                     | **instance segmentation**        |
+| `csmp.models.cellvit_sam_small_plus`   | `"type"`, `"hovernet"`, `"sem"`           | **panoptic segmentation**        |
 
 ## References
 
@@ -272,9 +358,10 @@ With the function API, you can build models with low effort by calling the below
 - [3] Cutler, K. J., Stringer, C., Wiggins, P. A., & Mougous, J. D. (2022). Omnipose: a high-precision morphology-independent solution for bacterial cell segmentation. bioRxiv. doi:10.1101/2021.11.03.467199
 - [4] Uwe Schmidt, Martin Weigert, Coleman Broaddus, & Gene Myers (2018). Cell Detection with Star-Convex Polygons. In Medical Image Computing and Computer Assisted Intervention - MICCAI 2018 - 21st International Conference, Granada, Spain, September 16-20, 2018, Proceedings, Part II (pp. 265–273).
 - [5] Hörst, F., Rempe, M., Heine, L., Seibold, C., Keyl, J., Baldini, G., Ugurel, S., Siveke, J., Grünwald, B., Egger, J., & Kleesiek, J. (2023). CellViT: Vision Transformers for Precise Cell Segmentation and Classification (Version 1). arXiv. https://doi.org/10.48550/ARXIV.2306.15350.
-- [6] Gamper, J., Koohbanani, N., Benet, K., Khuram, A., & Rajpoot, N. (2019) PanNuke: an open pan-cancer histology dataset for nuclei instance segmentation and classification. In European Congress on Digital Pathology (pp. 11-19).
-- [7] Gamper, J., Koohbanani, N., Graham, S., Jahanifar, M., Khurram, S., Azam, A.,Hewitt, K., & Rajpoot, N. (2020). PanNuke Dataset Extension, Insights and Baselines. arXiv preprint arXiv:2003.10778.
-- [8] Graham, S., Jahanifar, M., Azam, A., Nimir, M., Tsang, Y.W., Dodd, K., Hero, E., Sahota, H., Tank, A., Benes, K., & others (2021). Lizard: A Large-Scale Dataset for Colonic Nuclear Instance Segmentation and Classification. In Proceedings of the IEEE/CVF International Conference on Computer Vision (pp. 684-693).
+- [6] Chen, S., Ding, C., Liu, M., Cheng, J., & Tao, D. (2023). CPP-Net: Context-Aware Polygon Proposal Network for Nucleus Segmentation. In IEEE Transactions on Image Processing (Vol. 32, pp. 980–994). Institute of Electrical and Electronics Engineers (IEEE). https://doi.org/10.1109/tip.2023.3237013
+- [7] Gamper, J., Koohbanani, N., Benet, K., Khuram, A., & Rajpoot, N. (2019) PanNuke: an open pan-cancer histology dataset for nuclei instance segmentation and classification. In European Congress on Digital Pathology (pp. 11-19).
+- [8] Gamper, J., Koohbanani, N., Graham, S., Jahanifar, M., Khurram, S., Azam, A.,Hewitt, K., & Rajpoot, N. (2020). PanNuke Dataset Extension, Insights and Baselines. arXiv preprint arXiv:2003.10778.
+- [9] Graham, S., Jahanifar, M., Azam, A., Nimir, M., Tsang, Y.W., Dodd, K., Hero, E., Sahota, H., Tank, A., Benes, K., & others (2021). Lizard: A Large-Scale Dataset for Colonic Nuclear Instance Segmentation and Classification. In Proceedings of the IEEE/CVF International Conference on Computer Vision (pp. 684-693).
 
 ## Citation
 

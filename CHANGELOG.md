@@ -1,5 +1,16 @@
 
 <a id='changelog-0.1.23'></a>
+# 0.1.23 — 2023-09-21
+
+## Docs
+
+- Add `CPP-Net` example trainng with Pannuke dataset.
+
+## Features
+
+- Add `CPP-Net`. https://arxiv.org/abs/2102.06867
+
+<a id='changelog-0.1.23'></a>
 # 0.1.23 — 2023-09-19
 
 ## Features
