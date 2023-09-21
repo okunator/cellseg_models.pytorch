@@ -240,7 +240,7 @@ class CellPoseUnet(BaseMultiTaskSegModel):
                     out_channels=n_classes,
                     kernel_size=1,
                 )
-                self.add_module(f"{output_name}_seg_head", seg_head)
+                self.add_module(f"{decoder_name}_{output_name}_seg_head", seg_head)
 
         self.name = f"CellPoseUnet-{enc_name}"
 
@@ -287,12 +287,6 @@ class CellPoseUnet(BaseMultiTaskSegModel):
             mapping decoder names to outputs and the final head outputs dict.
         """
         feats, dec_feats = self.forward_features(x)
-
-        for decoder_name in self.heads.keys():
-            for head_name in self.heads[decoder_name].keys():
-                k = self.aux_key if head_name not in dec_feats.keys() else head_name
-                dec_feats[head_name] = dec_feats[k]
-
         out = self.forward_heads(dec_feats)
 
         if return_feats:

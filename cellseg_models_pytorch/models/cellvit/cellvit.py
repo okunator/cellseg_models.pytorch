@@ -229,7 +229,7 @@ class CellVitSAM(BaseMultiTaskSegModel):
                     out_channels=n_classes,
                     kernel_size=1,
                 )
-                self.add_module(f"{output_name}_seg_head", seg_head)
+                self.add_module(f"{decoder_name}_{output_name}_seg_head", seg_head)
 
         self.name = f"CellVit-{enc_name}"
 

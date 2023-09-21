@@ -169,7 +169,7 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
                     out_channels=n_classes,
                     kernel_size=1,
                 )
-                self.add_module(f"{output_name}_seg_head", seg_head)
+                self.add_module(f"{decoder_name}_{output_name}_seg_head", seg_head)
 
         self.name = f"MultiTaskUnet-{enc_name}"
 
@@ -205,12 +205,6 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
         feats = self.forward_encoder(x)
         style = self.forward_style(feats[0])
         dec_feats = self.forward_dec_features(feats, style)
-
-        for decoder_name in self.heads.keys():
-            for head_name in self.heads[decoder_name].keys():
-                k = self.aux_key if head_name not in dec_feats.keys() else head_name
-                dec_feats[head_name] = dec_feats[k]
-
         out = self.forward_heads(dec_feats)
 
         return out

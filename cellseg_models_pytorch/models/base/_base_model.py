@@ -80,7 +80,9 @@ class BaseMultiTaskSegModel(nn.ModuleDict):
         res = {}
         heads = [k for k in self.keys() if "head" in k]
         for head in heads:
-            branch = head.split("_")[0]
+            branch_head = head.split("_")
+            branch = branch_head[0]  # branch name
+            head_name = branch_head[1]  # head name
             x = self[head](dec_feats[branch][-1])  # the last decoder stage feat map
 
             if self.out_size is not None:
@@ -88,7 +90,7 @@ class BaseMultiTaskSegModel(nn.ModuleDict):
                     x, size=self.out_size, mode="bilinear", align_corners=False
                 )
 
-            res[branch] = x
+            res[head_name] = x
 
         return res
 

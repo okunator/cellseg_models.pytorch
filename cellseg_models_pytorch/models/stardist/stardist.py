@@ -241,7 +241,7 @@ class StarDistUnet(BaseMultiTaskSegModel):
                     padding=1,
                     bias=False,
                 )
-                self.add_module(f"{extra_conv}_features", features)
+                self.add_module(f"{decoder_name}_{extra_conv}_features", features)
 
         # set heads
         for decoder_name in extra_convs.keys():
@@ -252,7 +252,7 @@ class StarDistUnet(BaseMultiTaskSegModel):
                         out_channels=n_classes,
                         kernel_size=1,
                     )
-                    self.add_module(f"{output_name}_seg_head", seg_head)
+                    self.add_module(f"{decoder_name}_{output_name}_seg_head", seg_head)
 
         self.name = f"StardistUnet-{enc_name}"
 
@@ -262,6 +262,23 @@ class StarDistUnet(BaseMultiTaskSegModel):
         # freeze encoder if specified
         if enc_freeze:
             self.freeze_encoder()
+
+    def forward_extra_convs(
+        self, dec_feats: Dict[str, torch.Tensor]
+    ) -> Dict[str, torch.Tensor]:
+        """Forward pass of the (fight over fatures)-convs in Stardist."""
+        extra_convs = [k for k in self.keys() if "features" in k]
+        for conv in extra_convs:
+            branch_head = conv.split("_")
+            branch = branch_head[0]  # branch name
+            conv_name = branch_head[1]  # head name
+            x = self[conv](dec_feats[branch][-1])  # the last decoder stage feat map
+
+            # create new entry in dec_feats for the conv output
+            dec_feats[conv_name] = dec_feats[branch].copy()
+            dec_feats[conv_name][-1] = x  #
+
+        return dec_feats
 
     def forward(
         self,
@@ -303,22 +320,7 @@ class StarDistUnet(BaseMultiTaskSegModel):
         if return_feats:
             ret_dec_feats = dec_feats.copy()
 
-        # Extra convs after decoders
-        for e in self.extra_convs.keys():
-            for extra_conv in self.extra_convs[e].keys():
-                k = self.aux_key if extra_conv not in dec_feats.keys() else extra_conv
-
-                dec_feats[extra_conv] = [
-                    self[f"{extra_conv}_features"](dec_feats[k][-1])
-                ]  # use last decoder feat
-
-        # seg heads
-        for decoder_name in self.heads.keys():
-            for head_name in self.heads[decoder_name].keys():
-                k = self.aux_key if head_name not in dec_feats.keys() else head_name
-                if k != head_name:
-                    dec_feats[head_name] = dec_feats[k]
-
+        dec_feats = self.forward_extra_convs(dec_feats)
         out = self.forward_heads(dec_feats)
 
         if return_feats:
