@@ -139,8 +139,6 @@ class VitDetSAM(BaseTrEncoder):
     ) -> Tuple[torch.Tensor, torch.Tensor, List[torch.Tensor]]:
         """Forward pass of the backbone and return all the features.
 
-        Forward pass of the backbone and return all the features.
-
         Parameters
         ----------
         x : torch.Tensor
