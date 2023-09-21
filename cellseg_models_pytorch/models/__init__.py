@@ -15,6 +15,7 @@ from .cellvit.cellvit import (
     cellvit_sam_small,
     cellvit_sam_small_plus,
 )
+from .cppnet.cppnet import CPPNet, cppnet_base, cppnet_base_multiclass, cppnet_plus
 from .hovernet.hovernet import (
     HoverNet,
     hovernet_base,
@@ -45,6 +46,9 @@ MODEL_LOOKUP = {
     "cellvit_sam_plus": cellvit_sam_plus,
     "cellvit_sam_small": cellvit_sam_small,
     "cellvit_sam_small_plus": cellvit_sam_small_plus,
+    "cppnet_base": cppnet_base,
+    "cppnet_base_multiclass": cppnet_base_multiclass,
+    "cppnet_plus": cppnet_plus,
 }
 
 
@@ -77,6 +81,15 @@ def get_model(
             )
         elif type == "plus":
             model = MODEL_LOOKUP["stardist_plus"](
+                type_classes=ntypes, sem_classes=ntissues, **kwargs
+            )
+    elif name == "cppnet":
+        if type == "base":
+            model = MODEL_LOOKUP["cppnet_base_multiclass"](
+                type_classes=ntypes, **kwargs
+            )
+        elif type == "plus":
+            model = MODEL_LOOKUP["cppnet_plus"](
                 type_classes=ntypes, sem_classes=ntissues, **kwargs
             )
     elif name == "cellpose":
@@ -148,4 +161,8 @@ __all__ = [
     "cellvit_sam_plus",
     "cellvit_sam_small",
     "cellvit_sam_small_plus",
+    "cppnet_base",
+    "cppnet_base_multiclass",
+    "cppnet_plus",
+    "CPPNet",
 ]

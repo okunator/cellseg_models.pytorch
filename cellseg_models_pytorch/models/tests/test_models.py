@@ -4,6 +4,32 @@ import torch
 from cellseg_models_pytorch.models import MultiTaskUnet, get_model
 
 
+@pytest.mark.parametrize("model_type", ["base", "plus"])
+@pytest.mark.parametrize("style_channels", [None, 32])
+@pytest.mark.parametrize("add_stem_skip", [False, True])
+def test_cppnet_fwdbwd(model_type, style_channels, add_stem_skip):
+    n_rays = 3
+    x = torch.rand([1, 3, 32, 32])
+    model = get_model(
+        name="cppnet",
+        type=model_type,
+        n_rays=n_rays,
+        ntypes=3,
+        ntissues=3,
+        style_channels=style_channels,
+        add_stem_skip=add_stem_skip,
+    )
+
+    y = model(x)
+    y["stardist_refined"].mean().backward()
+
+    assert y["type"].shape == x.shape
+    assert y["stardist_refined"].shape == torch.Size([1, n_rays, 32, 32])
+
+    if "sem" in y.keys():
+        assert y["sem"].shape == torch.Size([1, 3, 32, 32])
+
+
 @pytest.mark.parametrize("model_type", ["base", "plus", "small_plus", "small"])
 @pytest.mark.parametrize("style_channels", [None, 32])
 @pytest.mark.parametrize("enc_name", ["sam_vit_b", "sam_vit_h", "sam_vit_l"])
