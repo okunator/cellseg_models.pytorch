@@ -150,7 +150,9 @@ class ResizeInferer(BaseInferer):
             )
             inp_shape = tuple(input_batch.shape[2:])
 
-        input_batch = F.interpolate(input_batch, self.patch_size)
+        if inp_shape != self.patch_size:
+            input_batch = F.interpolate(input_batch, self.patch_size)
+
         batch = input_batch.to(self.device).float()
         logits = self.predictor.forward_pass(batch)
 
@@ -158,9 +160,12 @@ class ResizeInferer(BaseInferer):
         for k, logit in logits.items():
             prob = self.predictor.classify(logit, **self.head_kwargs[k])
 
-            if self.padding:
-                probs[k] = F.interpolate(prob, inp_shape)[..., pad:-pad, pad:-pad]
+            if inp_shape != self.patch_size:
+                if self.padding:
+                    probs[k] = F.interpolate(prob, inp_shape)[..., pad:-pad, pad:-pad]
+                else:
+                    probs[k] = F.interpolate(prob, inp_shape)
             else:
-                probs[k] = F.interpolate(prob, inp_shape)
+                probs[k] = prob
 
         return probs
