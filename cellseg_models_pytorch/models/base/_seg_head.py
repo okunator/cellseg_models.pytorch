@@ -6,7 +6,11 @@ __all__ = ["SegHead"]
 
 class SegHead(nn.Module):
     def __init__(
-        self, in_channels: int, out_channels: int, kernel_size: int = 1
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int = 1,
+        bias: bool = False,
     ) -> None:
         """Segmentation head at the end of decoder branches.
 
@@ -18,6 +22,8 @@ class SegHead(nn.Module):
                 Number of channels in the output tensor.
             kernel_size : int, default=1
                 Kernel size for the conv operation.
+            bias : bool, default=False
+                If True, add a bias term to the conv operation.
 
         """
         super().__init__()
@@ -32,7 +38,7 @@ class SegHead(nn.Module):
             )
         else:
             self.head = nn.Conv2d(
-                in_channels, out_channels, kernel_size=1, padding=0, bias=False
+                in_channels, out_channels, kernel_size=1, padding=0, bias=bias
             )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
