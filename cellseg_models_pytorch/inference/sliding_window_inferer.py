@@ -193,7 +193,9 @@ class SlidingWindowInferer(BaseInferer):
 
         return xyslices, pady, padx
 
-    def _infer_batch(self, input_batch: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def _infer_batch(
+        self, input_batch: torch.Tensor, mixed_precision: bool = False
+    ) -> Dict[str, torch.Tensor]:
         """Infer one batch of images."""
         slices, pady, padx = self._get_slices(
             self.stride, self.patch_size, tuple(input_batch.shape[2:]), self.padding
@@ -235,7 +237,7 @@ class SlidingWindowInferer(BaseInferer):
         # run inference with the slices
         for k, (yslice, xslice) in slices.items():
             batch = input_batch[..., yslice, xslice].to(self.device).float()
-            logits = self.predictor.forward_pass(batch)
+            logits = self.predictor.forward_pass(batch, mixed_precision=mixed_precision)
 
             probs = {}
             for k, logit in logits.items():

@@ -203,19 +203,32 @@ class BaseInferer(ABC):
     def _infer_batch(self):
         raise NotImplementedError
 
-    def infer(self) -> None:
+    def infer(self, mixed_precision: bool = False) -> None:
         """Run inference and post-processing for the images.
 
         NOTE:
-        - Saves outputs in `self.out_masks` or to disk (.mat/.json) files.
-        - If `save_intermediate` is set to True, also intermiediate model outputs are
-            saved to `self.soft_masks`
-        - `self.out_masks` and `self.soft_masks` are nested dicts: E.g.
-                {"sample1": {"inst": [H, W], "type": [H, W], "sem": [H, W]}}
-        - If masks are saved to geojson .json files, more key word arguments
+        - Saves outputs in class attributes or to disk (.mat/.json) files.
+        - If masks are saved to .json (geojson) files, more key word arguments
             need to be given at class initialization. Namely: `geo_format`,
             `classes_type`, `classes_sem`, `offsets`. See more in the
             `FileHandler.save_masks` docs.
+
+        Attributes
+        ----------
+            - out_masks : Dict[str, Dict[str, np.ndarray]]
+                The output masks for each image. The keys are the image names and the
+                values are dictionaries of the masks. E.g.
+                {"sample1": {"inst": [H, W], "type": [H, W], "sem": [H, W]}}
+            - soft_masks : Dict[str, Dict[str, np.ndarray]]
+                NOTE: This attribute is set only if `save_intermediate = True`.
+                The soft masks for each image. I.e. the soft predictions of the trained
+                model The keys are the image names and the values are dictionaries of
+                the soft masks. E.g. {"sample1": {"type": [H, W], "aux": [C, H, W]}}
+
+        Parameters
+        ----------
+            mixed_precision : bool, default=False
+                If True, inference is performed with mixed precision.
         """
         self.soft_masks = {}
         self.out_masks = {}
@@ -227,7 +240,7 @@ class BaseInferer(ABC):
                     names = data["file"]
                     loader.set_description("Running inference")
                     loader.set_postfix_str("Forward pass")
-                    soft_masks = self._infer_batch(data["im"])
+                    soft_masks = self._infer_batch(data["im"], mixed_precision)
                     loader.set_postfix_str("post-processing")
                     soft_masks = self._prepare_mask_list(names, soft_masks)
 

@@ -139,7 +139,9 @@ class ResizeInferer(BaseInferer):
             **kwargs,
         )
 
-    def _infer_batch(self, input_batch: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def _infer_batch(
+        self, input_batch: torch.Tensor, mixed_precision: bool = False
+    ) -> Dict[str, torch.Tensor]:
         """Infer one batch of images."""
         inp_shape = tuple(input_batch.shape[2:])
 
@@ -154,7 +156,7 @@ class ResizeInferer(BaseInferer):
             input_batch = F.interpolate(input_batch, self.patch_size)
 
         batch = input_batch.to(self.device).float()
-        logits = self.predictor.forward_pass(batch)
+        logits = self.predictor.forward_pass(batch, mixed_precision=mixed_precision)
 
         probs = {}
         for k, logit in logits.items():

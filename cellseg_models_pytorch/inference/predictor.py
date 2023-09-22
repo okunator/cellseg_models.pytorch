@@ -108,7 +108,10 @@ class Predictor:
         )
 
     def forward_pass(
-        self, patch: Union[np.ndarray, torch.Tensor], in_dim_format: str = "HWC"
+        self,
+        patch: Union[np.ndarray, torch.Tensor],
+        in_dim_format: str = "HWC",
+        mixed_precision: bool = False,
     ) -> Dict[str, torch.Tensor]:
         """Input an image patch or batch of patches to the network and return logits.
 
@@ -119,7 +122,8 @@ class Predictor:
             in_dim_format : str, default="HWC"
                 The order of the dimensions in the input array.
                 One of: "HWC", "BHWC"
-
+            mixed_precision : bool, default=False
+                Use mixed precision for inference.
 
         Returns
         -------
@@ -145,7 +149,11 @@ class Predictor:
             patch = patch.float()
 
         with torch.no_grad():
-            out = self.model(patch)
+            if mixed_precision:
+                with torch.autocast(device_type="cuda", dtype=torch.float16):
+                    out = self.model(patch)
+            else:
+                out = self.model(patch)
 
         return out
 
