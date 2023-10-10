@@ -18,7 +18,6 @@ def test_slidingwin_inference(img_dir, batch_size):
         padding=80,
         instance_postproc="hovernet",
         batch_size=batch_size,
-        save_intermediate=False,
         device="cpu",
         parallel=False,
     )
@@ -42,7 +41,6 @@ def test_resize_inference(img_dir, batch_size):
         padding=80,
         instance_postproc="hovernet",
         batch_size=batch_size,
-        save_intermediate=False,
         device="cpu",
         parallel=False,
     )

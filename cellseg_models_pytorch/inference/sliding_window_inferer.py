@@ -25,9 +25,6 @@ class SlidingWindowInferer(BaseInferer):
         normalization: str = None,
         device: str = "cuda",
         n_devices: int = 1,
-        save_intermediate: bool = False,
-        save_dir: Union[Path, str] = None,
-        save_format: str = ".mat",
         checkpoint_path: Union[Path, str] = None,
         n_images: int = None,
         type_post_proc: Callable = None,
@@ -42,84 +39,76 @@ class SlidingWindowInferer(BaseInferer):
 
         Parameters
         ----------
-            model : nn.Module
-                A segmentation model.
-            input_path : Path | str
-                Path to a folder of images or to hdf5 db.
-            out_activations : Dict[str, str]
-                Dictionary of head names mapped to a string value that specifies the
-                activation applied at the head. E.g. {"type": "tanh", "cellpose": None}
-                Allowed values: "softmax", "sigmoid", "tanh", None.
-            out_boundary_weights : Dict[str, bool]
-                Dictionary of head names mapped to a boolean value. If the value is
-                True, after a prediction, a weight matrix is applied that assigns bigger
-                weight on pixels in the center and less weight to pixels on the tile
-                boundaries. helps dealing with prediction artefacts on the boundaries.
-                E.g. {"type": False, "cellpose": True}
-            stride : int
-                Stride of the sliding window.
-            patch_size : Tuple[int, int]:
-                The size of the input patches that are fed to the segmentation model.
-            instance_postproc : str
-                The post-processing method for the instance segmentation mask. One of:
-                "cellpose", "omnipose", "stardist", "hovernet", "dcan", "drfns", "dran"
-            padding : int, optional
-                The amount of reflection padding for the input images.
-            batch_size : int, default=8
-                Number of images loaded from the folder at every batch.
-            normalization : str, optional
-                Apply img normalization (Same as during training). One of "dataset",
-                "minmax", "norm", "percentile", None.
-            device : str, default="cuda"
-                The device of the input and model. One of: "cuda", "cpu"
-            n_devices : int, default=1
-                Number of devices (cpus/gpus) used for inference.
-                The model will be copied into these devices.
-            save_intermediate : bool, default=False
-                If True, intermediate soft masks will be saved into `soft_masks` var.
-            save_dir : bool, optional
-                Path to save directory. If None, no masks will be saved to disk as .mat
-                or .json files. Instead the masks will be saved in `self.out_masks`.
-            save_format : str, default=".mat"
-                The file format for the saved output masks. One of (".mat", ".json").
-                The ".json" option will save masks into geojson format.
-            checkpoint_path : Path | str, optional
-                Path to the model weight checkpoints.
-            n_images : int, optional
-                First n-number of images used from the `input_path`.
-            type_post_proc : Callable, optional
-                A post-processing function for the type maps. If not None, overrides
-                the default.
-            sem_post_proc : Callable, optional
-                A post-processing function for the semantc seg maps. If not None,
-                overrides the default.
-            **kwargs:
-                Arbitrary keyword arguments expecially for post-processing and saving.
+        model : nn.Module
+            A segmentation model.
+        input_path : Path | str
+            Path to a folder of images or to hdf5 db.
+        out_activations : Dict[str, str]
+            Dictionary of head names mapped to a string value that specifies the
+            activation applied at the head. E.g. {"type": "tanh", "cellpose": None}
+            Allowed values: "softmax", "sigmoid", "tanh", None.
+        out_boundary_weights : Dict[str, bool]
+            Dictionary of head names mapped to a boolean value. If the value is
+            True, after a prediction, a weight matrix is applied that assigns bigger
+            weight on pixels in the center and less weight to pixels on the tile
+            boundaries. helps dealing with prediction artefacts on the boundaries.
+            E.g. {"type": False, "cellpose": True}
+        stride : int
+            Stride of the sliding window.
+        patch_size : Tuple[int, int]:
+            The size of the input patches that are fed to the segmentation model.
+        instance_postproc : str
+            The post-processing method for the instance segmentation mask. One of:
+            "cellpose", "omnipose", "stardist", "hovernet", "dcan", "drfns", "dran"
+        padding : int, optional
+            The amount of reflection padding for the input images.
+        batch_size : int, default=8
+            Number of images loaded from the folder at every batch.
+        normalization : str, optional
+            Apply img normalization (Same as during training). One of "dataset",
+            "minmax", "norm", "percentile", None.
+        device : str, default="cuda"
+            The device of the input and model. One of: "cuda", "cpu"
+        n_devices : int, default=1
+            Number of devices (cpus/gpus) used for inference.
+            The model will be copied into these devices.
+        checkpoint_path : Path | str, optional
+            Path to the model weight checkpoints.
+        n_images : int, optional
+            First n-number of images used from the `input_path`.
+        type_post_proc : Callable, optional
+            A post-processing function for the type maps. If not None, overrides
+            the default.
+        sem_post_proc : Callable, optional
+            A post-processing function for the semantc seg maps. If not None,
+            overrides the default.
+        **kwargs:
+            Arbitrary keyword arguments for post-processing.
 
         Examples
         --------
-            >>> # initialize model and paths
-            >>> model = cellpose_plus(len(type_classes), len(area_classes))
-            >>> inputs = "/path/to/images"
-            >>> ckpt_path = "/path/to/my_weights.ckpt"
+        >>> # initialize model and paths
+        >>> model = cellpose_plus(len(type_classes), len(area_classes))
+        >>> inputs = "/path/to/images"
+        >>> ckpt_path = "/path/to/my_weights.ckpt"
 
-            >>> # initialize output head args
-            >>> out_activations={"type": "softmax", "cellpose": None, "sem": "softmax"}
-            >>> out_boundary_weights={"type": False, "cellpose": True, "sem": False}
+        >>> # initialize output head args
+        >>> out_activations={"type": "softmax", "cellpose": None, "sem": "softmax"}
+        >>> out_boundary_weights={"type": False, "cellpose": True, "sem": False}
 
-            >>> # Run inference
-            >>> inferer = SlidingWindowInferer(
-                    model=model,
-                    input_path=inputs,
-                    checkpoint_path=ckpt_path,
-                    out_activations=out_activations,
-                    out_boundary_weights=out_boundary_weights,
-                    stride=256,
-                    patch_size=(320, 320),
-                    instance_postproc="cellpose",
-                    normalization="minmax" # This needs to be same as during training
-                )
-            >>> inferer.infer()
+        >>> # Run inference
+        >>> inferer = SlidingWindowInferer(
+                model=model,
+                input_path=inputs,
+                checkpoint_path=ckpt_path,
+                out_activations=out_activations,
+                out_boundary_weights=out_boundary_weights,
+                stride=256,
+                patch_size=(320, 320),
+                instance_postproc="cellpose",
+                normalization="minmax" # This needs to be same as during training
+            )
+        >>> inferer.infer()
         """
         super().__init__(
             model=model,
@@ -132,9 +121,6 @@ class SlidingWindowInferer(BaseInferer):
             normalization=normalization,
             instance_postproc=instance_postproc,
             device=device,
-            save_intermediate=save_intermediate,
-            save_dir=save_dir,
-            save_format=save_format,
             checkpoint_path=checkpoint_path,
             n_images=n_images,
             n_devices=n_devices,
