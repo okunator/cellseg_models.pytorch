@@ -143,10 +143,10 @@ class BaseInferer(ABC):
 
             # try loading the weights to the model
             try:
-                msg = self.model.load_state_dict(state_dict, strict=False)
+                msg = self.model.load_state_dict(state_dict, strict=True)
             except RuntimeError:
                 new_ckpt = self._strip_state_dict(state_dict)
-                msg = self.model.load_state_dict(new_ckpt, strict=False)
+                msg = self.model.load_state_dict(new_ckpt, strict=True)
             except BaseException as e:
                 raise RuntimeError(f"Error when loading checkpoint: {e}")
 
