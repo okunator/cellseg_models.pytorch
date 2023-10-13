@@ -1,23 +1,26 @@
 
 <a id='changelog-0.1.23'></a>
-# 0.1.23 — 2023-09-21
+# 0.1.24 — 2023-10-13
 
-## Docs
+## Style
 
-- Add `CPP-Net` example trainng with Pannuke dataset.
+- Update the `Ìnferer.infer()` -method api to accept arguments related to saving the model outputs.
 
 ## Features
 
 - Add `CPP-Net`. https://arxiv.org/abs/2102.06867
 
-<a id='changelog-0.1.23'></a>
-# 0.1.23 — 2023-09-19
-
-## Features
+- Add option for mixed precision inference
 
 - Add option to interpolate model outputs to a given size to all of the segmentation models.
 
 - Add DINOv2 Backbone
+
+- Add support for `.geojson`, `.feather`, `.parquet` file formats when running inference.
+
+## Docs
+
+- Add `CPP-Net` example trainng with Pannuke dataset.
 
 ## Fixes
 
