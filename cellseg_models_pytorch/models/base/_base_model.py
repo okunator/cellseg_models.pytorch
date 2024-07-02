@@ -17,7 +17,7 @@ class BaseMultiTaskSegModel(nn.ModuleDict):
 
         NOTE: Returns both encoder and decoder features, not style.
         """
-        feats = self.forward_encoder(x)
+        enc_output, feats = self.forward_encoder(x)
         style = self.forward_style(feats[0])
         dec_feats = self.forward_dec_features(feats, style)
 
@@ -25,7 +25,7 @@ class BaseMultiTaskSegModel(nn.ModuleDict):
         if self.add_stem_skip:
             dec_feats = self.forward_stem_skip(x, dec_feats)
 
-        return feats, dec_feats
+        return enc_output, feats, dec_feats
 
     def forward_stem_skip(
         self, x: torch.Tensor, dec_feats: Dict[str, torch.Tensor]
@@ -38,12 +38,14 @@ class BaseMultiTaskSegModel(nn.ModuleDict):
 
         return dec_feats
 
-    def forward_encoder(self, x: torch.Tensor) -> List[torch.Tensor]:
+    def forward_encoder(
+        self, x: torch.Tensor
+    ) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         """Forward the model encoder."""
         self._check_input_shape(x)
-        feats = self.encoder(x)
+        output, feats = self.encoder(x)
 
-        return feats
+        return output, feats
 
     def forward_style(self, feat: torch.Tensor) -> torch.Tensor:
         """Forward the style domain adaptation layer.

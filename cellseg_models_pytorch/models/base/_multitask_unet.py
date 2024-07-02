@@ -37,7 +37,6 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
         out_size: Optional[int] = None,
         stem_params: Dict[str, Any] = None,
         encoder_params: Optional[Dict] = None,
-        unettr_kwargs: Optional[Dict] = None,
         **kwargs,
     ) -> None:
         """Create a universal multi-task (2D) unet.
@@ -52,9 +51,9 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
                 Names of the decoder branches (has to match `decoders`) mapped to dicts
                  of output name - number of output classes. E.g.
                 {"cellpose": {"type": 4, "cellpose": 2}, "sem": {"sem": 5}}
-            out_channels : Tuple[int, ...]
+            out_channels : Dict[str, Dict[str, int]]
                 Out channels for each decoder stage.
-            long_skips : Dict[str, str]
+            long_skips : Dict[str, Union[str, Tuple[str, ...]]]
                 Dictionary mapping decoder branch-names to tuples defining the long skip
                 method to be used inside each of the decoder stages.
                 Allowed: "cross-attn", "unet", "unetpp", "unet3p", "unet3p-lite", None
@@ -118,13 +117,20 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
         self.add_stem_skip = add_stem_skip
 
         # set encoder
+        # self.encoder = Encoder(
+        #     enc_name,
+        #     depth=depth,
+        #     pretrained=enc_pretrain,
+        #     checkpoint_path=kwargs.get("checkpoint_path", None),
+        #     unettr_kwargs=unettr_kwargs,
+        #     **encoder_params if encoder_params is not None else {},
+        # )
         self.encoder = Encoder(
-            enc_name,
-            depth=depth,
-            pretrained=enc_pretrain,
-            checkpoint_path=kwargs.get("checkpoint_path", None),
-            unettr_kwargs=unettr_kwargs,
-            **encoder_params if encoder_params is not None else {},
+            timm_encoder_name=enc_name,
+            timm_encoder_out_indices=tuple(range(depth)),
+            pixel_decoder_out_channels=tuple(out_channels.values())[0],
+            timm_encoder_pretrained=enc_pretrain,
+            timm_extra_kwargs=encoder_params,
         )
 
         # get the reduction factors for the encoder
@@ -202,7 +208,7 @@ class MultiTaskUnet(BaseMultiTaskSegModel):
 
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         """Forward pass of Multi-task U-net."""
-        feats = self.forward_encoder(x)
+        _, feats = self.forward_encoder(x)
         style = self.forward_style(feats[0])
         dec_feats = self.forward_dec_features(feats, style)
         out = self.forward_heads(dec_feats)

@@ -178,18 +178,25 @@ class CellPoseUnet(BaseMultiTaskSegModel):
         }
 
         # set encoder
+        # self.encoder = Encoder(
+        #     enc_name,
+        #     depth=depth,
+        #     pretrained=enc_pretrain,
+        #     checkpoint_path=kwargs.get("checkpoint_path", None),
+        #     unettr_kwargs={  # Only used for transformer encoders
+        #         "convolution": convolution,
+        #         "activation": activation,
+        #         "normalization": normalization,
+        #         "attention": attention,
+        #     },
+        #     **encoder_params if encoder_params is not None else {},
+        # )
         self.encoder = Encoder(
-            enc_name,
-            depth=depth,
-            pretrained=enc_pretrain,
-            checkpoint_path=kwargs.get("checkpoint_path", None),
-            unettr_kwargs={  # Only used for transformer encoders
-                "convolution": convolution,
-                "activation": activation,
-                "normalization": normalization,
-                "attention": attention,
-            },
-            **encoder_params if encoder_params is not None else {},
+            timm_encoder_name=enc_name,
+            timm_encoder_out_indices=tuple(range(depth)),
+            pixel_decoder_out_channels=out_channels,
+            timm_encoder_pretrained=enc_pretrain,
+            timm_extra_kwargs=encoder_params,
         )
 
         # get the reduction factors for the encoder
@@ -286,7 +293,7 @@ class CellPoseUnet(BaseMultiTaskSegModel):
             returns also the encoder features in a list, decoder features as a dict
             mapping decoder names to outputs and the final head outputs dict.
         """
-        feats, dec_feats = self.forward_features(x)
+        _, feats, dec_feats = self.forward_features(x)
         out = self.forward_heads(dec_feats)
 
         if return_feats:

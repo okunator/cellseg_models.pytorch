@@ -5,8 +5,7 @@ import torch.nn as nn
 
 from cellseg_models_pytorch.decoders import UnetDecoder
 from cellseg_models_pytorch.decoders.long_skips import StemSkip
-from cellseg_models_pytorch.encoders import EncoderUnetTR
-from cellseg_models_pytorch.encoders.vit_det_SAM import build_sam_encoder
+from cellseg_models_pytorch.encoders import Encoder
 from cellseg_models_pytorch.modules.misc_modules import StyleReshape
 
 from ..base._base_model import BaseMultiTaskSegModel
@@ -47,6 +46,7 @@ class CellVitSAM(BaseMultiTaskSegModel):
         add_stem_skip: Optional[bool] = True,
         out_size: Optional[int] = None,
         skip_params: Optional[Dict] = None,
+        encoder_params: Optional[Dict] = None,
         **kwargs,
     ) -> None:
         """Create a CellVit model.
@@ -163,21 +163,35 @@ class CellVitSAM(BaseMultiTaskSegModel):
             for d in decoders
         }
 
-        if enc_name not in ("sam_vit_b", "sam_vit_l", "sam_vit_h"):
+        allowed = (
+            "samvit_base_patch16",
+            "samvit_base_patch16_224",
+            "samvit_huge_patch16",
+            "samvit_large_patch16",
+        )
+        if enc_name not in allowed:
             raise ValueError(
                 f"Wrong encoder name. Got: {enc_name}. "
-                "Allowed encoder for CellVit: sam_vit_b, sam_vit_l, sam_vit_h."
+                f"Allowed encoder for CellVit: {allowed}"
             )
 
         # set encoder
-        self.encoder = EncoderUnetTR(
-            backbone=build_sam_encoder(name=enc_name, pretrained=enc_pretrain),
-            out_channels=encoder_out_channels,
-            up_method="conv_transpose",
-            convolution=convolution,
-            activation=activation,
-            normalization=normalization,
-            attention=attention,
+        # self.encoder = EncoderUnetTR(
+        #     backbone=build_sam_encoder(name=enc_name, pretrained=enc_pretrain),
+        #     out_channels=encoder_out_channels,
+        #     up_method="conv_transpose",
+        #     convolution=convolution,
+        #     activation=activation,
+        #     normalization=normalization,
+        #     attention=attention,
+        # )
+
+        self.encoder = Encoder(
+            timm_encoder_name=enc_name,
+            timm_encoder_out_indices=tuple(range(len(encoder_out_channels))),
+            pixel_decoder_out_channels=encoder_out_channels,
+            timm_encoder_pretrained=enc_pretrain,
+            timm_extra_kwargs=encoder_params,
         )
 
         # get the reduction factors for the encoder
@@ -275,7 +289,7 @@ class CellVitSAM(BaseMultiTaskSegModel):
             returns also the encoder features in a list, decoder features as a dict
             mapping decoder names to outputs and the final head outputs dict.
         """
-        feats, dec_feats = self.forward_features(x)
+        _, feats, dec_feats = self.forward_features(x)
         out = self.forward_heads(dec_feats)
 
         if return_feats:
