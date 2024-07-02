@@ -1,5 +1,4 @@
 from .encoder import Encoder
-from .histo_encoder import HistoEncoder
-from .unettr_encoder import EncoderUnetTR
+from .timm_encoder import TimmEncoder
 
-__all__ = ["HistoEncoder", "EncoderUnetTR", "Encoder", "DinoVit"]
+__all__ = ["TimmEncoder", "Encoder"]
