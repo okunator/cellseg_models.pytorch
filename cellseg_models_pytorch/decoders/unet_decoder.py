@@ -103,7 +103,8 @@ class UnetDecoder(nn.ModuleDict):
         enc_reductions = list(enc_reductions)
         enc_reductions.append(1)  # add the final resolution
         up_factors = torch.tensor(enc_reductions)
-        up_factors = (up_factors[:-1] // up_factors[1:]).tolist()  # consecutive ratios
+        up_factors = (up_factors[:-1] / up_factors[1:]).tolist()  # consecutive ratios
+        up_factors = [int(f) for f in up_factors]
 
         # set layer-level tuple-args
         self.long_skips = self._layer_tuple(long_skip)
