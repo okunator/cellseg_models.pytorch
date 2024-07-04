@@ -309,7 +309,8 @@ def cellvit_sam_base(
     Parameters
     ----------
         enc_name : str
-            Name of the encoder. One of: "sam_vit_b", "sam_vit_l", "sam_vit_h",
+            Name of the encoder. One of: "samvit_base_patch16", "samvit_base_patch16_224",
+            "samvit_huge_patch16", "samvit_large_patch16"
         type_classes : int
             Number of type classes.
         inst_classes : int, default=2
@@ -350,7 +351,8 @@ def cellvit_sam_plus(
     Parameters
     ----------
         enc_name : str
-            Name of the encoder. One of: "sam_vit_b", "sam_vit_l", "sam_vit_h",
+            Name of the encoder. One of: "samvit_base_patch16", "samvit_base_patch16_224",
+            "samvit_huge_patch16", "samvit_large_patch16"
         type_classes : int
             Number of type-branch classes.
         sem_classes : int
@@ -388,7 +390,8 @@ def cellvit_sam_small(enc_name: str, type_classes: int, **kwargs) -> nn.Module:
     Parameters
     ----------
         enc_name : str
-            Name of the encoder. One of: "sam_vit_b", "sam_vit_l", "sam_vit_h",
+            Name of the encoder. One of: "samvit_base_patch16", "samvit_base_patch16_224",
+            "samvit_huge_patch16", "samvit_large_patch16"
         type_classes : int
             Number of type-branch classes.
         **kwargs:
@@ -423,7 +426,8 @@ def cellvit_sam_small_plus(
     Parameters
     ----------
         enc_name : str
-            Name of the encoder. One of: "sam_vit_b", "sam_vit_l", "sam_vit_h",
+            Name of the encoder. One of: "samvit_base_patch16", "samvit_base_patch16_224",
+            "samvit_huge_patch16", "samvit_large_patch16"
         type_classes : int
             Number of type-branch classes.
         sem_classes : int

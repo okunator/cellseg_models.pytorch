@@ -36,6 +36,7 @@ class BaseInferer(ABC):
         n_images: int = None,
         type_post_proc: Callable = None,
         sem_post_proc: Callable = None,
+        verbose: bool = False,
         **kwargs,
     ) -> None:
         """Inference for an image folder.
@@ -150,8 +151,9 @@ class BaseInferer(ABC):
             except BaseException as e:
                 raise RuntimeError(f"Error when loading checkpoint: {e}")
 
-            print(f"Loading weights: {checkpoint_path} for inference.")
-            print(msg)
+            if verbose:
+                print(f"Loading weights: {checkpoint_path} for inference.")
+                print(msg)
 
         assert device in ("cuda", "cpu", "mps")
         if device == "cpu":
