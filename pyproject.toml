@@ -59,20 +59,6 @@ minversion = "6.0"
 addopts = "-ra -v"
 markers = ["cuda (deselect with '-m \"nocuda\"')"]
 
-[tool.isort]
-profile = "black"
-skip = [".gitignore", ".dockerignore", ".md", ".json"]
-multi_line_output = 3
-
-[tool.black]
-line-length = 88
-
-[tool.flake8]
-max-line-length = 88
-extend-ignore = "E203,D103,D104,D401"
-max-complexity = 10
-exclude = ".git,__pycache__,docs/source/conftest.py,old,build,dist,test,tests"
-
 [tool.coverage.run]
 source = ["cellseg_models_pytorch"]
 
@@ -91,11 +77,146 @@ exclude_lines = [
     "def extra_repr",
 ]
 
-[tool.mypy]
-warn_return_any = false
-warn_unused_configs = true
-ignore_missing_imports = true
-plugins = "numpy.typing.mypy_plugin"
+[tool.ruff]
+select = [
+    "A",     # flake8-builtins
+    "B",     # flake8-bugbear
+    "D",     # pydocstyle, need to enable for docstrings check.
+    "E",     # pycodestyle - Error
+    "F",     # pyflakes
+    "G",     # flake8-logging-format
+    "I",     # Isort
+    "N",     # pep8-naming
+    "S",     # flake8-bandit
+    "W",     # pycodestyle - Warning
+    "Q",     # flake8-quotes
+    "C4",    # flake8-comprehensions
+    "FA",    # flake8-future-annotations
+    "EM",    # flake8-errmsg
+    "PD",    # pandas-vet
+    "PL",    # Pylint
+    "PT",    # flake8-pytest-style
+    "TD",    # flake8-todos
+    "UP",    # pyupgrade
+    "C90",   # mccabe
+    "T10",   # flake8-debugger
+    "T20",   # flake8-print
+    "ANN",   # flake8-annotations
+    "ARG",   # flake8-unused-arguments
+    "BLE",   # flake8-blind-except
+    "COM",   # flake8-commas
+    "DTZ",   # flake8-datetimez
+    "ERA",   # eradicate
+    "FBT",   # flake8-boolean-trap
+    "FIX",   # flake8-fixme
+    "FLY",   # flynt
+    "ICN",   # flake8-import-conventions
+    "INP",   # flake8-no-pep420
+    "INT",   # flake8-gettext
+    "ISC",   # flake8-implicit-str-concat
+    "NPY",   # NumPy-specific rules
+    "PGH",   # pygrep-hooks
+    "PIE",   # flake8-pie
+    "PTH",   # flake8-use-pathlib
+    "PYI",   # flake8-pyi
+    "RET",   # flake8-return
+    "RSE",   # flake8-raise
+    "RUF",   # Ruff-specific rules
+    "SLF",   # flake8-self
+    "SIM",   # flake8-simplify
+    "TID",   # flake8-tidy-imports
+    "TCH",   # flake8-type-checking
+    "TRY",   # tryceratops
+    "YTT",   # flake8-2020
+    "PERF",  # Perflint
+    "SLOT",  # flake8-slots
+    "ASYNC", # flake8-async
+]
+
+include = ["*.py", "*.pyi", "**/pyproject.toml", "*.ipynb"]
+extend-include = ["*.ipynb"]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "conftest.py",
+    "old",
+    "test",
+    "tests",
+    "__pypackages__",
+    "__pycache__",
+    "_build",
+    "docs",
+    "source",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+# Assume Python 3.10
+target-version = "py310"
+
+[tool.ruff.pydocstyle]
+ # Use numpy-style docstrings.
+convention = "google"
+
+[tool.ruff.lint]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
+select = ["E4", "E7", "E9", "F"]
+ignore = ["E203", "D103", "D104", "E501"]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = ["B"]
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+# format docs
+docstring-code-format = true
+
+# docstr code line length
+# docstring-code-line-length = "dynamic"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["E402"]
+"**/{tests,docs,tools}/*" = ["E402"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

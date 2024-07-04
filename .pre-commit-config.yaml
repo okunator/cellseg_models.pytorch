@@ -5,24 +5,12 @@ repos:
     hooks:
       - id: end-of-file-fixer
       - id: trailing-whitespace
-  - repo: https://github.com/psf/black
-    rev: 22.3.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.1.11
     hooks:
-      - id: black
-        args: [--config=pyproject.toml]
-        language_version: python3
-
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.10.1
-    hooks:
-      - id: isort
-        args: [--multi-line=3, "--profile", "black", "--filter-files"]
-        name: imports
-  - repo: https://github.com/PyCQA/flake8
-    rev: 4.0.1
-    hooks:
-      - id: flake8
-        args: [--config=.flake8]
-        additional_dependencies: [flake8-docstrings==1.6.0, flake8-black>=0.2.3]
-        language_version: python3
-        name: PEP8
+      # Run the linter.
+      - id: ruff
+        args: [ --fix ]
+      # Run the formatter.
+      - id: ruff-format
