@@ -34,6 +34,7 @@ class CellPoseUnet(BaseMultiTaskSegModel):
         enc_name: str = "resnet50",
         enc_pretrain: bool = True,
         enc_freeze: bool = False,
+        enc_out_indices: Tuple[int, ...] = None,
         upsampling: str = "fixed-unpool",
         long_skip: str = "unet",
         merge_policy: str = "sum",
@@ -95,6 +96,9 @@ class CellPoseUnet(BaseMultiTaskSegModel):
                 Whether to use imagenet pretrained weights in the encoder.
             enc_freeze : bool, default=False
                 Freeze encoder weights for training.
+            enc_out_indices : Tuple[int, ...], optional
+                Indices of the output features from the encoder. If None, indices are
+                set to `range(len(depth))`
             upsampling : str, default="fixed-unpool"
                 The upsampling method. One of: "fixed-unpool", "bilinear", "nearest",
                 "conv_transpose", "bicubic"
@@ -147,8 +151,17 @@ class CellPoseUnet(BaseMultiTaskSegModel):
         self.aux_key = self._check_decoder_args(decoders, ("omnipose", "cellpose"))
         self.inst_key = inst_key
         self._check_head_args(heads, decoders)
+
+        if enc_out_indices is None:
+            enc_out_indices = tuple(range(depth))
+
         self._check_depth(
-            depth, {"out_channels": out_channels, "layer_depths": layer_depths}
+            depth,
+            {
+                "out_channels": out_channels,
+                "layer_depths": layer_depths,
+                "enc_out_indices": enc_out_indices,
+            },
         )
 
         self.enc_freeze = enc_freeze
@@ -177,23 +190,9 @@ class CellPoseUnet(BaseMultiTaskSegModel):
             for d in decoders
         }
 
-        # set encoder
-        # self.encoder = Encoder(
-        #     enc_name,
-        #     depth=depth,
-        #     pretrained=enc_pretrain,
-        #     checkpoint_path=kwargs.get("checkpoint_path", None),
-        #     unettr_kwargs={  # Only used for transformer encoders
-        #         "convolution": convolution,
-        #         "activation": activation,
-        #         "normalization": normalization,
-        #         "attention": attention,
-        #     },
-        #     **encoder_params if encoder_params is not None else {},
-        # )
         self.encoder = Encoder(
             timm_encoder_name=enc_name,
-            timm_encoder_out_indices=tuple(range(depth)),
+            timm_encoder_out_indices=enc_out_indices,
             pixel_decoder_out_channels=out_channels,
             timm_encoder_pretrained=enc_pretrain,
             timm_extra_kwargs=encoder_params,

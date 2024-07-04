@@ -28,12 +28,13 @@ class CellVitSAM(BaseMultiTaskSegModel):
         heads: Dict[str, Dict[str, int]],
         inst_key: str = "inst",
         out_channels: Tuple[int, ...] = (512, 256, 128, 64),
-        encoder_out_channels: Tuple[int, ...] = (512, 512, 256, 128),
         layer_depths: Tuple[int, ...] = (3, 2, 2, 2),
         style_channels: int = None,
         enc_name: str = "sam_vit_b",
         enc_pretrain: bool = True,
         enc_freeze: bool = False,
+        enc_out_channels: Tuple[int, ...] = None,
+        enc_out_indices: Tuple[int, ...] = None,
         long_skip: str = "unet",
         merge_policy: str = "cat",
         short_skip: str = "basic",
@@ -74,8 +75,6 @@ class CellVitSAM(BaseMultiTaskSegModel):
             inst_key : str, default="inst"
                 The key for the model output that will be used in the instance
                 segmentation post-processing pipeline as the binary segmentation result.
-            encoder_out_channels : Tuple[int, ...], default=(512, 512, 256, 128)
-                Out channels for each SAM-UnetTR encoder stage.
             out_channels : Tuple[int, ...], default=(256, 256, 64, 64)
                 Out channels for each decoder stage.
             layer_depths : Tuple[int, ...], default=(4, 4, 4, 4)
@@ -88,6 +87,11 @@ class CellVitSAM(BaseMultiTaskSegModel):
                 Whether to use imagenet pretrained weights in the encoder.
             enc_freeze : bool, default=False
                 Freeze encoder weights for training.
+            enc_out_channels : Tuple[int, ...], default=None
+                Out channels for each SAM-UnetTR encoder stage.
+            enc_out_indices : Tuple[int, ...], default=None
+                Indices of the output features from the encoder. If None,
+                `len(range(layer_depths))` features are used.
             long_skip : str, default="unet"
                 long skip method to be used. One of: "unet", "unetpp", "unet3p",
                 "unet3p-lite", None
@@ -133,9 +137,23 @@ class CellVitSAM(BaseMultiTaskSegModel):
         self.out_size = out_size
         self.aux_key = self._check_decoder_args(decoders, ("hovernet",))
         self.inst_key = inst_key
-        self.depth = 4
+        self.depth = len(layer_depths)
         self._check_head_args(heads, decoders)
-        self._check_depth(self.depth, {"out_channels": out_channels})
+
+        if enc_out_indices is None:
+            enc_out_indices = tuple(range(self.depth))
+
+        if enc_out_channels is None:
+            enc_out_channels = out_channels
+
+        self._check_depth(
+            self.depth,
+            {
+                "out_channels": out_channels,
+                "enc_out_indices": enc_out_indices,
+                "enc_out_channels": enc_out_channels,
+            },
+        )
 
         self.add_stem_skip = add_stem_skip
         self.enc_freeze = enc_freeze
@@ -175,21 +193,11 @@ class CellVitSAM(BaseMultiTaskSegModel):
                 f"Allowed encoder for CellVit: {allowed}"
             )
 
-        # set encoder
-        # self.encoder = EncoderUnetTR(
-        #     backbone=build_sam_encoder(name=enc_name, pretrained=enc_pretrain),
-        #     out_channels=encoder_out_channels,
-        #     up_method="conv_transpose",
-        #     convolution=convolution,
-        #     activation=activation,
-        #     normalization=normalization,
-        #     attention=attention,
-        # )
-
+        # set encoders
         self.encoder = Encoder(
             timm_encoder_name=enc_name,
-            timm_encoder_out_indices=tuple(range(len(encoder_out_channels))),
-            pixel_decoder_out_channels=encoder_out_channels,
+            timm_encoder_out_indices=enc_out_indices,
+            pixel_decoder_out_channels=enc_out_channels,
             timm_encoder_pretrained=enc_pretrain,
             timm_extra_kwargs=encoder_params,
         )

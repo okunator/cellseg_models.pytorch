@@ -35,6 +35,7 @@ class CPPNet(BaseMultiTaskSegModel):
         enc_name: str = "resnet50",
         enc_pretrain: bool = True,
         enc_freeze: bool = False,
+        enc_out_indices: Tuple[int, ...] = None,
         upsampling: str = "conv_transpose",
         long_skip: str = "unet",
         merge_policy: str = "cat",
@@ -94,6 +95,9 @@ class CPPNet(BaseMultiTaskSegModel):
                 Whether to use imagenet pretrained weights in the encoder.
             enc_freeze : bool, default=False
                 Freeze encoder weights for training.
+            enc_out_indices : Optional[Tuple[int]], default=None
+                Indices of the encoder output features. If None, these are set to
+                range(len(depth)).
             upsampling : str, default="fixed-unpool"
                 The upsampling method to be used. One of: "fixed-unpool", "nearest",
                 "bilinear", "bicubic", "conv_transpose"
@@ -150,7 +154,14 @@ class CPPNet(BaseMultiTaskSegModel):
         self.aux_key = "stardist_refined"
         self.inst_key = inst_key
         self._check_head_args(heads, decoders)
-        self._check_depth(depth, {"out_channels": out_channels})
+
+        if enc_out_indices is None:
+            enc_out_indices = tuple(range(depth))
+
+        self._check_depth(
+            depth,
+            {"out_channels": out_channels, "enc_out_indices": enc_out_indices},
+        )
 
         self.add_stem_skip = add_stem_skip
         self.enc_freeze = enc_freeze
@@ -179,22 +190,9 @@ class CPPNet(BaseMultiTaskSegModel):
         }
 
         # set encoder
-        # self.encoder = Encoder(
-        #     enc_name,
-        #     depth=depth,
-        #     pretrained=enc_pretrain,
-        #     checkpoint_path=kwargs.get("checkpoint_path", None),
-        #     unettr_kwargs={  # Only used for transformer encoders
-        #         "convolution": convolution,
-        #         "activation": activation,
-        #         "normalization": normalization,
-        #         "attention": attention,
-        #     },
-        #     **encoder_params if encoder_params is not None else {},
-        # )
         self.encoder = Encoder(
             timm_encoder_name=enc_name,
-            timm_encoder_out_indices=tuple(range(depth)),
+            timm_encoder_out_indices=enc_out_indices,
             pixel_decoder_out_channels=out_channels,
             timm_encoder_pretrained=enc_pretrain,
             timm_extra_kwargs=encoder_params,
