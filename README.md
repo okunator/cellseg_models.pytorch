@@ -5,8 +5,8 @@
 **Python library for 2D cell/nuclei instance segmentation models written with [PyTorch](https://pytorch.org/).**
 
 [![Generic badge](https://img.shields.io/badge/License-MIT-<COLOR>.svg?style=for-the-badge)](https://github.com/okunator/cellseg_models.pytorch/blob/master/LICENSE)
-[![PyTorch - Version](https://img.shields.io/badge/PYTORCH-1.8.1+-red?style=for-the-badge&logo=pytorch)](https://pytorch.org/)
-[![Python - Version](https://img.shields.io/badge/PYTHON-3.9+-red?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![PyTorch - Version](https://img.shields.io/badge/PYTORCH-2+-red?style=for-the-badge&logo=pytorch)](https://pytorch.org/)
+[![Python - Version](https://img.shields.io/badge/PYTHON-3.10+-red?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 <br>
 [![Github Test](https://img.shields.io/github/actions/workflow/status/okunator/cellseg_models.pytorch/tests.yml?label=Tests&logo=github&&style=for-the-badge)](https://github.com/okunator/cellseg_models.pytorch/actions/workflows/tests.yml)
 [![Pypi](https://img.shields.io/pypi/v/cellseg-models-pytorch?color=blue&logo=pypi&style=for-the-badge)](https://pypi.org/project/cellseg-models-pytorch/)
@@ -22,40 +22,37 @@
 
 ## Introduction
 
-**cellseg-models.pytorch** is a library built upon [PyTorch](https://pytorch.org/) that contains multi-task encoder-decoder architectures along with dedicated post-processing methods for segmenting cell/nuclei instances. As the name might suggest, this library is heavily inspired by [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch) library for semantic segmentation.
+**cellseg-models.pytorch** is a library built upon [PyTorch](https://pytorch.org/) that contains multi-task encoder-decoder architectures along with dedicated post-processing methods for segmenting cell/nuclei instances. As the name might suggest, this library is heavily inspired by [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch) library for semantic segmentation. 
 
-## Features
+## What's new? 📢
+- Now you can use any pre-trained image encoder from the [timm](https://github.com/huggingface/pytorch-image-models) library as the model backbone. (Given that they implement the `forward_intermediates` method, most of them do).
+- New example notebooks showing how to finetune **Cellpose** and **Stardist** with the new *state-of-the-art* foundation model backbones: [*UNI*](https://www.nature.com/articles/s41591-024-02857-3#Sec13) from the [MahmoodLab](https://faisal.ai/), and [Prov-GigaPath](https://www.nature.com/articles/s41586-024-07441-w) from Microsoft Research. Check out the notebooks [here (UNI)](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cellpose_UNI.ipynb), and [here (Prov-GigaPath)](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_stardist_provgigapath.ipynb). 
+- **NOTE!**: **These foundation models are licensed under restrictive licences and you need to agree to the terms of any of the said models to be able to run the above notebooks**. You can request for access here: [the model pages UNI](https://huggingface.co/MahmoodLab/UNI) and [model pages Prov-GigaPath](https://huggingface.co/prov-gigapath/prov-gigapath). These models may only be used for non-commercial, academic research purposes with proper attribution. **Be sure that you have read and understood the terms before using the models**. 
+
+## Features 🌟
 
 - High level API to define cell/nuclei instance segmentation models.
-- 6 cell/nuclei instance segmentation models and more to come.
+- 6 cell/nuclei instance segmentation model architectures and more to come.
 - Open source datasets for training and benchmarking.
-- Pre-trained backbones/encoders from the [timm](https://github.com/huggingface/pytorch-image-models) library.
-- Pre-trained transformer backbones like [DinoV2](https://arxiv.org/abs/2304.07193) and [SAM](https://ai.facebook.com/research/publications/segment-anything/).
-- All the architectures can be augmented to [panoptic segmentation](https://arxiv.org/abs/1801.00868).
 - Flexibility to modify the components of the model architectures.
 - Sliding window inference for large images.
 - Multi-GPU inference.
+- All model architectures can be augmented to [panoptic segmentation](https://arxiv.org/abs/1801.00868).
 - Popular training losses and benchmarking metrics.
 - Benchmarking utilities both for model latency & segmentation performance.
 - Regularization techniques to tackle batch effects/domain shifts such as [Strong Augment](https://arxiv.org/abs/2206.15274), [Spectral decoupling](https://arxiv.org/abs/2011.09468), [Label smoothing](https://arxiv.org/abs/1512.00567).
-- Ability to add transformers to the decoder layers.
 - Example notebooks to train models with [lightning](https://lightning.ai/docs/pytorch/latest/) or [accelerate](https://huggingface.co/docs/accelerate/index).
+- Example notebooks to finetune models with foundation model backbones such as UNI, Prov-GigaPath, and DINOv2.
 
-## Installation
 
-**Basic installation**
+## Installation 🛠️
+
 
 ```shell
 pip install cellseg-models-pytorch
 ```
 
-**To install extra dependencies (training utilities and datamodules for open-source datasets) use**
-
-```shell
-pip install cellseg-models-pytorch[all]
-```
-
-## Models
+## Models 🤖
 
 | Model                      | Paper                                                                          |
 | -------------------------- | ------------------------------------------------------------------------------ |
@@ -71,9 +68,44 @@ pip install cellseg-models-pytorch[all]
 | Dataset                       | Paper                                                                                            |
 | ----------------------------- | ------------------------------------------------------------------------------------------------ |
 | [[7, 8](#References)] Pannuke | https://arxiv.org/abs/2003.10778 , https://link.springer.com/chapter/10.1007/978-3-030-23937-4_2 |
-| [[9](#References)] Lizard     | http://arxiv.org/abs/2108.11195                                                                  |
 
-## Notebook examples
+## Notebook examples 👇
+
+<details>
+<summary style="margin-left: 25px;">Finetuning CellPose with UNI backbone</summary>
+<div style="margin-left: 25px;">
+
+- [Finetuning CellPose with UNI](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cellpose_UNI.ipynb). Here we finetune the CellPose multi-class nuclei segmentation model with the foundation model `UNI`-image-encoder backbone (checkout [UNI](https://www.nature.com/articles/s41591-024-02857-3#Sec13)). The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [accelerate](https://huggingface.co/docs/accelerate/index) by hugginface. **NOTE** that you need to have granted access to the UNI weights and agreed to the terms of the model to be able to run the notebook.
+
+</div>
+</details>
+
+<details>
+<summary style="margin-left: 25px;">Finetuning Stardist with Prov-GigaPath backbone</summary>
+<div style="margin-left: 25px;">
+
+- [Finetuning Stardist with Prov-GigaPath](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_stardist_provgigapath.ipynb). Here we finetune the Stardist multi-class nuclei segmentation model with the foundation model `Prov-GigaPath`-image-encoder backbone (checkout [Prov-GigaPath](https://www.nature.com/articles/s41586-024-07441-w)). The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [accelerate](https://huggingface.co/docs/accelerate/index) by hugginface. **NOTE** that you need to have granted access to the Prov-GigaPath weights and agreed to the terms of the model to be able to run the notebook.
+
+</div>
+</details>
+
+<details>
+<summary style="margin-left: 25px;">Finetuning CellPose with DINOv2 backbone</summary>
+<div style="margin-left: 25px;">
+
+- [Finetuning CellPose with DINOv2 backbone for Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cellpose_dinov2.ipynb). Here we finetune the CellPose multi-class nuclei segmentation model with a `LVD-142M` pretrained `DINOv2` backbone. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [lightning](https://lightning.ai/docs/pytorch/latest/).
+
+</div>
+</details>
+
+<details>
+<summary style="margin-left: 25px;">Finetuning CellVit-SAM with Pannuke</summary>
+<div style="margin-left: 25px;">
+
+- [Finetuning CellVit-SAM with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cellvit.ipynb). Here we finetune the CellVit-SAM multi-class nuclei segmentation model with a `SA-1B` pretrained `SAM`-image-encoder backbone (checkout [SAM](https://github.com/facebookresearch/segment-anything)). The encoder is transformer based `VitDet`-model. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [accelerate](https://huggingface.co/docs/accelerate/index) by hugginface.
+
+</div>
+</details>
 
 <details>
 <summary style="margin-left: 25px;"> Training Hover-Net with Pannuke</summary>
@@ -83,6 +115,9 @@ pip install cellseg-models-pytorch[all]
 
 </div>
 </details>
+
+
+
 
 <details>
 <summary style="margin-left: 25px;">Training Stardist with Pannuke</summary>
@@ -121,25 +156,6 @@ pip install cellseg-models-pytorch[all]
 </details>
 
 <details>
-<summary style="margin-left: 25px;">Finetuning CellPose with DINOv2 backbone</summary>
-<div style="margin-left: 25px;">
-
-- [Finetuning CellPose with DINOv2 backbone for Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cellpose_dinov2.ipynb). Here we finetune the CellPose multi-class nuclei segmentation model with a `LVD-142M` pretrained `DINOv2` backbone. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [lightning](https://lightning.ai/docs/pytorch/latest/).
-
-</div>
-</details>
-
-<details>
-<summary style="margin-left: 25px;">Finetuning CellVit-SAM with Pannuke</summary>
-<div style="margin-left: 25px;">
-
-- [Finetuning CellVit-SAM with Pannuke](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/pannuke_nuclei_segmentation_cellvit.ipynb). Here we finetune the CellVit-SAM multi-class nuclei segmentation model with a `SA-1B` pretrained `SAM`-image-encoder backbone (checkout [`SAM`](https://github.com/facebookresearch/segment-anything)). The encoder is transformer based `VitDet`-model. The Pannuke dataset (fold 1 & fold 2) are used for training data and the fold 3 is used as validation data. The model is trained (with checkpointing) by utilizing [accelerate](https://huggingface.co/docs/accelerate/index) by hugginface.
-
-</div>
-</details>
-
-
-<details>
 <summary style="margin-left: 25px;">Benchmarking Cellpose Trained on Pannuke</summary>
 <div style="margin-left: 25px;">
 
@@ -148,25 +164,7 @@ pip install cellseg-models-pytorch[all]
 </div>
 </details>
 
-<details>
-<summary style="margin-left: 25px;">Training CellPose with Lizard</summary>
-<div style="margin-left: 25px;">
-
-- [Training CellPose with Lizard](https://github.com/okunator/cellseg_models.pytorch/blob/main/examples/lizard_nuclei_segmentation_cellpose.ipynb). Here we train the `Cellpose` model with Lizard dataset that is composed of varying sized images. This example is old and might not be up to date.
-
-</div>
-</details>
-
-
-
-
-
-
-
-
-
-
-## Code Examples
+## Code Examples 💻
 
 **Define Cellpose for cell segmentation.**
 

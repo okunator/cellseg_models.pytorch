@@ -1,5 +1,33 @@
 
-<a id='changelog-0.1.23'></a>
+<a id='changelog-0.1.25'></a>
+# 0.1.25 — 2024-07-05
+
+## Features
+
+- Image encoders are imported now only from timm models.
+- Add `enc_out_indices` to model classes, to enable selecting which layers to use as the encoder outputs.
+
+# Removed
+- Removed SAM and DINOv2 original implementation image-encoders from this repo. These can be found from timm models these days.
+- Removed `cellseg_models_pytorch.training` module which was left unused after example notebooks were updated.
+
+## Examples
+
+- Updated example notebooks.
+- Added new example notebooks utilizing UNI foundation model from the MahmoodLab.
+- Added new example notebooks utilizing the Prov-GigaPath foundation model from the Microsoft Research.
+- **NOTE:** These examples use the huggingface model hub to load the weights. Permission to use the model weights is required to run these examples.
+
+## Chore
+
+- Update timm version to above 1.0.0.
+
+## Breaking changes
+
+- Lose support for python 3.9
+- The `self.encoder` in each model is new, thus, models with trained weights from previous versions of the package will not work with this version.
+
+<a id='changelog-0.1.24'></a>
 # 0.1.24 — 2023-10-13
 
 ## Style
