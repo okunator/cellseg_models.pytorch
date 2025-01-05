@@ -8,10 +8,10 @@ from cellseg_models_pytorch.utils import FileHandler
 
 try:
     import tables as tb
+
+    HAS_TABLES = True
 except Exception:
-    raise ImportError(
-        "`pytables` needed for this class. Install with: `pip install tables`"
-    )
+    HAS_TABLES = False
 
 
 __all__ = ["HDF5DatasetInfer"]
@@ -34,7 +34,10 @@ class HDF5DatasetInfer(Dataset, FileHandler):
         ------
             ValueError if the input path has incorrect suffix.
         """
-        super().__init__()
+        if not HAS_TABLES:
+            raise ImportError(
+                "`pytables` needed for this class. Install with: `pip install tables`"
+            )
 
         self.path = Path(path)
 
@@ -43,6 +46,8 @@ class HDF5DatasetInfer(Dataset, FileHandler):
                 f"The input path has to be a hdf5 db. Got suffix: {self.path.suffix} "
                 "Allowed suffices: {('.h5', '.hdf5')}"
             )
+
+        super().__init__()
 
         with tb.open_file(self.path) as h5:
             if n_images is not None:

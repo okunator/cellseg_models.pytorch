@@ -4,15 +4,14 @@ from typing import Dict, List
 
 import numpy as np
 
-from ._base_dataset import TrainDatasetBase
+from ._base_dataset_train import TrainDatasetBase
 
 try:
     import tables as tb
-except Exception:
-    raise ImportError(
-        "`pytables` needed for this class. Install with: `pip install tables`"
-    )
 
+    HAS_TABLES = True
+except Exception:
+    HAS_TABLES = False
 
 __all__ = ["SegmentationHDF5Dataset"]
 
@@ -61,6 +60,11 @@ class SegmentationHDF5Dataset(TrainDatasetBase):
             return_weight : bool, default=False
                 Include a nuclear border weight map in the output.
         """
+        if not HAS_TABLES:
+            raise ImportError(
+                "`pytables` needed for this class. Install with: `pip install tables`"
+            )
+
         super().__init__(
             img_transforms=img_transforms,
             inst_transforms=inst_transforms,

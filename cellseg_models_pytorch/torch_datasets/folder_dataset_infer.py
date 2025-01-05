@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 
 from ..utils import FileHandler
 
-SUFFIXES = (".jpeg", ".jpg", ".tif", ".tiff", ".png")
+SUFFIXES = (".jpeg", ".jpg", ".png")
 
 
 __all__ = ["FolderDatasetInfer"]

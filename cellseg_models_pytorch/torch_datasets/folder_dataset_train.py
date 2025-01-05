@@ -5,9 +5,9 @@ from typing import Dict, List
 import numpy as np
 
 from ..utils import FileHandler
-from ._base_dataset import TrainDatasetBase
+from ._base_dataset_train import TrainDatasetBase
 
-IMG_SUFFIXES = (".jpeg", ".jpg", ".tif", ".tiff", ".png")
+IMG_SUFFIXES = (".jpeg", ".jpg", ".png")
 MASK_SUFFIXES = (".mat",)
 
 __all__ = ["SegmentationFolderDataset"]

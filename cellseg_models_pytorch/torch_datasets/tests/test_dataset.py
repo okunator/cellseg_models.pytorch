@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from cellseg_models_pytorch.datasets.hdf5_dataset import SegmentationHDF5Dataset
+from cellseg_models_pytorch.torch_datasets.hdf5_dataset_train import SegmentationHDF5Dataset
 
 img_transforms = ["rigid", "blur"]
 inst_transforms = ["smooth_dist"]
