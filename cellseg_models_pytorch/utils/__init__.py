@@ -1,11 +1,4 @@
 from .file_manager import FileHandler
-from .img_utils import (
-    float2ubyte,
-    minmax_normalize,
-    normalize,
-    percentile_normalize,
-    percentile_normalize99,
-)
 from .mask_utils import (
     binarize,
     bounding_box,
@@ -79,11 +72,6 @@ THRESH_LOOKUP = {
 __all__ = [
     "THRESH_LOOKUP",
     "FileHandler",
-    "percentile_normalize",
-    "percentile_normalize99",
-    "normalize",
-    "minmax_normalize",
-    "float2ubyte",
     "remove_small_objects",
     "binarize",
     "fix_duplicates",

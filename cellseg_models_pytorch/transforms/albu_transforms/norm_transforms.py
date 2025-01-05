@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 from albumentations.core.transforms_interface import ImageOnlyTransform
 
-from ...utils import minmax_normalize, normalize, percentile_normalize
+from ..functional.normalization import minmax_normalize, normalize, percentile_normalize
 
 __all__ = ["imgnorm_transform", "percentilenorm_transform", "minmaxnorm_transform"]
 
@@ -15,7 +15,7 @@ class MinMaxNormalization(ImageOnlyTransform):
         amax: float = None,
         always_apply: bool = True,
         p: float = 1.0,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Min-max normalization transformation.
 
@@ -57,7 +57,7 @@ class PercentileNormalization(ImageOnlyTransform):
         upper: float = 99.99,
         always_apply: bool = True,
         p: float = 1.0,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Percentile normalization transformation.
 
@@ -100,7 +100,7 @@ class ImgNormalization(ImageOnlyTransform):
         amax: float = None,
         always_apply: bool = True,
         p: float = 1.0,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Image level normalization transformation.
 
