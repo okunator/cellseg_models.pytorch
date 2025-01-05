@@ -29,6 +29,9 @@ __all__ = [
     "jpeg",
     "add_noise",
     "tone_shift",
+    "_apply_operation",
+    "_check_augment_space",
+    "_check_operation_bounds",
 ]
 
 
@@ -250,7 +253,7 @@ def _check_augment_space(space: Dict[str, Tuple[MAGNITUDE, MAGNITUDE]]) -> None:
             raise TypeError("Bounds should be a (low, high) tuple.")
         # Check bounds.
         low, high = val
-        if type(low) != type(high):
+        if type(low) is not type(high):
             raise TypeError(
                 f"Bound types should be the same ({type(low)} != {type(high)})"
             )

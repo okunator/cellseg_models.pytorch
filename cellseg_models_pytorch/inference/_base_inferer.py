@@ -89,12 +89,12 @@ class BaseInferer(ABC):
         """
         # basic inits
         self.model = model
-        self.out_heads = self._get_out_info()  # the names and num channels of out heads
         self.batch_size = batch_size
         self.patch_size = patch_size
         self.padding = padding
         self.out_activations = out_activations
         self.out_boundary_weights = out_boundary_weights
+        self.out_heads = self._get_out_info()  # the names and num channels of out heads
         self.head_kwargs = self._check_and_set_head_args()
         self.kwargs = kwargs
 
