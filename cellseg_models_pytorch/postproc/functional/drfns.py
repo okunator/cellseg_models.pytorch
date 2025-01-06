@@ -32,7 +32,8 @@ import skimage.morphology as morph
 import skimage.segmentation as segm
 from skimage import img_as_ubyte
 
-from cellseg_models_pytorch.utils import binarize, percentile_normalize99
+from cellseg_models_pytorch.transforms import percentile_normalize99
+from cellseg_models_pytorch.utils import binarize
 
 __all__ = ["post_proc_drfns"]
 

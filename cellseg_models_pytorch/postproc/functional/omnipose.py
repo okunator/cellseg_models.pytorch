@@ -31,10 +31,12 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
+
 import numpy as np
 import skimage.filters as filters
 
-from cellseg_models_pytorch.utils import binarize, percentile_normalize
+from cellseg_models_pytorch.transforms import percentile_normalize
+from cellseg_models_pytorch.utils import binarize
 
 from .cellpose.integrator import follow_flows
 from .cellpose.utils import (
@@ -149,7 +151,7 @@ def post_proc_omnipose(
     dist_map: np.ndarray = None,
     return_flows: bool = False,
     min_size: int = 30,
-    **kwargs
+    **kwargs,
 ) -> np.ndarray:
     """Run the omnipose post-processing pipeline.
 

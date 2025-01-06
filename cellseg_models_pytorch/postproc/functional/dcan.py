@@ -31,7 +31,8 @@ import numpy as np
 import scipy.ndimage as ndi
 import skimage.morphology as morph
 
-from cellseg_models_pytorch.utils import naive_thresh_prob, percentile_normalize99
+from cellseg_models_pytorch.transforms import percentile_normalize99
+from cellseg_models_pytorch.utils import naive_thresh_prob
 
 __all__ = ["post_proc_dcan"]
 

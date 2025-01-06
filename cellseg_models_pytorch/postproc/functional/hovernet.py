@@ -31,8 +31,8 @@ import numpy as np
 import scipy.ndimage as ndi
 import skimage.segmentation as segm
 
+from cellseg_models_pytorch.transforms import percentile_normalize99
 from cellseg_models_pytorch.utils import (
-    percentile_normalize99,
     remove_debris_instance,
     remove_small_objects,
 )

@@ -25,11 +25,15 @@ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWIS
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
 OF SUCH DAMAGE.
 """
+
 import numpy as np
 from scipy.ndimage import binary_fill_holes, find_objects
 from skimage.color import hsv2rgb
 
-from cellseg_models_pytorch.utils import percentile_normalize, percentile_normalize99
+from cellseg_models_pytorch.transforms import (
+    percentile_normalize,
+    percentile_normalize99,
+)
 
 __all__ = ["gen_flows", "fill_holes_and_remove_small_masks", "normalize_field"]
 
@@ -106,7 +110,6 @@ def fill_holes_and_remove_small_masks(
     slices = find_objects(inst_map)
     for i, slc in enumerate(slices):
         if slc is not None:
-
             msk = inst_map[slc] == (i + 1)
             npix = msk.sum()
 

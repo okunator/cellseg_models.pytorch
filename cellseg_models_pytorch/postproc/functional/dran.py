@@ -4,10 +4,12 @@ import scipy.ndimage as ndi
 import skimage.morphology as morph
 import skimage.segmentation as segm
 
+from cellseg_models_pytorch.transforms import (
+    percentile_normalize99,
+)
 from cellseg_models_pytorch.utils import (
     binarize,
     naive_thresh_prob,
-    percentile_normalize99,
     remove_small_objects,
 )
 
