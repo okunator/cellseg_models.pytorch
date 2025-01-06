@@ -1,8 +1,17 @@
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 import numpy as np
-from albumentations.core.composition import BaseCompose
-from albumentations.core.transforms_interface import BasicTransform, ImageOnlyTransform
+
+try:
+    from albumentations.core.composition import BaseCompose
+    from albumentations.core.transforms_interface import (
+        BasicTransform,
+        ImageOnlyTransform,
+    )
+
+    HAS_ALBU = True
+except ModuleNotFoundError:
+    HAS_ALBU = False
 
 from ..functional.generic_transforms import (
     AUGMENT_SPACE,
@@ -14,7 +23,7 @@ from ..functional.generic_transforms import (
 TransformType = Union[BasicTransform, "BaseCompose"]
 TransformsSeqType = Sequence[TransformType]
 
-__all__ = ["StrongAugment", "StrongAugTransform"]
+__all__ = ["AlbuStrongAugment", "StrongAugTransform"]
 
 
 class StrongAugTransform(ImageOnlyTransform):
@@ -28,6 +37,11 @@ class StrongAugTransform(ImageOnlyTransform):
             operation_name : str
                 Name of the transformation to apply.
         """
+        if not HAS_ALBU:
+            raise ModuleNotFoundError(
+                "To use the `StrongAugTransform` class, the albumentations lib is needed. "
+                "Install with `pip install albumentations`"
+            )
         super().__init__(always_apply=True, p=1.0)
         self.op_name = operation_name
 
@@ -56,7 +70,7 @@ class StrongAugTransform(ImageOnlyTransform):
         return params
 
 
-class StrongAugment(BaseCompose):
+class AlbuStrongAugment(BaseCompose):
     def __init__(
         self,
         augment_space: Dict[str, tuple] = AUGMENT_SPACE,
@@ -85,6 +99,12 @@ class StrongAugment(BaseCompose):
             p : float, default: 1.0
                 Probability of applying the transform.
         """
+        if not HAS_ALBU:
+            raise ModuleNotFoundError(
+                "To use the `StrongAugment` class, the albumentations lib is needed. "
+                "Install with `pip install albumentations`"
+            )
+
         _check_augment_space(augment_space)
         if len(operations) != len(probabilites):
             raise ValueError("Operation length does not match probabilities length.")
@@ -100,7 +120,10 @@ class StrongAugment(BaseCompose):
     def __call__(self, *args, force_apply: bool = False, **data) -> Dict[str, Any]:
         """Apply the StrongAugment transformation pipeline."""
         image = data["image"].copy()
-        masks = data["masks"].copy()
+
+        masks = None
+        if "masks" in data:
+            masks = data["masks"].copy()
 
         num_ops = np.random.choice(self.operations, p=self.probabilites)
         idx = self.rng.choice(len(self.transforms), size=num_ops, replace=False)

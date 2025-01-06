@@ -1,11 +1,19 @@
-from typing import List
-
 import numpy as np
-from albumentations.core.transforms_interface import ImageOnlyTransform
+
+try:
+    from albumentations.core.transforms_interface import ImageOnlyTransform
+
+    HAS_ALBU = True
+except ModuleNotFoundError:
+    HAS_ALBU = False
 
 from ..functional.normalization import minmax_normalize, normalize, percentile_normalize
 
-__all__ = ["imgnorm_transform", "percentilenorm_transform", "minmaxnorm_transform"]
+__all__ = [
+    "MinMaxNormalization",
+    "PercentileNormalization",
+    "ImgNormalization",
+]
 
 
 class MinMaxNormalization(ImageOnlyTransform):
@@ -15,6 +23,7 @@ class MinMaxNormalization(ImageOnlyTransform):
         amax: float = None,
         always_apply: bool = True,
         p: float = 1.0,
+        copy: bool = False,
         **kwargs,
     ) -> None:
         """Min-max normalization transformation.
@@ -25,10 +34,23 @@ class MinMaxNormalization(ImageOnlyTransform):
                 Clamp min value. No clamping performed if None.
             amax : float, optional
                 Clamp max value. No clamping performed if None.
+            always_apply : bool, default=True
+                Apply the transformation always.
+            p : float, default=1.0
+                Probability of applying the transformation.
+            copy : bool, default=False
+                If True, normalize the copy of the input.
         """
+        if not HAS_ALBU:
+            raise ModuleNotFoundError(
+                "To use the `MinMaxNormalization` class, the albumentations lib is needed. "
+                "Install with `pip install albumentations`"
+            )
+
         super().__init__(always_apply, p)
         self.amin = amin
         self.amax = amax
+        self.copy = copy
 
     def apply(self, image: np.ndarray, **kwargs) -> np.ndarray:
         """Apply min-max normalization.
@@ -43,7 +65,7 @@ class MinMaxNormalization(ImageOnlyTransform):
             np.ndarray:
                 Normalized image. Same shape as input. dtype: float32.
         """
-        return minmax_normalize(image, self.amin, self.amax)
+        return minmax_normalize(image, self.amin, self.amax, self.copy)
 
     def get_transform_init_args_names(self):
         """Get the names of the transformation arguments."""
@@ -57,6 +79,7 @@ class PercentileNormalization(ImageOnlyTransform):
         upper: float = 99.99,
         always_apply: bool = True,
         p: float = 1.0,
+        copy: bool = False,
         **kwargs,
     ) -> None:
         """Percentile normalization transformation.
@@ -67,10 +90,23 @@ class PercentileNormalization(ImageOnlyTransform):
                 Clamp min value. No clamping performed if None.
             amax : float, optional
                 Clamp max value. No clamping performed if None.
+            always_apply : bool, default=True
+                Apply the transformation always.
+            p : float, default=1.0
+                Probability of applying the transformation.
+            copy : bool, default=False
+                If True, normalize the copy of the input.
         """
+        if not HAS_ALBU:
+            raise ModuleNotFoundError(
+                "To use the `PercentileNormalization` class, the albumentations lib is needed. "
+                "Install with `pip install albumentations`"
+            )
+
         super().__init__(always_apply, p)
         self.lower = lower
         self.upper = upper
+        self.copy = copy
 
     def apply(self, image: np.ndarray, **kwargs) -> np.ndarray:
         """Apply percentile normalization to input image.
@@ -85,7 +121,7 @@ class PercentileNormalization(ImageOnlyTransform):
             np.ndarray:
                 Normalized image. Same shape as input. dtype: float32.
         """
-        return percentile_normalize(image, self.lower, self.upper)
+        return percentile_normalize(image, self.lower, self.upper, self.copy)
 
     def get_transform_init_args_names(self):
         """Get the names of the transformation arguments."""
@@ -100,6 +136,7 @@ class ImgNormalization(ImageOnlyTransform):
         amax: float = None,
         always_apply: bool = True,
         p: float = 1.0,
+        copy: bool = False,
         **kwargs,
     ) -> None:
         """Image level normalization transformation.
@@ -114,11 +151,23 @@ class ImgNormalization(ImageOnlyTransform):
                 Clamp min value. No clamping performed if None.
             amax : float, optional
                 Clamp max value. No clamping performed if None.
+            always_apply : bool, default=True
+                Apply the transformation always.
+            p : float, default=1.0
+                Probability of applying the transformation.
+            copy : bool, default=False
+                If True, normalize the copy of the input.
         """
+        if not HAS_ALBU:
+            raise ModuleNotFoundError(
+                "To use the `ImgNormalization` class, the albumentations lib is needed. "
+                "Install with `pip install albumentations`"
+            )
         super().__init__(always_apply, p)
         self.standardize = standardize
         self.amin = amin
         self.amax = amax
+        self.copy = copy
 
     def apply(self, image: np.ndarray, **kwargs) -> np.ndarray:
         """Apply image-level normalization to input image.
@@ -133,23 +182,8 @@ class ImgNormalization(ImageOnlyTransform):
             np.ndarray:
                 Normalized image. Same shape as input. dtype: float32.
         """
-        return normalize(image, self.standardize, self.amin, self.amax)
+        return normalize(image, self.standardize, self.amin, self.amax, self.copy)
 
     def get_transform_init_args_names(self):
         """Get the names of the transformation arguments."""
         return ("amin", "amax", "standardize")
-
-
-def imgnorm_transform(**kwargs) -> List[ImageOnlyTransform]:
-    """Return image-level normalization transform."""
-    return [ImgNormalization(**kwargs)]
-
-
-def percentilenorm_transform(**kwargs) -> List[ImageOnlyTransform]:
-    """Return percentile normalization transform."""
-    return [PercentileNormalization(**kwargs)]
-
-
-def minmaxnorm_transform(**kwargs) -> List[ImageOnlyTransform]:
-    """Return minmax normalization transform."""
-    return [MinMaxNormalization(**kwargs)]

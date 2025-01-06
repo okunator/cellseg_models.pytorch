@@ -1,12 +1,20 @@
 from typing import Callable, Dict, List, Tuple
 
-import albumentations as A
+try:
+    import albumentations as A
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "The albumentations lib is needed. Install with `pip install albumentations`"
+    )
+
 import numpy as np
 import torch
-from albumentations.core.transforms_interface import BasicTransform
-from albumentations.pytorch import ToTensorV2
 
-__all__ = ["apply_each", "compose", "to_tensor", "to_tensorv3"]
+__all__ = [
+    "OnlyInstMapTransform",
+    "ApplyEach",
+    "ToTensorV3",
+]
 
 
 class OnlyInstMapTransform(A.BasicTransform):
@@ -87,86 +95,3 @@ class ToTensorV3(A.BasicTransform):
 
     def get_transform_init_args_names(self) -> Tuple[str, ...]:
         return ("always_apply", "p")
-
-
-def apply_each(transforms: List[OnlyInstMapTransform]) -> Callable:
-    """Apply each transform wrapper.
-
-    Example
-    -------
-        >>> im = read_image("/path/to/image.png")
-        >>> inst_map = read_mask("/path/to/mask.mat")
-        >>> tr = apply_each([cellpose_transform(), edgeweight_transform()])
-        >>> aug = tr(image=im, inst_map=inst_map)
-        >>> print(aug["cellpose"]["inst_map"].shape)
-        (2, 256, 256)
-        >>> print(aug["edgeweight"]["inst_map"].shape)
-        (256, 256)
-
-    Returns
-    -------
-        ApplyEach: ApplyEach object.
-    """
-    result = ApplyEach([item for sublist in transforms for item in sublist])
-
-    return result
-
-
-def compose(
-    transforms_to_compose: List[A.BasicTransform], is_check_shapes: bool = False
-) -> Callable:
-    """Compose transforms with albumentations Compose.
-
-    Takes in a list of albumentation transforms and composes them to one
-    transformation pipeline.
-
-    Parameters
-    ----------
-        transforms_to_compose : List[A.BasicTransform]
-            A list of albumentation transforms.
-        is_check_shapes : bool, default=False
-            Whether to check the shapes of the input and output images.
-
-    Example
-    -------
-        >>> im = read_image("/path/to/image.png")
-        >>> inst_map = read_mask("/path/to/mask.mat")
-        >>> tr = compose([rigid_transform(), blur_transform(), minmax_normalize()])
-        >>> aug = tr(image=im, masks=[inst_map])
-        >>> print(aug["image"].shape)
-        (256, 256, 3)
-        >>> print(aug["masks"][0].shape)
-        (256, 256)
-
-    Returns
-    -------
-        Callable:
-            A composed pipeline of albumentation transforms.
-    """
-    result = A.Compose(
-        [item for sublist in transforms_to_compose for item in sublist],
-        is_check_shapes=is_check_shapes,
-    )
-    return result
-
-
-def to_tensor(**kwargs) -> List[BasicTransform]:
-    """Convert each patch (np.ndarray) is into torch.Tensor.
-
-    Returns
-    -------
-        List[BasicTransform]:
-            A tensor conversion transform.
-    """
-    return [ToTensorV2()]
-
-
-def to_tensorv3(**kwargs) -> BasicTransform:
-    """Convert images, label-, auxilliary-, and semantic masks to tensors.
-
-    Returns
-    -------
-        BasicTransform:
-            A tensor conversion transform
-    """
-    return ToTensorV3()

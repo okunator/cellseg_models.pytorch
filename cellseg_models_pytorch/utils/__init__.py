@@ -1,3 +1,4 @@
+from .downloader import Downloader
 from .file_manager import FileHandler
 from .mask_utils import (
     binarize,
@@ -27,24 +28,6 @@ from .mask_utils import (
     type_map_flatten,
 )
 from .multiproc import run_pool
-from .patching import (
-    TilerStitcher,
-    TilerStitcherTorch,
-    _get_margins,
-    extract_patches_numpy,
-    extract_patches_torch,
-    get_patches,
-    stitch_patches_numpy,
-    stitch_patches_torch,
-)
-from .tensor_img_utlls import (
-    NORM_LOOKUP,
-    dataset_normalize_torch,
-    minmax_normalize_torch,
-    normalize_torch,
-    percentile,
-    percentile_normalize_torch,
-)
 from .tensor_kernels import filter2D, gaussian, gaussian_kernel2d, sobel_hv
 from .tensor_utils import (
     ndarray_to_tensor,
@@ -71,6 +54,7 @@ THRESH_LOOKUP = {
 
 __all__ = [
     "THRESH_LOOKUP",
+    "Downloader",
     "FileHandler",
     "remove_small_objects",
     "binarize",
@@ -96,14 +80,6 @@ __all__ = [
     "sauvola_thresh",
     "morph_chan_vese_thresh",
     "argmax",
-    "TilerStitcher",
-    "TilerStitcherTorch",
-    "extract_patches_numpy",
-    "stitch_patches_numpy",
-    "extract_patches_torch",
-    "stitch_patches_torch",
-    "get_patches",
-    "_get_margins",
     "gaussian",
     "gaussian_kernel2d",
     "sobel_hv",
@@ -113,11 +89,6 @@ __all__ = [
     "to_device",
     "tensor_one_hot",
     "normalize_torch",
-    "minmax_normalize_torch",
-    "percentile",
-    "percentile_normalize_torch",
-    "dataset_normalize_torch",
-    "NORM_LOOKUP",
     "draw_stuff_contours",
     "draw_thing_contours",
     "majority_vote_sequential",

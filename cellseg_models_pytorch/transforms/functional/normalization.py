@@ -53,7 +53,8 @@ def percentile_normalize(
     upercentile = np.percentile(im, upper)
     lpercentile = np.percentile(im, lower)
 
-    return np.interp(im, (lpercentile, upercentile), axis).astype(np.float32)
+    # return np.interp(im, (lpercentile, upercentile), axis).astype(np.float32)
+    return np.interp(im, (lpercentile, upercentile), axis)  # .astype(np.float32)
 
 
 def percentile_normalize99(
@@ -96,7 +97,9 @@ def percentile_normalize99(
 
     percentile1 = np.percentile(im, q=1, axis=axis)
     percentile99 = np.percentile(im, q=99, axis=axis)
-    im = (im - percentile1) / (percentile99 - percentile1 + 1e-7)
+    num = im - percentile1
+    denom = percentile99 - percentile1
+    im = num / denom if denom != 0 else np.zeros_like(im)
 
     # clamp
     if not any(x is None for x in (amin, amax)):
@@ -153,7 +156,8 @@ def normalize(
     im = im - im.mean(axis=axis, keepdims=True)
 
     if standardize:
-        im = im / (im.std(axis=axis, keepdims=True) + 1e-8)
+        std = im.std(axis=axis, keepdims=True)
+        im = im / std if std != 0 else np.zeros_like(im)
 
     # clamp
     if not any(x is None for x in (amin, amax)):
@@ -198,7 +202,11 @@ def minmax_normalize(
     else:
         im = img
 
-    im = (im - im.min()) / (im.max() - im.min() + 1e-8)
+    min = im.min()
+    max = im.max()
+    denom = max - min
+    num = im - min
+    im = num / denom if denom != 0 else np.zeros_like(im)
 
     # clamp
     if not any(x is None for x in (amin, amax)):
