@@ -11,7 +11,7 @@ __all__ = [
 
 
 def percentile_normalize(
-    img: np.ndarray, lower: float = 0.01, upper: float = 99.99
+    img: np.ndarray, lower: float = 0.01, upper: float = 99.99, copy: bool = False
 ) -> np.ndarray:
     """Channelwise percentile normalization to range [0, 1].
 
@@ -23,6 +23,8 @@ def percentile_normalize(
             The lower percentile
         upper : float, default=99.99:
             The upper percentile
+        copy : bool, default=False
+            If True, normalize the copy of the input.
 
     Returns
     -------
@@ -41,6 +43,11 @@ def percentile_normalize(
             f"Input img needs to have shape (H, W, C)|(H, W). Got: {img.shape}"
         )
 
+    if copy:
+        im = img.copy()
+    else:
+        im = img
+
     im = img.copy()
 
     upercentile = np.percentile(im, upper)
@@ -50,7 +57,7 @@ def percentile_normalize(
 
 
 def percentile_normalize99(
-    img: np.ndarray, amin: float = None, amax: float = None
+    img: np.ndarray, amin: float = None, amax: float = None, copy: bool = False
 ) -> np.ndarray:
     """Channelwise 1-99 percentile normalization. Optional clamping.
 
@@ -62,6 +69,8 @@ def percentile_normalize99(
             Clamp min value. No clamping performed if None.
         amax : float, optional
             Clamp max value. No clamping performed if None.
+        copy : bool, default=False
+            If True, normalize the copy of the input.
 
     Returns
     -------
@@ -80,7 +89,11 @@ def percentile_normalize99(
             f"Input img needs to have shape (H, W, C)|(H, W). Got: {img.shape}"
         )
 
-    im = img.copy()
+    if copy:
+        im = img.copy()
+    else:
+        im = img
+
     percentile1 = np.percentile(im, q=1, axis=axis)
     percentile99 = np.percentile(im, q=99, axis=axis)
     im = (im - percentile1) / (percentile99 - percentile1 + 1e-7)
@@ -93,7 +106,11 @@ def percentile_normalize99(
 
 
 def normalize(
-    img: np.ndarray, standardize: bool = True, amin: float = None, amax: float = None
+    img: np.ndarray,
+    standardize: bool = True,
+    amin: float = None,
+    amax: float = None,
+    copy: bool = False,
 ) -> np.ndarray:
     """Channelwise mean centering or standardizing of an image. Optional clamping.
 
@@ -107,6 +124,8 @@ def normalize(
             Clamp min value. No clamping performed if None.
         amax : float, optional
             Clamp max value. No clamping performed if None.
+        copy : bool, default=False
+            If True, normalize the copy of the input.
 
     Returns
     -------
@@ -125,7 +144,10 @@ def normalize(
             f"Input img needs to have shape (H, W, C)|(H, W). Got: {img.shape}"
         )
 
-    im = img.copy()
+    if copy:
+        im = img.copy()
+    else:
+        im = img
 
     # mean center
     im = im - im.mean(axis=axis, keepdims=True)
@@ -141,7 +163,7 @@ def normalize(
 
 
 def minmax_normalize(
-    img: np.ndarray, amin: float = None, amax: float = None
+    img: np.ndarray, amin: float = None, amax: float = None, copy: bool = False
 ) -> np.ndarray:
     """Min-max normalization per image channel. Optional clamping.
 
@@ -153,6 +175,8 @@ def minmax_normalize(
             Clamp min value. No clamping performed if None.
         amax : float, optional
             Clamp max value. No clamping performed if None.
+        copy : bool, default=False
+            If True, normalize the copy of the input.
 
     Returns
     -------
@@ -169,7 +193,11 @@ def minmax_normalize(
             f"Input img needs to have shape (H, W, C)|(H, W). Got: {img.shape}"
         )
 
-    im = img.copy()
+    if copy:
+        im = img.copy()
+    else:
+        im = img
+
     im = (im - im.min()) / (im.max() - im.min() + 1e-8)
 
     # clamp
