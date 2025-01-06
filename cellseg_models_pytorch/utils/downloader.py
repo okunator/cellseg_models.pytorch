@@ -3,15 +3,14 @@ from pathlib import Path
 
 try:
     import requests
+
+    HAS_REQUESTS = True
 except ModuleNotFoundError:
-    raise ModuleNotFoundError(
-        "To use `SimpleDownloader`, the requests package is needed. "
-        "Install with `pip install requests`."
-    )
+    HAS_REQUESTS = False
 from tqdm import tqdm
 
 
-class SimpleDownloader:
+class Downloader:
     """A simple downloader to download data given an url.
 
     NOTE: Includes downloading from google drive.
@@ -19,9 +18,23 @@ class SimpleDownloader:
     ALSO NOTE: Does not have any fancy functionality. Just downloading..
     """
 
-    @staticmethod
+    def __init__(self, save_dir: str) -> None:
+        """Initialize the downloader."""
+        if not HAS_REQUESTS:
+            raise ModuleNotFoundError(
+                "To use `Downloader`, the requests package is needed. "
+                "Install with `pip install requests`."
+            )
+
+        self.save_dir = Path(save_dir)
+        if not self.save_dir.exists() or not self.save_dir.is_dir():
+            raise ValueError(
+                "The given `save_dir` does not exist or is not a folder."
+                f" {self.save_dir}"
+            )
+
     def gdrive_download(
-        file_id: str, file_name: str, save_dir: str, chunk_size: int = 32768
+        self, file_id: str, file_name: str, chunk_size: int = 32768
     ) -> None:
         """Download a file from google drive.
 
@@ -31,8 +44,6 @@ class SimpleDownloader:
                 Google drive file ID.
             file_name : str
                 Name of the file to be saved. Typically .zip file.
-            save_dir : str
-                Path to the directory where the file will be saved.
             chunk_size : int, default=32768
                 Chunk size for loading the file in bytes. Here 32^3.
 
@@ -40,31 +51,21 @@ class SimpleDownloader:
         -------
             >>> save_dir = "/path/to/save_dir"
             >>> gdrive_id = "123gdriveID"
-            >>> gdrive_download(gdrive_id, file_name="dd.zip", save_dir=save_dir)
+            >>> downloader = Downloader(save_dir)
+            >>> downloader.gdrive_download(gdrive_id, file_name="dd.zip")
         """
-        save_dir = Path(save_dir)
-        if not save_dir.exists() or not save_dir.is_dir():
-            raise ValueError(
-                "The given `save_dir` does not exist or is not a folder." f" {save_dir}"
-            )
-
-        path = save_dir / file_name
+        path = self.save_dir / file_name
 
         url = f"https://drive.google.com/uc?id={file_id}"
-        SimpleDownloader._download(
-            url, path.as_posix(), gdrive=True, chunk_size=chunk_size
-        )
+        self._download(url, path.as_posix(), gdrive=True, chunk_size=chunk_size)
 
-    @staticmethod
-    def download(url: str, save_dir: str, chunk_size: int = 32768) -> None:
+    def download(self, url: str, chunk_size: int = 32768) -> None:
         """Download a file from url.
 
         Parameters
         ----------
             url : str
                 The url of the file to be downloaded.
-            save_dir : str
-                Path to the directory where the file will be saved.
             chunk_size : int, default=32768
                 Chunk size for loading the file in bytes. Here 32^3.
 
@@ -72,44 +73,35 @@ class SimpleDownloader:
         -------
             >>> save_dir = "/path/to/save_dir"
             >>> url = "https://url/to/file/"
-            >>> SimpleDownloader.download(url, save_dir) # download from a url.
+            >>> downloader = Downloader(save_dir)
+            >>> downloader.download(url)  # download from a url.
         """
-        save_dir = Path(save_dir)
-        if not save_dir.exists() or not save_dir.is_dir():
-            raise ValueError(
-                "The given `save_dir` does not exist or is not a folder." f" {save_dir}"
-            )
+        path = self.save_dir / Path(url).name
+        self._download(url, path.as_posix(), gdrive=False, chunk_size=chunk_size)
 
-        path = save_dir / Path(url).name
-        SimpleDownloader._download(
-            url, path.as_posix(), gdrive=False, chunk_size=chunk_size
-        )
-
-    @staticmethod
-    def _download(url: str, out_path: str, gdrive: bool, chunk_size: int) -> None:
-        response = SimpleDownloader._get_response(url, gdrive=gdrive)
+    def _download(self, url: str, out_path: str, gdrive: bool, chunk_size: int) -> None:
+        response = self._get_response(url, gdrive=gdrive)
         nbytes = int(response.headers.get("content-length", 0))
 
-        with tqdm(total=nbytes, unit="iB", unit_scale=True) as pbar, open(
-            out_path, "wb"
-        ) as f:
+        with (
+            tqdm(total=nbytes, unit="iB", unit_scale=True) as pbar,
+            open(out_path, "wb") as f,
+        ):
             for chunk in response.iter_content(chunk_size):
                 f.write(chunk)
                 pbar.update(len(chunk))
 
-    @staticmethod
-    def _get_response(url: str, gdrive: bool = False) -> requests.Response:
+    def _get_response(self, url: str, gdrive: bool = False) -> requests.Response:
         session = requests.session()
         response = session.get(url, stream=True, verify=True)
 
         if gdrive:
-            url = SimpleDownloader._get_url_from_gdrive_confirmation(response.text)
+            url = self._get_url_from_gdrive_confirmation(response.text)
             response = session.get(url, stream=True, verify=True)
 
         return response
 
-    @staticmethod
-    def _get_url_from_gdrive_confirmation(contents: str) -> str:
+    def _get_url_from_gdrive_confirmation(self, contents: str) -> str:
         """Parse the response text if furher confirmation is needed.
 
         From:
