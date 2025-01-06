@@ -1,5 +1,6 @@
 import re
 import warnings
+import zipfile
 from functools import partial
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -848,3 +849,21 @@ class FileHandler:
             file_name=fname.with_suffix(".mat").as_posix(),
             mdict=res,
         )
+
+    @staticmethod
+    def extract_zips(path: Union[str, Path], rm: bool = False) -> None:
+        """Extract files from all the .zip files inside a folder.
+
+        Parameters
+        ----------
+            path : str or Path
+                Path to a folder containing .zip files.
+            rm :bool, default=False
+                remove the .zip files after extraction.
+        """
+        for f in Path(path).iterdir():
+            if f.is_file() and f.suffix == ".zip":
+                with zipfile.ZipFile(f, "r") as z:
+                    z.extractall(path)
+                if rm:
+                    f.unlink()
