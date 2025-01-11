@@ -1,10 +1,11 @@
 from pathlib import Path
-from typing import Union
+from typing import Any, Callable, Optional, Union
 
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from ..utils import FileHandler
+from cellseg_models_pytorch.utils import FileHandler
 
 SUFFIXES = (".jpeg", ".jpg", ".png")
 
@@ -12,9 +13,13 @@ SUFFIXES = (".jpeg", ".jpg", ".png")
 __all__ = ["FolderDatasetInfer"]
 
 
-class FolderDatasetInfer(Dataset, FileHandler):
+class FolderDatasetInfer(Dataset):
     def __init__(
-        self, path: Union[str, Path], pattern: str = "*", n_images: int = None
+        self,
+        path: Union[str, Path],
+        pattern: str = "*",
+        transform: Optional[Callable[[np.ndarray], Any]] = None,
+        n_images: int = None,
     ) -> None:
         """Folder dataset that can be used during inference for loading images.
 
@@ -26,6 +31,8 @@ class FolderDatasetInfer(Dataset, FileHandler):
                 Path to the folder containing image files.
             pattern: str, default="*"
                 File pattern for filtering only the files that contain the pattern.
+            transform : Callable, optional
+                Transform to be applied to the images.
             n_images : int, optional
                 First n-number of images used from the folder.
 
@@ -33,7 +40,6 @@ class FolderDatasetInfer(Dataset, FileHandler):
         ------
             ValueError if `path` does not exist.
             ValueError if `path` is not a folder.
-            ValueError if `path` contains images with illegal suffices.
         """
         super().__init__()
 
@@ -48,6 +54,15 @@ class FolderDatasetInfer(Dataset, FileHandler):
         if n_images is not None:
             self.fnames = self.fnames[:n_images]
 
+        illegal_suffix_files = [fn for fn in self.fnames if fn.suffix not in SUFFIXES]
+        if illegal_suffix_files:
+            raise ValueError(
+                f"Following files have illegal suffixes: {illegal_suffix_files}"
+                "Allowed suffixes are: '.jpeg', '.jpg', '.png'"
+            )
+
+        self.transform = transform
+
     def __len__(self) -> int:
         """Length of folder."""
         return len(self.fnames)
@@ -55,14 +70,8 @@ class FolderDatasetInfer(Dataset, FileHandler):
     def __getitem__(self, ix: int) -> torch.Tensor:
         """Read image."""
         fn = self.fnames[ix]
-        if fn.suffix in SUFFIXES:
-            im = FileHandler.read_img(fn.as_posix())
-            im = torch.from_numpy(im.transpose(2, 0, 1))
-        else:
-            raise ValueError(
-                f"Received an illegal file format in: {fn}."
-                f"file format {fn.suffix} not supported."
-                f"Supported formats: {SUFFIXES}."
-            )
+        im = FileHandler.read_img(fn.as_posix())
+        if self.transform is not None:
+            im = self.transform(im)
 
-        return {"im": im, "file": fn.with_suffix("").name}
+        return {"image": im, "name": fn.stem}
