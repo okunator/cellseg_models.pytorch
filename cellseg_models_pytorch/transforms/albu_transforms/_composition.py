@@ -21,7 +21,7 @@ class OnlyInstMapTransform(A.BasicTransform):
     """Transforms applied to only instance labelled masks."""
 
     def __init__(self) -> None:
-        super().__init__(always_apply=True, p=1.0)
+        super().__init__(p=1.0)
 
     @property
     def targets(self) -> Dict[str, Callable]:
@@ -57,7 +57,7 @@ class ToTensorV3(A.BasicTransform):
     """Convert image, masks and auxilliary inputs to tensor."""
 
     def __init__(self):
-        super().__init__(always_apply=True, p=1.0)
+        super().__init__(p=1.0)
 
     @property
     def targets(self) -> Dict[str, Callable]:
@@ -94,4 +94,4 @@ class ToTensorV3(A.BasicTransform):
         return auxilliary
 
     def get_transform_init_args_names(self) -> Tuple[str, ...]:
-        return ("always_apply", "p")
+        return ("p",)

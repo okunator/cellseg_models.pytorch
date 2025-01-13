@@ -21,7 +21,6 @@ class MinMaxNormalization(ImageOnlyTransform):
         self,
         amin: float = None,
         amax: float = None,
-        always_apply: bool = True,
         p: float = 1.0,
         copy: bool = False,
         **kwargs,
@@ -34,8 +33,6 @@ class MinMaxNormalization(ImageOnlyTransform):
                 Clamp min value. No clamping performed if None.
             amax : float, optional
                 Clamp max value. No clamping performed if None.
-            always_apply : bool, default=True
-                Apply the transformation always.
             p : float, default=1.0
                 Probability of applying the transformation.
             copy : bool, default=False
@@ -47,7 +44,7 @@ class MinMaxNormalization(ImageOnlyTransform):
                 "Install with `pip install albumentations`"
             )
 
-        super().__init__(always_apply, p)
+        super().__init__(p)
         self.amin = amin
         self.amax = amax
         self.copy = copy
@@ -77,7 +74,6 @@ class PercentileNormalization(ImageOnlyTransform):
         self,
         lower: float = 0.01,
         upper: float = 99.99,
-        always_apply: bool = True,
         p: float = 1.0,
         copy: bool = False,
         **kwargs,
@@ -90,8 +86,6 @@ class PercentileNormalization(ImageOnlyTransform):
                 Clamp min value. No clamping performed if None.
             amax : float, optional
                 Clamp max value. No clamping performed if None.
-            always_apply : bool, default=True
-                Apply the transformation always.
             p : float, default=1.0
                 Probability of applying the transformation.
             copy : bool, default=False
@@ -103,7 +97,7 @@ class PercentileNormalization(ImageOnlyTransform):
                 "Install with `pip install albumentations`"
             )
 
-        super().__init__(always_apply, p)
+        super().__init__(p)
         self.lower = lower
         self.upper = upper
         self.copy = copy
@@ -134,7 +128,6 @@ class ImgNormalization(ImageOnlyTransform):
         standardize: bool = True,
         amin: float = None,
         amax: float = None,
-        always_apply: bool = True,
         p: float = 1.0,
         copy: bool = False,
         **kwargs,
@@ -163,7 +156,7 @@ class ImgNormalization(ImageOnlyTransform):
                 "To use the `ImgNormalization` class, the albumentations lib is needed. "
                 "Install with `pip install albumentations`"
             )
-        super().__init__(always_apply, p)
+        super().__init__(p)
         self.standardize = standardize
         self.amin = amin
         self.amax = amax

@@ -27,7 +27,13 @@ __all__ = ["AlbuStrongAugment", "StrongAugTransform"]
 
 
 class StrongAugTransform(ImageOnlyTransform):
-    def __init__(self, operation_name: str, **kwargs) -> None:
+    def __init__(
+        self,
+        operation_name: str,
+        aug_space: Tuple[Any, Any],
+        rng: np.random.RandomState,
+        **kwargs,
+    ) -> None:
         """Create StronAugment transformation.
 
         This is a albumentations wrapper for the StrongAugment transformations.
@@ -36,14 +42,20 @@ class StrongAugTransform(ImageOnlyTransform):
         ----------
             operation_name : str
                 Name of the transformation to apply.
+            aug_space : Tuple[Any, Any]
+                Tuple containing the lower and upper bounds for the transformation.
+            rng : np.random.RandomState
+                Random number generator.
         """
         if not HAS_ALBU:
             raise ModuleNotFoundError(
                 "To use the `StrongAugTransform` class, the albumentations lib is needed. "
                 "Install with `pip install albumentations`"
             )
-        super().__init__(always_apply=True, p=1.0)
+        super().__init__(p=1.0)
         self.op_name = operation_name
+        self.aug_space = aug_space
+        self.rng = rng
 
     def apply(self, image: np.ndarray, **kwargs) -> np.ndarray:
         """Apply a transformation from the StrognAugment augmentation space.
@@ -58,11 +70,17 @@ class StrongAugTransform(ImageOnlyTransform):
             np.ndarray:
                 Transformed image. Same shape as input. dtype: float32.
         """
-        return _apply_operation(image, self.op_name, **kwargs)
+        kwargs = dict(
+            name=self.op_name,
+            **_magnitude_kwargs(self.op_name, bounds=self.aug_space, rng=self.rng),
+        )
+        self.params = self.update_params(kwargs)
+        transformed = _apply_operation(image, self.op_name, **kwargs)
+        return transformed
 
     def get_transform_init_args_names(self):
         """Get the names of the transformation arguments."""
-        return ("op_name",)
+        return ("op_name", "aug_space", "rng")
 
     def update_params(self, params: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """Update the transformation parameters."""
@@ -109,8 +127,11 @@ class AlbuStrongAugment(BaseCompose):
         if len(operations) != len(probabilites):
             raise ValueError("Operation length does not match probabilities length.")
 
-        transforms = [StrongAugTransform(op) for op in augment_space.keys()]
         self.rng = np.random.RandomState(seed=seed)
+        transforms = [
+            StrongAugTransform(op, aug_space, self.rng)
+            for op, aug_space in augment_space.items()
+        ]
         self.augment_space = augment_space
         self.operations = operations
         self.probabilites = probabilites
@@ -133,15 +154,8 @@ class AlbuStrongAugment(BaseCompose):
             for i in idx:
                 t = self.transforms[i]
                 name = t.op_name
-                kwargs = dict(
-                    name=name,
-                    **_magnitude_kwargs(
-                        name, bounds=self.augment_space[name], rng=self.rng
-                    ),
-                )
-
-                data = t(image=image, masks=masks, force_apply=True, **kwargs)
-                self.last_operations[name] = kwargs
+                data = t(image=image, masks=masks, force_apply=True)
+                self.last_operations[name] = t.params
 
         return {k: d for k, d in data.items() if k in ("image", "masks")}
 
