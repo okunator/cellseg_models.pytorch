@@ -58,10 +58,8 @@ def ndarray_to_tensor(
 
     if not len(array.shape) == len(in_dim_format):
         raise ValueError(
-            f"""
-            Mismatching input dimensions.
-            Input Shape: {array.shape}.
-            while `in_dim_format` is set to: {in_dim_format}"""
+            f"Mismatching input dimensions. Input Shape: {array.shape}. while "
+            f"`in_dim_format` is set to: {in_dim_format}."
         )
 
     if in_dim_format in ("HW", "BHW"):
@@ -122,9 +120,8 @@ def tensor_to_ndarray(
 
     if not 3 <= tensor.dim() <= 4:
         raise ValueError(
-            f"""
-        The input tensor needs to have shape (B, H, W) or (B, C, H, W)."
-        Got: {tensor.shape}""",
+            "The input tensor needs to have shape (B, H, W) or (B, C, H, W). "
+            f"Got: {tensor.shape}",
         )
 
     in_dim_types = ("BCHW", "BHW")

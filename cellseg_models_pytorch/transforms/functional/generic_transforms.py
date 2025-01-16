@@ -246,8 +246,7 @@ def _check_augment_space(space: Dict[str, Tuple[MAGNITUDE, MAGNITUDE]]) -> None:
     for key, val in space.items():
         if key not in ALLOWED_OPERATIONS:
             raise ValueError(
-                f"Operation '{key}' not supported. Select from: "
-                f"{ALLOWED_OPERATIONS}"
+                f"Operation '{key}' not supported. Select from: {ALLOWED_OPERATIONS}"
             )
         if not isinstance(val, tuple) or len(val) != 2:
             raise TypeError("Bounds should be a (low, high) tuple.")
