@@ -303,7 +303,7 @@ class Inferer:
     def _predict(
         self,
         x: torch.Tensor,
-        output_shape: Tuple[int, int],
+        output_shape: Tuple[int, int] = None,
     ) -> Dict[str, torch.Tensor]:
         """Model predict pipeline."""
         # logits
