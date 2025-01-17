@@ -1,15 +1,7 @@
-from ..torch_datasets.folder_dataset_infer import FolderDatasetInfer
-from ._base_inferer import BaseInferer
-from .post_processor import PostProcessor
-from .predictor import Predictor
-from .resize_inferer import ResizeInferer
+from .inferer import Inferer
 from .sliding_window_inferer import SlidingWindowInferer
 
 __all__ = [
-    "BaseInferer",
-    "Predictor",
-    "PostProcessor",
-    "ResizeInferer",
+    "Inferer",
     "SlidingWindowInferer",
-    "FolderDatasetInfer",
 ]
