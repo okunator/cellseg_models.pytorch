@@ -33,7 +33,7 @@ from typing import Optional
 import numpy as np
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class TileCoordinates:
     """Data class representing a collection of tile coordinates.
 
@@ -87,7 +87,7 @@ class TileCoordinates:
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class SpotCoordinates:
     """Data class representing a collection of spot coordinates.
 
