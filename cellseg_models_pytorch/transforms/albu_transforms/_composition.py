@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Tuple
+from typing import List
 
 try:
     import albumentations as A
@@ -8,90 +8,59 @@ except ModuleNotFoundError:
     )
 
 import numpy as np
-import torch
 
-__all__ = [
-    "OnlyInstMapTransform",
-    "ApplyEach",
-    "ToTensorV3",
-]
+__all__ = ["OnlyInstMapTransform", "ApplyEach"]
 
 
-class OnlyInstMapTransform(A.BasicTransform):
+class OnlyInstMapTransform:
     """Transforms applied to only instance labelled masks."""
 
     def __init__(self) -> None:
-        super().__init__(p=1.0)
+        super().__init__()
 
     @property
-    def targets(self) -> Dict[str, Callable]:
-        return {
-            "image": self.apply,  # needs to have this key or braks.
-            "inst_map": self.apply_to_instmap,
-        }
-
-    def apply(self, img: np.ndarray, **params):
-        return
-
-    def apply_to_instmap(self, inst_map: np.ndarray, **params):
-        raise NotImplementedError("`apply_to_instmap` method not implemented")
+    def available_keys(self) -> set[str]:
+        """Returns set of available keys."""
+        return set(["inst", "cyto_inst"])
 
 
 class ApplyEach(A.BaseCompose):
-    def __init__(self, transforms: List[A.BasicTransform], p: float = 1.0) -> None:
+    def __init__(
+        self,
+        transforms: List[OnlyInstMapTransform],
+        p: float = 1.0,
+        as_list: bool = False,
+        **kwargs,
+    ) -> None:
         """Apply each transform to the input non-sequentially.
 
         Returns outputs for each transform.
+
+        Parameters:
+            transforms (List[Any]):
+                List of transforms to apply.
+            p (float, default=1.0):
+                Probability of applying the transform.
+            as_list (bool, default=False):
+                Return the outputs as list with shapes (H, W, C).
         """
-        super().__init__(transforms, p)
+        super().__init__(transforms, p, **kwargs)
+        self.names = [t.name for t in transforms]
+        self.out_channels = [t.out_channels for t in transforms]
+        self.as_list = as_list
 
     def __call__(self, **data):
         res = {}
         for t in self.transforms:
-            res[t.name] = t(force_apply=True, **data)
+            for k, d in data.items():
+                res[f"{t.name}_{k}"] = t(d, force_apply=True)
+
+        if self.as_list:
+            masks = []
+            for k, v in res.items():
+                if v.ndim == 2:
+                    v = v[np.newaxis]
+                masks.append(v.transpose(1, 2, 0))
+            return masks
 
         return res
-
-
-class ToTensorV3(A.BasicTransform):
-    """Convert image, masks and auxilliary inputs to tensor."""
-
-    def __init__(self):
-        super().__init__(p=1.0)
-
-    @property
-    def targets(self) -> Dict[str, Callable]:
-        return {
-            "image": self.apply,
-            "masks": self.apply_to_masks,
-            "aux": self.apply_to_aux,
-        }
-
-    def apply(self, img: np.ndarray, **params):
-        if len(img.shape) not in [2, 3]:
-            raise ValueError("Images need to be in HW or HWC format")
-
-        if len(img.shape) == 2:
-            img = np.expand_dims(img, 2)
-
-        return torch.from_numpy(img.transpose(2, 0, 1)).float()
-
-    def apply_to_masks(self, masks: List[np.ndarray], **params):
-        for i, mask in enumerate(masks):
-            if mask.ndim == 3:
-                mask = mask.transpose(2, 0, 1)
-            masks[i] = torch.from_numpy(mask).long()
-
-        return masks
-
-    def apply_to_aux(self, auxilliary: Dict[str, np.ndarray], **params):
-        for k, aux in auxilliary.items():
-            if k != "binary":
-                auxilliary[k] = torch.from_numpy(aux["inst_map"]).float()
-            else:
-                auxilliary[k] = torch.from_numpy(aux["inst_map"]).long()
-
-        return auxilliary
-
-    def get_transform_init_args_names(self) -> Tuple[str, ...]:
-        return ("p",)

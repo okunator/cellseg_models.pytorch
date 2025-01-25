@@ -29,55 +29,53 @@ __all__ = [
 
 
 class CellposeTransform(OnlyInstMapTransform):
-    def __init__(self):
+    def __init__(self) -> None:
         """Generate flows from a heat diffused label mask.
 
         https://www.nature.com/articles/s41592-020-01018-x
         """
         super().__init__()
         self.name = "cellpose"
+        self.out_channels = 2
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
+    def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
         """Fix duplicate values and generate flows.
 
-        Parameters
-        ----------
-            inst_map : np.ndarray
+        Parameters:
+            inst (np.ndarray):
                 Instance labelled mask. Shape (H, W).
 
-        Returns
-        -------
+        Returns:
             np.ndarray:
                 Horizontal and vertical flows of objects.
                 Shape: (2, H, W). Dtype: float64.
         """
-        return gen_flow_maps(fix_duplicates(inst_map))
+        return gen_flow_maps(fix_duplicates(inst))
 
 
 class HoVerNetTransform(OnlyInstMapTransform):
-    def __init__(self):
+    def __init__(self) -> None:
         """Generate horizontal and vertical gradients from a label mask.
 
         https://www.sciencedirect.com/science/article/pii/S1361841519301045
         """
         super().__init__()
         self.name = "hovernet"
+        self.out_channels = 2
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
+    def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
         """Fix duplicate values and generate gradients.
 
-        Parameters
-        ----------
-            inst_map : np.ndarray
+        Parameters:
+            inst (np.ndarray):
                 Instance labelled mask. Shape (H, W).
 
-        Returns
-        -------
+        Returns:
             np.ndarray:
                 Horizontal and vertical gradients of objects.
                 Shape: (2, H, W). Dtype: float64.
         """
-        return gen_hv_maps(fix_duplicates(inst_map))
+        return gen_hv_maps(fix_duplicates(inst))
 
 
 class OmniposeTransform(OnlyInstMapTransform):
@@ -88,22 +86,21 @@ class OmniposeTransform(OnlyInstMapTransform):
         """
         super().__init__()
         self.name = "omnipose"
+        self.out_channels = 2
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
+    def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
         """Fix duplicate values and generate eikonal flows.
 
-        Parameters
-        ----------
-            inst_map : np.ndarray
+        Parameters:
+            inst (np.ndarray):
                 Instance labelled mask. Shape (H, W).
 
-        Returns
-        -------
+        Returns:
             np.ndarray:
                 Horizontal and vertical gradients of objects.
                 Shape: (2, H, W). Dtype: float64.
         """
-        return gen_omni_flow_maps(fix_duplicates(inst_map))
+        return gen_omni_flow_maps(fix_duplicates(inst))
 
 
 class StardistTransform(OnlyInstMapTransform):
@@ -113,33 +110,27 @@ class StardistTransform(OnlyInstMapTransform):
         https://arxiv.org/abs/1806.03535
 
         Parameters
-        ----------
-            n_rays : int, default=32
+            n_rays (int, default=32):
                 Number of rays used for computing distance maps.
-            n_segments : int, default=20
-                Number of line segments the contour is divided into.
-                The more segments used, the more detail is preserved with
-                performance tradeoff.
         """
         super().__init__()
         self.name = "stardist"
         self.n_rays = n_rays
+        self.out_channels = n_rays
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
+    def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
         """Fix duplicate values and generate radial distance maps.
 
         Parameters
-        ----------
-            inst_map : np.ndarray
+            inst (np.ndarray):
                 Instance labelled mask. Shape (H, W).
 
         Returns
-        -------
             np.ndarray:
                 Pixelwise radial distance maps.
                 Shape: (n_rays, H, W). Dtype: float64.
         """
-        return gen_stardist_maps(fix_duplicates(inst_map), self.n_rays)
+        return gen_stardist_maps(fix_duplicates(inst), self.n_rays)
 
 
 class SmoothDistTransform(OnlyInstMapTransform):
@@ -150,22 +141,21 @@ class SmoothDistTransform(OnlyInstMapTransform):
         """
         super().__init__()
         self.name = "smoothdist"
+        self.out_channels = 1
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
+    def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
         """Generate smooth distance transforms.
 
         Parameters
-        ----------
-            inst_map : np.ndarray
+            inst (np.ndarray):
                 Instance labelled mask. Shape (H, W).
 
-        Returns
-        -------
+        Returns:
             np.ndarray:
                 Smooth distance transforms of objects.
                 Shape: (H, W). Dtype: float64.
         """
-        return smooth_distance(inst_map)
+        return smooth_distance(inst)
 
 
 class DistTransform(OnlyInstMapTransform):
@@ -173,22 +163,21 @@ class DistTransform(OnlyInstMapTransform):
         """Generate distance transforms from a label mask."""
         super().__init__()
         self.name = "dist"
+        self.out_channels = 1
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
+    def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
         """Generate distance transforms.
 
         Parameters
-        ----------
-            inst_map : np.ndarray
+            inst (np.ndarray):
                 Instance labelled mask. Shape: (H, W).
 
-        Returns
-        -------
+        Returns:
             np.ndarray:
                 Distance transforms of objects.
                 Shape: (H, W). Dtype: float64.
         """
-        return gen_dist_maps(fix_duplicates(inst_map))
+        return gen_dist_maps(fix_duplicates(inst))
 
 
 class ContourTransform(OnlyInstMapTransform):
@@ -196,21 +185,20 @@ class ContourTransform(OnlyInstMapTransform):
         """Generate contour map from a label mask."""
         super().__init__()
         self.name = "contour"
+        self.out_channels = 1
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
+    def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
         """Generate contour transforms.
 
         Parameters
-        ----------
-            inst_map : np.ndarray
+            inst (np.ndarray):
                 Instance labelled mask. Shape (H, W).
 
-        Returns
-        -------
+        Returns:
             np.ndarray:
                 Contour of objects. Shape: (H, W). Dtype: float64
         """
-        return gen_contour_maps(fix_duplicates(inst_map))
+        return gen_contour_maps(fix_duplicates(inst))
 
 
 class EdgeWeightTransform(OnlyInstMapTransform):
@@ -218,21 +206,20 @@ class EdgeWeightTransform(OnlyInstMapTransform):
         """Generate weight maps for object boundaries."""
         super().__init__()
         self.name = "edgeweight"
+        self.out_channels = 1
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
+    def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
         """Generate edge weight transforms.
 
         Parameters
-        ----------
-            inst_map : np.ndarray
+            inst (np.ndarray):
                 Instance labelled mask. Shape (H, W).
 
-        Returns
-        -------
+        Returns:
             np.ndarray:
                 Contour of objects. Shape: (H, W). Dtype: float64
         """
-        return gen_weight_maps(inst_map)
+        return gen_weight_maps(inst)
 
 
 class BinarizeTransform(OnlyInstMapTransform):
@@ -240,18 +227,17 @@ class BinarizeTransform(OnlyInstMapTransform):
         """Binarize instance labelled mask."""
         super().__init__()
         self.name = "binary"
+        self.out_channels = 1
 
-    def apply_to_instmap(self, inst_map: np.ndarray, **kwargs) -> np.ndarray:
+    def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
         """Generate a binary mask from instance labelled mask.
 
-        Parameters
-        ----------
-            inst_map : np.ndarray
+        Parameters:
+            inst (np.ndarray):
                 Instance labelled mask. Shape (H, W).
 
-        Returns
-        -------
+        Returns:
             np.ndarray:
                 Binary mask. Shape: (H, W). Dtype: uint8
         """
-        return binarize(inst_map)
+        return binarize(inst)
