@@ -1,4 +1,5 @@
 from .folder_dataset_infer import FolderDatasetInfer
+from .hdf5_dataset_train import TrainDatasetH5
 from .wsi_dataset_infer import WSIDatasetInfer
 
-__all__ = ["FolderDatasetInfer", "WSIDatasetInfer"]
+__all__ = ["FolderDatasetInfer", "WSIDatasetInfer", "TrainDatasetH5"]

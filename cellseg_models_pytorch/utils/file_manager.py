@@ -1,7 +1,7 @@
 import warnings
 import zipfile
 from pathlib import Path
-from typing import Dict, Union
+from typing import Dict, Tuple, Union
 
 import cv2
 import numpy as np
@@ -25,6 +25,127 @@ except ModuleNotFoundError:
     _has_gpd = False
 
 
+__all__ = ["FileHandler", "H5Handler"]
+
+
+class H5Handler:
+    def __init__(self):
+        if not _has_tb:
+            raise ModuleNotFoundError(
+                "`H5Handler` class requires pytables library. "
+                "Install with `pip install tables`."
+            )
+
+    @staticmethod
+    def init_mask(
+        h5,
+        name: str,
+        patch_size: Tuple[int, int],
+        chunk_size: int = 1,
+        complevel: int = 5,
+        complib: str = "blosc:lz4",
+    ) -> None:
+        """Initialize a mask array in the hdf5 file.
+
+        Parameters:
+            h5 (tb.file.File):
+                The hdf5 file.
+            name (str):
+                The name of the mask array.
+            patch_size (Tuple[int, int]):
+                The size of the mask patches.
+            chunk_size (int, default=1):
+                The chunk size for the hdf5 array.
+            complevel (int, default=5):
+                The compression level.
+            complib (str, default='blosc:lz4'):
+                The compression library
+        """
+        h5.create_earray(
+            where=h5.root,
+            name=name,
+            atom=tb.Int32Atom(),
+            shape=np.append([0], patch_size),
+            chunkshape=np.append([chunk_size], patch_size),
+            filters=tb.Filters(complevel=complevel, complib=complib),
+        )
+
+    @staticmethod
+    def init_img(
+        h5,
+        patch_size: Tuple[int, int],
+        chunk_size: int = 1,
+        complevel: int = 5,
+        complib: str = "blosc:lz4",
+    ) -> None:
+        """Initialize an image array in the hdf5 file.
+
+        Parameters:
+            h5 (tb.file.File):
+                The hdf5 file.
+            patch_size (Tuple[int, int]):
+                The size of the image patches.
+            chunk_size (int, default=1):
+                The chunk size for the hdf5 array.
+            complevel (int, default=5):
+                The compression level.
+            complib (str, default='blosc:lz4'):
+                The compression library.
+        """
+        h5.create_earray(
+            where=h5.root,
+            name="image",
+            atom=tb.UInt8Atom(),
+            shape=np.append([0], patch_size + (3,)),
+            chunkshape=np.append([chunk_size], patch_size + (3,)),
+            filters=tb.Filters(complevel=complevel, complib=complib),
+        )
+
+    @staticmethod
+    def init_meta_data(
+        h5,
+        chunk_size: int = 1,
+        complevel: int = 5,
+        complib: str = "blosc:lz4",
+    ) -> None:
+        """Initialize meta data arrays in the hdf5 file.
+
+        Parameters:
+            h5 (tb.file.File):
+                The hdf5 file.
+            chunk_size (int, default=1):
+                The chunk size for the hdf5 array.
+            complevel (int, default=5):
+                The compression level.
+            complib (str, default='blosc:lz4'):
+                The compression library.
+        """
+        h5.create_earray(
+            where=h5.root,
+            name="fname",
+            atom=tb.StringAtom(itemsize=256),
+            shape=(0,),
+            filters=tb.Filters(complevel=complevel, complib=complib),
+        )
+        h5.create_earray(
+            where=h5.root,
+            name="coords",
+            atom=tb.Int32Atom(),
+            shape=(0, 2),
+            chunkshape=(chunk_size, 2),
+            filters=tb.Filters(complevel=complevel, complib=complib),
+        )
+
+    @staticmethod
+    def append_array(h5, array: np.ndarray, name: str) -> None:
+        h5.root[name].append(array)
+
+    @staticmethod
+    def append_meta_data(h5, name: str, coords: Tuple[int, int]) -> None:
+        h5.root["fname"].append(np.array([name], dtype=str))
+        h5.root["coords"].append(np.array([coords], dtype=np.int32))
+
+
 class FileHandler:
     """Class for handling file I/O."""
 
@@ -46,114 +167,25 @@ class FileHandler:
         return cv2.cvtColor(cv2.imread(path.as_posix()), cv2.COLOR_BGR2RGB)
 
     @staticmethod
-    def read_mat(
-        path: Union[str, Path],
-        key: str = "inst_map",
-        retype: bool = True,
-        return_all: bool = False,
-    ) -> Union[np.ndarray, Dict[str, np.ndarray], None]:
-        """Read a mask from a .mat file.
-
-        If a mask is not found, return None
-
-        Parameters
-        ----------
-            path : str or Path
-                Path to the .mat file.
-            key : str, default="inst_map"
-                Name/key of the mask type that is being read from .mat
-            retype : bool, default=True
-                Convert the matrix type.
-            return_all : bool, default=False
-                Return the whole dict. Overrides the `key` arg.
-
-
-        Raises
-        ------
-            ValueError: If an illegal key is given.
-
-        Returns
-        -------
-            Union[np.ndarray, List[np.ndarray], None]:
-                if return_all == False:
-                    The instance/type/semantic labelled mask. Shape: (H, W).
-                if return_all == True:
-                    All the masks in the .mat file returned in a dictionary.
-        """
-        dtypes = {
-            "inst_map": "int32",
-            "type_map": "int32",
-            "sem_map": "int32",
-            "inst_centroid": "float64",
-            "inst_type": "int32",
-        }
-
-        path = Path(path)
-        if not path.exists():
-            raise ValueError(f"{path} not found")
-
-        try:
-            mask = sio.loadmat(path.as_posix())
-        except Exception:
-            mask = None
-
-        if not return_all:
-            allowed = ("inst_map", "type_map", "inst_centroid", "inst_type", "sem_map")
-            if key not in allowed:
-                raise ValueError(f"Illegal key given. Got {key}. Allowed: {allowed}")
-
-            try:
-                mask = mask[key]
-                if retype:
-                    mask = mask.astype(dtypes[key])
-            except Exception:
-                mask = None
-
-        return mask
-
-    @staticmethod
-    def read_h5_patch(
-        path: Union[Path, str],
-        ix: int,
-        return_im: bool = True,
-        return_inst: bool = True,
-        return_type: bool = True,
-        return_sem: bool = False,
-        return_name: bool = False,
-        return_nitems: bool = False,
-        return_all_names: bool = False,
+    def read_h5(
+        path: Union[Path, str], ix: int, keys: Tuple[str, ...]
     ) -> Dict[str, np.ndarray]:
         """Read img & mask patches at index `ix` from a hdf5 db.
 
-        Parameters
-        ----------
-            path : Path or str
+        Parameters:
+            path (Path or str):
                 Path to the h5-db.
-            ix : int
+            ix (int):
                 Index for the hdf5 db-arrays.
-            return_im : bool, default=True
-                If True, returns an image. (If the db contains these.)
-            return_inst : bool, default=True
-                If True, returns a instance labelled mask. (If the db contains these.)
-            return_type : bool, default=True
-                If True, returns a type mask. (If the db contains these.)
-            return_sem : bool, default=False
-                If True, returns a semantic mask, (If the db contains these.)
-            return_name : bool, default=False
-                If True, returns a name for the patch, (If the db contains these.)
-            return_nitems : bool, default=False
-                If True, returns the number of items in the db.
-            return_all_names : bool, default=False
-                If True, returns all the names in the db.
+            keys (Tuple[str, ...]):
+                Keys/Names of the arrays to be read.
 
-        Returns
-        -------
+        Returns:
             Dict[str, np.ndarray]:
                 A Dict of numpy matrices. Img shape: (H, W, 3), mask shapes: (H, W).
-                keys of the dict are: "im", "inst", "type", "sem"
-
-        Raises
-        ------
+                keys of the dict are: "im", "inst", "type", "cyto_inst", "cyto_type",
+                "sem", "fname", "coords".
+        Raises:
             IOError: If a mask that does not exist in the db is being read.
         """
         if not _has_tb:
@@ -166,70 +198,58 @@ class FileHandler:
         with tb.open_file(path.as_posix(), "r") as h5:
             out = {}
 
-            if return_im:
+            if "image" in keys:
                 try:
-                    out["image"] = h5.root.imgs[ix, ...]
+                    out["image"] = h5.root["image"][ix, ...]
+                except Exception:
+                    raise IOError("The HDF5 database does not contain 'image' node.")
+
+            if "inst" in keys:
+                try:
+                    out["inst"] = h5.root["inst"][ix, ...]
+                except Exception:
+                    raise IOError("The HDF5 database does not contain 'inst' node.")
+
+            if "type" in keys:
+                try:
+                    out["type"] = h5.root["type"][ix, ...]
+                except Exception:
+                    raise IOError("The HDF5 database does not contain 'type' node.")
+
+            if "cyto_inst" in keys:
+                try:
+                    out["cyto_inst"] = h5.root["cyto_inst"][ix, ...]
                 except Exception:
                     raise IOError(
-                        "The HDF5 database does not contain images. Try "
-                        "setting `return_im=False`"
+                        "The HDF5 database does not contain 'cyto_inst' node."
                     )
 
-            if return_inst:
+            if "cyto_type" in keys:
                 try:
-                    out["inst"] = h5.root.insts[ix, ...]
+                    out["cyto_type"] = h5.root["cyto_type"][ix, ...]
                 except Exception:
                     raise IOError(
-                        "The HDF5 database does not contain instance labelled masks. "
-                        "Try setting `return_inst=False`"
+                        "The HDF5 database does not contain 'cyto_type' node."
                     )
 
-            if return_type:
+            if "sem" in keys:
                 try:
-                    out["type"] = h5.root.types[ix, ...]
+                    out["sem"] = h5.root["sem"][ix, ...]
                 except Exception:
-                    raise IOError(
-                        "The HDF5 database does not contain type masks. Try setting "
-                        "`return_type = False` "
-                    )
+                    raise IOError("The HDF5 database does not contain 'sem' node.")
 
-            if return_sem:
-                try:
-                    out["sem"] = h5.root.areas[ix, ...]
-                except Exception:
-                    raise IOError(
-                        "The HDF5 database does not contain semantic masks. Try "
-                        "setting `return_sem = False`"
-                    )
-
-            if return_name:
+            if "fname" in keys:
                 try:
                     fn = h5.root.fnames[ix]
-                    out["name"] = Path(fn.decode("UTF-8"))
+                    out["fname"] = Path(fn.decode("UTF-8"))
                 except Exception:
-                    raise IOError(
-                        "The HDF5 database does not contain patch names. Try "
-                        "setting `return_name = False`"
-                    )
+                    raise IOError("The HDF5 database does not contain 'fname' node.")
 
-            if return_nitems:
+            if "coords" in keys:
                 try:
-                    out["nitems"] = h5.root._v_attrs.n_items
+                    out["coords"] = h5.root["coords"][ix, ...]
                 except Exception:
-                    raise IOError(
-                        "The HDF5 database does not contain attribute ``nitems. Try "
-                        "setting `return_nitems = False`"
-                    )
-
-            if return_all_names:
-                try:
-                    names = h5.root.fnames[:]
-                    out["names"] = [Path(n.decode("UTF-8")) for n in names]
-                except Exception:
-                    raise IOError(
-                        "The HDF5 database does not contain patch names. Try "
-                        "setting `return_all_names = False`"
-                    )
+                    raise IOError("The HDF5 database does not contain 'coords' node.")
 
             return out
 
@@ -272,6 +292,12 @@ class FileHandler:
         Warnings:
             If the input GeoDataFrame is empty, a warning is raised.
         """
+        if not _has_gpd:
+            raise ModuleNotFoundError(
+                "`FileHandler.gdf_to_file` method requires geopandas library. "
+                "Install with `pip install geopandas`."
+            )
+
         path = Path(path)
         suffix = path.suffix
 
@@ -474,14 +500,13 @@ class FileHandler:
         )
 
     @staticmethod
-    def extract_zips(path: Union[str, Path], rm: bool = False) -> None:
+    def extract_zips_in_folder(path: Union[str, Path], rm: bool = False) -> None:
         """Extract files from all the .zip files inside a folder.
 
-        Parameters
-        ----------
-            path : str or Path
+        Parameters:
+            path (str or Path):
                 Path to a folder containing .zip files.
-            rm :bool, default=False
+            rm (bool, default=False):
                 remove the .zip files after extraction.
         """
         for f in Path(path).iterdir():

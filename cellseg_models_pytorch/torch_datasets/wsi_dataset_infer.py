@@ -35,9 +35,6 @@ __all__ = ["WSIDatasetInfer"]
 
 
 class WSIDatasetInfer(Dataset):
-    """Torch dataset yielding tile images and `xywh`-coordinates from reader (requires
-    `PyTorch`)."""
-
     def __init__(
         self,
         reader: SlideReader,
