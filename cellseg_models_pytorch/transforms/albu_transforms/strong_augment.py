@@ -97,7 +97,7 @@ class AlbuStrongAugment(BaseCompose):
         seed: Optional[int] = None,
         p=1.0,
     ) -> None:
-        """Strong augment augmentation policy.
+        """Strong augment augmentation policy albumentations wrapper.
 
         Augment like there's no tomorrow: Consistently performing neural networks for
         medical imaging: https://arxiv.org/abs/2206.15274
