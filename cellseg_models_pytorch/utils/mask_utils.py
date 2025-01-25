@@ -111,9 +111,7 @@ def remove_small_objects(
     Examples
     --------
     >>> from skimage import morphology
-    >>> a = np.array([[0, 0, 0, 1, 0],
-    ...               [1, 1, 1, 0, 0],
-    ...               [1, 1, 1, 0, 1]], bool)
+    >>> a = np.array([[0, 0, 0, 1, 0], [1, 1, 1, 0, 0], [1, 1, 1, 0, 1]], bool)
     >>> b = morphology.remove_small_objects(a, 6)
     >>> b
     array([[False, False, False, False, False],
@@ -142,7 +140,8 @@ def remove_small_objects(
     if out.dtype == bool:
         selem = ndi.generate_binary_structure(ar.ndim, connectivity)
         ccs = np.zeros_like(ar, dtype=np.int32)
-        ndi.label(ar, selem, output=ccs)
+        # ndi.label(ar, selem, output=ccs)
+        ccs = cv2.connectedComponents(ar, selem)[1]
     else:
         ccs = out
 
@@ -202,6 +201,7 @@ def fix_duplicates(inst_map: np.ndarray) -> np.ndarray:
     for inst_id in inst_list:
         inst = np.array(inst_map == inst_id, np.uint8)
         remapped_ids = ndi.label(inst)[0]
+        # remapped_ids = cv2.connectedComponents(inst)[1]
         remapped_ids[remapped_ids > 1] += current_max_id
         inst_map[remapped_ids > 1] = remapped_ids[remapped_ids > 1]
         current_max_id = np.amax(inst_map)
@@ -569,7 +569,8 @@ def remove_debris_semantic(sem_map: np.ndarray, min_size: int = 10000):
 
     for i in classes:
         area = np.array(res == i, np.int32)
-        inst_map = ndi.label(area)[0]
+        # inst_map = ndi.label(area)[0]
+        inst_map = cv2.connectedComponents(area)[1]
         labels, counts = np.unique(inst_map, return_counts=True)
 
         for label, npixls in zip(labels, counts):
@@ -611,7 +612,8 @@ def fill_holes_semantic(sem_map: np.ndarray, min_size: int = 5000):
     """
     res = np.copy(sem_map)
     bg = res == 0
-    bg_objs = ndi.label(bg)[0]
+    # bg_objs = ndi.label(bg)[0]
+    bg_objs = cv2.connectedComponents(bg)[0]
 
     for i in np.unique(bg_objs)[1:]:
         y1, y2, x1, x2 = bounding_box(bg_objs == i)
@@ -669,7 +671,8 @@ def label_semantic(sem_map: np.ndarray, sort: bool = True) -> np.ndarray:
         classes = classes[np.argsort(-counts)]
 
     for c in classes:
-        obj_insts = ndi.label(sem_map == c)[0]
+        # obj_insts = ndi.label(sem_map == c)[0]
+        obj_insts = cv2.connectedComponents(sem_map == c)[1]
         labels = np.unique(obj_insts)
 
         # If all pixels belong to same (non bg) class, dont slice

@@ -1,5 +1,5 @@
 from .downloader import Downloader
-from .file_manager import FileHandler
+from .file_manager import FileHandler, H5Handler
 from .mask_utils import (
     binarize,
     bounding_box,
@@ -56,6 +56,7 @@ __all__ = [
     "THRESH_LOOKUP",
     "Downloader",
     "FileHandler",
+    "H5Handler",
     "remove_small_objects",
     "binarize",
     "fix_duplicates",
