@@ -1,7 +1,6 @@
 from typing import Dict, Tuple
 
 import numpy as np
-import tables as tb
 import torch
 from torch.utils.data import Dataset
 
@@ -30,17 +29,17 @@ ALLOWED_KEYS = ("image", "inst", "type", "cyto_inst", "cyto_type", "sem")
 class TrainDatasetH5(Dataset):
     def __init__(
         self,
-        h5path: str,
+        path: str,
         input_keys: Tuple[str, ...],
         transforms: A.Compose,
         inst_transforms: ApplyEach,
         drop_keys: Tuple[str, ...] = None,
         output_device: str = "cuda",
     ) -> None:
-        """Train dataset for cell/panoptic segmentation models.
+        """HDF5 train dataset for cell/panoptic segmentation models.
 
         Parameters:
-            h5path (str):
+            path (str):
                 Path to the h5 file.
             input_keys (Tuple[str, ...]):
                 Tuple of keys to be read from the h5 file.
@@ -83,7 +82,7 @@ class TrainDatasetH5(Dataset):
         if "inst" not in input_keys:
             raise ValueError("'inst' key must be present in keys")
 
-        self.h5path = h5path
+        self.path = path
         self.keys = input_keys
         self.mask_keys = [k for k in input_keys if k != "image"]
         self.inst_in_keys = [k for k in input_keys if "inst" in k]
@@ -97,7 +96,7 @@ class TrainDatasetH5(Dataset):
         self.output_device = output_device
         self.drop_keys = drop_keys
 
-        with tb.open_file(h5path, "r") as h5:
+        with tb.open_file(path, "r") as h5:
             self.n_items = len(h5.root["fname"][:])
 
     def __len__(self) -> int:
@@ -105,7 +104,7 @@ class TrainDatasetH5(Dataset):
         return self.n_items
 
     def __getitem__(self, ix: int) -> Dict[str, np.ndarray]:
-        data = FileHandler.read_h5(self.h5path, ix, keys=self.keys)
+        data = FileHandler.read_h5(self.path, ix, keys=self.keys)
 
         # get instance transform kwargs
         inst_kws = {

@@ -110,6 +110,9 @@ class H5Handler:
     ) -> None:
         """Initialize meta data arrays in the hdf5 file.
 
+        I.e. the filename and the coordinates of the patches. Coordinate format
+        is (x0, y0, width, height).
+
         Parameters:
             h5 (tb.file.File):
                 The hdf5 file.
@@ -131,8 +134,8 @@ class H5Handler:
             where=h5.root,
             name="coords",
             atom=tb.Int32Atom(),
-            shape=(0, 2),
-            chunkshape=(chunk_size, 2),
+            shape=(0, 4),
+            chunkshape=(chunk_size, 4),
             filters=tb.Filters(complevel=complevel, complib=complib),
         )
 
@@ -165,6 +168,21 @@ class FileHandler:
         """
         path = Path(path)
         return cv2.cvtColor(cv2.imread(path.as_posix()), cv2.COLOR_BGR2RGB)
+
+    @staticmethod
+    def read_mat(path: Union[str, Path]) -> Dict[str, np.ndarray]:
+        """Read a .mat file.
+
+        Parameters:
+            path (str or Path):
+                Path to the .mat file.
+
+        Returns:
+            Dict[str, np.ndarray]:
+                A dictionary of numpy arrays.
+        """
+        path = Path(path)
+        return sio.loadmat(path.as_posix())
 
     @staticmethod
     def read_h5(
