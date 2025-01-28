@@ -84,8 +84,9 @@ class SlidingWindowInferer(Inferer):
         self.stride = stride
         self.padding = padding
 
+    @staticmethod
     def _get_margins(
-        self, first_endpoint: int, img_size: int, stride: int, pad: int = None
+        first_endpoint: int, img_size: int, stride: int, pad: int = None
     ) -> Tuple[int, int]:
         """Get the number of slices needed for one direction and the overlap."""
         pad = int(pad) if pad is not None else 20  # at least some padding needed
@@ -106,8 +107,8 @@ class SlidingWindowInferer(Inferer):
 
         return n, mod + pad
 
+    @staticmethod
     def _get_slices(
-        self,
         stride: int,
         patch_shape: Tuple[int, int],
         img_size: Tuple[int, int],
@@ -115,8 +116,12 @@ class SlidingWindowInferer(Inferer):
     ) -> Tuple[Dict[str, slice], int, int]:
         """Get all the overlapping slices in a dictionary and the needed paddings."""
         y_end, x_end = patch_shape
-        nrows, pady = self._get_margins(y_end, img_size[0], stride, pad=pad)
-        ncols, padx = self._get_margins(x_end, img_size[1], stride, pad=pad)
+        nrows, pady = SlidingWindowInferer._get_margins(
+            y_end, img_size[0], stride, pad=pad
+        )
+        ncols, padx = SlidingWindowInferer._get_margins(
+            x_end, img_size[1], stride, pad=pad
+        )
 
         xyslices = []
         for row in range(nrows):
