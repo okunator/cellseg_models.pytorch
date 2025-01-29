@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict
+from typing import Callable, Dict, Tuple, Union
 
 import numpy as np
 from skimage.util import img_as_ubyte
@@ -15,6 +15,13 @@ from cellseg_models_pytorch.utils import (
     remove_debris_semantic,
 )
 
+try:
+    from tables import File
+
+    _has_tb = True
+except ModuleNotFoundError:
+    _has_tb = False
+
 __all__ = ["PostProcessor"]
 
 
@@ -29,6 +36,8 @@ INST_ARGMAX = {
     "dcan": False,
     "dran": False,
 }
+
+ALLOWED_FORMATS = (".mat", ".geojson", ".feather", ".parquet", ".h5", ".hdf", ".hdf5")
 
 
 class PostProcessor:
@@ -147,8 +156,11 @@ class PostProcessor:
         aux_map: np.ndarray,
         type_map: np.ndarray = None,
         sem_map: np.ndarray = None,
-        cyto_map: np.ndarray = None,
-        save_path: str = None,
+        cyto_inst_map: np.ndarray = None,
+        cyto_type_map: np.ndarray = None,
+        *,
+        dst: Union[str, File] = None,
+        coords: Tuple[int, int, int, int] = None,
         save_kwargs: Dict = None,
         **kwargs,
     ) -> Dict[str, np.ndarray]:
@@ -165,12 +177,15 @@ class PostProcessor:
                 The model semantic segmentation map. Shape (C, H, W).
             cyto_map (np.ndarray, default=None):
                 The model cytoplasm segmentation map. Shape (C, H, W).
-            save_path (str, default=None):
-                The path to save the post-processed output to .mat file. If None,
-                the output is not saved.
-           save_kwargs (Dict[str, Any], default=None):
+            dst (str or BinaryIO, default=None):
+                The path or file-handle to save the post-processed output. If None,
+                the output is not saved. Allowed formats: .mat, .geojson, .feather,
+                .parquet, .h5, .hdf5. If a file-handle is provided, the format is
+                expected to be hdf5.
+            save_kwargs (Dict[str, Any], default=None):
                 Keyword arguments for saving the post-processed predictions.
-                See `FileHandler.to_mat` and `FileHandler.to_gson` for more details.
+                See `FileHandler.to_mat`, `FileHandler.to_gson`, `FileHandler.to_h5`
+                for more details.
             **kwargs:
                 Arbitrary keyword arguments that can be used for any of the private
                 post-processing functions of this class.
@@ -180,21 +195,37 @@ class PostProcessor:
                 Final output names mapped to the final post-processed outputs.
                 E.g. {"sem": np.ndarray, "type": np.ndarray, "inst": np.ndarray}
         """
-        if save_path is not None:
-            save_path = Path(save_path)
-            allowed_formats = (".mat", ".geojson", ".feather", ".parquet")
-            if save_path.suffix not in allowed_formats:
+        save_kwargs = save_kwargs or {}
+
+        if dst is not None:
+            if _has_tb and isinstance(dst, File):
+                save_path = Path(dst.filename)
+                suff = Path(dst.filename).suffix
+            else:
+                dst = save_path = Path(dst)
+                suff = save_path.suffix
+
+            if suff not in ALLOWED_FORMATS:
                 raise ValueError(
-                    f"Illegal `save_path` format. Got {save_path.as_posix()}. "
-                    f"Allowed: {allowed_formats}."
+                    f"Illegal `dst` format. Got {save_path.as_posix()}. "
+                    f"Allowed: {ALLOWED_FORMATS}."
                 )
 
         res = {}
         if sem_map is not None:
             res["sem"] = self.get_sem_map(sem_map, **kwargs)
 
-        if cyto_map is not None:
+        if cyto_inst_map is not None:
             pass
+
+        if cyto_type_map is not None:
+            pass
+
+        # inst map should typically be a binary bg, fg mask. If the type map is not
+        # provided, and `inst_map` contains more than two classes, then we can assume
+        # that `inst_map` == `type_map` and do also type post-processing.
+        if np.unique(inst_map).size > 2:
+            type_map = inst_map
 
         res["inst"] = self.get_inst_map(inst_map, aux_map, **kwargs)
 
@@ -202,10 +233,12 @@ class PostProcessor:
             res["type"] = self.get_type_map(type_map, res["inst"], **kwargs)
             res["inst"] *= res["type"] > 0
 
-        if save_path is not None:
-            if save_path.suffix in (".geojson", ".feather", ".parquet"):
-                FileHandler.to_gson(res, save_path, **save_kwargs)
-            elif save_path.suffix == ".mat":
-                FileHandler.to_mat(res, save_path, **save_kwargs)
+        if dst is not None:
+            if suff in (".geojson", ".feather", ".parquet"):
+                FileHandler.to_gson(res, dst, coords, **save_kwargs)
+            elif suff == ".mat":
+                FileHandler.to_mat(res, dst, coords, **save_kwargs)
+            elif suff in (".h5", "hdf5"):
+                FileHandler.to_h5(res, dst, coords, **save_kwargs)
         else:
             return res

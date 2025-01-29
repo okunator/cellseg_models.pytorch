@@ -1,6 +1,6 @@
 from functools import partial
 from itertools import chain
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, Generator, List, Tuple
 
 import numpy as np
 import torch
@@ -171,6 +171,7 @@ class Inferer:
         Returns:
             Dict[str, torch.Tensor]:
                 Dictionary containing the model predictions (probabilities).
+                Shapes: (B, C, H, W).
         """
         with torch.no_grad():
             if self.mixed_precision:
@@ -184,7 +185,8 @@ class Inferer:
     def post_process(
         self,
         probs: Dict[str, torch.Tensor],
-        save_path: Union[List[str], str] = None,
+        dst: List[str] = None,
+        coords: List[Tuple[int, int, int, int]] = None,
         maptype: str = "amap",
         save_kwargs: Dict[str, Any] = None,
         **kwargs,
@@ -195,16 +197,19 @@ class Inferer:
             probs (Dict[str, torch.Tensor]):
                 Dictionary containing the model predictions. Shapes: (B, C, H, W).
                 E.g. {"inst": tensor, "aux": tensor, "type": tensor, "sem": tensor}
-            save_path (Union[List[str], str], default=None):
-                Path to save the post-processed predictions. If None, predictions are not
-                saved to disk but returned as a dictionary. If the batch size is greater
-                than 1, the save_path should be a list of paths.
+            dst (List[str], default=None):
+                A list of paths to save the post-processed predictions. If None,
+                predictions are not saved to disk but returned as a dictionary.
+                Allowed formats: .mat, .geojson, .feather, .parquet
+            coords (List[Tuple[int, int, int, int]], default=None):
+                A list of the XYWH-coordinate tuples of the input images.
             maptype (str):
                 The map type for pathos ThreadPool object for parallel post-processing.
                 Ignored if `probs` batch size=1. Allowed: ("map","amap","imap","uimap")
             save_kwargs (Dict[str, Any], default=None):
                 Keyword arguments for saving the post-processed predictions.
-                See `FileHandler.to_mat` and `FileHandler.to_gson` for more details.
+                See `FileHandler.to_mat`, `FileHandler.to_gson`, `FileHandler.to_h5`
+                for more details.
             **kwargs:
                 Additional keyword arguments for the post-processing pipeline.
 
@@ -221,34 +226,77 @@ class Inferer:
 
         if probs[self.model.inst_key].ndim != 4:
             raise ValueError(
-                "Invalid input shape. Expected `probs` to be 4D tensors. "
+                "Invalid input shape. Expected `probs` to be 4D (B, C, H, W) tensors. "
                 f"Got: {[(k, v.shape) for k, v in probs.items()]}"
             )
 
-        if probs[self.model.inst_key].shape[0] == 1:
-            arg_order = [self.model.inst_key, self.model.aux_key, "type", "sem", "cyto"]
-            inputs = [
-                self._to_ndarray(probs[arg]) for arg in arg_order if arg in probs.keys()
-            ]
+        if self.num_post_proc_threads == 1:
+            return self._post_process_sequential(
+                probs,
+                dst=dst,
+                coords=coords,
+                save_kwargs=save_kwargs,
+            )
         else:
             return self._post_process_parallel(
                 probs,
-                save_paths=save_path,
+                dst=dst,
+                coords=coords,
                 maptype=maptype,
                 save_kwargs=save_kwargs,
-                **kwargs,
             )
 
-        return self.post_processor.post_proc_pipeline(
-            *inputs, save_path=save_path, save_kwargs=save_kwargs, **kwargs
-        )
+    def _post_process_sequential(
+        self,
+        probs: Dict[str, torch.Tensor],
+        dst: List[str] = None,
+        coords: List[Tuple[int, int, int, int]] = None,
+        save_kwargs: Dict[str, Any] = None,
+        **kwargs,
+    ) -> List[Dict[str, np.ndarray]]:
+        """Run the full post-processing pipeline sequentially for many model outputs.
+
+        Parameters:
+            probs (Dict[str, torch.Tensor]):
+                Dictionary containing the model predictions. Shapes (B, C, H, W).
+                E.g. {"inst": tensor, "aux": tensor, "type": tensor, "sem": tensor}
+            dst (List[str], default=None):
+                Paths to save the post-processed predictions. If None, predictions are not
+                saved to disk but returned as a dictionary.
+            coords (List[Tuple[int, int, int, int]], default=None):
+                The XYWH-coordinates of the input images.
+            save_kwargs (Dict[str, Any], default=None):
+                Keyword arguments for saving the post-processed predictions.
+                See `FileHandler.to_mat`, `FileHandler.to_gson`, `FileHandler.to_h5`
+                for more details.
+
+        Returns:
+            List[Dict[str, np.ndarray]]:
+                The post-processed output map dictionaries in a list.
+        """
+        inputs = self._convert_inputs(probs)
+
+        res = []
+        for i, inp in enumerate(zip(*inputs)):
+            res.append(
+                self.post_processor.post_proc_pipeline(
+                    *inp,
+                    dst=dst[i] if dst is not None else None,
+                    coords=coords[i] if coords is not None else None,
+                    save_kwargs=save_kwargs,
+                    **kwargs,
+                )
+            )
+        return res
 
     def _post_process_parallel(
         self,
         probs: Dict[str, torch.Tensor],
-        save_paths: List[str] = None,
+        dst: List[str] = None,
+        coords: List[Tuple[int, int, int, int]] = None,
         save_kwargs: Dict[str, Any] = None,
         maptype: str = "amap",
+        **kwargs,
     ) -> List[Dict[str, np.ndarray]]:
         """Run the full post-processing pipeline in parallel for many model outputs.
 
@@ -256,8 +304,15 @@ class Inferer:
             probs (Dict[str, torch.Tensor]):
                 Dictionary containing the model predictions. Shapes (B, C, H, W).
                 E.g. {"inst": tensor, "aux": tensor, "type": tensor, "sem": tensor}
-            save_paths (List[str], default=None):
+            dst (List[str], default=None):
                 Paths to save the post-processed predictions. If None, predictions are not
+                saved to disk but returned as a dictionary.
+            coords (List[Tuple[int, int, int, int]], default=None):
+                The XYWH-coordinates of the input images.
+            save_kwargs (Dict[str, Any], default=None):
+                Keyword arguments for saving the post-processed predictions.
+                See `FileHandler.to_mat`, `FileHandler.to_gson`, `FileHandler.to_h5`
+                for more details.
             maptype (str, default="amap"):
                 The map type of the pathos Pool object.
                 Allowed: ("map", "amap", "imap", "uimap")
@@ -266,37 +321,32 @@ class Inferer:
             List[Dict[str, np.ndarray]]:
                 The post-processed output map dictionaries in a list.
         """
-        pp = partial(self.post_processor.post_proc_pipeline, save_kwargs=save_kwargs)
-
-        def _post_proc_func(inputs):
-            if len(inputs) == 2:
-                inputs, save_path = inputs
-            return pp(*inputs, save_path=save_path)
-
-        # zip the model outputs to tuple args in the order of `arg_order`
-        arg_order = [self.model.inst_key, self.model.aux_key, "type", "sem", "cyto"]
-        inputs = zip(
-            *[
-                [self._to_ndarray(m) for m in list(probs[arg])]
-                for arg in arg_order
-                if arg in probs.keys()
-            ]
+        pp = partial(
+            self.post_processor.post_proc_pipeline, save_kwargs=save_kwargs, **kwargs
         )
 
-        if save_paths is not None:
-            run_pool(
-                self.pool,
-                _post_proc_func,
-                list(zip(inputs, save_paths)),
-                ret=False,
-                maptype=maptype,
-            )
+        def _post_proc_func(inputs):
+            if len(inputs) == 3:
+                inputs, dst, coords = inputs
+            else:
+                dst, coords = None, None
+            return pp(*inputs, dst=dst, coords=coords)
+
+        inputs = self._convert_inputs(probs)
+
+        if dst is not None:
+            if coords is None:
+                h, w = probs[self.model.inst_key].shape[-2:]
+                coords = [(0, 0, w, h)] * len(dst)
+            inputs = ((m, dst[i], coords[i]) for i, m in enumerate(zip(*inputs)))
+        else:
+            inputs = zip(*inputs)
 
         return run_pool(
             self.pool,
             _post_proc_func,
             inputs,
-            ret=True,
+            ret=True if dst is not None else False,
             maptype=maptype,
         )
 
@@ -334,6 +384,27 @@ class Inferer:
 
         return probs
 
+    def _convert_inputs(self, probs: Dict[str, torch.Tensor]) -> Generator:
+        """Convert the input tensors to numpy arrays."""
+        seen = set()
+        arg_order = [
+            x
+            for x in [
+                self.model.inst_key,
+                self.model.aux_key,
+                "type",
+                "sem",
+                "cyto_inst",
+                "cyto_type",
+            ]
+            if not (x in seen or seen.add(x))
+        ]
+
+        # convert the tensors to numpy arrays and return generator
+        return (
+            self._to_ndarray(probs[arg]) for arg in arg_order if arg in probs.keys()
+        )
+
     def _to_ndarray(self, tensor: torch.Tensor) -> np.ndarray:
         """Convert tensor to numpy array."""
         if tensor.requires_grad:
@@ -341,9 +412,6 @@ class Inferer:
 
         if tensor.is_cuda:
             tensor = tensor.cpu()
-
-        if tensor.shape[0] == 1:
-            return tensor.squeeze().numpy()
 
         return tensor.numpy()
 
