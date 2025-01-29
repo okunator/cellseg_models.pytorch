@@ -12,6 +12,7 @@ from .vectorize import inst2gdf, sem2gdf
 
 try:
     import tables as tb
+    from tables import File
 
     _has_tb = True
 except ModuleNotFoundError:
@@ -138,6 +139,50 @@ class H5Handler:
             chunkshape=(chunk_size, 4),
             filters=tb.Filters(complevel=complevel, complib=complib),
         )
+
+    @staticmethod
+    def init_h5(path: str, keys: Tuple[str, ...], patch_size: Tuple[int, int]) -> File:
+        """Initialize a hdf5 file for saving masks.
+
+        Parameters:
+            path (str):
+                The output path.
+            keys (Tuple[str, ...]):
+                The keys of the arrays to be saved.
+            patch_size (Tuple[int, int]):
+                The size of the mask patches.
+
+        Returns:
+            File:
+                The hdf5 file.
+        Raises:
+            ModuleNotFoundError: If the tables library is not installed.
+            ValueError: If invalid keys are given.
+        """
+        if not _has_tb:
+            raise ModuleNotFoundError(
+                "The tables lib is needed for saving in hdf5 format. "
+                "Please install it using: `pip install tables`."
+            )
+
+        allowed_keys = ("inst", "type", "sem", "cyto_inst", "cyto_type")
+        if not all(k in allowed_keys for k in keys):
+            raise ValueError(
+                f"Invalid keys. Allowed keys are {allowed_keys}, got {keys}"
+            )
+
+        try:
+            h5 = tb.open_file(path, "w")
+
+            if not h5.list_nodes("/"):
+                for k in keys:
+                    H5Handler.init_mask(h5, k, patch_size)
+                H5Handler.init_meta_data(h5)
+        except Exception as e:
+            h5.close()
+            raise e
+
+        return h5
 
     @staticmethod
     def append_array(h5, array: np.ndarray, name: str) -> None:
@@ -335,8 +380,7 @@ class FileHandler:
     def to_gson(
         masks: Dict[str, np.ndarray],
         path: Union[str, Path],
-        xoff: int = None,
-        yoff: int = None,
+        coords: Tuple[int, int, int, int] = None,
         compute_centroids: bool = False,
         compute_bboxes: bool = False,
         class_dict_inst: Dict[int, str] = None,
@@ -363,11 +407,9 @@ class FileHandler:
             masks (Dict[str, np.ndarray]):
                 The masks to be saved. E.g. {"inst": np.ndarray, "type": np.ndarray}.
             path (str or Path):
-                The output filename.
-            xoff (int, default=None):
-                The x-offset for the masks.
-            yoff (int, default=None):
-                The y-offset for the masks.
+                The output filename. One of .geojson, .feather, .parquet.
+            coords (Tuple[int, int, int, int], default=None):
+                The XYWH-coordinates of the image patch. (x0, y0, width, height).
             compute_centroids (bool, default=False):
                 Compute the centroids of the instance masks.
             compute_bboxes (bool, default=False):
@@ -389,6 +431,9 @@ class FileHandler:
                 If True, warnings are silenced.
         """
         path = Path(path)
+
+        xoff = coords[0] if coords is not None else None
+        yoff = coords[1] if coords is not None else None
 
         if masks.get("inst", None) is not None:
             if use_subfolders:
@@ -461,6 +506,7 @@ class FileHandler:
     def to_mat(
         masks: Dict[str, np.ndarray],
         path: Union[str, Path],
+        coords: Tuple[int, int, int, int] = None,
         compute_centroids: bool = False,
         compute_bboxes: bool = False,
         compute_type_array: bool = False,
@@ -478,6 +524,8 @@ class FileHandler:
                 The masks to be saved. E.g. {"inst": np.ndarray, "type": np.ndarray}.
             path (str or Path):
                 The output path.
+            coords (Tuple[int, int, int, int], default=None):
+                The XYWH-coordinates of the image patch. (x0, y0, width, height).
             compute_centroids (bool, default=False):
                 Compute the centroids of the instance masks.
             compute_bboxes (bool, default=False):
@@ -512,10 +560,58 @@ class FileHandler:
         if masks.get("cyto", None) is not None:
             res["cyto"] = masks["cyto"]
 
+        if coords is not None:
+            res["coords"] = np.array([coords])
+
         sio.savemat(
             file_name=fname.with_suffix(".mat").as_posix(),
             mdict=res,
         )
+
+    @staticmethod
+    def to_h5(
+        masks: Dict[str, np.ndarray], h5, coords: Tuple[int, int, int, int]
+    ) -> None:
+        """Write masks to a hdf5 file.
+
+        Parameters:
+            masks (Dict[str, np.ndarray]):
+                The masks to be written.
+            h5 (tb.file.File):
+                The hdf5 file.
+            coords (Tuple[int, int, int, int]):
+                The XYWH-coordinates of the image patch. (x0, y0, width, height).
+        """
+        try:
+            if not h5.isopen:
+                raise IOError(f"The hdf5 file {h5.filename} is not open. Can't write.")
+
+            fname = Path(h5.filename).stem
+            name = f"{fname}-x{coords[0]}-y{coords[1]}-w{coords[2]}-y{coords[3]}"
+            h5handler = H5Handler()
+
+            if masks.get("image", None) is not None:
+                h5handler.append_array(h5, masks["image"][None, ...], "image")
+
+            if masks.get("inst", None) is not None:
+                h5handler.append_array(h5, masks["inst"][None, ...], "inst")
+
+            if masks.get("type", None) is not None:
+                h5handler.append_array(h5, masks["type"][None, ...], "type")
+
+            if masks.get("cyto_inst", None) is not None:
+                h5handler.append_array(h5, masks["cyto_inst"][None, ...], "cyto_inst")
+
+            if masks.get("cyto_type", None) is not None:
+                h5handler.append_array(h5, masks["cyto_type"][None, ...], "cyto_type")
+
+            if masks.get("sem", None) is not None:
+                h5handler.append_array(h5, masks["sem"][None, ...], "sem")
+
+            h5handler.append_meta_data(h5, name, coords=coords)
+        except Exception as e:
+            h5.close()
+            raise e
 
     @staticmethod
     def extract_zips_in_folder(path: Union[str, Path], rm: bool = False) -> None:
