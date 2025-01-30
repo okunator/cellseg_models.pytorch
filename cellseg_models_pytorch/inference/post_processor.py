@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict, Tuple, Union
+from typing import Callable, Dict, Tuple
 
 import numpy as np
 from skimage.util import img_as_ubyte
@@ -14,13 +14,6 @@ from cellseg_models_pytorch.utils import (
     med_filt_sequential,
     remove_debris_semantic,
 )
-
-try:
-    from tables import File
-
-    _has_tb = True
-except ModuleNotFoundError:
-    _has_tb = False
 
 __all__ = ["PostProcessor"]
 
@@ -37,7 +30,7 @@ INST_ARGMAX = {
     "dran": False,
 }
 
-ALLOWED_FORMATS = (".mat", ".geojson", ".feather", ".parquet", ".h5", ".hdf", ".hdf5")
+ALLOWED_FORMATS = (".mat", ".geojson", ".feather", ".parquet")
 
 
 class PostProcessor:
@@ -159,7 +152,7 @@ class PostProcessor:
         cyto_inst_map: np.ndarray = None,
         cyto_type_map: np.ndarray = None,
         *,
-        dst: Union[str, File] = None,
+        dst: str = None,
         coords: Tuple[int, int, int, int] = None,
         save_kwargs: Dict = None,
         **kwargs,
@@ -177,11 +170,10 @@ class PostProcessor:
                 The model semantic segmentation map. Shape (C, H, W).
             cyto_map (np.ndarray, default=None):
                 The model cytoplasm segmentation map. Shape (C, H, W).
-            dst (str or BinaryIO, default=None):
-                The path or file-handle to save the post-processed output. If None,
+            dst (str, default=None):
+                The path to save the post-processed output. If None,
                 the output is not saved. Allowed formats: .mat, .geojson, .feather,
-                .parquet, .h5, .hdf5. If a file-handle is provided, the format is
-                expected to be hdf5.
+                .parquet.
             save_kwargs (Dict[str, Any], default=None):
                 Keyword arguments for saving the post-processed predictions.
                 See `FileHandler.to_mat`, `FileHandler.to_gson`, `FileHandler.to_h5`
@@ -198,12 +190,8 @@ class PostProcessor:
         save_kwargs = save_kwargs or {}
 
         if dst is not None:
-            if _has_tb and isinstance(dst, File):
-                save_path = Path(dst.filename)
-                suff = Path(dst.filename).suffix
-            else:
-                dst = save_path = Path(dst)
-                suff = save_path.suffix
+            dst = save_path = Path(dst)
+            suff = save_path.suffix
 
             if suff not in ALLOWED_FORMATS:
                 raise ValueError(
@@ -238,7 +226,5 @@ class PostProcessor:
                 FileHandler.to_gson(res, dst, coords, **save_kwargs)
             elif suff == ".mat":
                 FileHandler.to_mat(res, dst, coords, **save_kwargs)
-            elif suff in (".h5", "hdf5"):
-                FileHandler.to_h5(res, dst, coords, **save_kwargs)
         else:
             return res
