@@ -9,6 +9,19 @@ from ._initialization import initialize_decoder, initialize_head
 __all__ = ["BaseMultiTaskSegModel"]
 
 
+ALLOWED_HEADS = [
+    "inst",
+    "type",
+    "sem",
+    "cellpose",
+    "omnipose",
+    "stardist",
+    "hovernet",
+    "dcan",
+    "dran",
+]
+
+
 class BaseMultiTaskSegModel(nn.ModuleDict):
     def forward_features(
         self, x: torch.Tensor
@@ -70,7 +83,7 @@ class BaseMultiTaskSegModel(nn.ModuleDict):
 
         for dec in decoders:
             featlist = self[dec](*feats, style=style)
-            branch = dec.split("_")[0]
+            branch = "_".join(dec.split("_")[:-1])
             res[branch] = featlist
 
         return res
@@ -82,9 +95,9 @@ class BaseMultiTaskSegModel(nn.ModuleDict):
         res = {}
         heads = [k for k in self.keys() if "head" in k]
         for head in heads:
-            branch_head = head.split("_")
+            branch_head = head.split("-")
             branch = branch_head[0]  # branch name
-            head_name = branch_head[1]  # head name
+            head_name = "_".join(branch_head[1].split("_")[:-1])  # head name
             x = self[head](dec_feats[branch][-1])  # the last decoder stage feat map
 
             if self.out_size is not None:
@@ -92,7 +105,7 @@ class BaseMultiTaskSegModel(nn.ModuleDict):
                     x, size=self.out_size, mode="bilinear", align_corners=False
                 )
 
-            res[head_name] = x
+            res[f"{branch}-{head_name}"] = x
 
         return res
 
@@ -120,29 +133,6 @@ class BaseMultiTaskSegModel(nn.ModuleDict):
         #     )
         return
 
-    def _check_decoder_args(
-        self, decoders: Tuple[str], must_haves: Tuple[str, ...]
-    ) -> str:
-        """Check that the decoders arg contains needed values."""
-        if not any([d in must_haves for d in decoders]):
-            raise ValueError(
-                f"`decoders` need to contain one of: {must_haves} " f"Got: {decoders}."
-            )
-
-        if len(must_haves) > 1:
-            if all([m in decoders for m in must_haves]):
-                raise ValueError(
-                    f"`decoders` need to contain only one of: {must_haves} "
-                    f"Got: {decoders}."
-                )
-
-        for must_have in must_haves:
-            try:
-                ix = decoders.index(must_have)
-                return decoders[ix]
-            except ValueError:
-                pass
-
     def _get_inner_keys(self, d: Dict[str, Dict[str, Any]]) -> List[str]:
         """Get the inner dict keys from a nested dict."""
         return list(chain.from_iterable(list(d[k].keys()) for k in d.keys()))
@@ -151,23 +141,39 @@ class BaseMultiTaskSegModel(nn.ModuleDict):
         """Get the inner dicts as one dict from a nested dict."""
         return dict(chain.from_iterable(list(d[k].items()) for k in d.keys()))
 
+    def _check_string_arg(self, arg: str) -> None:
+        """Check that the string argument does not contain any character other than '_' for splitting."""
+        if "-" in arg:
+            raise ValueError(
+                f"The dict key '{arg}' contains '-', which is not allowed. Use '_' instead."
+            )
+
+    def _check_decoder_args(self, decoders: Tuple[str, ...]) -> str:
+        """Check for illegal `decoders` args."""
+        if len(decoders) != len(set(decoders)):
+            raise ValueError("The decoder names need to be unique.")
+
+        for dec in decoders:
+            self._check_string_arg(dec)
+
     def _check_head_args(
         self, heads: Dict[str, int], decoders: Tuple[str, ...]
     ) -> None:
         """Check for illegal `heads` args."""
+        for head in heads.keys():
+            self._check_string_arg(head)
+
+        for head in self._get_inner_keys(heads):
+            if head not in ALLOWED_HEADS:
+                raise ValueError(
+                    f"Unknown head type: '{head}'. Allowed: {ALLOWED_HEADS}."
+                )
+
         if not set(decoders) == set(heads.keys()):
             raise ValueError(
                 "The decoder names need match exactly to the keys of `heads`. "
                 f"Got decoders: {decoders} and heads: {list(heads.keys())}."
             )
-
-        for head in heads.keys():
-            if not any([h == head for h in heads[head].keys()]):
-                raise ValueError(
-                    "For every decoder name one matching head name has to exist "
-                    f"Got heads: {[j for h, i in heads.items() for j in i.keys()]}"
-                    f"decoders: {decoders}."
-                )
 
     def _check_depth(self, depth: int, arrs: Dict[str, Tuple[Any, ...]]) -> None:
         """Check that the depth matches to tuple args."""
