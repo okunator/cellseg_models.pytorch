@@ -2,7 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from cellseg_models_pytorch.utils import filter2D, gaussian_kernel2d, tensor_one_hot
+from cellseg_models_pytorch.utils import tensor_one_hot
+from cellseg_models_pytorch.utils.convolve import (
+    filter2D,
+    gaussian_kernel2d,
+)
 
 
 def ssim(

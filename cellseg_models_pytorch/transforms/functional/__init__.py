@@ -4,11 +4,9 @@ from .dist import gen_dist_maps
 from .edge_weights import gen_weight_maps
 from .hovernet import gen_hv_maps
 from .omnipose import gen_omni_flow_maps, smooth_distance
-from .stardist import evenly_spaced_points, gen_radial_distmaps, gen_stardist_maps
+from .stardist import gen_stardist_maps
 
 __all__ = [
-    "evenly_spaced_points",
-    "gen_radial_distmaps",
     "gen_stardist_maps",
     "gen_flow_maps",
     "gen_hv_maps",

@@ -10,7 +10,6 @@ from .criterions import (
     CELoss,
     DiceLoss,
     FocalLoss,
-    GradMSE,
     IoULoss,
     TverskyLoss,
 )
@@ -35,7 +34,6 @@ __all__ = [
     "MSSSIM",
     "CELoss",
     "SSIM",
-    "GradMSE",
     "TverskyLoss",
     "FocalLoss",
     "DiceLoss",
