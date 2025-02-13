@@ -32,13 +32,12 @@ import scipy.ndimage as ndi
 import skimage.morphology as morph
 
 from cellseg_models_pytorch.transforms import percentile_normalize99
-from cellseg_models_pytorch.utils import naive_thresh_prob
 
 __all__ = ["post_proc_dcan"]
 
 
 def post_proc_dcan(
-    prob_map: np.ndarray, contour_map: np.ndarray, **kwargs
+    prob_map: np.ndarray, contour_map: np.ndarray, thresh: float = 0.5, **kwargs
 ) -> np.ndarray:
     """DCAN post-processing pipeline.
 
@@ -50,6 +49,8 @@ def post_proc_dcan(
             Probablilty map. Shape (H, W).
         contour_map : np.ndarray
             Contour map. Shape (H, W).
+        thresh : float, default=0.5
+            Threshold for the difference between prob_map and contour_map.
 
     Returns
     -------
@@ -58,7 +59,7 @@ def post_proc_dcan(
     """
     contour_map = percentile_normalize99(contour_map, amin=-1, amax=1)
     sub = prob_map - contour_map
-    pre_insts = ndi.label(naive_thresh_prob(sub))[0]
+    pre_insts = ndi.label((sub >= thresh).astype(int))[0]
 
     inst_ids = np.unique(pre_insts)[1:]
     disk = morph.disk(3)
