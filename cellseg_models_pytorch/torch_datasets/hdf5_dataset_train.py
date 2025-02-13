@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import Dataset
 
 from cellseg_models_pytorch.transforms.albu_transforms import ApplyEach
-from cellseg_models_pytorch.utils import FileHandler
+from cellseg_models_pytorch.utils import FileHandler, to_tensor
 
 try:
     import albumentations as A
@@ -125,8 +125,8 @@ class TrainDatasetH5(Dataset):
 
         tr = self.transforms(image=data["image"], masks=[masks])
 
-        image = tr["image"].to(self.output_device)
-        masks = tr["masks"][0].to(self.output_device)
+        image = to_tensor(tr["image"])
+        masks = to_tensor(tr["masks"][0])
         masks = torch.split(masks, mask_chls, dim=0)
 
         integer_masks = {k: masks[i] for i, k in enumerate(self.mask_keys)}
