@@ -9,7 +9,7 @@ from .joint_loss import JointLoss
 class MultiTaskLoss(nn.ModuleDict):
     def __init__(
         self,
-        branch_losses: Dict[str, JointLoss],
+        head_losses: Dict[str, JointLoss],
         loss_weights: Dict[str, float] = None,
         **kwargs,
     ) -> None:
@@ -19,7 +19,7 @@ class MultiTaskLoss(nn.ModuleDict):
 
         Parameters
         ----------
-            branch_losses : Dict[str, nn.Module]
+            head_losses : Dict[str, nn.Module]
                 Dictionary of branch names mapped to a loss module.
                 e.g. {"inst": JointLoss(MSE(), Dice()), "type": Dice()}.
             loss_weights : Dict[str, float], default=None
@@ -34,22 +34,22 @@ class MultiTaskLoss(nn.ModuleDict):
         """
         super().__init__()
 
-        self.weights = {k: 1.0 for k in branch_losses.keys()}
+        self.weights = {k: 1.0 for k in head_losses.keys()}
         if loss_weights is not None:
-            if len(loss_weights) != len(branch_losses):
+            if len(loss_weights) != len(head_losses):
                 raise ValueError(
                     f"""
-                    Got {len(loss_weights)} loss weights and {len(branch_losses)}
+                    Got {len(loss_weights)} loss weights and {len(head_losses)}
                     branches. Need to have the same length."""
                 )
-            if not all(k in branch_losses.keys() for k in loss_weights.keys()):
+            if not all(k in head_losses.keys() for k in loss_weights.keys()):
                 raise ValueError(
-                    """Mismatching keys in `loss_weights` and `branch_losses`"""
+                    """Mismatching keys in `loss_weights` and `head_losses`"""
                 )
             else:
                 self.weights = loss_weights
 
-        for branch, loss in branch_losses.items():
+        for branch, loss in head_losses.items():
             self.add_module(f"{branch}_loss", loss)
 
     def forward(
@@ -94,5 +94,5 @@ class MultiTaskLoss(nn.ModuleDict):
 
     def extra_repr(self) -> str:
         """Add info to print."""
-        s = "branch_loss_weights={weights}"
+        s = "head_loss_weights={weights}"
         return s.format(**self.__dict__)
