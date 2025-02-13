@@ -260,59 +260,11 @@ class FileHandler:
         path = Path(path)
         with tb.open_file(path.as_posix(), "r") as h5:
             out = {}
-
-            if "image" in keys:
+            for key in keys:
                 try:
-                    out["image"] = h5.root["image"][ix, ...]
+                    out[key] = h5.root[key][ix, ...]
                 except Exception:
-                    raise IOError("The HDF5 database does not contain 'image' node.")
-
-            if "inst" in keys:
-                try:
-                    out["inst"] = h5.root["inst"][ix, ...]
-                except Exception:
-                    raise IOError("The HDF5 database does not contain 'inst' node.")
-
-            if "type" in keys:
-                try:
-                    out["type"] = h5.root["type"][ix, ...]
-                except Exception:
-                    raise IOError("The HDF5 database does not contain 'type' node.")
-
-            if "cyto_inst" in keys:
-                try:
-                    out["cyto_inst"] = h5.root["cyto_inst"][ix, ...]
-                except Exception:
-                    raise IOError(
-                        "The HDF5 database does not contain 'cyto_inst' node."
-                    )
-
-            if "cyto_type" in keys:
-                try:
-                    out["cyto_type"] = h5.root["cyto_type"][ix, ...]
-                except Exception:
-                    raise IOError(
-                        "The HDF5 database does not contain 'cyto_type' node."
-                    )
-
-            if "sem" in keys:
-                try:
-                    out["sem"] = h5.root["sem"][ix, ...]
-                except Exception:
-                    raise IOError("The HDF5 database does not contain 'sem' node.")
-
-            if "fname" in keys:
-                try:
-                    fn = h5.root.fnames[ix]
-                    out["fname"] = Path(fn.decode("UTF-8"))
-                except Exception:
-                    raise IOError("The HDF5 database does not contain 'fname' node.")
-
-            if "coords" in keys:
-                try:
-                    out["coords"] = h5.root["coords"][ix, ...]
-                except Exception:
-                    raise IOError("The HDF5 database does not contain 'coords' node.")
+                    raise IOError(f"The HDF5 database does not contain '{key}' node.")
 
             return out
 
