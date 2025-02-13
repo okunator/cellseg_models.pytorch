@@ -29,7 +29,7 @@ SOFTWARE.
 import numpy as np
 from scipy import ndimage as ndi
 
-from ...utils import bounding_box, remove_small_objects
+from cellseg_models_pytorch.utils import bounding_box, remove_small_objects
 
 __all__ = ["gen_hv_maps"]
 
