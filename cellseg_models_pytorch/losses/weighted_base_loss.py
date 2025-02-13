@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from ..utils import filter2D, gaussian_kernel2d
+from cellseg_models_pytorch.utils.convolve import filter2D, gaussian_kernel2d
 
 
 class WeightedBaseLoss(nn.Module):
@@ -13,7 +13,7 @@ class WeightedBaseLoss(nn.Module):
         apply_mask: bool = False,
         class_weights: torch.Tensor = None,
         edge_weight: float = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Init a base class for weighted cross entropy based losses.
 
@@ -99,7 +99,7 @@ class WeightedBaseLoss(nn.Module):
         num_classes: int,
         kernel_size: int = 5,
         sigma: int = 3,
-        **kwargs
+        **kwargs,
     ) -> torch.Tensor:
         """Apply spatially varying label smoothihng to target map.
 
