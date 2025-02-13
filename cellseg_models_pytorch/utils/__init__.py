@@ -28,32 +28,9 @@ from .mask_utils import (
     type_map_flatten,
 )
 from .multiproc import run_pool
-from .tensor_kernels import filter2D, gaussian, gaussian_kernel2d, sobel_hv
-from .tensor_utils import (
-    ndarray_to_tensor,
-    tensor_one_hot,
-    tensor_to_ndarray,
-    to_device,
-)
-from .thresholding import (
-    argmax,
-    morph_chan_vese_thresh,
-    naive_thresh,
-    naive_thresh_prob,
-    niblack_thresh,
-    sauvola_thresh,
-)
-
-THRESH_LOOKUP = {
-    "argmax": argmax,
-    "naive": naive_thresh_prob,
-    "sauvola": sauvola_thresh,
-    "niblack": niblack_thresh,
-}
-
+from .tensor_utils import tensor_one_hot, to_device, to_tensor
 
 __all__ = [
-    "THRESH_LOOKUP",
     "Downloader",
     "FileHandler",
     "H5Handler",
@@ -75,18 +52,7 @@ __all__ = [
     "remove_debris_semantic",
     "fill_holes_semantic",
     "label_semantic",
-    "naive_thresh_prob",
-    "naive_thresh",
-    "niblack_thresh",
-    "sauvola_thresh",
-    "morph_chan_vese_thresh",
-    "argmax",
-    "gaussian",
-    "gaussian_kernel2d",
-    "sobel_hv",
-    "filter2D",
-    "ndarray_to_tensor",
-    "tensor_to_ndarray",
+    "to_tensor",
     "to_device",
     "tensor_one_hot",
     "normalize_torch",

@@ -5,7 +5,7 @@ import numpy as np
 from numba import njit, prange
 from scipy.spatial import KDTree
 
-from ....utils import intersection
+from cellseg_models_pytorch.utils import intersection
 
 __all__ = ["get_bboxes", "nms_stardist"]
 

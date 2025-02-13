@@ -2,7 +2,6 @@ from .bce import BCELoss
 from .ce import CELoss
 from .dice import DiceLoss
 from .focal import FocalLoss
-from .grad_mse import GradMSE
 from .iou import IoULoss
 from .mae import MAE
 from .mse import MSE
@@ -18,7 +17,6 @@ SEG_LOSS_LOOKUP = {
     "sce": SCELoss,
     "focal": FocalLoss,
     "mse": MSE,
-    "gmse": GradMSE,
     "ssim": SSIM,
     "msssim": MSSSIM,
     "mae": MAE,
@@ -30,7 +28,6 @@ __all__ = [
     "SEG_LOSS_LOOKUP",
     "REG_LOSS_LOOKUP",
     "MSE",
-    "GradMSE",
     "SSIM",
     "MSSSIM",
     "DiceLoss",

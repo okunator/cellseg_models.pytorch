@@ -27,7 +27,6 @@ INST_ARGMAX = {
     "hovernet": True,
     "drfns": True,
     "dcan": False,
-    "dran": False,
 }
 
 ALLOWED_FORMATS = (".mat", ".geojson", ".feather", ".parquet")
