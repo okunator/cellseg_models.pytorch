@@ -16,15 +16,13 @@ class JointLoss(nn.ModuleDict):
         each loss in the list and at the end sums the outputs together
         as one joint loss.
 
-        Parameters
-        ----------
-            losses : List[nn.Module]
+        Parameters:
+            losses (List[nn.Module]):
                 List of initialized nn.Module losses.
-            weights : List[float], default=None
+            weights (List[float], default=None):
                 List of weights for each loss.
 
-        Raises
-        ------
+        Raises:
             ValueError:
                 If more than 4 losses are given as input.
                 If given weights are not between [0, 1].
@@ -46,8 +44,7 @@ class JointLoss(nn.ModuleDict):
     def forward(self, **kwargs) -> torch.Tensor:
         """Compute the joint-loss.
 
-        Returns
-        -------
+        Returns:
             torch.Tensor:
                 The computed joint loss.
         """

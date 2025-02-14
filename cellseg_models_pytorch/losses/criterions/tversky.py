@@ -1,9 +1,9 @@
 import torch
 import torch.nn.functional as F
 
-from cellseg_models_pytorch.utils import tensor_one_hot
-
 from ..weighted_base_loss import WeightedBaseLoss
+
+__all__ = ["TverskyLoss"]
 
 
 class TverskyLoss(WeightedBaseLoss):
@@ -17,31 +17,30 @@ class TverskyLoss(WeightedBaseLoss):
         apply_mask: bool = False,
         edge_weight: float = None,
         class_weights: torch.Tensor = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Tversky loss.
 
         https://arxiv.org/abs/1706.05721
 
-        Parameters
-        ----------
-        alpha : float, default=0.7
+        Parameters:
+            alpha (float, default=0.7):
                 False positive dice coefficient.
-        beta : float, default=0.3
-            False negative tanimoto coefficient.
-        apply_sd : bool, default=False
-            If True, Spectral decoupling regularization will be applied  to the
-            loss matrix.
-        apply_ls : bool, default=False
-            If True, Label smoothing will be applied to the target.
-        apply_svls : bool, default=False
-            If True, spatially varying label smoothing will be applied to the target
-        apply_mask : bool, default=False
-            If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
-        edge_weight : float, default=none
-            Weight that is added to object borders.
-        class_weights : torch.Tensor, default=None
-            Class weights. A tensor of shape (n_classes,).
+            beta (float, default=0.3):
+                False negative tanimoto coefficient.
+            apply_sd (bool, default=False):
+                If True, Spectral decoupling regularization will be applied  to the
+                loss matrix.
+            apply_ls (bool, default=False):
+                If True, Label smoothing will be applied to the target.
+            apply_svls (bool, default=False):
+                If True, spatially varying label smoothing will be applied to the target
+            apply_mask (bool, default=False):
+                If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
+            edge_weight (float, default=none):
+                Weight that is added to object borders.
+            class_weights (torch.Tensor, default=None):
+                Class weights. A tensor of shape (n_classes,).
         """
         super().__init__(
             apply_sd, apply_ls, apply_svls, apply_mask, class_weights, edge_weight
@@ -56,39 +55,37 @@ class TverskyLoss(WeightedBaseLoss):
         target: torch.Tensor,
         target_weight: torch.Tensor = None,
         mask: torch.Tensor = None,
-        **kwargs
+        **kwargs,
     ) -> torch.Tensor:
         """Compute the Tversky loss.
 
-        Parameters
-        ----------
-            yhat : torch.Tensor
+        Parameters:
+            yhat (torch.Tensor):
                 The prediction map. Shape (B, C, H, W).
-            target : torch.Tensor
+            target (torch.Tensor):
                 the ground truth annotations. Shape (B, H, W).
-            target_weight : torch.Tensor, default=None
+            target_weight (torch.Tensor, default=None):
                 The edge weight map. Shape (B, H, W).
-            mask : torch.Tensor, default=None
+            mask (torch.Tensor, default=None):
                 The mask map. Shape (B, H, W).
 
-        Returns
-        -------
+        Returns:
             torch.Tensor:
                 Computed Tversky loss (scalar).
         """
-        num_classes = yhat.shape[1]
-        target_one_hot = tensor_one_hot(target, n_classes=num_classes)
+        n_classes = yhat.shape[1]
+        target_one_hot = F.one_hot(target.long(), n_classes).permute(0, 3, 1, 2)
         yhat_soft = F.softmax(yhat, dim=1)
         assert target_one_hot.shape == yhat.shape
 
         if self.apply_svls:
             target_one_hot = self.apply_svls_to_target(
-                target_one_hot, num_classes, **kwargs
+                target_one_hot, n_classes, **kwargs
             )
 
         if self.apply_ls:
             target_one_hot = self.apply_ls_to_target(
-                target_one_hot, num_classes, **kwargs
+                target_one_hot, n_classes, **kwargs
             )
 
         intersection = torch.sum(yhat_soft * target_one_hot, 1)

@@ -2,11 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from cellseg_models_pytorch.utils import tensor_one_hot
 from cellseg_models_pytorch.utils.convolve import (
     filter2D,
     gaussian_kernel2d,
 )
+
+__all__ = ["SSIM", "MSSSIM"]
 
 
 def ssim(
@@ -19,17 +20,15 @@ def ssim(
 
     UNET3+ https://arxiv.org/pdf/2004.08790.pdf
 
-    Parameters
-    ----------
-        img1 : torch.Tensor
+    Parameters:
+        img1 (torch.Tensor):
             Input image 1. Shape (B, C, H, W).
-        img2 : torch.Tensor
+        img2 (torch.Tensor):
             Input image 2. Shape (B, C, H, W).
-        window_size : int, default=11
+        window_size (int, default=11):
             Size of the gaussian kernel.
 
-    Returns
-    -------
+    Returns:
         torch.Tensor:
             Computed ssim loss and contrast sensitivity.
     """
@@ -85,11 +84,10 @@ class SSIM(nn.Module):
         I.e. the dissimilarity:
         (1 - SSIM(x, y)) / 2
 
-        Parameters
-        ----------
-            window_size : int, default=11
+        Parameters:
+            window_size (int, default=11):
                 Size of the gaussian kernel.
-            return_cs : bool, default=False
+            return_cs (bool, default=False):
                 Return also the the contrast sensitivity coeff.
         """
         super().__init__()
@@ -102,23 +100,22 @@ class SSIM(nn.Module):
         """Compute the SSIM loss.
 
         Parameters
-        ----------
-            yhat : torch.Tensor
+            yhat (torch.Tensor):
                 The prediction map. Shape (B, C, H, W).
-            target : torch.Tensor
+            target (torch.Tensor):
                 the ground truth annotations. Shape (B, H, W).
-            target_weight : torch.Tensor, default=None
+            target_weight (torch.Tensor, default=None):
                 The edge weight map. Shape (B, H, W).
 
-        Returns
-        -------
+        Returns:
             torch.Tensor:
                 Computed SSIM loss (scalar).
         """
         # if target is label mask shaped (B, H, W) then one hot
         if len(target.shape) == 3:
             try:
-                target = tensor_one_hot(target, n_classes=yhat.shape[1])
+                n_classes = yhat.shape[1]
+                target = F.one_hot(target.long(), n_classes).permute(0, 3, 1, 2).float()
             except Exception:
                 target = target.unsqueeze(1)
 
@@ -142,8 +139,7 @@ class MSSSIM(nn.Module):
         penalizes fuzzy boundaries
 
         Parameters
-        ----------
-            window_size : int, default=11
+            window_size (int, default=11):
                 Size of the gaussian kernel.
         """
         super().__init__()
@@ -155,15 +151,13 @@ class MSSSIM(nn.Module):
     ) -> torch.Tensor:
         """Compute the MS-SSIM loss.
 
-        Parameters
-        ----------
-            yhat : torch.Tensor
+        Parameters:
+            yhat (torch.Tensor):
                 The prediction map. Shape (B, C, H, W).
-            target : torch.Tensor
+            target (torch.Tensor):
                 the ground truth annotations. Shape (B, H, W).
 
-        Returns
-        -------
+        Returns:
             torch.Tensor:
                 Computed MS-SSIM loss (scalar).
         """

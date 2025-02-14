@@ -15,25 +15,24 @@ class BCELoss(WeightedBaseLoss):
         apply_mask: bool = False,
         edge_weight: float = None,
         class_weights: torch.Tensor = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Binary cross entropy loss with weighting and other tricks.
 
         Parameters
-        ----------
-        apply_sd : bool, default=False
-            If True, Spectral decoupling regularization will be applied  to the
-            loss matrix.
-        apply_ls : bool, default=False
-            If True, Label smoothing will be applied to the target.
-        apply_svls : bool, default=False
-            If True, spatially varying label smoothing will be applied to the target
-        apply_mask : bool, default=False
-            If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
-        edge_weight : float, default=None
-            Weight that is added to object borders.
-        class_weights : torch.Tensor, default=None
-            Class weights. A tensor of shape (n_classes,).
+            apply_sd (bool, default=False):
+                If True, Spectral decoupling regularization will be applied  to the
+                loss matrix.
+            apply_ls (bool, default=False):
+                If True, Label smoothing will be applied to the target.
+            apply_svls (bool, default=False):
+                If True, spatially varying label smoothing will be applied to the target
+            apply_mask (bool, default=False):
+                If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
+            edge_weight (float, default=None):
+                Weight that is added to object borders.
+            class_weights (torch.Tensor, default=None):
+                Class weights. A tensor of shape (n_classes,).
         """
         super().__init__(
             apply_sd, apply_ls, apply_svls, apply_mask, class_weights, edge_weight
@@ -46,23 +45,21 @@ class BCELoss(WeightedBaseLoss):
         target: torch.Tensor,
         target_weight: torch.Tensor = None,
         mask: torch.Tensor = None,
-        **kwargs
+        **kwargs,
     ) -> torch.Tensor:
         """Compute binary cross entropy loss.
 
-        Parameters
-        ----------
-            yhat : torch.Tensor
+        Parameters:
+            yhat (torch.Tensor):
                 The prediction map. Shape (B, C, H, W).
-            target : torch.Tensor
+            target (torch.Tensor):
                 the ground truth annotations. Shape (B, H, W).
-            target_weight : torch.Tensor, default=None
+            target_weight (torch.Tensor, default=None):
                 The edge weight map. Shape (B, H, W).
-            mask : torch.Tensor, default=None
+            mask (torch.Tensor, default=None):
                 The mask map. Shape (B, H, W).
 
-        Returns
-        -------
+        Returns:
             torch.Tensor:
                 Computed BCE loss (scalar).
         """

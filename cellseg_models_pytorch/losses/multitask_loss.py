@@ -15,17 +15,17 @@ class MultiTaskLoss(nn.ModuleDict):
     ) -> None:
         """Multi-task loss wrapper.
 
-        Combines losses from different branches to one loss function.
+        Combines losses from different heades to one loss function.
 
         Parameters:
             head_losses (Dict[str, nn.Module]):
-                Dictionary of branch names mapped to a loss module.
+                Dictionary of head names mapped to a loss module.
                 e.g. {"inst": JointLoss(MSE(), Dice()), "type": Dice()}.
             loss_weights (Dict[str, float], default=None):
-                Dictionary of branch names mapped to the weight used for
-                that branch loss.
+                Dictionary of head names mapped to the weight used for
+                that head loss.
 
-        Raises
+        Raises:
             ValueError:
                 If the input arguments have different lengths.
                 If the input arguments have mismatching keys.
@@ -38,7 +38,7 @@ class MultiTaskLoss(nn.ModuleDict):
                 raise ValueError(
                     f"""
                     Got {len(loss_weights)} loss weights and {len(head_losses)}
-                    branches. Need to have the same length."""
+                    heads. Need to have the same length."""
                 )
             if not all(k in head_losses.keys() for k in loss_weights.keys()):
                 raise ValueError(
@@ -47,8 +47,8 @@ class MultiTaskLoss(nn.ModuleDict):
             else:
                 self.weights = loss_weights
 
-        for branch, loss in head_losses.items():
-            self.add_module(f"{branch}_loss", loss)
+        for head, loss in head_losses.items():
+            self.add_module(head, loss)
 
     def forward(
         self,
@@ -64,7 +64,7 @@ class MultiTaskLoss(nn.ModuleDict):
                 Dictionary of head names mapped to the predicted masks.
                 e.g. {"inst": (B, C, H, W), "type": (B, C, H, W)}.
             targets (Dict[str, torch.Tensor]):
-                Dictionary of branch names mapped to the GT masks.
+                Dictionary of head names mapped to the GT masks.
                 e.g. {"inst": (B, C, H, W), "type": (B, C, H, W)}.
             mask (torch.Tensor, default=None):
                 The mask for masked losses. Shape (B, H, W).
@@ -72,20 +72,25 @@ class MultiTaskLoss(nn.ModuleDict):
         Returns:
             torch.Tensor: Computed multi-task loss (Scalar).
         """
+        if yhats.keys() != targets.keys():
+            raise ValueError(
+                "Mismatching keys in `yhats` and `targets`"
+                f"Got {list(yhats.keys())} and {list(targets.keys())}"
+            )
+
         weight_map = None
         if "edgeweight" in targets.keys():
             weight_map = targets["edgeweight"]
 
         multitask_loss = 0.0
-        for branch, loss in self.items():
-            branch = branch.split("_")[0]
-            branch_loss = loss(
-                yhat=yhats[branch],
-                target=targets[branch],
+        for head, loss in self.items():
+            head_loss = loss(
+                yhat=yhats[head],
+                target=targets[head],
                 target_weight=weight_map,
                 mask=mask,
             )
-            multitask_loss += branch_loss * self.weights[branch]
+            multitask_loss += head_loss * self.weights[head]
 
         return multitask_loss
 

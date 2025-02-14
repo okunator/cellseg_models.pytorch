@@ -18,23 +18,21 @@ class Loss(nn.Module):
         """Loss wrapper class.
 
         Parameters:
-        -----------
-            name : str
+            name (str):
                 Name of the loss function.
-            apply_sd : bool, default=False
+            apply_sd (bool, default=False):
                 If True, Spectral decoupling regularization will be applied  to the
                 loss matrix.
-            apply_ls : bool, default=False
+            apply_ls (bool, default=False):
                 If True, Label smoothing will be applied to the target.
-            apply_svls : bool, default=False
+            apply_svls (bool, default=False):
                 If True, spatially varying label smoothing will be applied to the target
-            edge_weight : float, default=none
+            edge_weight (float, default=none):
                 Weight that is added to object borders.
-            class_weights : torch.Tensor, default=None
+            class_weights (torch.Tensor, default=None):
                 Class weights. A tensor of shape (n_classes,).
 
-        Raises
-        ------
+        Raises:
             ValueError: if the loss function name is illegal.
         """
         super().__init__()

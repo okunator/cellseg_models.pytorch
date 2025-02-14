@@ -1,8 +1,6 @@
 import torch
 import torch.nn.functional as F
 
-from cellseg_models_pytorch.utils import tensor_one_hot
-
 from ..weighted_base_loss import WeightedBaseLoss
 
 __all__ = ["DiceLoss"]
@@ -55,34 +53,32 @@ class DiceLoss(WeightedBaseLoss):
         """Compute the DICE coefficient.
 
         Parameters
-        ----------
-            yhat : torch.Tensor
+            yhat (torch.Tensor):
                 The prediction map. Shape (B, C, H, W).
-            target : torch.Tensor
+            target (torch.Tensor):
                 the ground truth annotations. Shape (B, H, W).
-            target_weight : torch.Tensor, default=None
+            target_weight (torch.Tensor, default=None):
                 The edge weight map. Shape (B, H, W).
-            mask : torch.Tensor, default=None
+            mask (torch.Tensor, default=None):
                 The mask map. Shape (B, H, W).
 
-        Returns
-        -------
+        Returns:
             torch.Tensor:
                 Computed DICE loss (scalar).
         """
         yhat_soft = F.softmax(yhat, dim=1)
-        num_classes = yhat.shape[1]
-        target_one_hot = tensor_one_hot(target, n_classes=num_classes)
+        n_classes = yhat.shape[1]
+        target_one_hot = F.one_hot(target.long(), n_classes).permute(0, 3, 1, 2)
         assert target_one_hot.shape == yhat.shape
 
         if self.apply_svls:
             target_one_hot = self.apply_svls_to_target(
-                target_one_hot, num_classes, **kwargs
+                target_one_hot, n_classes, **kwargs
             )
 
         if self.apply_ls:
             target_one_hot = self.apply_ls_to_target(
-                target_one_hot, num_classes, **kwargs
+                target_one_hot, n_classes, **kwargs
             )
 
         intersection = torch.sum(yhat_soft * target_one_hot, 1)

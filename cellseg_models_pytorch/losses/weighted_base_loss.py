@@ -19,20 +19,19 @@ class WeightedBaseLoss(nn.Module):
 
         Enables weighting for object instance edges and classes.
 
-        Parameters
-        ----------
-        apply_sd : bool, default=False
+        Parameters:
+        apply_sd (bool, default=False):
             If True, Spectral decoupling regularization will be applied  to the
             loss matrix.
-        apply_ls : bool, default=False
+        apply_ls (bool, default=False):
             If True, Label smoothing will be applied to the target.
-        apply_svls : bool, default=False
+        apply_svls (bool, default=False):
             If True, spatially varying label smoothing will be applied to the target
-        apply_mask : bool, default=False
+        apply_mask (bool, default=False):
             If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
-        class_weights : torch.Tensor, default=None
+        class_weights (torch.Tensor, default=None):
             Class weights. A tensor of shape (C, )
-        edge_weight : float, default=None
+        edge_weight (float, default=None):
             Weight for the object instance border pixels
         """
         super().__init__()
@@ -50,17 +49,15 @@ class WeightedBaseLoss(nn.Module):
 
         https://arxiv.org/abs/2011.09468
 
-        Parameters
-        ----------
-            loss_matrix : torch.Tensor
+        Parameters:
+            loss_matrix (torch.Tensor):
                 Pixelwise losses. A tensor of shape (B, H, W).
-            yhat : torch.Tensor
+            yhat (torch.Tensor):
                 The pixel predictions of the model. Shape (B, C, H, W).
-            lam : float, default=0.01
+            lam (float, default=0.01):
                 Lambda constant.
 
-        Returns
-        -------
+        Returns:
             torch.Tensor:
                 SD-regularized loss matrix. Same shape as input.
         """
@@ -70,33 +67,31 @@ class WeightedBaseLoss(nn.Module):
     def apply_ls_to_target(
         self,
         target: torch.Tensor,
-        num_classes: int,
+        n_classes: int,
         label_smoothing: float = 0.1,
     ) -> torch.Tensor:
         """Apply regular label smoothing to the target map.
 
         https://arxiv.org/abs/1512.00567
 
-        Parameters
-        ----------
-            target : torch.Tensor
+        Parameters:
+            target (torch.Tensor):
                 The target one hot tensor. Shape (B, C, H, W). Dtype: Int64.
-            num_classes : int
+            n_classes (int):
                 Number of classes in the data.
-            label_smoothing : float, default=0.1
+            label_smoothing (float, default=0.1):
                 The smoothing coeff alpha.
 
-        Retrurns
-        --------
+        Retrurns:
             Torch.Tensor:
                 Label smoothed target. Same shape as input.
         """
-        return target * (1 - label_smoothing) + label_smoothing / num_classes
+        return target * (1 - label_smoothing) + label_smoothing / n_classes
 
     def apply_svls_to_target(
         self,
         target: torch.Tensor,
-        num_classes: int,
+        n_classes: int,
         kernel_size: int = 5,
         sigma: int = 3,
         **kwargs,
@@ -105,25 +100,23 @@ class WeightedBaseLoss(nn.Module):
 
         https://arxiv.org/abs/2104.05788
 
-        Parameters
-        ----------
-            target : torch.Tensor
+        Parameters:
+            target (torch.Tensor):
                 The target one hot tensor. Shape (B, C, H, W). Dtype: Int64.
-            num_classes : int
+            n_classes (int):
                 Number of classes in the data.
-            kernel_size : int, default=3
+            kernel_size (int, default=3):
                 Size of a square kernel.
-            sigma : int, default=3
+            sigma (int, default=3):
                 The std of the gaussian.
 
-        Retrurns
-        --------
+        Retrurns:
             Torch.Tensor:
                 Label smoothed target. Same shape as input.
         """
         my, mx = kernel_size // 2, kernel_size // 2
         gaussian_kernel = gaussian_kernel2d(
-            kernel_size, sigma, num_classes, device=target.device
+            kernel_size, sigma, n_classes, device=target.device
         )
         neighborsum = (1 - gaussian_kernel[..., my, mx]) + 1e-16
         gaussian_kernel = gaussian_kernel.clone()
@@ -137,17 +130,16 @@ class WeightedBaseLoss(nn.Module):
     ) -> torch.Tensor:
         """Multiply pixelwise loss matrix by the class weights.
 
-        NOTE: No normalization
+        Note:
+            Does not apply normalization
 
-        Parameters
-        ----------
-            loss_matrix : torch.Tensor
+        Parameters:
+            loss_matrix (torch.Tensor):
                 Pixelwise losses. A tensor of shape (B, H, W).
-            target : torch.Tensor
+            target (torch.Tensor):
                 The target mask. Shape (B, H, W).
 
-        Returns
-        -------
+        Returns:
             torch.Tensor:
                 The loss matrix scaled with the weight matrix. Shape (B, H, W).
         """
@@ -163,16 +155,14 @@ class WeightedBaseLoss(nn.Module):
 
         Basically just computes `edge_weight`**`weight_map`.
 
-        Parameters
-        ----------
-            loss_matrix : torch.Tensor
+        Parameters:
+            loss_matrix (torch.Tensor):
                 Pixelwise losses. A tensor of shape (B, H, W).
-            weight_map : torch.Tensor
+            weight_map (torch.Tensor):
                 Map that points to the pixels that will be weighted.
                 Shape (B, H, W).
 
-        Returns
-        -------
+        Returns:
             torch.Tensor:
                 The loss matrix scaled with the nuclear boundary weights.
                 Shape (B, H, W).
@@ -184,17 +174,15 @@ class WeightedBaseLoss(nn.Module):
     ) -> torch.Tensor:
         """Apply a mask to the loss matrix.
 
-        Parameters
-        ----------
-            loss_matrix : torch.Tensor
+        Parameters:
+            loss_matrix (torch.Tensor):
                 Pixelwise losses. A tensor of shape (B, H, W).
-            mask : torch.Tensor
+            mask (torch.Tensor):
                 The mask. Shape (B, H, W).
-            norm : bool, default=True
+            norm (bool, default=True):
                 If True, the loss matrix will be normalized by the mean of the mask.
 
-        Returns
-        -------
+        Returns:
             torch.Tensor:
                 The loss matrix scaled with the mask. Shape (B, H, W).
         """

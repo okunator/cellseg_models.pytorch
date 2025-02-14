@@ -17,23 +17,21 @@ class MAE(WeightedBaseLoss):
         """Compute the MAE loss. Used in the stardist method.
 
         Stardist:
-        https://arxiv.org/pdf/1806.03535.pdf
+            https://arxiv.org/pdf/1806.03535.pdf
 
-        NOTE: We have added the option to apply spectral decoupling and edge weights
-        to the loss matrix.
+        Note:
+            additionally apply spectral decoupling and edge weights to the loss matrix.
 
-        Parameters
-        ----------
-        alpha : float, default=1e-4
-            Weight regulizer b/w [0,1]. In stardist repo, this is the
-            'train_background_reg' parameter.
-        apply_sd : bool, default=False
-            If True, Spectral decoupling regularization will be applied  to the
-            loss matrix.
-        apply_mask : bool, default=False
-            If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
-        edge_weight : float, default=none
-            Weight that is added to object borders.
+        Parameters:
+            alpha (float, default=1e-4)
+                Weight regulizer b/w [0,1]. In stardist repo, this is the parameter
+                'train_background_reg'.
+            apply_sd (bool, default=False):
+                If True, applies Spectral decoupling regularization to the loss matrix.
+            apply_mask (bool, default=False):
+                If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
+            edge_weight (float, default=none):
+                Weight that is added to object borders.
         """
         super().__init__(apply_sd, False, False, apply_mask, False, edge_weight)
         self.alpha = alpha
@@ -49,19 +47,17 @@ class MAE(WeightedBaseLoss):
     ) -> torch.Tensor:
         """Compute the masked MAE loss.
 
-        Parameters
-        ----------
-            yhat : torch.Tensor
+        Parameters:
+            yhat (torch.Tensor):
                 The prediction map. Shape (B, C, H, W).
-            target : torch.Tensor
+            target (torch.Tensor):
                 the ground truth annotations. Shape (B, H, W).
-            target_weight : torch.Tensor, default=None
+            target_weight (torch.Tensor, default=None):
                 The edge weight map. Shape (B, H, W).
-            mask : torch.Tensor, default=None
+            mask (torch.Tensor, default=None):
                 The mask map. Shape (B, H, W).
 
-        Returns
-        -------
+        Returns:
             torch.Tensor:
                 Computed MAE loss (scalar).
         """
