@@ -33,8 +33,7 @@ class TrainDatasetH5(Dataset):
         input_keys: Tuple[str, ...],
         transforms: A.Compose,
         inst_transforms: ApplyEach,
-        drop_keys: Tuple[str, ...] = None,
-        output_device: str = "cuda",
+        map_out_keys: Dict[str, str] = None,
     ) -> None:
         """HDF5 train dataset for cell/panoptic segmentation models.
 
@@ -47,10 +46,12 @@ class TrainDatasetH5(Dataset):
                 Albumentations compose object for image and mask transforms.
             inst_transforms (ApplyEach):
                 ApplyEach object for instance transforms.
-            drop_keys (Tuple[str, ...], default=None):
-                Tuple of keys to be dropped from the output dictionary.
-            output_device (str):
-                Output device for the image and masks.
+            map_out_keys (Dict[str, str], default=None):
+                A dictionary to map the default output keys to new output keys. .
+                Useful if you want to match the output keys with model output keys.
+                e.g. {"inst": "decoder1-inst", "inst-cellpose": decoder2-cellpose}.
+                The default output keys are any of 'image', 'inst', 'type', 'cyto_inst',
+                'cyto_type', 'sem' & inst-{transform.name}, cyto_inst-{transform.name}.
 
         Raises:
             ModuleNotFoundError: If albumentations or tables is not installed.
@@ -87,14 +88,13 @@ class TrainDatasetH5(Dataset):
         self.mask_keys = [k for k in input_keys if k != "image"]
         self.inst_in_keys = [k for k in input_keys if "inst" in k]
         self.inst_out_keys = [
-            f"{name}_{key}"
+            f"{key}-{name}"
             for name in inst_transforms.names
             for key in self.inst_in_keys
         ]
         self.transforms = transforms
         self.inst_transforms = inst_transforms
-        self.output_device = output_device
-        self.drop_keys = drop_keys
+        self.map_out_keys = map_out_keys
 
         with tb.open_file(path, "r") as h5:
             self.n_items = len(h5.root["fname"][:])
@@ -129,16 +129,27 @@ class TrainDatasetH5(Dataset):
         masks = to_tensor(tr["masks"][0])
         masks = torch.split(masks, mask_chls, dim=0)
 
-        integer_masks = {k: masks[i] for i, k in enumerate(self.mask_keys)}
+        integer_masks = {
+            n: masks[i].squeeze().long()
+            for i, n in enumerate(self.mask_keys)
+            # n: masks[i].squeeze()
+            # for i, n in enumerate(self.mask_keys)
+        }
         inst_transformed_masks = {
-            f"{n}": masks[len(integer_masks) + i]
+            # n: masks[len(integer_masks) + i]
+            # for i, n in enumerate(self.inst_out_keys)
+            n: masks[len(integer_masks) + i].float()
             for i, n in enumerate(self.inst_out_keys)
         }
 
-        out = {"image": image, **integer_masks, **inst_transformed_masks}
+        # out = {"image": image.float(), **integer_masks, **inst_transformed_masks}
+        out = {"image": image.float(), **integer_masks, **inst_transformed_masks}
 
-        if self.drop_keys is not None:
-            for key in self.drop_keys:
-                del out[key]
+        if self.map_out_keys is not None:
+            new_out = {}
+            for in_key, out_key in self.map_out_keys.items():
+                if in_key in out:
+                    new_out[out_key] = out.pop(in_key)
+            out = new_out
 
         return out
