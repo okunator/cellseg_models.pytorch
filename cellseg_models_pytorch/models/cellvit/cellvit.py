@@ -1,16 +1,11 @@
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Tuple
 
 import torch
 import torch.nn as nn
 
-from cellseg_models_pytorch.decoders import UnetDecoder
-from cellseg_models_pytorch.decoders.long_skips import StemSkip
+from cellseg_models_pytorch.decoders.multitask_decoder import MultiTaskDecoder
 from cellseg_models_pytorch.encoders import Encoder
-from cellseg_models_pytorch.modules.misc_modules import StyleReshape
-
-from ..base._base_model import BaseMultiTaskSegModel
-from ..base._seg_head import SegHead
-from ._conf import _create_cellvit_args
+from cellseg_models_pytorch.models.cellvit._conf import _create_cellvit_args
 
 __all__ = [
     "CellVitSAM",
@@ -21,16 +16,15 @@ __all__ = [
 ]
 
 
-class CellVitSAM(BaseMultiTaskSegModel):
+class CellVitSAM(nn.Module):
     def __init__(
         self,
         decoders: Tuple[str, ...],
         heads: Dict[str, Dict[str, int]],
-        inst_key: str = "inst",
         out_channels: Tuple[int, ...] = (512, 256, 128, 64),
         layer_depths: Tuple[int, ...] = (3, 2, 2, 2),
         style_channels: int = None,
-        enc_name: str = "sam_vit_b",
+        enc_name: str = "samvit_base_patch16",
         enc_pretrain: bool = True,
         enc_freeze: bool = False,
         enc_out_channels: Tuple[int, ...] = None,
@@ -44,54 +38,49 @@ class CellVitSAM(BaseMultiTaskSegModel):
         preactivate: bool = True,
         attention: str = None,
         preattend: bool = False,
-        add_stem_skip: Optional[bool] = True,
-        out_size: Optional[int] = None,
-        skip_params: Optional[Dict] = None,
-        encoder_params: Optional[Dict] = None,
+        out_size: int = None,
+        encoder_kws: Dict[str, Any] = None,
+        skip_kws: Dict[str, Any] = None,
+        stem_skip_kws: Dict[str, Any] = None,
+        inst_key: str = "inst",
         **kwargs,
     ) -> None:
-        """Create a CellVit model.
+        """CellVit-SAM implementation.
 
         CellVit:
-        - https://arxiv.org/abs/2306.15350
+            - https://arxiv.org/abs/2306.15350
 
-                          (|------ SEMANTIC_DECODER ----- SEMANTIC_HEAD)
-                           |
-                           |------ TYPE_DECODER ---------- TYPE_HEAD
-        UnetTR-SAM-encoder-|
-                           |------ HOVER_DECODER --------- HOVER_HEAD
-                           |
-                          (|------ INSTANCE_DECODER ---- INSTANCE_HEAD)
-
-        Parameters
-        ----------
+        Parameters:
             decoders : Tuple[str, ...]
-                Names of the decoder branches of this network. E.g. ("hovernet", "sem")
+                Names of the decoder branches of this network. E.g. ("cellvit", "sem")
             heads : Dict[str, Dict[str, int]]
                 The segmentation heads of the architecture. I.e. Names of the decoder
                 branches (has to match `decoders`) mapped to dicts
                 of output name - number of output classes. E.g.
-                {"hovernet": {"hovernet": 2}, "sem": {"sem": 5}, "type": {"type": 5}}
-            inst_key : str, default="inst"
-                The key for the model output that will be used in the instance
-                segmentation post-processing pipeline as the binary segmentation result.
-            out_channels : Tuple[int, ...], default=(256, 256, 64, 64)
+                {"cellvit": {"hovernet": 2}, "sem": {"sem": 5}, "type": {"type": 5}}
+            depth : int, default=4
+                The depth of the encoder. I.e. Number of returned feature maps from
+                the encoder. Maximum depth = 5.
+            out_channels : Tuple[int, ...], default=(512, 256, 64, 64)
                 Out channels for each decoder stage.
-            layer_depths : Tuple[int, ...], default=(4, 4, 4, 4)
+            layer_depths : Tuple[int, ...], default=(3, 2, 2, 2)
                 The number of conv blocks at each decoder stage.
             style_channels : int, default=None
                 Number of style vector channels. If None, style vectors are ignored.
-            enc_name : str, default="sam_vit_b"
-                Name of the encoder. One of: "sam_vit_b", "sam_vit_l", "sam_vit_h",
+            enc_name : str, default="samvit_base_patch16"
+                Name of the encoder. See timm docs for more info.
             enc_pretrain : bool, default=True
                 Whether to use imagenet pretrained weights in the encoder.
             enc_freeze : bool, default=False
                 Freeze encoder weights for training.
             enc_out_channels : Tuple[int, ...], default=None
                 Out channels for each SAM-UnetTR encoder stage.
-            enc_out_indices : Tuple[int, ...], default=None
-                Indices of the output features from the encoder. If None,
-                `len(range(layer_depths))` features are used.
+            enc_out_indices : Tuple[int, ...], optional
+                Indices of the encoder output features. If None, indices is set to
+                `range(len(depth))`.
+            upsampling : str, default="fixed-unpool"
+                The upsampling method to be used. One of: "fixed-unpool", "nearest",
+                "bilinear", "bicubic", "conv_transpose"
             long_skip : str, default="unet"
                 long skip method to be used. One of: "unet", "unetpp", "unet3p",
                 "unet3p-lite", None
@@ -115,30 +104,23 @@ class CellVitSAM(BaseMultiTaskSegModel):
                 Attention method. One of: "se", "scse", "gc", "eca", None
             preattend : bool, default=False
                 If True, Attention is applied at the beginning of forward pass.
-            add_stem_skip : bool, default=True
-                If True, a stem conv block is added to the model whose output is used
-                as a long skip input at the final decoder layer that is the highest
-                resolution layer and the same resolution as the input image.
             out_size : int, optional
                 If specified, the output size of the model will be (out_size, out_size).
                 I.e. the outputs will be interpolated to this size.
-            skip_params : Dict, optional
-                Extra keyword arguments for the skip-connection modules. These depend
-                on the skip module. Refer to specific skip modules for more info. I.e.
-                `UnetSkip`, `UnetppSkip`, `Unet3pSkip`.
-
-        Raises
-        ------
-            ValueError: If `decoders` does not contain 'hovernet'.
-            ValueError: If `heads` keys don't match `decoders`.
-            ValueError: If decoder names don't have a matching head name in `heads`.
+            encoder_kws (Dict[str, Any], default=None):
+                Extra keyword arguments for the encoder. See timm docs for more info.
+            skip_kws (Dict[str, Any], default=None):
+                Extra keyword arguments for the skip-connection module.
+            stem_skip_kws (Dict[str, Any], default=None):
+                Extra keyword arguments for the stem skip-connection module.
+            inst_key : str, default="inst"
+                The key for the model output that will be used in the instance
+                segmentation post-processing pipeline as the binary segmentation result.
         """
         super().__init__()
-        self.out_size = out_size
-        self.aux_key = self._check_decoder_args(decoders, ("hovernet",))
         self.inst_key = inst_key
+        self.aux_key = "hovernet"
         self.depth = len(layer_depths)
-        self._check_head_args(heads, decoders)
 
         if enc_out_indices is None:
             enc_out_indices = tuple(range(self.depth))
@@ -146,16 +128,6 @@ class CellVitSAM(BaseMultiTaskSegModel):
         if enc_out_channels is None:
             enc_out_channels = out_channels
 
-        self._check_depth(
-            self.depth,
-            {
-                "out_channels": out_channels,
-                "enc_out_indices": enc_out_indices,
-                "enc_out_channels": enc_out_channels,
-            },
-        )
-
-        self.add_stem_skip = add_stem_skip
         self.enc_freeze = enc_freeze
         use_style = style_channels is not None
         self.heads = heads
@@ -164,22 +136,19 @@ class CellVitSAM(BaseMultiTaskSegModel):
         n_layers = (1,) * self.depth
         n_blocks = tuple([(d,) for d in layer_depths])
 
-        dec_params = {
-            d: _create_cellvit_args(
-                layer_depths,
-                normalization,
-                activation,
-                convolution,
-                attention,
-                preactivate,
-                preattend,
-                short_skip,
-                use_style,
-                merge_policy,
-                skip_params,
-            )
-            for d in decoders
-        }
+        stage_kws = _create_cellvit_args(
+            layer_depths,
+            normalization,
+            activation,
+            convolution,
+            attention,
+            preactivate,
+            preattend,
+            short_skip,
+            use_style,
+            merge_policy,
+            skip_kws,
+        )
 
         allowed = (
             "samvit_base_patch16",
@@ -199,135 +168,80 @@ class CellVitSAM(BaseMultiTaskSegModel):
             timm_encoder_out_indices=enc_out_indices,
             pixel_decoder_out_channels=enc_out_channels,
             timm_encoder_pretrained=enc_pretrain,
-            timm_extra_kwargs=encoder_params,
+            timm_extra_kwargs=encoder_kws,
         )
 
         # get the reduction factors for the encoder
         enc_reductions = tuple([inf["reduction"] for inf in self.encoder.feature_info])
 
-        # Style
-        self.make_style = None
-        if use_style:
-            self.make_style = StyleReshape(self.encoder.out_channels[0], style_channels)
-
-        # set decoders and heads
-        for decoder_name in decoders:
-            decoder = UnetDecoder(
-                enc_channels=self.encoder.out_channels,
-                enc_reductions=enc_reductions,
-                out_channels=out_channels,
-                style_channels=style_channels,
-                long_skip=long_skip,
-                merge_policy=merge_policy,
-                n_conv_layers=n_layers,
-                n_conv_blocks=n_blocks,
-                stage_params=dec_params[decoder_name],
-            )
-            self.add_module(f"{decoder_name}_decoder", decoder)
-
-        # optional stem skip
-        if add_stem_skip:
-            for decoder_name in decoders:
-                stem_skip = StemSkip(
-                    out_channels=out_channels[-1],
-                    merge_policy=merge_policy,
-                    n_blocks=2,
-                    short_skip="basic",
-                    block_type="basic",
-                    normalization=normalization,
-                    activation=activation,
-                    convolution=convolution,
-                    attention=attention,
-                    preactivate=preactivate,
-                    preattend=preattend,
-                )
-                self.add_module(f"{decoder_name}_stem_skip", stem_skip)
-
-        # output heads
-        for decoder_name in heads.keys():
-            for output_name, n_classes in heads[decoder_name].items():
-                seg_head = SegHead(
-                    in_channels=decoder.out_channels,
-                    out_channels=n_classes,
-                    kernel_size=1,
-                )
-                self.add_module(f"{decoder_name}_{output_name}_seg_head", seg_head)
+        self.decoder = MultiTaskDecoder(
+            decoders=decoders,
+            heads=heads,
+            out_channels=out_channels,
+            enc_channels=self.encoder.out_channels,
+            enc_reductions=enc_reductions,
+            n_layers=n_layers,
+            n_blocks=n_blocks,
+            stage_kws=stage_kws,
+            stem_skip_kws=stem_skip_kws,
+            long_skip=long_skip,
+            out_size=out_size,
+            style_channels=style_channels,
+        )
 
         self.name = f"CellVit-{enc_name}"
 
         # init decoder weights
-        self.initialize()
+        self.decoder.initialize()
 
         # freeze encoder if specified
         if enc_freeze:
-            self.freeze_encoder()
+            self.encoder.freeze_encoder()
 
     def forward(
         self,
         x: torch.Tensor,
         return_feats: bool = False,
-    ) -> Union[
-        Dict[str, torch.Tensor],
-        Tuple[
-            List[torch.Tensor],
-            Dict[str, torch.Tensor],
-            Dict[str, torch.Tensor],
-        ],
-    ]:
-        """Forward pass of CellVit-SAM.
+    ) -> Dict[str, torch.Tensor]:
+        """Forward pass of Hover-Net.
 
-        Parameters
-        ----------
-            x : torch.Tensor
+        Parameters:
+            x (torch.Tensor):
                 Input image batch. Shape: (B, C, H, W).
-            return_feats : bool, default=False
+            return_feats (bool, default=False):
                 If True, encoder, decoder, and head outputs will all be returned
 
-        Returns
-        -------
-        Union[
-            Dict[str, torch.Tensor],
-            Tuple[
-                List[torch.Tensor],
-                Dict[str, torch.Tensor],
-                Dict[str, torch.Tensor],
-            ],
-        ]:
-            Dictionary mapping of output names to outputs or if `return_feats == True`
-            returns also the encoder features in a list, decoder features as a dict
-            mapping decoder names to outputs and the final head outputs dict.
+        Returns:
+            Dict[str, torch.Tensor]:
+                Dictionary of outputs. if `return_feats == True` returns also the encoder
+                output, a list of encoder features, dict of decoder features and the head
+                outputs (segmentations) dict.
         """
-        _, feats, dec_feats = self.forward_features(x)
-        out = self.forward_heads(dec_feats)
+        enc_output, feats = self.encoder.forward(x)
+        dec_feats, out = self.decoder.forward(feats, x)
 
         if return_feats:
-            return feats, dec_feats, out
+            return enc_output, feats, dec_feats, out
 
         return out
 
 
-def cellvit_sam_base(
-    enc_name: str, type_classes: int, inst_classes: int = 2, **kwargs
-) -> nn.Module:
+def cellvit_sam_base(enc_name: str, n_type_classes: int, **kwargs) -> nn.Module:
     """Create the baseline CellVit-SAM (three decoders) from kwargs.
 
     CellVit:
         - https://arxiv.org/abs/2306.15350
 
-    Parameters
-    ----------
-        enc_name : str
+    Parameters:
+        enc_name (str):
             Name of the encoder. One of: "samvit_base_patch16", "samvit_base_patch16_224",
             "samvit_huge_patch16", "samvit_large_patch16"
-        type_classes : int
-            Number of type classes.
-        inst_classes : int, default=2
-            Number of instance classes.
+        n_type_classes (int):
+            Number of cell type classes.
         **kwargs:
             Arbitrary key word args for the CellVitSAM class.
 
-    Returns
-    -------
+    Returns:
         nn.Module: The initialized CellVitSAM model.
     """
     cellvit_sam = CellVitSAM(
@@ -335,8 +249,8 @@ def cellvit_sam_base(
         decoders=("hovernet", "type", "inst"),
         heads={
             "hovernet": {"hovernet": 2},
-            "type": {"type": type_classes},
-            "inst": {"inst": inst_classes},
+            "type": {"type": n_type_classes},
+            "inst": {"inst": 2},
         },
         **kwargs,
     )
@@ -345,33 +259,25 @@ def cellvit_sam_base(
 
 
 def cellvit_sam_plus(
-    enc_name: str,
-    type_classes: int,
-    sem_classes: int,
-    inst_classes: int = 2,
-    **kwargs,
+    enc_name: str, n_type_classes: int, n_sem_classes: int, **kwargs
 ) -> nn.Module:
     """Create CellVit-SAM (additional semantic decoders) from kwargs.
 
     CellVit:
         - https://arxiv.org/abs/2306.15350
 
-    Parameters
-    ----------
-        enc_name : str
+    Parameters:
+        enc_name (str):
             Name of the encoder. One of: "samvit_base_patch16", "samvit_base_patch16_224",
             "samvit_huge_patch16", "samvit_large_patch16"
-        type_classes : int
-            Number of type-branch classes.
-        sem_classes : int
-            Number of semantic-branch classes.
-        inst_classes : int, default=2
-            Number of instance-branch classes.
+        n_type_classes (int):
+            Number of cell type classes.
+        n_sem_classes (int):
+            Number of tissue type classes.
         **kwargs:
             Arbitrary key word args for the CellVitSAM class.
 
-    Returns
-    -------
+    Returns:
         nn.Module: The initialized CellVitSAM+ model.
     """
     cellvit_sam = CellVitSAM(
@@ -379,9 +285,9 @@ def cellvit_sam_plus(
         decoders=("hovernet", "type", "inst", "sem"),
         heads={
             "hovernet": {"hovernet": 2},
-            "sem": {"sem": sem_classes},
-            "type": {"type": type_classes},
-            "inst": {"inst": inst_classes},
+            "sem": {"sem": n_sem_classes},
+            "type": {"type": n_type_classes},
+            "inst": {"inst": 2},
         },
         **kwargs,
     )
@@ -389,24 +295,22 @@ def cellvit_sam_plus(
     return cellvit_sam
 
 
-def cellvit_sam_small(enc_name: str, type_classes: int, **kwargs) -> nn.Module:
+def cellvit_sam_small(enc_name: str, n_type_classes: int, **kwargs) -> nn.Module:
     """Create CellVit-SAM without inst decoder branch from kwargs.
 
     CellVit:
         - https://arxiv.org/abs/2306.15350
 
-    Parameters
-    ----------
-        enc_name : str
+    Parameters:
+        enc_name (str):
             Name of the encoder. One of: "samvit_base_patch16", "samvit_base_patch16_224",
             "samvit_huge_patch16", "samvit_large_patch16"
-        type_classes : int
-            Number of type-branch classes.
+        n_type_classes (int):
+            Number of cell type classes.
         **kwargs:
             Arbitrary key word args for the CellVitSAM class.
 
-    Returns
-    -------
+    Returns:
         nn.Module: The initialized CellVitSAM-small model.
     """
     cellvit_sam = CellVitSAM(
@@ -415,7 +319,7 @@ def cellvit_sam_small(enc_name: str, type_classes: int, **kwargs) -> nn.Module:
         inst_key="type",
         heads={
             "hovernet": {"hovernet": 2},
-            "type": {"type": type_classes},
+            "type": {"type": n_type_classes},
         },
         **kwargs,
     )
@@ -424,38 +328,36 @@ def cellvit_sam_small(enc_name: str, type_classes: int, **kwargs) -> nn.Module:
 
 
 def cellvit_sam_small_plus(
-    enc_name: str, type_classes: int, sem_classes: int, **kwargs
+    enc_name: str, n_type_classes: int, n_sem_classes: int, **kwargs
 ) -> nn.Module:
     """Create the CellVit-SAM+ without inst decoder branch from kwargs.
 
     CellVit:
         - https://arxiv.org/abs/2306.15350
 
-    Parameters
-    ----------
-        enc_name : str
+    Parameters:
+        enc_name (str):
             Name of the encoder. One of: "samvit_base_patch16", "samvit_base_patch16_224",
             "samvit_huge_patch16", "samvit_large_patch16"
-        type_classes : int
-            Number of type-branch classes.
-        sem_classes : int
-            Number of semantic-branch classes.
+        n_type_classes (int):
+            Number of cell type classes.
+        n_sem_classes (int):
+            Number of tissue type classes.
         **kwargs:
             Arbitrary key word args for the CellVitsSAM class.
 
-    Returns
-    -------
+    Returns:
         nn.Module: The initialized CellVit-SAM-small+ model.
     """
     cellvit_sam = CellVitSAM(
         enc_name=enc_name,
         decoders=("hovernet", "type", "sem"),
-        inst_key="type",
         heads={
             "hovernet": {"hovernet": 2},
-            "type": {"type": type_classes},
-            "sem": {"sem": sem_classes},
+            "type": {"type": n_type_classes},
+            "sem": {"sem": n_sem_classes},
         },
+        inst_key="type",
         **kwargs,
     )
 

@@ -1,6 +1,5 @@
 import torch.nn as nn
 
-from .base._multitask_unet import MultiTaskUnet
 from .cellpose.cellpose import (
     CellPoseUnet,
     cellpose_base,
@@ -53,84 +52,98 @@ MODEL_LOOKUP = {
 
 
 def get_model(
-    name: str, type: str, ntypes: int = None, ntissues: int = None, **kwargs
+    name: str,
+    type: str,
+    n_type_classes: int = None,
+    n_sem_classes: int = None,
+    **kwargs,
 ) -> nn.Module:
     """Get the corect model at hand given name and type.
 
-    Parameters
-    ----------
-        name : str
+    Parameters:
+        name (str):
             Name of the model.
-        type : str
+        type (str):
             Type of the model. One of "base", "plus", "small", "small_plus".
-        ntypes : int
+        n_type_classes (int):
             Number of cell types to segment.
-        ntissues : int
+        n_sem_classes (int):
             Number of tissue types to segment.
-        **kwargs : dict
+        **kwargs
             Additional keyword arguments.
 
-    Returns
-    -------
+    Returns:
         nn.Module: The specified model.
     """
     if name == "stardist":
         if type == "base":
             model = MODEL_LOOKUP["stardist_base_multiclass"](
-                type_classes=ntypes, **kwargs
+                n_type_classes=n_type_classes, **kwargs
             )
         elif type == "plus":
             model = MODEL_LOOKUP["stardist_plus"](
-                type_classes=ntypes, sem_classes=ntissues, **kwargs
+                n_type_classes=n_type_classes, n_sem_classes=n_sem_classes, **kwargs
             )
     elif name == "cppnet":
         if type == "base":
             model = MODEL_LOOKUP["cppnet_base_multiclass"](
-                type_classes=ntypes, **kwargs
+                n_type_classes=n_type_classes, **kwargs
             )
         elif type == "plus":
             model = MODEL_LOOKUP["cppnet_plus"](
-                type_classes=ntypes, sem_classes=ntissues, **kwargs
+                n_type_classes=n_type_classes, n_sem_classes=n_sem_classes, **kwargs
             )
     elif name == "cellpose":
         if type == "base":
-            model = MODEL_LOOKUP["cellpose_base"](type_classes=ntypes, **kwargs)
+            model = MODEL_LOOKUP["cellpose_base"](
+                n_type_classes=n_type_classes, **kwargs
+            )
         elif type == "plus":
             model = MODEL_LOOKUP["cellpose_plus"](
-                type_classes=ntypes, sem_classes=ntissues, **kwargs
+                n_type_classes=n_type_classes, n_sem_classes=n_sem_classes, **kwargs
             )
     elif name == "omnipose":
         if type == "base":
-            model = MODEL_LOOKUP["omnipose_base"](type_classes=ntypes, **kwargs)
+            model = MODEL_LOOKUP["omnipose_base"](
+                n_type_classes=n_type_classes, **kwargs
+            )
         elif type == "plus":
             model = MODEL_LOOKUP["omnipose_plus"](
-                type_classes=ntypes, sem_classes=ntissues, **kwargs
+                n_type_classes=n_type_classes, n_sem_classes=n_sem_classes, **kwargs
             )
     elif name == "hovernet":
         if type == "base":
-            model = MODEL_LOOKUP["hovernet_base"](type_classes=ntypes, **kwargs)
+            model = MODEL_LOOKUP["hovernet_base"](
+                n_type_classes=n_type_classes, **kwargs
+            )
         elif type == "small":
-            model = MODEL_LOOKUP["hovernet_small"](type_classes=ntypes, **kwargs)
+            model = MODEL_LOOKUP["hovernet_small"](
+                n_type_classes=n_type_classes, **kwargs
+            )
         elif type == "plus":
             model = MODEL_LOOKUP["hovernet_plus"](
-                type_classes=ntypes, sem_classes=ntissues, **kwargs
+                n_type_classes=n_type_classes, n_sem_classes=n_sem_classes, **kwargs
             )
         elif type == "small_plus":
             model = MODEL_LOOKUP["hovernet_small_plus"](
-                type_classes=ntypes, sem_classes=ntissues, **kwargs
+                n_type_classes=n_type_classes, n_sem_classes=n_sem_classes, **kwargs
             )
     elif name == "cellvit":
         if type == "base":
-            model = MODEL_LOOKUP["cellvit_sam_base"](type_classes=ntypes, **kwargs)
+            model = MODEL_LOOKUP["cellvit_sam_base"](
+                n_type_classes=n_type_classes, **kwargs
+            )
         elif type == "small":
-            model = MODEL_LOOKUP["cellvit_sam_small"](type_classes=ntypes, **kwargs)
+            model = MODEL_LOOKUP["cellvit_sam_small"](
+                n_type_classes=n_type_classes, **kwargs
+            )
         elif type == "plus":
             model = MODEL_LOOKUP["cellvit_sam_plus"](
-                type_classes=ntypes, sem_classes=ntissues, **kwargs
+                n_type_classes=n_type_classes, n_sem_classes=n_sem_classes, **kwargs
             )
         elif type == "small_plus":
             model = MODEL_LOOKUP["cellvit_sam_small_plus"](
-                type_classes=ntypes, sem_classes=ntissues, **kwargs
+                n_type_classes=n_type_classes, n_sem_classes=n_sem_classes, **kwargs
             )
     else:
         raise ValueError("Unknown model type or name.")
@@ -139,7 +152,6 @@ def get_model(
 
 
 __all__ = [
-    "MultiTaskUnet",
     "HoverNet",
     "hovernet_base",
     "hovernet_plus",

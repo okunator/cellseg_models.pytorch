@@ -1,16 +1,11 @@
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Tuple
 
 import torch
 import torch.nn as nn
 
-from cellseg_models_pytorch.decoders import UnetDecoder
-from cellseg_models_pytorch.decoders.long_skips import StemSkip
+from cellseg_models_pytorch.decoders.multitask_decoder import MultiTaskDecoder
 from cellseg_models_pytorch.encoders import Encoder
-from cellseg_models_pytorch.modules.misc_modules import StyleReshape
-
-from ..base._base_model import BaseMultiTaskSegModel
-from ..base._seg_head import SegHead
-from ._conf import _create_hovernet_args
+from cellseg_models_pytorch.models.hovernet._conf import _create_hovernet_args
 
 __all__ = [
     "HoverNet",
@@ -21,12 +16,11 @@ __all__ = [
 ]
 
 
-class HoverNet(BaseMultiTaskSegModel):
+class HoverNet(nn.Module):
     def __init__(
         self,
         decoders: Tuple[str, ...],
         heads: Dict[str, Dict[str, int]],
-        inst_key: str = "inst",
         depth: int = 4,
         out_channels: Tuple[int, ...] = (512, 256, 64, 64),
         style_channels: int = None,
@@ -44,10 +38,11 @@ class HoverNet(BaseMultiTaskSegModel):
         preactivate: bool = True,
         attention: str = None,
         preattend: bool = False,
-        add_stem_skip: bool = False,
-        out_size: Optional[int] = None,
-        skip_params: Optional[Dict] = None,
-        encoder_params: Optional[Dict] = None,
+        out_size: int = None,
+        encoder_kws: Dict[str, Any] = None,
+        skip_kws: Dict[str, Any] = None,
+        stem_skip_kws: Dict[str, Any] = None,
+        inst_key: str = "inst",
         **kwargs,
     ) -> None:
         """Hover-Net implementation.
@@ -55,20 +50,12 @@ class HoverNet(BaseMultiTaskSegModel):
         HoVer-Net:
         - https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub
 
-                      (|------ SEMANTIC_DECODER ----- SEMANTIC_HEAD)
-                       |
-                       |------ TYPE_DECODER ---------- TYPE_HEAD
-        ENCODER -------|
-                       |------ HOVER_DECODER --------- HOVER_HEAD
-                       |
-                      (|------ INSTANCE_DECODER ---- INSTANCE_HEAD)
+        Note:
+            Minor differences from the original implementation.
+            - Different encoder, (any encoder from timm-library).
+            - Dense blocks have transition conv-blocks like in the original dense-net.
 
-        NOTE: Minor differences from the original implementation.
-        - Different encoder, (any encoder from timm-library).
-        - Dense blocks have transition conv-blocks like in the original dense-net.
-
-        Parameters
-        ----------
+        Parameters:
             decoders : Tuple[str, ...]
                 Names of the decoder branches of this network. E.g. ("hovernet", "sem")
             heads : Dict[str, Dict[str, int]]
@@ -76,9 +63,6 @@ class HoverNet(BaseMultiTaskSegModel):
                 branches (has to match `decoders`) mapped to dicts
                 of output name - number of output classes. E.g.
                 {"hovernet": {"hovernet": 2}, "sem": {"sem": 5}, "type": {"type": 5}}
-            inst_key : str, default="inst"
-                The key for the model output that will be used in the instance
-                segmentation post-processing pipeline as the binary segmentation result.
             depth : int, default=4
                 The depth of the encoder. I.e. Number of returned feature maps from
                 the encoder. Maximum depth = 5.
@@ -121,42 +105,26 @@ class HoverNet(BaseMultiTaskSegModel):
                 Attention method. One of: "se", "scse", "gc", "eca", None
             preattend : bool, default=False
                 If True, Attention is applied at the beginning of forward pass.
-            add_stem_skip : bool, default=False
-                If True, a stem conv block is added to the model whose output is used
-                as a long skip input at the final decoder layer that is the highest
-                resolution layer and the same resolution as the input image.
             out_size : int, optional
                 If specified, the output size of the model will be (out_size, out_size).
                 I.e. the outputs will be interpolated to this size.
-            skip_params : Optional[Dict]
-                Extra keyword arguments for the skip-connection modules. These depend
-                on the skip module. Refer to specific skip modules for more info. I.e.
-                `UnetSkip`, `UnetppSkip`, `Unet3pSkip`.
-            encoder_params : Optional[Dict]
-                Extra keyword arguments for the encoder. These depend on the encoder.
-                Refer to specific encoders for more info.
-
-        Raises
-        ------
-            ValueError: If `decoders` does not contain 'hovernet'.
-            ValueError: If `heads` keys don't match `decoders`.
-            ValueError: If decoder names don't have a matching head name in `heads`.
+            encoder_kws (Dict[str, Any], default=None):
+                Extra keyword arguments for the encoder. See timm docs for more info.
+            skip_kws (Dict[str, Any], default=None):
+                Extra keyword arguments for the skip-connection module.
+            stem_skip_kws (Dict[str, Any], default=None):
+                Extra keyword arguments for the stem skip-connection module.
+            inst_key : str, default="inst"
+                The key for the model output that will be used in the instance
+                segmentation post-processing pipeline as the binary segmentation result.
         """
         super().__init__()
-        self.out_size = out_size
-        self.aux_key = self._check_decoder_args(decoders, ("hovernet",))
         self.inst_key = inst_key
-        self._check_head_args(heads, decoders)
+        self.aux_key = "hovernet"
 
         if enc_out_indices is None:
             enc_out_indices = tuple(range(depth))
 
-        self._check_depth(
-            depth,
-            {"out_channels": out_channels, "enc_out_indices": enc_out_indices},
-        )
-
-        self.add_stem_skip = add_stem_skip
         self.enc_freeze = enc_freeze
         use_style = style_channels is not None
         self.heads = heads
@@ -164,23 +132,20 @@ class HoverNet(BaseMultiTaskSegModel):
         # Create decoder build args
         n_layers = (3, 3) + (1,) * (depth - 2)
         n_blocks = ((1, n_dense[0], 1), (1, n_dense[1], 1)) + ((1,),) * (depth - 2)
-        dec_params = {
-            d: _create_hovernet_args(
-                depth,
-                n_dense,
-                normalization,
-                activation,
-                convolution,
-                attention,
-                preactivate,
-                preattend,
-                use_style,
-                merge_policy,
-                skip_params,
-                upsampling,
-            )
-            for d in decoders
-        }
+        stage_kws = _create_hovernet_args(
+            depth,
+            n_dense,
+            normalization,
+            activation,
+            convolution,
+            attention,
+            preactivate,
+            preattend,
+            use_style,
+            merge_policy,
+            skip_kws,
+            upsampling,
+        )
 
         # set encoder
         self.encoder = Encoder(
@@ -188,138 +153,85 @@ class HoverNet(BaseMultiTaskSegModel):
             timm_encoder_out_indices=enc_out_indices,
             pixel_decoder_out_channels=out_channels,
             timm_encoder_pretrained=enc_pretrain,
-            timm_extra_kwargs=encoder_params,
+            timm_extra_kwargs=encoder_kws,
         )
 
         # get the reduction factors for the encoder
         enc_reductions = tuple([inf["reduction"] for inf in self.encoder.feature_info])
 
-        # Style
-        self.make_style = None
-        if use_style:
-            self.make_style = StyleReshape(self.encoder.out_channels[0], style_channels)
-
-        # set decoders and heads
-        for decoder_name in decoders:
-            decoder = UnetDecoder(
-                enc_channels=self.encoder.out_channels,
-                enc_reductions=enc_reductions,
-                out_channels=out_channels,
-                style_channels=style_channels,
-                long_skip=long_skip,
-                merge_policy=merge_policy,
-                n_conv_layers=n_layers,
-                n_conv_blocks=n_blocks,
-                stage_params=dec_params[decoder_name],
-            )
-            self.add_module(f"{decoder_name}_decoder", decoder)
-
-        # optional stem skip
-        if add_stem_skip:
-            for decoder_name in decoders:
-                stem_skip = StemSkip(
-                    out_channels=out_channels[-1],
-                    merge_policy=merge_policy,
-                    n_blocks=2,
-                    short_skip="residual",
-                    block_type="basic",
-                    normalization=normalization,
-                    activation=activation,
-                    convolution=convolution,
-                    attention=attention,
-                    preactivate=preactivate,
-                    preattend=preattend,
-                )
-                self.add_module(f"{decoder_name}_stem_skip", stem_skip)
-
-        # output heads
-        for decoder_name in heads.keys():
-            for output_name, n_classes in heads[decoder_name].items():
-                seg_head = SegHead(
-                    in_channels=decoder.out_channels,
-                    out_channels=n_classes,
-                    kernel_size=1,
-                )
-                self.add_module(f"{decoder_name}_{output_name}_seg_head", seg_head)
+        self.decoder = MultiTaskDecoder(
+            decoders=decoders,
+            heads=heads,
+            out_channels=out_channels,
+            enc_channels=self.encoder.out_channels,
+            enc_reductions=enc_reductions,
+            n_layers=n_layers,
+            n_blocks=n_blocks,
+            stage_kws=stage_kws,
+            stem_skip_kws=stem_skip_kws,
+            long_skip=long_skip,
+            out_size=out_size,
+            style_channels=style_channels,
+        )
 
         self.name = f"HoverNet-{enc_name}"
 
         # init decoder weights
-        self.initialize()
+        self.decoder.initialize()
 
         # freeze encoder if specified
         if enc_freeze:
-            self.freeze_encoder()
+            self.encoder.freeze_encoder()
 
     def forward(
         self,
         x: torch.Tensor,
         return_feats: bool = False,
-    ) -> Union[
-        Dict[str, torch.Tensor],
-        Tuple[
-            List[torch.Tensor],
-            Dict[str, torch.Tensor],
-            Dict[str, torch.Tensor],
-        ],
-    ]:
-        """Forward pass of HoVer-Net.
+    ) -> Dict[str, torch.Tensor]:
+        """Forward pass of Hover-Net.
 
-        Parameters
-        ----------
-            x : torch.Tensor
+        Parameters:
+            x (torch.Tensor):
                 Input image batch. Shape: (B, C, H, W).
-            return_feats : bool, default=False
+            return_feats (bool, default=False):
                 If True, encoder, decoder, and head outputs will all be returned
 
-        Returns
-        -------
-        Union[
-            Dict[str, torch.Tensor],
-            Tuple[
-                List[torch.Tensor],
-                Dict[str, torch.Tensor],
-                Dict[str, torch.Tensor],
-            ],
-        ]:
-            Dictionary mapping of output names to outputs or if `return_feats == True`
-            returns also the encoder features in a list, decoder features as a dict
-            mapping decoder names to outputs and the final head outputs dict.
+        Returns:
+            Dict[str, torch.Tensor]:
+                Dictionary of outputs. if `return_feats == True` returns also the encoder
+                output, a list of encoder features, dict of decoder features and the head
+                outputs (segmentations) dict.
         """
-        _, feats, dec_feats = self.forward_features(x)
-        out = self.forward_heads(dec_feats)
+        enc_output, feats = self.encoder.forward(x)
+        dec_feats, out = self.decoder.forward(feats, x)
 
         if return_feats:
-            return feats, dec_feats, out
+            return enc_output, feats, dec_feats, out
 
         return out
 
 
-def hovernet_base(type_classes: int, inst_classes: int = 2, **kwargs) -> nn.Module:
+def hovernet_base(n_type_classes: int, **kwargs) -> nn.Module:
     """Create the baseline HoVer-Net (three decoders) from kwargs.
 
     HoVer-Net:
         - https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub
 
-    Parameters
-    ----------
-        type_classes : int
-            Number of type classes.
-        inst_classes : int, default=2
-            Number of instance classes.
+    Parameters:
+        n_type_classes (int):
+            Number of cell type classes.
         **kwargs:
             Arbitrary key word args for the HoverNet class.
 
-    Returns
-    -------
+    Returns:
         nn.Module: The initialized HoVer-Net model.
     """
     hovernet = HoverNet(
         decoders=("hovernet", "type", "inst"),
         heads={
             "hovernet": {"hovernet": 2},
-            "type": {"type": type_classes},
-            "inst": {"inst": inst_classes},
+            "type": {"type": n_type_classes},
+            "inst": {"inst": 2},
         },
         **kwargs,
     )
@@ -328,9 +240,8 @@ def hovernet_base(type_classes: int, inst_classes: int = 2, **kwargs) -> nn.Modu
 
 
 def hovernet_plus(
-    type_classes: int,
-    sem_classes: int,
-    inst_classes: int = 2,
+    n_type_classes: int,
+    n_sem_classes: int,
     **kwargs,
 ) -> nn.Module:
     """Create HoVer-Net+ (additional semantic decoders) from kwargs.
@@ -338,28 +249,24 @@ def hovernet_plus(
     HoVer-Net:
         - https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub
 
-    Parameters
-    ----------
-        type_classes : int
-            Number of type-branch classes.
-        sem_classes : int
-            Number of semantic-branch classes.
-        inst_classes : int, default=2
-            Number of instance-branch classes.
+    Parameters:
+        n_type_classes (int):
+            Number of cell type classes.
+        n_sem_classes (int):
+            Number of tissue type classes.
         **kwargs:
             Arbitrary key word args for the HoverNet class.
 
-    Returns
-    -------
+    Returns:
         nn.Module: The initialized HoVer-Net+ model.
     """
     hovernet = HoverNet(
         decoders=("hovernet", "type", "inst", "sem"),
         heads={
             "hovernet": {"hovernet": 2},
-            "sem": {"sem": sem_classes},
-            "type": {"type": type_classes},
-            "inst": {"inst": inst_classes},
+            "sem": {"sem": n_sem_classes},
+            "type": {"type": n_type_classes},
+            "inst": {"inst": 2},
         },
         **kwargs,
     )
@@ -367,21 +274,19 @@ def hovernet_plus(
     return hovernet
 
 
-def hovernet_small(type_classes: int, **kwargs) -> nn.Module:
+def hovernet_small(n_type_classes: int, **kwargs) -> nn.Module:
     """Create HoVer-Net without inst decoder branch from kwargs.
 
     HoVer-Net:
         - https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub
 
-    Parameters
-    ----------
-        type_classes : int
-            Number of type-branch classes.
+    Parameters:
+        n_type_classes (int):
+            Number of cell type classes.
         **kwargs:
             Arbitrary key word args for the HoverNet class.
 
-    Returns
-    -------
+    Returns:
         nn.Module: The initialized HoVer-Net-small model.
     """
     hovernet = HoverNet(
@@ -389,7 +294,7 @@ def hovernet_small(type_classes: int, **kwargs) -> nn.Module:
         inst_key="type",
         heads={
             "hovernet": {"hovernet": 2},
-            "type": {"type": type_classes},
+            "type": {"type": n_type_classes},
         },
         **kwargs,
     )
@@ -397,23 +302,21 @@ def hovernet_small(type_classes: int, **kwargs) -> nn.Module:
     return hovernet
 
 
-def hovernet_small_plus(type_classes: int, sem_classes: int, **kwargs) -> nn.Module:
+def hovernet_small_plus(n_type_classes: int, n_sem_classes: int, **kwargs) -> nn.Module:
     """Create the HoVer-Net+ without inst decoder branch from kwargs.
 
     HoVer-Net:
         - https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub
 
     Parameters
-    ----------
-        type_classes : int
-            Number of type-branch classes.
-        sem_classes : int
-            Number of semantic-branch classes.
+        n_type_classes (int):
+            Number of cell type classes.
+        n_sem_classes (int):
+            Number of tissue type classes.
         **kwargs:
             Arbitrary key word args for the HoverNet class.
 
-    Returns
-    -------
+    Returns:
         nn.Module: The initialized HoVer-Net-small+ model.
     """
     hovernet = HoverNet(
@@ -421,8 +324,8 @@ def hovernet_small_plus(type_classes: int, sem_classes: int, **kwargs) -> nn.Mod
         inst_key="type",
         heads={
             "hovernet": {"hovernet": 2},
-            "type": {"type": type_classes},
-            "sem": {"sem": sem_classes},
+            "type": {"type": n_type_classes},
+            "sem": {"sem": n_sem_classes},
         },
         **kwargs,
     )

@@ -17,24 +17,22 @@ def feature_sampling(
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Sample features from feature map with boundary-pixel coordinates.
 
-    Parameters
-    ----------
-    feature_map : torch.Tensor
-        Input feature map. Shape: (B, C, H, W)
-    coord_map : torch.Tensor
-        Boundary-pixel coordinate grid. Shape: (B, n_rays, 2, H, W)
-    nd_sampling : int
-        Number of sampling points in each ray.
-    sampling_mode : str, optional
-        Sampling mode, by default "nearest".
+    Parameters:
+        feature_map (torch.Tensor):
+            Input feature map. Shape: (B, C, H, W)
+        coord_map (torch.Tensor):
+            Boundary-pixel coordinate grid. Shape: (B, n_rays, 2, H, W)
+        nd_sampling (int):
+            Number of sampling points in each ray.
+        sampling_mode (str, default="nearest"):
+            Sampling mode, by default "nearest".
 
-    Returns
-    -------
-    Tuple[torch.Tensor, torch.Tensor]
-        - sampled_features. Shape: (B, K*C', H, W)
-        - sampling coords.
-            Shape: (n_rays*B, H, W, 2) if nd_sampling > 0
-            Shape: (B, n_rays*H, W, 2) if nd_sampling <= 0
+    Returns:
+        Tuple[torch.Tensor, torch.Tensor]
+            - sampled_features. Shape: (B, K*C', H, W)
+            - sampling coords.
+                Shape: (n_rays*B, H, W, 2) if nd_sampling > 0
+                Shape: (B, n_rays*H, W, 2) if nd_sampling <= 0
     """
     b, c, h, w = feature_map.shape
     _, n_rays, _, _, _ = coord_map.shape
@@ -43,8 +41,12 @@ def feature_sampling(
     sampling_coord[:, :, 0, :, :] = sampling_coord[:, :, 0, :, :] / (w - 1)
     sampling_coord[:, :, 1, :, :] = sampling_coord[:, :, 1, :, :] / (h - 1)
     sampling_coord = sampling_coord * 2.0 - 1.0
-
-    assert n_rays * nd_sampling == c
+    print(sampling_coord.shape, feature_map.shape, nd_sampling, n_rays, c)
+    if n_rays * nd_sampling != c:
+        raise ValueError(
+            f"Number of rays ({n_rays}) * number of sampling points ({nd_sampling}) "
+            f"should be equal to the number of channels ({c})"
+        )
 
     if nd_sampling > 0:
         sampling_coord = sampling_coord.permute(1, 0, 3, 4, 2)
@@ -59,9 +61,7 @@ def feature_sampling(
         )  # kb, c', h, w
         sampling_features = sampling_features.view(
             n_rays, b, nd_sampling, h, w
-        ).permute(
-            1, 0, 2, 3, 4
-        )  # b, k, c', h, w
+        ).permute(1, 0, 2, 3, 4)  # b, k, c', h, w
     else:
         sampling_coord = sampling_coord.permute(0, 1, 3, 4, 2).flatten(
             start_dim=1, end_dim=2
@@ -84,12 +84,11 @@ class SamplingFeatures(nn.Module):
     def __init__(self, n_rays: int, sampling_mode: str = "nearest") -> None:
         """Sample features from feature map with boundary-pixel coordinates.
 
-        Parameters
-        ----------
-        n_rays : int
-            Number of rays.
-        sampling_mode : str, optional
-            Sampling mode, by default 'nearest'.
+        Parameters:
+            n_rays (int)_
+                Number of rays.
+            sampling_mode (str, default="nearest"):
+                Sampling mode, by default 'nearest'.
         """
         super().__init__()
         self.n_rays = n_rays
@@ -105,18 +104,16 @@ class SamplingFeatures(nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Sample features and coords.
 
-        Parameters
-        ----------
-        feature_map : torch.Tensor
-            Input feature map. Shape: (B, C, H, W)
-        dist : torch.Tensor
-            Radial distance map. Shape: (B, n_rays, H, W)
-        nd_sampling : int
-            Number of sampling points in each ray.
+        Parameters:
+            feature_map (torch.Tensor):
+                Input feature map. Shape: (B, C, H, W)
+            dist (torch.Tensor):
+                Radial distance map. Shape: (B, n_rays, H, W)
+            nd_sampling (int):
+                Number of sampling points in each ray.
 
-        Returns
-        -------
-        Tuple[torch.Tensor, torch.Tensor]
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]:
             - sampled_features. Shape: (B, n_rays*C, H, W)
             - sampling coords.
                 Shape: (n_rays*B, H, W, 2) if nd_sampling > 0

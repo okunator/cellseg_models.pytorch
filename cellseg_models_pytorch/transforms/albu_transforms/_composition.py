@@ -53,7 +53,7 @@ class ApplyEach(A.BaseCompose):
         res = {}
         for t in self.transforms:
             for k, d in data.items():
-                res[f"{t.name}_{k}"] = t(d, force_apply=True)
+                res[f"{k}-{t.name}"] = t(d, force_apply=True)
 
         if self.as_list:
             masks = []
