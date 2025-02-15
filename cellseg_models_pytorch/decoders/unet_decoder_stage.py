@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -18,33 +18,33 @@ class UnetDecoderStage(nn.Module):
         skip_channels: Tuple[int, ...],
         long_skip: str = "unet",
         merge_policy: str = "sum",
-        skip_params: Optional[Dict[str, Any]] = None,
+        skip_params: Dict[str, Any] = None,
         upsampling: str = "fixed-unpool",
-        n_conv_layers: Optional[int] = 1,
-        style_channels: Optional[int] = None,
-        layer_residual: Optional[bool] = False,
-        n_conv_blocks: Optional[Tuple[int, ...]] = (2,),
-        short_skips: Optional[Tuple[str, ...]] = ("residual",),
-        expand_ratios: Optional[Tuple[float, float]] = ((1.0, 1.0),),
-        block_types: Optional[Tuple[Tuple[str, ...], ...]] = (("basic", "basic"),),
-        normalizations: Optional[Tuple[Tuple[str, ...], ...]] = (("bn", "bn"),),
-        activations: Optional[Tuple[Tuple[str, ...], ...]] = (("relu", "relu"),),
-        convolutions: Optional[Tuple[Tuple[str, ...], ...]] = (("conv", "conv"),),
-        attentions: Optional[Tuple[Tuple[str, ...], ...]] = ((None, "se"),),
-        preactivates: Optional[Tuple[Tuple[bool, ...], ...]] = ((False, False),),
-        preattends: Optional[Tuple[Tuple[bool, ...], ...]] = ((False, False),),
-        use_styles: Optional[Tuple[Tuple[bool, ...], ...]] = ((False, False),),
-        kernel_sizes: Optional[Tuple[Tuple[int, ...]]] = ((3, 3),),
-        groups: Optional[Tuple[Tuple[int, ...]]] = ((1, 1),),
-        biases: Optional[Tuple[Tuple[bool, ...]]] = ((False, False),),
-        n_transformers: Optional[int] = None,
-        n_transformer_blocks: Optional[Tuple[int, ...]] = (1,),
-        transformer_blocks: Optional[Tuple[Tuple[str, ...], ...]] = (("exact",),),
-        transformer_computations: Optional[Tuple[Tuple[str, ...], ...]] = (("basic",),),
-        transformer_biases: Optional[Tuple[Tuple[bool, ...], ...]] = ((False,),),
-        transformer_dropouts: Optional[Tuple[Tuple[float, ...], ...]] = ((0.0,),),
-        transformer_layer_scales: Optional[Tuple[Tuple[bool, ...], ...]] = ((False,),),
-        transformer_params: Optional[List[Dict[str, Any]]] = None,
+        n_conv_layers: int = 1,
+        style_channels: int = None,
+        layer_residual: bool = False,
+        n_conv_blocks: Tuple[int, ...] = (2,),
+        short_skips: Tuple[str, ...] = ("residual",),
+        expand_ratios: Tuple[float, float] = ((1.0, 1.0),),
+        block_types: Tuple[Tuple[str, ...], ...] = (("basic", "basic"),),
+        normalizations: Tuple[Tuple[str, ...], ...] = (("bn", "bn"),),
+        activations: Tuple[Tuple[str, ...], ...] = (("relu", "relu"),),
+        convolutions: Tuple[Tuple[str, ...], ...] = (("conv", "conv"),),
+        attentions: Tuple[Tuple[str, ...], ...] = ((None, "se"),),
+        preactivates: Tuple[Tuple[bool, ...], ...] = ((False, False),),
+        preattends: Tuple[Tuple[bool, ...], ...] = ((False, False),),
+        use_styles: Tuple[Tuple[bool, ...], ...] = ((False, False),),
+        kernel_sizes: Tuple[Tuple[int, ...]] = ((3, 3),),
+        groups: Tuple[Tuple[int, ...]] = ((1, 1),),
+        biases: Tuple[Tuple[bool, ...]] = ((False, False),),
+        n_transformers: int = None,
+        n_transformer_blocks: Tuple[int, ...] = (1,),
+        transformer_blocks: Tuple[Tuple[str, ...], ...] = (("exact",),),
+        transformer_computations: Tuple[Tuple[str, ...], ...] = (("basic",),),
+        transformer_biases: Tuple[Tuple[bool, ...], ...] = ((False,),),
+        transformer_dropouts: Tuple[Tuple[float, ...], ...] = ((0.0,),),
+        transformer_layer_scales: Tuple[Tuple[bool, ...], ...] = ((False,),),
+        transformer_params: List[Dict[str, Any]] = None,
         **kwargs,
     ) -> None:
         """Build a decoder stage.
@@ -73,7 +73,7 @@ class UnetDecoderStage(nn.Module):
                 Allowed: "cross-attn", "unet", "unetpp", "unet3p", "unet3p-lite", None
             merge_policy : str, default="sum"
                 The long skip merge policy. One of: "sum", "cat"
-            skip_params : Optional[Dict]
+            skip_params : Dict[str, Any], default=None
                 Extra keyword arguments for the skip-connection module. These depend
                 on the skip module. Refer to specific skip modules for more info.
             upsampling : str, default="fixed-unpool"

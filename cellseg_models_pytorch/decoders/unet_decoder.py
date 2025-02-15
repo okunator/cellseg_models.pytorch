@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -13,13 +13,13 @@ class UnetDecoder(nn.ModuleDict):
         self,
         enc_channels: Tuple[int, ...],
         enc_reductions: Tuple[int, ...],
-        out_channels: Tuple[int, ...] = (256, 128, 64, 32, 16),
+        out_channels: Tuple[int, ...],
         long_skip: Union[None, str, Tuple[str, ...]] = "unet",
         n_conv_layers: Union[None, int, Tuple[int, ...]] = 1,
-        n_transformers: Union[None, int, Tuple[int, ...]] = None,
         n_conv_blocks: Union[int, Tuple[Tuple[int, ...], ...]] = 2,
+        n_transformers: Union[None, int, Tuple[int, ...]] = None,
         n_transformer_blocks: Union[int, Tuple[Tuple[int], ...]] = 1,
-        stage_params: Optional[Tuple[Dict, ...]] = None,
+        stage_params: Tuple[Dict, ...] = None,
         style_channels: int = None,
         **kwargs,
     ) -> None:
@@ -41,7 +41,7 @@ class UnetDecoder(nn.ModuleDict):
                 Number of channels at each encoder layer.
             enc_reductions : Tuple[int, ...]
                 The reduction factor from the input image size at each encoder layer.
-            out_channels : Tuple[int, ...], default=(256, 128, 64, 32, 16)
+            out_channels : Tuple[int, ...]
                 Number of channels at each decoder layer output.
             long_skip : Union[None, str, Tuple[str, ...]], default="unet"
                 long skip method to be used. The argument can be given as a tuple, where
@@ -71,7 +71,7 @@ class UnetDecoder(nn.ModuleDict):
                 value indicates the number of `SelfAttention`s inside a single
                 `TranformerLayer` allowing different sized transformer blocks inside
                 each transformer-layer in the decoder.
-            stage_params : Optional[Tuple[Dict, ...]], default=None
+            stage_params : Tuple[Dict, ...], default=None
                 The keyword args for each of the distinct decoder stages. Incudes the
                 parameters for the long skip connections, convolutional layers of the
                 decoder and transformer layers itself. See the `DecoderStage`
