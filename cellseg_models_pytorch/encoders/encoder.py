@@ -62,3 +62,8 @@ class Encoder(nn.Module):
         """Forward pass of the encoder and return all the features."""
         output, feats = self.encoder(x)
         return output, feats[::-1]
+
+    def freeze_encoder(self) -> None:
+        """Freeze the parameters of the encoeder."""
+        for param in self.encoder.parameters():
+            param.requires_grad = False
