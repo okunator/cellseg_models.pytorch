@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from cellseg_models_pytorch.decoders import UnetDecoder
+from cellseg_models_pytorch.decoders.unet_decoder import UnetDecoder
 
 
 @pytest.mark.parametrize(

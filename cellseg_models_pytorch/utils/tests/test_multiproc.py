@@ -1,6 +1,6 @@
 import pytest
 
-from cellseg_models_pytorch.utils import run_pool
+from cellseg_models_pytorch.utils.multiproc import set_pool, run_pool
 
 
 def wrap1(num):
@@ -32,7 +32,8 @@ def wrap2(arg):
 @pytest.mark.parametrize("ret", [True, False])
 def test_run_pool(typesets, func, ret):
     args = [1, 2, 3, 4, 5, 6, 7, 8]
-    res = run_pool(func, args, ret=ret, pooltype=typesets[0], maptype=typesets[1])
+    pool = set_pool(typesets[0], nodes=2)
+    res = run_pool(pool, func, args, ret=ret, maptype=typesets[1])
 
     if ret and func == wrap1:
         assert res == [3, 4, 5, 6, 7, 8, 9, 10]

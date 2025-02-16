@@ -1,5 +1,3 @@
-from collections import OrderedDict
-
 import pytest
 import torch
 
@@ -20,16 +18,14 @@ from cellseg_models_pytorch.losses.tests.test_losses import _get_dummy_pair
     "losses",
     [
         {"inst": JointLoss([TverskyLoss(), IoULoss()])},
-        {"inst": CELoss(), "type": SSIM()},
+        {"inst": CELoss(), "types": SSIM()},
     ],
 )
 def test_multitask_loss(n_classes, losses):
-    losses = OrderedDict(losses)
-
     yhats = {}
     targets = {}
     for i, br in enumerate(losses.keys(), 1):
-        yhats[f"{br}"], targets[f"{br}"] = _get_dummy_pair(n_classes + i)
+        yhats[br], targets[br] = _get_dummy_pair(n_classes + i)
 
     mtl = MultiTaskLoss(losses)
     mtl(yhats, targets)

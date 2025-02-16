@@ -7,7 +7,6 @@ from cellseg_models_pytorch.postproc import (
     post_proc_cellpose,
     post_proc_cellpose_old,
     post_proc_dcan,
-    post_proc_dran,
     post_proc_drfns,
     post_proc_hovernet,
     post_proc_omnipose,
@@ -115,17 +114,9 @@ def test_postproc_dcan(inst_map):
     assert rebuild.shape == inst_map.shape
 
 
-def test_postproc_dran(inst_map):
-    cont = gen_contour_maps(inst_map)
-    rebuild = post_proc_dran(inst_map, cont)
-
-    assert rebuild.dtype == "int32"
-    assert rebuild.shape == inst_map.shape
-
-
 def test_postproc_stardist(mask_patch_dir):
     mask_path = sorted(mask_patch_dir.glob("*"))[0]
-    inst_map = FileHandler.read_mat(mask_path)
+    inst_map = FileHandler.read_mat(mask_path)["inst_map"]
     stardist = gen_stardist_maps(inst_map, 32)
     dist = gen_dist_maps(inst_map)
     rebuild = post_proc_stardist(dist, stardist)

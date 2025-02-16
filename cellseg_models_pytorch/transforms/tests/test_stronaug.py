@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from cellseg_models_pytorch.transforms.albu_transforms.strong_augment import (
-    StrongAugment,
+    AlbuStrongAugment,
 )
 from cellseg_models_pytorch.transforms.functional.generic_transforms import (
     AUGMENT_SPACE,
@@ -32,10 +32,10 @@ def test_strongaug(img_patch_dir, mask_patch_dir):
     mp = sorted(mask_patch_dir.glob("*"))[0]
 
     im = FileHandler.read_img(imp)
-    mask = FileHandler.read_mat(mp, key="inst_map")
-    mask2 = FileHandler.read_mat(mp, key="type_map")
+    mask = FileHandler.read_mat(mp)["inst_map"]
+    mask2 = FileHandler.read_mat(mp)["type_map"]
 
-    sa = StrongAugment()
+    sa = AlbuStrongAugment()
     tr_data = sa(image=im, masks=[mask, mask2])
 
     assert tr_data["image"].shape == im.shape
