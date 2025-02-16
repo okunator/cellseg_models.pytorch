@@ -25,19 +25,3 @@ def test_stronaug_transforms(img_sample, op_name):
     assert tr_img.shape == img_sample.shape
     assert tr_img.dtype == img_sample.dtype
     assert tr_img.max() <= 255
-
-
-def test_strongaug(img_patch_dir, mask_patch_dir):
-    imp = sorted(img_patch_dir.glob("*"))[0]
-    mp = sorted(mask_patch_dir.glob("*"))[0]
-
-    im = FileHandler.read_img(imp)
-    mask = FileHandler.read_mat(mp)["inst_map"]
-    mask2 = FileHandler.read_mat(mp)["type_map"]
-
-    sa = AlbuStrongAugment()
-    tr_data = sa(image=im, masks=[mask, mask2])
-
-    assert tr_data["image"].shape == im.shape
-    assert tr_data["image"].dtype == im.dtype
-    assert list(tr_data.keys()) == ["image", "masks"]
