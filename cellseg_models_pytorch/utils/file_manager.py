@@ -141,7 +141,7 @@ class H5Handler:
         )
 
     @staticmethod
-    def init_h5(path: str, keys: Tuple[str, ...], patch_size: Tuple[int, int]) -> File:
+    def init_h5(path: str, keys: Tuple[str, ...], patch_size: Tuple[int, int]):
         """Initialize a hdf5 file for saving masks.
 
         Parameters:
