@@ -80,31 +80,17 @@ def img_dir() -> Path:
 def img_patch_dir() -> Path:
     """Return a path to directory with a few test images."""
     path = Path().resolve()
-    return path / "cellseg_models_pytorch/datasets/tests/data/imgs"
+    return path / "cellseg_models_pytorch/utils/tests/data/imgs"
 
 
 @pytest.fixture(scope="package")
 def mask_patch_dir() -> Path:
     """Return a path to directory with a few test images."""
     path = Path().resolve()
-    return path / "cellseg_models_pytorch/datasets/tests/data/masks"
-
-
-@pytest.fixture(scope="package")
-def type_map_tensor() -> torch.Tensor:
-    """Return a dummy type map target tensor. Shape (8, 320, 320)."""
-    path = Path().resolve()
-    path = path / "cellseg_models_pytorch/training/tests/data/type_target_batch8.pt"
-    return torch.load(path.as_posix())
-
-
-@pytest.fixture(scope="package")
-def sem_map_tensor() -> torch.Tensor:
-    """Return a dummy semantic map target tensor. Shape (8, 320, 320)."""
-    path = Path().resolve()
-    path = path / "cellseg_models_pytorch/training/tests/data/sem_target_batch8.pt"
-    return torch.load(path.as_posix())
-
+    dir = path / "cellseg_models_pytorch/utils/tests/data/masks"
+    assert dir.exists(), f"Directory does not exist: {dir}"
+    assert dir.is_dir(), f"Path is not a directory: {dir}"
+    return dir 
 
 @pytest.fixture(scope="package")
 def img_sample() -> np.ndarray:
@@ -114,10 +100,24 @@ def img_sample() -> np.ndarray:
 
 
 @pytest.fixture(scope="package")
+def img_sample512() -> np.ndarray:
+    """Read in test RGB img."""
+    path = Path().resolve()
+    return FileHandler.read_img(path / "cellseg_models_pytorch/inference/tests/data/test1.png")
+@pytest.fixture(scope="package")
+
+
+def img_sample256() -> np.ndarray:
+    """Read in test RGB img."""
+    path = Path().resolve()
+    return FileHandler.read_img(path / "cellseg_models_pytorch/utils/tests/data/imgs/patch2.png")
+
+
+@pytest.fixture(scope="package")
 def hdf5db() -> Path:
     """Read in test RGB img."""
     path = Path().resolve()
-    return path / "cellseg_models_pytorch/datasets/tests/data/tiny_test.h5"
+    return path / "cellseg_models_pytorch/utils/tests/data/tiny_test.h5"
 
 
 @pytest.fixture(scope="package")
