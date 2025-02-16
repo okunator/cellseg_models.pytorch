@@ -29,7 +29,7 @@ class CellPoseUnet(nn.Module):
         enc_pretrain: bool = True,
         enc_freeze: bool = False,
         enc_out_indices: Tuple[int, ...] = None,
-        upsampling: str = "fixed-unpool",
+        upsampling: str = "bilinear",
         long_skip: str = "unet",
         merge_policy: str = "sum",
         short_skip: str = "basic",
@@ -131,6 +131,7 @@ class CellPoseUnet(nn.Module):
 
         self.enc_freeze = enc_freeze
         use_style = style_channels is not None
+        self.decoders = decoders
         self.heads = heads
 
         # Create build args

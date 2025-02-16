@@ -1,5 +1,4 @@
 from functools import partial
-from itertools import chain
 from typing import Any, Dict, Generator, List, Tuple
 
 import numpy as np
@@ -443,8 +442,8 @@ class Inferer:
 
     def _get_out_info(self) -> Tuple[Tuple[str, int]]:
         """Get the output names and number of out channels."""
-        return tuple(
-            chain.from_iterable(
-                list(self.model.heads[k].items()) for k in self.model.heads.keys()
-            )
-        )
+        return [
+            (f"{decoder}-{head}", n)
+            for decoder, inner in self.model.heads.items()
+            for head, n in inner.items()
+        ]

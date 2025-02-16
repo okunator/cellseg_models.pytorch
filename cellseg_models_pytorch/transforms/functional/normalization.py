@@ -15,25 +15,22 @@ def percentile_normalize(
 ) -> np.ndarray:
     """Channelwise percentile normalization to range [0, 1].
 
-    Parameters
-    ----------
-        img : np.ndarray:
+    Parameters:
+        img (np.ndarray):
             Input image to be normalized. Shape (H, W, C)|(H, W).
-        lower : float, default=0.01:
+        lower (float, default=0.01):
             The lower percentile
-        upper : float, default=99.99:
+        upper (float, default=99.99):
             The upper percentile
-        copy : bool, default=False
+        copy (bool, default=False):
             If True, normalize the copy of the input.
 
-    Returns
-    -------
+    Returns:
         np.ndarray:
             Normalized img. Same shape as input. dtype: float32.
 
-    Raises
-    ------
-        ValueError
+    Raises:
+        ValueError:
             If input image does not have shape (H, W) or (H, W, C).
     """
     axis = (0, 1)
@@ -53,8 +50,7 @@ def percentile_normalize(
     upercentile = np.percentile(im, upper)
     lpercentile = np.percentile(im, lower)
 
-    # return np.interp(im, (lpercentile, upercentile), axis).astype(np.float32)
-    return np.interp(im, (lpercentile, upercentile), axis)  # .astype(np.float32)
+    return np.interp(im, (lpercentile, upercentile), axis).astype(np.float32)
 
 
 def percentile_normalize99(
@@ -62,25 +58,22 @@ def percentile_normalize99(
 ) -> np.ndarray:
     """Channelwise 1-99 percentile normalization. Optional clamping.
 
-    Parameters
-    ----------
-        img : np.ndarray:
+    Parameters:
+        img (np.ndarray)
             Input image to be normalized. Shape (H, W, C)|(H, W).
-        amin : float, optional
+        amin (float, default=None)
             Clamp min value. No clamping performed if None.
-        amax : float, optional
+        amax (float, default=None):
             Clamp max value. No clamping performed if None.
-        copy : bool, default=False
+        copy (bool, default=False):
             If True, normalize the copy of the input.
 
-    Returns
-    -------
+    Returns:
         np.ndarray:
             Normalized image. Same shape as input. dtype: float32.
 
-    Raises
-    ------
-        ValueError
+    Raises:
+        ValueError:
             If input image does not have shape (H, W) or (H, W, C).
     """
     axis = (0, 1)
@@ -99,7 +92,7 @@ def percentile_normalize99(
     percentile99 = np.percentile(im, q=99, axis=axis)
     num = im - percentile1
     denom = percentile99 - percentile1
-    im = num / denom if denom != 0 else np.zeros_like(im)
+    im = num / denom
 
     # clamp
     if not any(x is None for x in (amin, amax)):
@@ -117,27 +110,24 @@ def normalize(
 ) -> np.ndarray:
     """Channelwise mean centering or standardizing of an image. Optional clamping.
 
-    Parameters
-    ----------
-        img : np.ndarray
+    Parameters:
+        img (np.ndarray):
             Input image to be normalized. Shape (H, W, C)|(H, W).
-        standardize: bool, default=True
+        standardize (bool, default=True):
             If True, divide with standard deviation after mean centering
-        amin : float, optional
+        amin (float, default=None):
             Clamp min value. No clamping performed if None.
-        amax : float, optional
+        amax (float, default=None):
             Clamp max value. No clamping performed if None.
-        copy : bool, default=False
+        copy (bool, default=False):
             If True, normalize the copy of the input.
 
-    Returns
-    -------
+    Returns:
         np.ndarray:
             Normalized image. Same shape as input. dtype: float32.
 
-    Raises
-    ------
-        ValueError
+    Raises:
+        ValueError:
             If input image does not have shape (H, W) or (H, W, C).
     """
     axis = (0, 1)
@@ -157,7 +147,7 @@ def normalize(
 
     if standardize:
         std = im.std(axis=axis, keepdims=True)
-        im = im / std if std != 0 else np.zeros_like(im)
+        im = np.divide(im, std, where=std != 0)
 
     # clamp
     if not any(x is None for x in (amin, amax)):
@@ -171,25 +161,22 @@ def minmax_normalize(
 ) -> np.ndarray:
     """Min-max normalization per image channel. Optional clamping.
 
-    Parameters
-    ----------
-        img : np.ndarray:
+    Parameters:
+        img (np.ndarray):
             Input image to be normalized. Shape (H, W, C)|(H, W).
-        amin : float, optional
+        amin (float, default=None):
             Clamp min value. No clamping performed if None.
-        amax : float, optional
+        amax (float, default=None):
             Clamp max value. No clamping performed if None.
-        copy : bool, default=False
+        copy (bool, default=False):
             If True, normalize the copy of the input.
 
-    Returns
-    -------
+    Returns:
         np.ndarray:
             Min-max normalized image. Same shape as input. dtype: float32.
 
-    Raises
-    ------
-        ValueError
+    Raises:
+        ValueError;
             If input image does not have shape (H, W) or (H, W, C).
     """
     if img.ndim not in (2, 3):
@@ -206,7 +193,7 @@ def minmax_normalize(
     max = im.max()
     denom = max - min
     num = im - min
-    im = num / denom if denom != 0 else np.zeros_like(im)
+    im = num / denom
 
     # clamp
     if not any(x is None for x in (amin, amax)):
@@ -221,16 +208,14 @@ def float2ubyte(mat: np.ndarray, normalize: bool = False) -> np.ndarray:
     Float matrix values need to be in range [-1, 1] for img_as_ubyte so
     the image is normalized or clamped before conversion.
 
-    Parameters
-    ----------
-        mat : np.ndarray
+    Parameters:
+        mat (np.ndarray):
             A float64 matrix. Shape (H, W, C).
         normalize (bool, default=False):
             Normalizes input to [0, 1] first. If not True,
             clips values between [-1, 1].
 
-    Returns
-    -------
+    Returns:
         np.ndarray:
             A uint8 matrix. Shape (H, W, C). dtype: uint8.
     """

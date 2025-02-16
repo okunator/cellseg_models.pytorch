@@ -28,7 +28,7 @@ from .mask_utils import (
     type_map_flatten,
 )
 from .multiproc import run_pool
-from .tensor_utils import tensor_one_hot, to_device, to_tensor
+from .tensor_utils import to_device, to_tensor
 
 __all__ = [
     "Downloader",
@@ -54,8 +54,6 @@ __all__ = [
     "label_semantic",
     "to_tensor",
     "to_device",
-    "tensor_one_hot",
-    "normalize_torch",
     "draw_stuff_contours",
     "draw_thing_contours",
     "majority_vote_sequential",

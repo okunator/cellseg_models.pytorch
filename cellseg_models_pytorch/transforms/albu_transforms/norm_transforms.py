@@ -27,15 +27,14 @@ class MinMaxNormalization(ImageOnlyTransform):
     ) -> None:
         """Min-max normalization transformation.
 
-        Parameters
-        ----------
-            amin : float, optional
+        Parameters:
+            amin (float, default=None)
                 Clamp min value. No clamping performed if None.
-            amax : float, optional
+            amax (float, default=None)
                 Clamp max value. No clamping performed if None.
-            p : float, default=1.0
+            p (float, default=1.0):
                 Probability of applying the transformation.
-            copy : bool, default=False
+            copy (bool, default=False):
                 If True, normalize the copy of the input.
         """
         if not HAS_ALBU:
@@ -52,13 +51,11 @@ class MinMaxNormalization(ImageOnlyTransform):
     def apply(self, image: np.ndarray, **kwargs) -> np.ndarray:
         """Apply min-max normalization.
 
-        Parameters
-        ----------
-            image : np.ndarray:
+        Parameters:
+            image (np.ndarray):
                 Input image to be normalized. Shape (H, W, C)|(H, W).
 
-        Returns
-        -------
+        Returns:
             np.ndarray:
                 Normalized image. Same shape as input. dtype: float32.
         """
@@ -80,15 +77,14 @@ class PercentileNormalization(ImageOnlyTransform):
     ) -> None:
         """Percentile normalization transformation.
 
-        Parameters
-        ----------
-            amin : float, optional
+        Parameters:
+            amin (float, default=None):
                 Clamp min value. No clamping performed if None.
-            amax : float, optional
+            amax (float, default=None):
                 Clamp max value. No clamping performed if None.
-            p : float, default=1.0
+            p (float, default=1.0):
                 Probability of applying the transformation.
-            copy : bool, default=False
+            copy (bool, default=False):
                 If True, normalize the copy of the input.
         """
         if not HAS_ALBU:
@@ -105,13 +101,11 @@ class PercentileNormalization(ImageOnlyTransform):
     def apply(self, image: np.ndarray, **kwargs) -> np.ndarray:
         """Apply percentile normalization to input image.
 
-        Parameters
-        ----------
-            image : np.ndarray:
+        Parameters:
+            image (np.ndarray):
                 Input image to be normalized. Shape (H, W, C)|(H, W).
 
-        Returns
-        -------
+        Returns:
             np.ndarray:
                 Normalized image. Same shape as input. dtype: float32.
         """
@@ -136,19 +130,18 @@ class ImgNormalization(ImageOnlyTransform):
 
         NOTE: this is not dataset-level normalization but image-level.
 
-        Parameters
-        ----------
-            standardize : bool, default=True
+        Parameters:
+            standardize (bool, default=True):
                 If True, divides the mean shifted img by the standard deviation.
-            amin : float, optional
+            amin (float, default=None):
                 Clamp min value. No clamping performed if None.
-            amax : float, optional
+            amax (float, default=None):
                 Clamp max value. No clamping performed if None.
-            always_apply : bool, default=True
+            always_apply (bool, default=True):
                 Apply the transformation always.
-            p : float, default=1.0
+            p (float, default=1.0):
                 Probability of applying the transformation.
-            copy : bool, default=False
+            copy (bool, default=False):
                 If True, normalize the copy of the input.
         """
         if not HAS_ALBU:
@@ -165,13 +158,11 @@ class ImgNormalization(ImageOnlyTransform):
     def apply(self, image: np.ndarray, **kwargs) -> np.ndarray:
         """Apply image-level normalization to input image.
 
-        Parameters
-        ----------
-            image : np.ndarray:
+        Parameters:
+            image (np.ndarray):
                 Input image to be normalized. Shape (H, W, C)|(H, W).
 
-        Returns
-        -------
+        Returns:
             np.ndarray:
                 Normalized image. Same shape as input. dtype: float32.
         """
