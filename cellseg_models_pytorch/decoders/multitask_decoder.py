@@ -7,6 +7,7 @@ import torch.nn.functional as F
 
 from cellseg_models_pytorch.decoders.long_skips import StemSkip
 from cellseg_models_pytorch.decoders.unet_decoder import UnetDecoder
+from cellseg_models_pytorch.encoders.encoder_upsampler import EncoderUpsampler
 from cellseg_models_pytorch.models.base._initialization import (
     initialize_decoder,
     initialize_head,
@@ -36,8 +37,7 @@ class MultiTaskDecoder(nn.ModuleDict):
         decoders: Tuple[str, ...],
         heads: Dict[str, Dict[str, int]],
         out_channels: Tuple[int, ...],
-        enc_channels: Tuple[int, ...],
-        enc_reductions: Tuple[int, ...],
+        enc_feature_info: Tuple[Dict[str, Any], ...],
         n_layers: Tuple[int, ...],
         n_blocks: Tuple[int, ...],
         stage_kws: Tuple[Dict[str, Any], ...],
@@ -59,10 +59,8 @@ class MultiTaskDecoder(nn.ModuleDict):
             out_channels (Tuple[int, ...]):
                 Tuple of output channels for each decoder stage. The length of the tuple
                 should be equal to the number of enc_channels.
-            enc_channels (Tuple[int, ...]):
-                Tuple of encoder channels.
-            enc_reductions (Tuple[int, ...]):
-                Tuple of encoder reduction factors.
+            enc_feature_info (Tuple[Dict[str, Any], ...]):
+                Tuple of encoder feature info dicts. Basically timm.model.feature_info
             n_layers (Tuple[int, ...]):
                 Tuple of number of conv layers in each decoder stage.
             n_blocks (Tuple[int, ...]):
@@ -87,14 +85,29 @@ class MultiTaskDecoder(nn.ModuleDict):
         self._check_head_args(heads, decoders)
         self._check_decoder_args(decoders)
         self._check_depth(
-            len(enc_channels),
+            len(n_blocks),
             {
-                "n_blocks": n_blocks,
                 "n_layers": n_layers,
                 "out_channels": out_channels,
-                "enc_reductions": enc_reductions,
+                "enc_feature_info": enc_feature_info,
             },
         )
+
+        # get the reduction factors and out channels of the encoder
+        self.enc_feature_info = enc_feature_info[::-1]  # bottleneck first
+        enc_reductions = tuple([inf["reduction"] for inf in self.enc_feature_info])
+        enc_channels = tuple([inf["num_chs"] for inf in self.enc_feature_info])
+
+        # initialize feature upsampler if encoder is a vision transformer
+        self.encoder_upsampler = None
+        if all(elem == enc_reductions[0] for elem in enc_reductions):
+            self.encoder_upsampler = EncoderUpsampler(
+                feature_info=enc_feature_info,
+                out_channels=out_channels,
+            )
+            self.enc_feature_info = self.encoder_upsampler.feature_info  # bottlneck 1st
+            enc_reductions = tuple([inf["reduction"] for inf in self.enc_feature_info])
+            enc_channels = tuple([inf["num_chs"] for inf in self.enc_feature_info])
 
         # style
         self.make_style = None
@@ -194,7 +207,8 @@ class MultiTaskDecoder(nn.ModuleDict):
 
         Parameters:
             enc_feats (Tuple[torch.Tensor, ...]):
-                Tuple containing encoder feature tensors.
+                Tuple containing encoder feature tensors. Assumes that the deepest i.e.
+                the bottleneck features is the last element of the tuple.
             x_in (torch.Tensor, default=None):
                 Optional (the input image) tensor for stem skip connection.
 
@@ -202,6 +216,10 @@ class MultiTaskDecoder(nn.ModuleDict):
             Tuple[Dict[str, List[torch.Tensor]], Dict[str, torch.Tensor]]:
                 The output of the seg heads.
         """
+        enc_feats = enc_feats[::-1]  # bottleneck first
+        if self.encoder_upsampler is not None:
+            enc_feats = self.encoder_upsampler(enc_feats)
+
         style = self.forward_style(enc_feats[0])
         dec_feats = self.forward_features(enc_feats, style)
 
@@ -211,7 +229,7 @@ class MultiTaskDecoder(nn.ModuleDict):
 
         out = self.forward_heads(dec_feats)
 
-        return dec_feats, out
+        return enc_feats, dec_feats, out
 
     def initialize(self) -> None:
         """Initialize the decoders and segmentation heads."""

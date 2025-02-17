@@ -62,7 +62,7 @@ markers = ["cuda (deselect with '-m \"nocuda\"')"]
 source = ["cellseg_models_pytorch"]
 
 [tool.coverage.report]
-omit = ["*/tests/*", "*/__init__.py", "*/albu_transforms/*", "*/legacy/*"]
+omit = ["*/tests/*", "*/__init__.py", "*/albu_transforms/*", "*/legacy/*", "*/file_manager.py"]
 exclude_lines = [
     "raise TypeError",
     "raise ImportError",

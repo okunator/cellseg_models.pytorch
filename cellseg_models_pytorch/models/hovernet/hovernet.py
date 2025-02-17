@@ -151,20 +151,15 @@ class HoverNet(nn.Module):
         self.encoder = Encoder(
             timm_encoder_name=enc_name,
             timm_encoder_out_indices=enc_out_indices,
-            pixel_decoder_out_channels=out_channels,
             timm_encoder_pretrained=enc_pretrain,
             timm_extra_kwargs=encoder_kws,
         )
-
-        # get the reduction factors for the encoder
-        enc_reductions = tuple([inf["reduction"] for inf in self.encoder.feature_info])
 
         self.decoder = MultiTaskDecoder(
             decoders=decoders,
             heads=heads,
             out_channels=out_channels,
-            enc_channels=self.encoder.out_channels,
-            enc_reductions=enc_reductions,
+            enc_feature_info=self.encoder.feature_info,
             n_layers=n_layers,
             n_blocks=n_blocks,
             stage_kws=stage_kws,
@@ -174,14 +169,14 @@ class HoverNet(nn.Module):
             style_channels=style_channels,
         )
 
-        self.name = f"HoverNet-{enc_name}"
-
         # init decoder weights
         self.decoder.initialize()
 
         # freeze encoder if specified
         if enc_freeze:
             self.encoder.freeze_encoder()
+
+        self.name = f"HoverNet-{enc_name}"
 
     def forward(
         self,
@@ -203,7 +198,7 @@ class HoverNet(nn.Module):
                 outputs (segmentations) dict.
         """
         enc_output, feats = self.encoder.forward(x)
-        dec_feats, out = self.decoder.forward(feats, x)
+        feats, dec_feats, out = self.decoder.forward(feats, x)
 
         if return_feats:
             return enc_output, feats, dec_feats, out

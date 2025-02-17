@@ -64,7 +64,7 @@ class FeatUpsampleBlock(nn.Module):
 class EncoderUpsampler(nn.Module):
     def __init__(
         self,
-        backbone: nn.Module,
+        feature_info: Tuple[dict, ...],
         out_channels: Tuple[int, ...],
     ) -> None:
         """Feature upsampler for transformer-like backbones.
@@ -75,27 +75,26 @@ class EncoderUpsampler(nn.Module):
             are two. Builds an image-pyramid like structure.
 
         Parameters:
-            backbone (nn.Module):
-                Backbone network that extracts features.
+            feature_info (Tuple[dict, ...]):
+                timm feature info of the backbone. Assumes that the feature info dicts
+                are in bottleneck first order I.e. the deepest encoder block first.
+                For example: [
+                    {'module': 'blocks.8', 'num_chs': 1024, 'reduction': 16},
+                    {'module': 'blocks.4', 'num_chs': 1024, 'reduction': 16}
+                }
             out_channels (Tuple[int, ...]):
                 Number of channels in the output tensor of each upsampling block.
                 Defaults to None.
         """
-        print(out_channels, backbone.feature_info)
         super().__init__()
-        if len(out_channels) != len(backbone.feature_info):
+        if len(out_channels) != len(feature_info):
             raise ValueError(
                 "`out_channels` must have the same len as the `backbone.feature_info.`"
-                f"Got {len(out_channels)} and {len(backbone.feature_info)} respectively."
+                f"Got {len(out_channels)} and {len(feature_info)} respectively."
             )
 
-        self.backbone = backbone
         self.out_channels = out_channels
         self.feature_info = []
-
-        # flip the feature info so that we start building the
-        # upsampling blocks from the bottleneck layer
-        feature_info = backbone.feature_info[::-1]
 
         # bottleneck layer
         self.bottleneck = nn.Conv2d(
@@ -144,17 +143,17 @@ class EncoderUpsampler(nn.Module):
             )
             self.up_blocks[f"up{i + 1}"] = nn.Sequential(*up_blocks)
 
-        # flip the feature info back to the original order to match the top-down
-        # order of timm feature_info. (high to low res)
-        self.feature_info = self.feature_info[::-1]
+    def forward(self, feats: Tuple[torch.Tensor]) -> Tuple[torch.Tensor, ...]:
+        """Forward pass of the encoder upsampler.
 
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, Tuple[torch.Tensor, ...]]:
-        # get the features from the backbone
-        final_feat, feats = self.backbone(x)
+        Parameters:
+            feats (Tuple[torch.Tensor]):
+                Tuple of features from the backbone in bottleneck first order. I.e. the
+                bottleneck (deepest) feature is the first element in the tuple.
 
-        # flip the features so that we start from the bottleneck (low res)
-        feats = feats[::-1]
-
+        Returns:
+            Tuple[torch.Tensor, ...]: Tuple of upsampled features in hi-to-lo res order.
+        """
         # bottleneck feature
         up_feat = self.bottleneck(feats[0])
         intermediate_features = [up_feat]
@@ -164,4 +163,4 @@ class EncoderUpsampler(nn.Module):
             up_feat = self.up_blocks[f"up{i + 1}"](feat)
             intermediate_features.append(up_feat)
 
-        return final_feat, tuple(intermediate_features[::-1])  # feats in top-down order
+        return tuple(intermediate_features)  # hi-to-lo res order
