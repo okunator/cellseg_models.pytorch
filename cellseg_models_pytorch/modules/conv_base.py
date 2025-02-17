@@ -31,7 +31,7 @@ class BasicConv(nn.Module):
         bias: bool = False,
         attention: str = None,
         preattend: bool = False,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Conv-block (basic) parent class.
 
@@ -143,7 +143,7 @@ class BottleneckConv(nn.Module):
         bias: bool = False,
         attention: str = None,
         preattend: bool = False,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Bottleneck conv block parent-class.
 
@@ -305,7 +305,7 @@ class DepthWiseSeparableConv(nn.Module):
         kernel_size: int = 3,
         attention: str = None,
         preattend: bool = False,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Depthwise separable conv block parent class.
 
@@ -427,7 +427,7 @@ class InvertedBottleneckConv(nn.Module):
         kernel_size: int = 3,
         attention: str = None,
         preattend: bool = False,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Mobile inverted bottleneck conv parent-class.
 
@@ -578,7 +578,7 @@ class FusedMobileInvertedConv(nn.Module):
         activation: str = "relu",
         attention: str = None,
         preattend: bool = False,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Fused mobile inverted conv block parent-class.
 
@@ -714,7 +714,7 @@ class HoverNetDenseConv(nn.Module):
         kernel_size: int = 3,
         attention: str = None,
         preattend: bool = False,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Dense block of the HoVer-Net.
 
@@ -828,137 +828,5 @@ class HoverNetDenseConv(nn.Module):
         x = self.norm2(x)
         x = self.act2(x)
         x = self.conv(x)
-
-        return x
-
-
-class BasicConvOld(nn.Module):
-    def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        same_padding: bool = True,
-        normalization: str = "bn",
-        activation: str = "relu",
-        convolution: str = "conv",
-        preactivate: bool = False,
-        kernel_size=3,
-        groups: int = 1,
-        bias: bool = False,
-        attention: str = None,
-        preattend: bool = False,
-        **kwargs
-    ) -> None:
-        """Conv-block (basic) parent class.
-
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels.
-            out_channels : int
-                Number of output channels.
-            same_padding : bool, default=True
-                if True, performs same-covolution.
-            normalization : str, default="bn":
-                Normalization method.
-                One of: "bn", "bcn", "gn", "in", "ln", None
-            activation : str, default="relu"
-                Activation method.
-                One of: "mish", "swish", "relu", "relu6", "rrelu", "selu",
-                "celu", "gelu", "glu", "tanh", "sigmoid", "silu", "prelu",
-                "leaky-relu", "elu", "hardshrink", "tanhshrink", "hardsigmoid"
-            convolution : str, default="conv"
-                The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-            preactivate : bool, default=False
-                If True, normalization will be applied before convolution.
-            kernel_size : int, default=3
-                The size of the convolution kernel.
-            groups : int, default=1
-                Number of groups the kernels are divided into. If `groups == 1`
-                normal convolution is applied. If `groups = in_channels`
-                depthwise convolution is applied.
-            bias : bool, default=False,
-                Include bias term in the convolution.
-            attention : str, default=None
-                Attention method. One of: "se", "scse", "gc", "eca", "msca", None
-            preattend : bool, default=False
-                If True, Attention is applied at the beginning of forward pass.
-        """
-        super().__init__()
-        self.conv_choice = convolution
-        self.out_channels = out_channels
-        self.preattend = preattend
-        self.preactivate = preactivate
-
-        # set norm channel number for preactivation or normal
-        norm_channels = in_channels if preactivate else self.out_channels
-
-        # set padding. Works if dilation or stride are not adjusted
-        padding = (kernel_size - 1) // 2 if same_padding else 0
-
-        self.conv = Conv(
-            name=self.conv_choice,
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=kernel_size,
-            groups=groups,
-            padding=padding,
-            bias=bias,
-        )
-
-        self.norm = Norm(normalization, num_features=norm_channels)
-        self.act = Activation(activation)
-
-        # set attention channels
-        att_channels = in_channels if preattend else self.out_channels
-        self.att = Attention(attention, in_channels=att_channels)
-
-        self.downsample = None
-        if in_channels != out_channels:
-            self.downsample = nn.Sequential(
-                Conv(
-                    self.conv_choice,
-                    in_channels=in_channels,
-                    out_channels=out_channels,
-                    bias=False,
-                    kernel_size=1,
-                    padding=0,
-                ),
-                Norm(normalization, num_features=out_channels),
-            )
-
-    def forward_features(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass."""
-        identity = x
-        if self.downsample is not None:
-            identity = self.downsample(x)
-
-        x = self.att(x)
-
-        # residual
-        x = self.conv(x)
-        x = self.norm(x)
-
-        x += identity
-        x = self.act(x)
-
-        return x
-
-    def forward_features_preact(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass with pre-activation."""
-        identity = x
-        if self.downsample is not None:
-            identity = self.downsample(x)
-
-        # pre-attention
-        x = self.att(x)
-
-        # preact residual
-        x = self.norm(x)
-        x = self.act(x)
-        x = self.conv(x)
-
-        x += identity
-        x = self.act(x)
 
         return x

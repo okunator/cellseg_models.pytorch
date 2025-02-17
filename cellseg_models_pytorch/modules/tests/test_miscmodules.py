@@ -7,7 +7,7 @@ from cellseg_models_pytorch.modules.misc_modules import (
     StyleBlock,
     StyleReshape,
 )
-
+from cellseg_models_pytorch.modules.patch_embeddings import PatchEmbed
 
 @pytest.mark.parametrize("in_channels", [32, 16])
 @pytest.mark.parametrize("out_channels", [16, 32])
@@ -37,3 +37,34 @@ def test_stylefwdbwd(in_channels, style_channels, out_channels):
     out.mean().backward()
 
     assert out.shape[1] == out_channels
+
+
+@pytest.mark.parametrize("in_channels, patch_size, head_dim, num_heads, input_shape", [
+    (3, 8, 32, 4, (1, 3, 128, 128)),
+    (3, 4, 16, 2, (1, 3, 64, 64)),
+])
+def test_patch_embed(in_channels, patch_size, head_dim, num_heads, input_shape):
+    # Create the PatchEmbed layer
+    patch_embed = PatchEmbed(
+        in_channels=in_channels,
+        patch_size=patch_size,
+        head_dim=head_dim,
+        num_heads=num_heads
+    )
+
+    # Create a random input tensor with the specified shape
+    x = torch.randn(input_shape)
+
+    # Forward pass
+    output = patch_embed(x)
+
+    # Calculate expected output shape
+    B, _, H, W = input_shape
+    expected_seq_len = (H // patch_size) * (W // patch_size)
+    expected_proj_dim = head_dim * num_heads
+
+    # Check the output shape
+    assert output.shape == (B, expected_seq_len, expected_proj_dim)
+
+    # Check the output type
+    assert isinstance(output, torch.Tensor)

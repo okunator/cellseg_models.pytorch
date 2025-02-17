@@ -2,6 +2,7 @@ import pytest
 import torch
 
 from cellseg_models_pytorch.modules import ConvBlock
+from cellseg_models_pytorch.modules.mlp import ConvMlp
 
 
 @pytest.mark.parametrize(
@@ -43,3 +44,31 @@ def test_conv_block_fwdbwd(
 
     assert output.shape == torch.Size([1, out_channels, 16, 16])
     assert output.dtype == input.dtype
+
+
+@pytest.mark.parametrize("in_channels, out_channels, input_shape", [
+    (32, 16, (1, 32, 32, 32)),
+    (32, None, (2, 32, 32, 32)),
+])
+def test_convmlp(in_channels, out_channels, input_shape):
+    conv_mlp = ConvMlp(
+        in_channels=in_channels,
+        out_channels=out_channels,
+        mlp_ratio=1
+    )
+
+    if out_channels is None:
+        out_channels = in_channels
+
+    # Create a random input tensor with the specified shape
+    x = torch.rand(input_shape).float()
+
+    # Forward pass
+    output = conv_mlp(x)
+
+    # Check the output shape
+    expected_out_channels = in_channels if out_channels is None else out_channels
+    assert output.shape == (input_shape[0], expected_out_channels, input_shape[2], input_shape[3])
+
+    # Check the output type
+    assert isinstance(output, torch.Tensor)
