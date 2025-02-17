@@ -61,6 +61,7 @@ jobs:
           poetry run pytest --cov cellseg_models_pytorch/ --cov-report xml
 
       - name: Upload coverage
+        if: matrix.python-version == '3.10'
         uses: codecov/codecov-action@v2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
