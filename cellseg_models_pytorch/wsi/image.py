@@ -1,7 +1,14 @@
 from typing import Optional, Union
 
 import numpy as np
-from matplotlib.font_manager import fontManager
+
+try:
+    from matplotlib.font_manager import fontManager
+
+    _has_matplotlib = True
+except ImportError:
+    _has_matplotlib = False
+
 from PIL import Image, ImageDraw, ImageFont
 
 from .tiles import _divide_xywh
@@ -66,6 +73,10 @@ def get_annotated_image(
         PIL.Image.Image:
             Annotated PIL image.
     """
+    if not _has_matplotlib:
+        raise ImportError(
+            "Matplotlib is required for `get_annotated_image`. `pip install matplotlib`"
+        )
     # Check image and convert to PIL Image.
     image = Image.fromarray(check_image(image)).convert("RGB")
     # Check arguments.
