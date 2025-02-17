@@ -1,9 +1,6 @@
 import numpy as np
 import pytest
 
-from cellseg_models_pytorch.transforms.albu_transforms.strong_augment import (
-    AlbuStrongAugment,
-)
 from cellseg_models_pytorch.transforms.functional.generic_transforms import (
     AUGMENT_SPACE,
     _apply_operation,
