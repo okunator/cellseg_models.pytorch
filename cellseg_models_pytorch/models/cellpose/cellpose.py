@@ -54,7 +54,6 @@ class CellPoseUnet(nn.Module):
         Omnipose:
             - https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
 
-
         Note:
             Minor differences from the original implementation.
             - Different encoder, (any encoder from timm-library).
