@@ -12,7 +12,6 @@ __all__ = [
     "InvertedBottleneckConv",
     "FusedMobileInvertedConv",
     "HoverNetDenseConv",
-    "BasicConvOld",
 ]
 
 
