@@ -19,19 +19,19 @@ __all__ = [
 class MinMaxNormalization(ImageOnlyTransform):
     def __init__(
         self,
-        amin: float = None,
-        amax: float = None,
+        amin: float = 0.0,
+        amax: float = 1.0,
         p: float = 1.0,
         copy: bool = False,
         **kwargs,
     ) -> None:
-        """Min-max normalization transformation.
+        """Min-max normalization. Normalizes to range [amin, amax].
 
         Parameters:
-            amin (float, default=None)
-                Clamp min value. No clamping performed if None.
-            amax (float, default=None)
-                Clamp max value. No clamping performed if None.
+            amin (float, default=0.0)
+                Normalization lower limit.
+            amax (float, default=1.0)
+                Normalization upper limit.
             p (float, default=1.0):
                 Probability of applying the transformation.
             copy (bool, default=False):
@@ -75,12 +75,12 @@ class PercentileNormalization(ImageOnlyTransform):
         copy: bool = False,
         **kwargs,
     ) -> None:
-        """Percentile normalization transformation.
+        """Percentile normalization. Normalizes to percentile range [lower, upper].
 
         Parameters:
-            amin (float, default=None):
-                Clamp min value. No clamping performed if None.
-            amax (float, default=None):
+            lower (float, default=0.01):
+                Lower percentile.
+            upper (float, default=99.99):
                 Clamp max value. No clamping performed if None.
             p (float, default=1.0):
                 Probability of applying the transformation.
@@ -116,12 +116,11 @@ class PercentileNormalization(ImageOnlyTransform):
         return ("lower", "upper")
 
 
-class ImgNormalization(ImageOnlyTransform):
+class Normalization(ImageOnlyTransform):
     def __init__(
         self,
-        standardize: bool = True,
-        amin: float = None,
-        amax: float = None,
+        mean: np.ndarray,
+        std: np.ndarray,
         p: float = 1.0,
         copy: bool = False,
         **kwargs,
@@ -131,14 +130,10 @@ class ImgNormalization(ImageOnlyTransform):
         NOTE: this is not dataset-level normalization but image-level.
 
         Parameters:
-            standardize (bool, default=True):
-                If True, divides the mean shifted img by the standard deviation.
-            amin (float, default=None):
-                Clamp min value. No clamping performed if None.
-            amax (float, default=None):
-                Clamp max value. No clamping performed if None.
-            always_apply (bool, default=True):
-                Apply the transformation always.
+            mean (np.ndarray):
+                Mean values for each channel. Shape (C,)
+            std (np.ndarray):
+                Standard deviation values for each channel. Shape (C,)
             p (float, default=1.0):
                 Probability of applying the transformation.
             copy (bool, default=False):
@@ -150,9 +145,8 @@ class ImgNormalization(ImageOnlyTransform):
                 "Install with `pip install albumentations`"
             )
         super().__init__(p)
-        self.standardize = standardize
-        self.amin = amin
-        self.amax = amax
+        self.mean = np.array(mean, dtype=np.float32)
+        self.std = np.reciprocal(np.array(std, dtype=np.float32) * 255.0)
         self.copy = copy
 
     def apply(self, image: np.ndarray, **kwargs) -> np.ndarray:
@@ -166,8 +160,8 @@ class ImgNormalization(ImageOnlyTransform):
             np.ndarray:
                 Normalized image. Same shape as input. dtype: float32.
         """
-        return normalize(image, self.standardize, self.amin, self.amax, self.copy)
+        return normalize(image, self.mean, self.std, self.copy)
 
     def get_transform_init_args_names(self):
         """Get the names of the transformation arguments."""
-        return ("amin", "amax", "standardize")
+        return ("mean", "std")

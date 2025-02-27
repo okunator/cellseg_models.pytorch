@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 from skimage import img_as_ubyte
 
@@ -61,10 +62,6 @@ def percentile_normalize99(
     Parameters:
         img (np.ndarray)
             Input image to be normalized. Shape (H, W, C)|(H, W).
-        amin (float, default=None)
-            Clamp min value. No clamping performed if None.
-        amax (float, default=None):
-            Clamp max value. No clamping performed if None.
         copy (bool, default=False):
             If True, normalize the copy of the input.
 
@@ -92,20 +89,15 @@ def percentile_normalize99(
     percentile99 = np.percentile(im, q=99, axis=axis)
     num = im - percentile1
     denom = percentile99 - percentile1
-    im = num / denom
-
-    # clamp
-    if not any(x is None for x in (amin, amax)):
-        im = np.clip(im, a_min=amin, a_max=amax)
+    im = np.divide(num, denom, where=denom != 0)
 
     return im.astype(np.float32)
 
 
 def normalize(
     img: np.ndarray,
-    standardize: bool = True,
-    amin: float = None,
-    amax: float = None,
+    mean: np.ndarray = None,
+    denom: np.ndarray = None,
     copy: bool = False,
 ) -> np.ndarray:
     """Channelwise mean centering or standardizing of an image. Optional clamping.
@@ -113,12 +105,15 @@ def normalize(
     Parameters:
         img (np.ndarray):
             Input image to be normalized. Shape (H, W, C)|(H, W).
-        standardize (bool, default=True):
-            If True, divide with standard deviation after mean centering
-        amin (float, default=None):
-            Clamp min value. No clamping performed if None.
-        amax (float, default=None):
-            Clamp max value. No clamping performed if None.
+        mean (np.ndarray, default=None):
+            Channel-wise mean values to subtract from the image. Shape (C,). If None,
+            the channel-wise mean of the input image is used.
+        denom (np.ndarray, default=None):
+            Value to divide the image by. In practice, we do a multiplication because
+            it's faster. So set this to the reciprocal of intended denominator. E.g.
+            the inputs, if you want to standardize, use the reciprocal of the standard
+            deviation of the inputs. Shape (C,). If None, the channel-wise reciprocal
+            standard deviation of the input image is used.
         copy (bool, default=False):
             If True, normalize the copy of the input.
 
@@ -130,8 +125,6 @@ def normalize(
         ValueError:
             If input image does not have shape (H, W) or (H, W, C).
     """
-    axis = (0, 1)
-
     if img.ndim not in (2, 3):
         raise ValueError(
             f"Input img needs to have shape (H, W, C)|(H, W). Got: {img.shape}"
@@ -142,31 +135,33 @@ def normalize(
     else:
         im = img
 
-    # mean center
-    im = im - im.mean(axis=axis, keepdims=True)
+    im = im.astype(np.float32)
+    mean_img = np.zeros_like(im, dtype=np.float32)
+    denom_img = np.zeros_like(im, dtype=np.float32)
 
-    if standardize:
-        std = im.std(axis=axis, keepdims=True)
-        im = np.divide(im, std, where=std != 0)
+    if mean is None:
+        mean = im.mean(axis=(0, 1))
+    if denom is None:
+        denom = 1 / im.std(axis=(0, 1))
 
-    # clamp
-    if not any(x is None for x in (amin, amax)):
-        im = np.clip(im, a_min=amin, a_max=amax)
+    mean_img = (mean_img + mean).astype(np.float32)
+    denom_img = denom_img + denom
 
-    return im.astype(np.float32)
+    im = cv2.subtract(im, mean_img)
+    return cv2.multiply(im, denom_img, dtype=cv2.CV_32F)
 
 
 def minmax_normalize(
-    img: np.ndarray, amin: float = None, amax: float = None, copy: bool = False
+    img: np.ndarray, amin: float = 0.0, amax: float = 1.0, copy: bool = False
 ) -> np.ndarray:
     """Min-max normalization per image channel. Optional clamping.
 
     Parameters:
         img (np.ndarray):
             Input image to be normalized. Shape (H, W, C)|(H, W).
-        amin (float, default=None):
+        amin (float, default=0.0):
             Clamp min value. No clamping performed if None.
-        amax (float, default=None):
+        amax (float, default=1.0):
             Clamp max value. No clamping performed if None.
         copy (bool, default=False):
             If True, normalize the copy of the input.
@@ -189,17 +184,9 @@ def minmax_normalize(
     else:
         im = img
 
-    min = im.min()
-    max = im.max()
-    denom = max - min
-    num = im - min
-    im = num / denom
-
-    # clamp
-    if not any(x is None for x in (amin, amax)):
-        im = np.clip(im, a_min=amin, a_max=amax)
-
-    return im.astype(np.float32)
+    return cv2.normalize(
+        im.astype(np.float32), None, alpha=amin, beta=amax, norm_type=cv2.NORM_MINMAX
+    )
 
 
 def float2ubyte(mat: np.ndarray, normalize: bool = False) -> np.ndarray:
