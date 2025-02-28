@@ -11,8 +11,8 @@ from .inst_transforms import (
     StardistTransform,
 )
 from .norm_transforms import (
-    ImgNormalization,
     MinMaxNormalization,
+    Normalization,
     PercentileNormalization,
 )
 from .strong_augment import AlbuStrongAugment
@@ -23,7 +23,7 @@ __all__ = [
     "AlbuStrongAugment",
     "MinMaxNormalization",
     "PercentileNormalization",
-    "ImgNormalization",
+    "Normalization",
     "CellposeTransform",
     "HoVerNetTransform",
     "OmniposeTransform",
