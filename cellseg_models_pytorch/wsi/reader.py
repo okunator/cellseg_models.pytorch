@@ -31,10 +31,13 @@ from typing import Optional, Union
 import numpy as np
 from PIL import Image
 
+from .bioio_reader import BioIOReader
 from .cucim_reader import CucimReader
 from .data import SpotCoordinates, TileCoordinates
 from .dearray import get_spot_coordinates
 from .image import get_annotated_image
+
+# from .ometiff_reader import OMETIFFReader
 from .openslide_reader import OpenSlideReader
 from .tiles import (
     _multiply_xywh,
@@ -45,7 +48,7 @@ from .tiles import (
 )
 from .tissue import clean_tissue_mask, get_tissue_mask
 
-AVAILABLE_BACKENDS = ("OPENSLIDE", "CUCIM")
+AVAILABLE_BACKENDS = ("OPENSLIDE", "CUCIM", "BIOIO")
 
 
 class SlideReader:
@@ -76,6 +79,8 @@ class SlideReader:
             self._reader = OpenSlideReader(path=path)
         elif backend == "CUCIM":
             self._reader = CucimReader(path=path)
+        elif backend == "BIOIO":
+            self._reader = BioIOReader(path=path)
 
     @property
     def path(self) -> str:
