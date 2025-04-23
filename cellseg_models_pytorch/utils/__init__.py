@@ -27,7 +27,6 @@ from .mask_utils import (
     soft_type_flatten,
     type_map_flatten,
 )
-from .multiproc import run_pool
 from .tensor_utils import to_device, to_tensor
 
 __all__ = [

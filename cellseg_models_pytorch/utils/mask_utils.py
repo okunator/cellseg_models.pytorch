@@ -173,8 +173,7 @@ def binarize(inst_map: np.ndarray) -> np.ndarray:
         np.ndarray:
             Binary mask. Shape (H, W). Type: uint8.
     """
-    binary = np.copy(inst_map > 0)
-    return binary.astype("uint8")
+    return (inst_map > 0).astype("uint8")
 
 
 # ported from https://github.com/vqdang/hover_net/blob/master/src/loader/augs.py
