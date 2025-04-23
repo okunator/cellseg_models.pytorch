@@ -17,7 +17,7 @@ from ._composition import OnlyInstMapTransform
 
 __all__ = [
     "CellposeTransform",
-    "HoVerNetTransform",
+    "HoverNetTransform",
     "OmniposeTransform",
     "StardistTransform",
     "SmoothDistTransform",
@@ -60,7 +60,7 @@ class CellposeTransform(OnlyInstMapTransform):
         return gen_flow_maps(inst)
 
 
-class HoVerNetTransform(OnlyInstMapTransform):
+class HoverNetTransform(OnlyInstMapTransform):
     def __init__(self, deduplicate: bool = True) -> None:
         """Generate horizontal and vertical gradients from a label mask.
 

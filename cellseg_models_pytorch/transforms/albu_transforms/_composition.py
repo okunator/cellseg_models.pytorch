@@ -64,3 +64,7 @@ class ApplyEach(A.BaseCompose):
             return masks
 
         return res
+
+    def __repr__(self) -> str:
+        """Return a string representation of the class."""
+        return f"{self.__class__.__name__}({self.names})"
