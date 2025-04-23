@@ -1,5 +1,6 @@
+from dataclasses import dataclass, field
 from itertools import chain
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -15,10 +16,29 @@ from cellseg_models_pytorch.models.base._initialization import (
 from cellseg_models_pytorch.models.base._seg_head import SegHead
 from cellseg_models_pytorch.modules.misc_modules import StyleReshape
 
-ALLOWED_HEADS = [
-    "inst",
+__all__ = [
+    "MultiTaskDecoder",
+    "DecoderSoftOutput",
+    "SoftInstanceOutput",
+    "SoftSemanticOutput",
+]
+
+
+INST_SEG_PREFIX = [
+    "nuc",
+    "cyto",
+]
+
+SEM_SEG_PREFIX = [
+    "tissue",
+]
+
+MODEL_SEG_OUT_TYPES = [
+    "binary",
     "type",
-    "sem",
+]
+
+MODEL_AUX_OUT_TYPES = [
     "cellpose",
     "omnipose",
     "stardist",
@@ -28,7 +48,40 @@ ALLOWED_HEADS = [
     "dran",
 ]
 
-__all__ = ["MultiTaskDecoder"]
+AUX_COMBOS = [
+    f"{prefix}_{aux}" for prefix in INST_SEG_PREFIX for aux in MODEL_AUX_OUT_TYPES
+]
+INST_SEG_COMBOS = [
+    f"{prefix}_{seg}" for prefix in INST_SEG_PREFIX for seg in MODEL_SEG_OUT_TYPES
+]
+SEM_SEG_COMBOS = [
+    f"{prefix}_{seg}" for prefix in SEM_SEG_PREFIX for seg in MODEL_SEG_OUT_TYPES
+]
+
+
+@dataclass
+class SoftInstanceOutput:
+    type_map: torch.Tensor
+    aux_map: torch.Tensor
+    binary_map: Optional[torch.Tensor] = field(default=None)
+    parents: Optional[Dict[str, List[str]]] = field(default=None)
+
+
+@dataclass
+class SoftSemanticOutput:
+    type_map: torch.Tensor
+    binary_map: Optional[torch.Tensor] = field(default=None)
+    parents: Optional[Dict[str, List[str]]] = field(default=None)
+
+
+@dataclass
+class DecoderSoftOutput:
+    nuc_map: SoftInstanceOutput
+    tissue_map: Optional[SoftSemanticOutput] = field(default=None)
+    cyto_map: Optional[SoftInstanceOutput] = field(default=None)
+
+    dec_feats: Optional[List[torch.Tensor]] = field(default=None)
+    enc_feats: Optional[List[torch.Tensor]] = field(default=None)
 
 
 class MultiTaskDecoder(nn.ModuleDict):
@@ -82,6 +135,7 @@ class MultiTaskDecoder(nn.ModuleDict):
         """
         super().__init__()
         self.out_size = out_size
+        self.out_keys = []
         self._check_head_args(heads, decoders)
         self._check_decoder_args(decoders)
         self._check_depth(
@@ -92,6 +146,8 @@ class MultiTaskDecoder(nn.ModuleDict):
                 "enc_feature_info": enc_feature_info,
             },
         )
+        self.decoders = decoders
+        self.heads = heads
 
         # get the reduction factors and out channels of the encoder
         self.enc_feature_info = enc_feature_info[::-1]  # bottleneck first
@@ -136,48 +192,45 @@ class MultiTaskDecoder(nn.ModuleDict):
                 self.add_module(f"{decoder_name}_stem_skip", stem_skip)
 
         # set heads
-        for decoder_name in heads.keys():
-            for output_name, n_classes in heads[decoder_name].items():
+        for decoder_name in decoders:
+            for head_name, n_classes in heads[decoder_name].items():
                 seg_head = SegHead(
                     in_channels=decoder.out_channels,
                     out_channels=n_classes,
                     kernel_size=1,
                     excitation_channels=head_excitation_channels,
                 )
-                self.add_module(f"{decoder_name}-{output_name}_head", seg_head)
+                self.add_module(f"{decoder_name}-{head_name}_head", seg_head)
+                self.out_keys.append(f"{decoder_name}-{head_name}")
 
     def forward_features(
         self, feats: List[torch.Tensor], style: torch.Tensor = None
     ) -> Dict[str, List[torch.Tensor]]:
         """Forward all the decoders and return multi-res feature-lists per branch."""
         res = {}
-        decoders = [k for k in self.keys() if "decoder" in k]
 
-        for dec in decoders:
-            featlist = self[dec](*feats, style=style)
-            branch = "_".join(dec.split("_")[:-1])
-            res[branch] = featlist
+        for decoder_name in self.decoders:
+            featlist = self[f"{decoder_name}_decoder"](*feats, style=style)
+            res[decoder_name] = featlist
 
         return res
 
     def forward_heads(
         self, dec_feats: Dict[str, torch.Tensor]
-    ) -> Dict[str, torch.Tensor]:
+    ) -> Dict[str, Dict[str, torch.Tensor]]:
         """Forward pass all the seg heads."""
         res = {}
-        heads = [k for k in self.keys() if "head" in k]
-        for head in heads:
-            branch_head = head.split("-")
-            branch = branch_head[0]  # branch name
-            head_name = "_".join(branch_head[1].split("_")[:-1])  # head name
-            x = self[head](dec_feats[branch][-1])  # the last decoder stage feat map
+        for decoder_name in self.decoders:
+            for head_name in self.heads[decoder_name]:
+                x = self[f"{decoder_name}-{head_name}_head"](
+                    dec_feats[decoder_name][-1]
+                )  # the last decoder stage feat map
 
-            if self.out_size is not None:
-                x = F.interpolate(
-                    x, size=self.out_size, mode="bilinear", align_corners=False
-                )
-
-            res[f"{branch}-{head_name}"] = x
+                if self.out_size is not None:
+                    x = F.interpolate(
+                        x, size=self.out_size, mode="bilinear", align_corners=False
+                    )
+                res[f"{decoder_name}-{head_name}"] = x
 
         return res
 
@@ -229,7 +282,54 @@ class MultiTaskDecoder(nn.ModuleDict):
 
         out = self.forward_heads(dec_feats)
 
-        return enc_feats, dec_feats, out
+        nuc_out = SoftInstanceOutput(
+            type_map=out[self.nuc_type_key],
+            aux_map=out[self.nuc_aux_key],
+            binary_map=out.get(self.nuc_binary_key, None),
+            parents={
+                "aux_map": self.nuc_aux_key.split("-"),
+                "type_map": self.nuc_type_key.split("-"),
+                "binary_map": self.nuc_binary_key.split("-")
+                if out.get(self.nuc_binary_key, None) is not None
+                else None,
+            },
+        )
+
+        cyto_out = None
+        if self.cyto_aux_key is not None:
+            cyto_out = SoftInstanceOutput(
+                type_map=out[self.cyto_type_key],
+                aux_map=out[self.cyto_aux_key],
+                binary_map=out.get(self.cyto_binary_key, None),
+                parents={
+                    "aux_map": self.cyto_aux_key.split("-"),
+                    "type_map": self.cyto_type_key.split("-"),
+                    "binary_map": self.cyto_binary_key.split("-")
+                    if out.get(self.cyto_binary_key, None) is not None
+                    else None,
+                },
+            )
+
+        tissue_out = None
+        if self.tissue_type_key is not None:
+            tissue_out = SoftSemanticOutput(
+                type_map=out[self.tissue_type_key],
+                binary_map=out.get(self.tissue_binary_key, None),
+                parents={
+                    "type_map": self.tissue_type_key.split("-"),
+                    "binary_map": self.tissue_binary_key.split("-")
+                    if out.get(self.tissue_binary_key, None) is not None
+                    else None,
+                },
+            )
+
+        return DecoderSoftOutput(
+            nuc_map=nuc_out,
+            tissue_map=tissue_out,
+            cyto_map=cyto_out,
+            enc_feats=enc_feats,
+            dec_feats=dec_feats,
+        )
 
     def initialize(self) -> None:
         """Initialize the decoders and segmentation heads."""
@@ -266,19 +366,80 @@ class MultiTaskDecoder(nn.ModuleDict):
         self, heads: Dict[str, int], decoders: Tuple[str, ...]
     ) -> None:
         """Check `heads` arg."""
-        for head in heads.keys():
-            self._check_string_arg(head)
-
-        for head in self._get_inner_keys(heads):
-            if head not in ALLOWED_HEADS:
-                raise ValueError(
-                    f"Unknown head type: '{head}'. Allowed: {ALLOWED_HEADS}."
-                )
-
         if not set(decoders) == set(heads.keys()):
             raise ValueError(
                 "The decoder names need match exactly to the keys of `heads`. "
                 f"Got decoders: {decoders} and heads: {list(heads.keys())}."
+            )
+
+        for head in heads.keys():
+            self._check_string_arg(head)
+
+        allowed = AUX_COMBOS + INST_SEG_COMBOS + SEM_SEG_COMBOS
+        for head in self._get_inner_keys(heads):
+            if head not in allowed:
+                raise ValueError(
+                    f"Invalid head name '{head}'. Allowed names are: {allowed}."
+                )
+
+        self.nuc_aux_key = None
+        self.cyto_aux_key = None
+        self.nuc_type_key = None
+        self.nuc_binary_key = None
+        self.cyto_type_key = None
+        self.cyto_binary_key = None
+        self.tissue_type_key = None
+        self.tissue_binary_key = None
+        for decoder_name in heads.keys():
+            for head in heads[decoder_name].keys():
+                val = f"{decoder_name}-{head}"
+                if head in AUX_COMBOS and head.startswith("nuc_"):
+                    self.nuc_aux_key = val
+                elif head in AUX_COMBOS and head.startswith("cyto_"):
+                    self.cyto_aux_key = val
+                elif (
+                    head in INST_SEG_COMBOS
+                    and head.startswith("nuc_")
+                    and head.endswith("binary")
+                ):
+                    self.nuc_binary_key = val
+                elif (
+                    head in INST_SEG_COMBOS
+                    and head.startswith("cyto_")
+                    and head.endswith("binary")
+                ):
+                    self.cyto_binary_key = val
+                elif (
+                    head in INST_SEG_COMBOS
+                    and head.startswith("nuc_")
+                    and head.endswith("type")
+                ):
+                    self.nuc_type_key = val
+                elif (
+                    head in INST_SEG_COMBOS
+                    and head.startswith("cyto_")
+                    and head.endswith("type")
+                ):
+                    self.cyto_type_key = val
+                elif (
+                    head in SEM_SEG_COMBOS
+                    and head.startswith("tissue_")
+                    and head.endswith("type")
+                ):
+                    self.tissue_type_key = val
+                elif (
+                    head in SEM_SEG_COMBOS
+                    and head.startswith("tissue_")
+                    and head.endswith("binary")
+                ):
+                    self.tissue_binary_key = val
+
+        if self.nuc_aux_key is None or (
+            self.nuc_type_key is None and self.nuc_binary_key is None
+        ):
+            raise ValueError(
+                "The model must have either 'nuc_type' or 'nuc_binary' keys "
+                f"and one of: {AUX_COMBOS}"
             )
 
     def _check_depth(self, depth: int, arrs: Dict[str, Tuple[Any, ...]]) -> None:
