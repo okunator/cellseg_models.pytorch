@@ -4,6 +4,28 @@ import torch.nn.functional as F
 __all__ = ["filter2D", "gaussian", "gaussian_kernel2d"]
 
 
+# https://github.com/kornia/kornia/blob/main/kornia/filters/filter.py#L32
+def _compute_padding(kernel_size: list[int]) -> list[int]:
+    """Compute padding tuple."""
+    if len(kernel_size) < 2:
+        raise AssertionError(kernel_size)
+    computed = [k - 1 for k in kernel_size]
+
+    # for even kernels we need to do asymmetric padding :(
+    out_padding = 2 * len(kernel_size) * [0]
+
+    for i in range(len(kernel_size)):
+        computed_tmp = computed[-(i + 1)]
+
+        pad_front = computed_tmp // 2
+        pad_rear = computed_tmp - pad_front
+
+        out_padding[2 * i + 0] = pad_front
+        out_padding[2 * i + 1] = pad_rear
+
+    return out_padding
+
+
 def filter2D(input_tensor: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
     """Convolves a given kernel on input tensor without losing dimensional shape.
 
@@ -22,20 +44,17 @@ def filter2D(input_tensor: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
     (_, channel, _, _) = input_tensor.size()
 
     # "SAME" padding to avoid losing height and width
-    pad = [
-        kernel.size(2) // 2,
-        kernel.size(2) // 2,
-        kernel.size(3) // 2,
-        kernel.size(3) // 2,
-    ]
+    pad = _compute_padding(kernel.shape[2:])
     pad_tensor = F.pad(input_tensor, pad, "replicate")
-
     out = F.conv2d(pad_tensor, kernel, groups=channel)
     return out
 
 
 def gaussian(
-    window_size: int, sigma: float, device: torch.device = None
+    window_size: int,
+    sigma: float,
+    device: torch.device = None,
+    dtype: torch.dtype = None,
 ) -> torch.Tensor:
     """Create a gaussian 1D tensor.
 
@@ -47,13 +66,18 @@ def gaussian(
             Std of the gaussian distribution.
         device : torch.device
             Device for the tensor.
+        dtype : torch.dtype
+            Data type for the tensor.
 
     Returns
     -------
         torch.Tensor:
             A gaussian 1D tensor. Shape: (window_size, ).
     """
-    x = torch.arange(window_size, device=device).float() - window_size // 2
+    if dtype is None:
+        dtype = torch.float32
+
+    x = torch.arange(window_size, device=device, dtype=dtype) - window_size // 2
     if window_size % 2 == 0:
         x = x + 0.5
 
@@ -63,7 +87,11 @@ def gaussian(
 
 
 def gaussian_kernel2d(
-    window_size: int, sigma: float, n_channels: int = 1, device: torch.device = None
+    window_size: int,
+    sigma: float,
+    n_channels: int = 1,
+    device: torch.device = None,
+    dtype: torch.dtype = None,
 ) -> torch.Tensor:
     """Create 2D window_size**2 sized kernel a gaussial kernel.
 
@@ -78,14 +106,16 @@ def gaussian_kernel2d(
             this kernel.
         device : torch.device
             Device for the kernel.
+        dtype : torch.dtype
+            Data type for the kernel.
 
     Returns:
     -----------
         torch.Tensor:
             A tensor of shape (1, 1, window_size, window_size)
     """
-    kernel_x = gaussian(window_size, sigma, device=device)
-    kernel_y = gaussian(window_size, sigma, device=device)
+    kernel_x = gaussian(window_size, sigma, device=device, dtype=dtype)
+    kernel_y = gaussian(window_size, sigma, device=device, dtype=dtype)
 
     kernel_2d = torch.matmul(kernel_x.unsqueeze(-1), kernel_y.unsqueeze(-1).t())
     kernel_2d = kernel_2d.expand(n_channels, 1, window_size, window_size)
