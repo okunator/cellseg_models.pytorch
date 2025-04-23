@@ -191,8 +191,8 @@ def polygons_to_label(
 def post_proc_stardist(
     dist_map: np.ndarray,
     stardist_map: np.ndarray,
-    score_thresh: float = 0.5,
-    iou_thresh: float = 0.5,
+    score_thresh: float = 0.4,
+    iou_thresh: float = 0.4,
     trim_bboxes: bool = True,
     **kwargs,
 ) -> np.ndarray:
@@ -214,8 +214,10 @@ def post_proc_stardist(
             Predicted distance transform. Shape: (H, W).
         stardist_map : np.ndarray
             Predicted radial distances. Shape: (n_rays, H, W).
-        thresh : float, default=0.4
+        score_thresh : float, default=0.5
             Threshold for the regressed distance transform.
+        iou_thresh : float, default=0.5
+            Threshold for the non-maximum suppression.
         trim_bboxes : bool, default=True
             If True, The non-zero pixels are computed only from the cell contours
             which prunes down the pixel search space drastically.
@@ -233,11 +235,14 @@ def post_proc_stardist(
         raise ValueError(
             "Illegal input shapes. Make sure that: "
             f"`dist_map` has to have shape: (H, W). Got: {dist_map.shape} "
-            f"`stardist_map` has to have shape (H, W, nrays). Got: {stardist_map.shape}"
+            f"`stardist_map` has to have shape (n_rays, H, W). Got: {stardist_map.shape}"
         )
+    dist = np.asarray(stardist_map).transpose(1, 2, 0).astype(np.float32)
+    prob = np.asarray(dist_map).astype(np.float32)
 
-    dist = np.asarray(stardist_map).transpose(1, 2, 0)
-    prob = np.asarray(dist_map)
+    # normalize prob array if values are not in range 0-1
+    if prob.max() > 1 or prob.min() < 0:
+        prob = (prob - prob.min()) / (prob.max() - prob.min())
 
     # threshold the edt distance transform map
     mask = _ind_prob_thresh(prob, score_thresh)
@@ -318,10 +323,14 @@ def post_proc_stardist_orig(
             "`pip install stardist`"
         )
     rescale = (1, 1)
+    dist_map = dist_map.squeeze()
+    if dist_map.max() > 1 or dist_map.min() < 0:
+        dist_map = (dist_map - dist_map.min()) / (dist_map.max() - dist_map.min())
+
     img_shape = dist_map.shape
     stardist_map = stardist_map.transpose(1, 2, 0)
     points, probi, disti = non_maximum_suppression(
-        stardist_map, dist_map, prob_thresh=thresh
+        stardist_map, dist_map.squeeze(), prob_thresh=thresh
     )
     labels = polygons_to_label(
         disti, points, prob=probi, shape=img_shape, scale_dist=rescale

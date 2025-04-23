@@ -33,7 +33,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
 import numpy as np
-import skimage.filters as filters
 
 from cellseg_models_pytorch.transforms import percentile_normalize
 from cellseg_models_pytorch.utils import binarize
@@ -148,7 +147,6 @@ def get_masks_omnipose(
 def post_proc_omnipose(
     inst_map: np.ndarray,
     flow_map: np.ndarray,
-    dist_map: np.ndarray = None,
     return_flows: bool = False,
     min_size: int = 30,
     **kwargs,
@@ -164,8 +162,6 @@ def post_proc_omnipose(
             Instance labelled or binary mask. Shape (H, W).
         flow_map : np.ndarray
             Y- and x-flows. Shape: (2, H, W)
-        dist_map : np.ndarray, default=None
-            Regressed distance transform. Optional. Shape: (H, W).
         return_flows : bool, default=False
             If True, returns the HSV converted flows. They are just not
             needed for anything relevant.
@@ -178,10 +174,7 @@ def post_proc_omnipose(
             Instance labelled mask. Shape (H, W). Dtype: int32.
     """
     #  convert channels to CHW
-    if dist_map is not None:
-        binary_mask = filters.apply_hysteresis_threshold(dist_map, 0.5, 0.5)
-    else:
-        binary_mask = binarize(inst_map).astype(bool)
+    binary_mask = binarize(inst_map).astype(bool)
 
     dP = div_rescale(flow_map, binary_mask)
     pixel_loc, inds = follow_flows(dP, niter=200, mask=binary_mask, suppress_euler=True)

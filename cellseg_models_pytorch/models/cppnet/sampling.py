@@ -41,7 +41,6 @@ def feature_sampling(
     sampling_coord[:, :, 0, :, :] = sampling_coord[:, :, 0, :, :] / (w - 1)
     sampling_coord[:, :, 1, :, :] = sampling_coord[:, :, 1, :, :] / (h - 1)
     sampling_coord = sampling_coord * 2.0 - 1.0
-    print(sampling_coord.shape, feature_map.shape, nd_sampling, n_rays, c)
     if n_rays * nd_sampling != c:
         raise ValueError(
             f"Number of rays ({n_rays}) * number of sampling points ({nd_sampling}) "

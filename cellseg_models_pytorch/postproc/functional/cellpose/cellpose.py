@@ -30,11 +30,11 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
+
 from typing import List, Tuple
 
 import numpy as np
 from scipy.ndimage import maximum_filter1d
-from skimage.filters import apply_hysteresis_threshold
 
 from cellseg_models_pytorch.utils import binarize
 
@@ -126,7 +126,6 @@ def expand_seed_pixels(
 
     # loop the seed coords
     for k in range(len(pix)):
-
         # convert tuple to list
         pix[k] = list(pix[k])
 
@@ -209,12 +208,11 @@ def get_masks_cellpose(p: np.ndarray, rpad: int = 20) -> np.ndarray:
 def post_proc_cellpose(
     inst_map: np.ndarray,
     flow_map: np.ndarray,
-    dist_map: np.ndarray = None,
     return_flows: bool = False,
     min_size: int = 30,
     interp: bool = True,
     use_gpu: bool = True,
-    **kwargs
+    **kwargs,
 ) -> np.ndarray:
     """Run the cellpose post-processing pipeline.
 
@@ -226,8 +224,6 @@ def post_proc_cellpose(
             Instance labelled or binary mask. Shape (H, W).
         flow_map : np.ndarray
             Y- and x-flows. Shape: (2, H, W)
-        dist_map : np.ndarray, default=None
-            Regressed distance transform. Shape: (H, W).
         return_flows : bool, default=False
             If True, returns the HSV converted flows. They are just not
             needed for anything relevant.
@@ -244,11 +240,7 @@ def post_proc_cellpose(
         np.ndarray:
             The instance labelled segmentation mask. Shape (H, W)
     """
-    #  convert channels to CHW
-    if dist_map is not None:
-        binary_mask = apply_hysteresis_threshold(dist_map, 0.5, 0.5)
-    else:
-        binary_mask = binarize(inst_map).astype(bool)
+    binary_mask = binarize(inst_map).astype(bool)
 
     dP = flow_map * binary_mask  # /5.
     # dP = normalize_field(dP)
