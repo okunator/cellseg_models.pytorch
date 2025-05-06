@@ -370,10 +370,10 @@ class PostProcessor:
             prob_maps = soft_masks.binary_map
         else:
             prob_maps = soft_masks.type_map
-
         prob_maps = prob_maps.squeeze(1)
 
-        inst_maps = list(self._to_ndarray(prob_maps, dtype="i4"))
+        inst_dtype = "i4" if soft_masks.binary_map is None else "f4"
+        inst_maps = list(self._to_ndarray(prob_maps, dtype=inst_dtype))
         aux_maps = list(self._to_ndarray(soft_masks.aux_map, dtype="f4"))
         type_maps = list(self._to_ndarray(soft_masks.type_map, dtype="i4"))
 
