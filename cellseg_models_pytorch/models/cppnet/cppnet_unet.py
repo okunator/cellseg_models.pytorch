@@ -97,7 +97,7 @@ class CPPNetUnet(nn.ModuleDict):
         depth: int = 4,
         out_channels: Tuple[int, ...] = (256, 128, 64, 32),
         style_channels: int = None,
-        enc_name: str = "resnet50",
+        enc_name: str = "efficientnet_b5",
         enc_pretrain: bool = True,
         enc_freeze: bool = False,
         enc_out_indices: Tuple[int, ...] = None,

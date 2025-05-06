@@ -28,7 +28,7 @@ class CellPoseUnet(nn.ModuleDict):
         out_channels: Tuple[int, ...] = (256, 128, 64, 32),
         layer_depths: Tuple[int, ...] = (4, 4, 4, 4),
         style_channels: int = 256,
-        enc_name: str = "resnet50",
+        enc_name: str = "efficientnet_b5",
         enc_pretrain: bool = True,
         enc_freeze: bool = False,
         enc_out_indices: Tuple[int, ...] = None,
