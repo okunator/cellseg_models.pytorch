@@ -11,6 +11,8 @@ __all__ = ["CellPose"]
 
 
 class CellPose(BaseModelInst):
+    model_name = "cellpose"
+
     def __init__(
         self,
         n_nuc_classes: int,

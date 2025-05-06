@@ -11,6 +11,8 @@ __all__ = ["CPPNet"]
 
 
 class CPPNet(BaseModelInst):
+    model_name = "cppnet"
+
     def __init__(
         self,
         n_nuc_classes: int,

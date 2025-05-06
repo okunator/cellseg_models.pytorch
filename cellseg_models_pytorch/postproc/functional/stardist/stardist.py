@@ -174,11 +174,6 @@ def polygons_to_label(
     assert dist.ndim == 2 and points.ndim == 2 and len(dist) == len(points)
     assert len(points) == len(prob) and points.shape[1] == 2 and prob.ndim == 1
 
-    ind = prob > thresh
-    points = points[ind]
-    dist = dist[ind]
-    prob = prob[ind]
-
     ind = np.argsort(prob, kind="stable")
     points = points[ind]
     dist = dist[ind]
@@ -194,6 +189,7 @@ def post_proc_stardist(
     score_thresh: float = 0.4,
     iou_thresh: float = 0.4,
     trim_bboxes: bool = True,
+    normalize: bool = True,
     **kwargs,
 ) -> np.ndarray:
     """Run post-processing for stardist outputs.
@@ -214,13 +210,15 @@ def post_proc_stardist(
             Predicted distance transform. Shape: (H, W).
         stardist_map : np.ndarray
             Predicted radial distances. Shape: (n_rays, H, W).
-        score_thresh : float, default=0.5
+        score_thresh : float, default=0.4
             Threshold for the regressed distance transform.
-        iou_thresh : float, default=0.5
+        iou_thresh : float, default=0.4
             Threshold for the non-maximum suppression.
         trim_bboxes : bool, default=True
             If True, The non-zero pixels are computed only from the cell contours
             which prunes down the pixel search space drastically.
+        normalize : bool, default=True
+            If True, the distance transform is normalized to the range 0-1.
 
     Returns
     -------
@@ -237,11 +235,12 @@ def post_proc_stardist(
             f"`dist_map` has to have shape: (H, W). Got: {dist_map.shape} "
             f"`stardist_map` has to have shape (n_rays, H, W). Got: {stardist_map.shape}"
         )
+    shape = dist_map.shape
     dist = np.asarray(stardist_map).transpose(1, 2, 0).astype(np.float32)
     prob = np.asarray(dist_map).astype(np.float32)
 
     # normalize prob array if values are not in range 0-1
-    if prob.max() > 1 or prob.min() < 0:
+    if normalize:
         prob = (prob - prob.min()) / (prob.max() - prob.min())
 
     # threshold the edt distance transform map
@@ -285,11 +284,12 @@ def post_proc_stardist(
         iou_threshold=iou_thresh,
     )
 
-    # get the centroids
+    # get the points, scores, and dists of the boxes that are above the score
+    # threshold and are not suppressed by nms
     points = points[inds]
     scores = scores[inds]
     dist = dist[inds]
-    labels = polygons_to_label(dist, points, prob=scores, shape=dist_map.shape)
+    labels = polygons_to_label(dist, points, prob=scores, shape=shape)
 
     return labels
 

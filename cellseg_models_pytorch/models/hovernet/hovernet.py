@@ -11,6 +11,8 @@ __all__ = ["HoverNet"]
 
 
 class HoverNet(BaseModelInst):
+    model_name = "hovernet"
+
     def __init__(
         self,
         n_nuc_classes: int,

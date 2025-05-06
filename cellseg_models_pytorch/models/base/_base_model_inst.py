@@ -3,12 +3,14 @@ from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 import torch
+from huggingface_hub import hf_hub_download
 from PIL.Image import Image
 
 from cellseg_models_pytorch.decoders.multitask_decoder import (
     SoftInstanceOutput,
     SoftSemanticOutput,
 )
+from cellseg_models_pytorch.models.base import PRETRAINED
 
 __all__ = ["BaseModelInst"]
 
@@ -24,24 +26,60 @@ class BaseModelInst:
     @classmethod
     def from_pretrained(
         cls,
-        weights_path: Union[str, Path],
-        n_nuc_classes: int,
-        enc_name: str = "efficientnet_b5",
-        enc_freeze: bool = False,
+        weights: Union[str, Path],
         device: torch.device = torch.device("cuda"),
         model_kwargs: Dict[str, Any] = {},
-    ) -> None:
-        """Load the model from pretrained weights."""
+    ) -> "BaseModelInst":
+        """Load the model from pretrained weights.
+
+        Parameters:
+            model_name (str):
+                Name of the pretrained model.
+            device (torch.device, default=torch.device("cuda")):
+                Device to run the model on. Default is "cuda".
+            model_kwargs (Dict[str, Any], default={}):
+                Additional arguments for the model.
+        """
+        weights_path = Path(weights)
+        if not weights_path.is_file():
+            if weights_path.as_posix() in PRETRAINED[cls.model_name].keys():
+                weights_path = Path(
+                    hf_hub_download(
+                        repo_id=PRETRAINED[cls.model_name][weights]["repo_id"],
+                        filename=PRETRAINED[cls.model_name][weights]["filename"],
+                    )
+                )
+
+            else:
+                raise ValueError(
+                    "Please provide a valid path. or a pre-trained model downloaded from the"
+                    f" csmp-hub. One of {list(PRETRAINED[cls.model_name].keys())}."
+                )
+
+        try:
+            from safetensors.torch import load_model
+        except ImportError:
+            raise ImportError(
+                "Please install `safetensors` package to load .safetensors files."
+            )
+
+        enc_name, n_nuc_classes, state_dict = cls._get_state_dict(
+            weights_path, device=device
+        )
+
         model_inst = cls(
             n_nuc_classes=n_nuc_classes,
             enc_name=enc_name,
             enc_pretrain=False,
-            enc_freeze=enc_freeze,
+            enc_freeze=False,
             device=device,
             model_kwargs=model_kwargs,
         )
-        state_dict = torch.load(weights_path, map_location=device)
-        model_inst.model.load_state_dict(state_dict, strict=True)
+
+        if weights_path.suffix == ".safetensors":
+            load_model(model_inst.model, weights_path, device.type)
+        else:
+            model_inst.model.load_state_dict(state_dict, strict=True)
 
         return model_inst
 
@@ -174,3 +212,34 @@ class BaseModelInst:
             )
 
         return x
+
+    @staticmethod
+    def _get_state_dict(
+        weights_path: Union[str, Path], device: torch.device = torch.device("cuda")
+    ) -> None:
+        """Load the model from pretrained weights."""
+        weights_path = Path(weights_path)
+        if not weights_path.exists():
+            raise ValueError(f"Model weights not found at {weights_path}")
+        if weights_path.suffix == ".safetensors":
+            try:
+                from safetensors.torch import load_file
+            except ImportError:
+                raise ImportError(
+                    "Please install `safetensors` package to load .safetensors files."
+                )
+            state_dict = load_file(weights_path, device=device.type)
+        else:
+            state_dict = torch.load(weights_path, map_location=device)
+
+        # infer encoder name and number of classes from state_dict
+        enc_keys = [key for key in state_dict.keys() if "encoder." in key]
+        enc_name = enc_keys[0].split(".")[0] if enc_keys else None
+        nuc_type_head_key = next(
+            key
+            for key in state_dict.keys()
+            if "nuc_type_head.head" in key and "weight" in key
+        )
+        n_nuc_classes = state_dict[nuc_type_head_key].shape[0]
+
+        return enc_name, n_nuc_classes, state_dict

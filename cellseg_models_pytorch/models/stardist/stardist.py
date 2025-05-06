@@ -11,6 +11,8 @@ __all__ = ["StarDist"]
 
 
 class StarDist(BaseModelInst):
+    model_name = "stardist"
+
     def __init__(
         self,
         n_nuc_classes: int,
@@ -62,6 +64,6 @@ class StarDist(BaseModelInst):
         )
         self.post_processor = PostProcessor(
             postproc_method="stardist",
-            postproc_kwargs={"trim_bboxes": True},
+            postproc_kwargs={"trim_bboxes": True, "normalize": True},
         )
         self.inference_mode = True

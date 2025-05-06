@@ -19,7 +19,7 @@ __all__ = [
 ]
 
 
-class CellPoseUnet(nn.Module):
+class CellPoseUnet(nn.ModuleDict):
     def __init__(
         self,
         decoders: Tuple[str, ...],
@@ -127,6 +127,7 @@ class CellPoseUnet(nn.Module):
         super().__init__()
         self.inst_key = inst_key
         self.aux_key = "cellpose"
+        self.enc_name = enc_name
 
         if enc_out_indices is None:
             enc_out_indices = tuple(range(depth))
@@ -155,18 +156,21 @@ class CellPoseUnet(nn.Module):
         )
 
         # set encoder
-        self.encoder = Encoder(
-            timm_encoder_name=enc_name,
-            timm_encoder_out_indices=enc_out_indices,
-            timm_encoder_pretrained=enc_pretrain,
-            timm_extra_kwargs=encoder_kws,
+        self.add_module(
+            self.enc_name,
+            Encoder(
+                timm_encoder_name=enc_name,
+                timm_encoder_out_indices=enc_out_indices,
+                timm_encoder_pretrained=enc_pretrain,
+                timm_extra_kwargs=encoder_kws,
+            ),
         )
 
         self.decoder = MultiTaskDecoder(
             decoders=decoders,
             heads=heads,
             out_channels=out_channels,
-            enc_feature_info=self.encoder.feature_info,
+            enc_feature_info=self[self.enc_name].feature_info,
             n_layers=n_layers,
             n_blocks=n_blocks,
             stage_kws=stage_kws,
@@ -181,7 +185,7 @@ class CellPoseUnet(nn.Module):
 
         # freeze encoder if specified
         if enc_freeze:
-            self.encoder.freeze_encoder()
+            self[self.enc_name].freeze_encoder()
 
         self.name = f"CellPoseUnet-{enc_name}"
 
@@ -204,7 +208,7 @@ class CellPoseUnet(nn.Module):
                     - "dec_feats": Dict[str, List[torch.Tensor]].
                     - "enc_out": torch.Tensor.
         """
-        enc_output, feats = self.encoder(x)
+        enc_output, feats = self[self.enc_name](x)
         dec_out: DecoderSoftOutput = self.decoder(feats, x)
 
         res = {

@@ -11,6 +11,8 @@ __all__ = ["CellVit"]
 
 
 class CellVit(BaseModelInst):
+    model_name = "cellvit"
+
     def __init__(
         self,
         n_nuc_classes: int,

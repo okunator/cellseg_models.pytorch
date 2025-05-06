@@ -13,7 +13,7 @@ from cellseg_models_pytorch.models.stardist._conf import _create_stardist_args
 __all__ = ["StarDistUnet", "stardist_nuclei", "stardist_panoptic"]
 
 
-class StarDistUnet(nn.Module):
+class StarDistUnet(nn.ModuleDict):
     def __init__(
         self,
         decoders: Tuple[str, ...],
@@ -118,6 +118,7 @@ class StarDistUnet(nn.Module):
         self.out_size = out_size
         self.inst_key = inst_key
         self.aux_key = "stardist"
+        self.enc_name = enc_name
 
         if enc_out_indices is None:
             enc_out_indices = tuple(range(depth))
@@ -146,18 +147,21 @@ class StarDistUnet(nn.Module):
         )
 
         # set encoder
-        self.encoder = Encoder(
-            timm_encoder_name=enc_name,
-            timm_encoder_out_indices=enc_out_indices,
-            timm_encoder_pretrained=enc_pretrain,
-            timm_extra_kwargs=encoder_kws,
+        self.add_module(
+            self.enc_name,
+            Encoder(
+                timm_encoder_name=enc_name,
+                timm_encoder_out_indices=enc_out_indices,
+                timm_encoder_pretrained=enc_pretrain,
+                timm_extra_kwargs=encoder_kws,
+            ),
         )
 
         self.decoder = MultiTaskDecoder(
             decoders=decoders,
             heads=heads,
             out_channels=out_channels,
-            enc_feature_info=self.encoder.feature_info,
+            enc_feature_info=self[self.enc_name].feature_info,
             n_layers=n_layers,
             n_blocks=n_blocks,
             stage_kws=stage_kws,
@@ -173,7 +177,7 @@ class StarDistUnet(nn.Module):
 
         # freeze encoder if specified
         if enc_freeze:
-            self.encoder.freeze_encoder()
+            self[self.enc_name].freeze_encoder()
 
         self.name = f"StardistUnet-{enc_name}"
 
@@ -196,7 +200,7 @@ class StarDistUnet(nn.Module):
                     - "dec_feats": Dict[str, List[torch.Tensor]].
                     - "enc_out": torch.Tensor.
         """
-        enc_output, feats = self.encoder(x)
+        enc_output, feats = self[self.enc_name](x)
         dec_out: DecoderSoftOutput = self.decoder(feats, x)
 
         res = {
