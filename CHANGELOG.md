@@ -1,3 +1,50 @@
+<a id='changelog-0.1.26'></a>
+# 0.1.26 — 2025-05-07
+
+## Removed
+
+- Removed `datamodules` module
+- Removed `datasets` module
+
+## Refactor
+
+- Refactored the whole model interface to be more user-friendly.
+
+## Features
+
+- Added a new `wsi` module, including:
+    - A `SlideReader` class to read patches from a WSI slide.
+        - Backends: Openslide, CUCIM
+        - Adapted the reader class from HistoPrep library. Props to Jopo666
+    - `get_sub_grids` function to get subgrids from a WSI slide. Can be used to filter the patches. Based on connected components.
+
+- Added a new torch_datasets module, including:
+    - `WSIDatasetInfer` class to run inference directly from WSIs.
+        - Adapted the class from HistoPrep library. Props to Jopo666
+    - `TrainDatasetH5` class to handle training data for the models from a h5 file.
+    - `TrainDatasetFolder` class to handle training data for the models from img and label folders.
+
+- Added a new `inference.WsiSegmenter`-class to handle the segmentation of WSIs.
+
+- Added a new `wsi.inst_merger.InstMerger`-class to handle the merging of instance masks at image boundaries.
+
+- Added `inst2gdf` and `sem2gdf` functions to `utils.vectorize` module. These functions convert efficiently instance and semantic masks to GeoDataFrame objects.
+
+- Added `FileHandler.to_mat` and `FileHandler.to_gson` save functions that take in a dictionary of model output masks (output from the `Inferer`-classes) and save it to a .mat or '.feather', '.geojson', '.parquet' files.
+
+## Added Dependencies
+
+- Added `libpysal` dependency
+- Added `networkx` dependency
+
+## Removed Dependencies
+
+- Removed `lightning` dependency
+- Removed `albumentations` dependency
+
+## Chore
+
+- Move `FolderDatasetInfer`to `torch_datasets` module
 
 <a id='changelog-0.1.25'></a>
 # 0.1.25 — 2024-07-05

@@ -82,7 +82,6 @@ from cellseg_models_pytorch.transforms.albu_transforms import MinMaxNormalizatio
 # see models in https://huggingface.co/csmp-hub
 model = CellPose.from_pretrained(weights="hgsc_v1_efficientnet_b5")
 
-
 model.set_inference_mode()
 
 # Resize to multiple of 32 of your own choosing
