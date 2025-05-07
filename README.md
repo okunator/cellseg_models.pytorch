@@ -111,12 +111,14 @@ out = model.post_process(prob)
 ## Citation
 
 ```bibtex
-@misc{csmp2022,
-    title={{cellseg_models.pytorch}: Cell/Nuclei Segmentation Models and Benchmark.},
-    author={Oskari Lehtonen},
-    howpublished = {\url{https://github.com/okunator/cellseg_models.pytorch}},
-    doi = {10.5281/zenodo.7064617}
-    year={2022}
+@misc{https://doi.org/10.5281/zenodo.15357070,
+  doi = {10.5281/ZENODO.15357070},
+  url = {https://zenodo.org/doi/10.5281/zenodo.15357070},
+  author = {Okunator,  },
+  title = {okunator/cellseg_models.pytorch: v0.1.26},
+  publisher = {Zenodo},
+  year = {2025},
+  copyright = {MIT License}
 }
 ```
 
