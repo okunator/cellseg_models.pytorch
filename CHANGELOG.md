@@ -1,4 +1,11 @@
 <a id='changelog-0.1.26'></a>
+# 0.1.27 — 2025-07-25
+
+## Fixed
+
+- Top-level key error bug in Predictor class [#75](https://github.com/okunator/cellseg_models.pytorch/issues/75)
+
+<a id='changelog-0.1.26'></a>
 # 0.1.26 — 2025-05-07
 
 ## Removed
