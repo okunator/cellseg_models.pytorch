@@ -451,7 +451,7 @@ class Predictor(BasePredictor):
         soft_masks["nuc"].type_map = (nuc / recovery)[..., pady:-pady, padx:-padx]
         soft_masks["nuc"].aux_map = (nuc_aux / recovery)[..., pady:-pady, padx:-padx]
         if nuc_binary is not None:
-            soft_masks["binary_map"].aux_map = (nuc_binary / recovery)[
+            soft_masks["nuc"].aux_map = (nuc_binary / recovery)[
                 ..., pady:-pady, padx:-padx
             ]
 
