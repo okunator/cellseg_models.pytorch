@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 from typing import List, Tuple, Union
 
@@ -5,7 +6,10 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from libpysal.cg import alpha_shape_auto
+from shapely import wkt
 from shapely.geometry import LineString, Polygon, box
+from shapely.geometry.base import BaseGeometry
+from shapely.wkt import dumps
 from tqdm import tqdm
 
 __all__ = ["InstMerger"]
@@ -29,7 +33,7 @@ class InstMerger:
         self.gdf = gdf
 
     def merge(
-        self, dst: str = None, simplify_level: int = 1
+        self, dst: str = None, simplify_level: int = 1, precision: int = None
     ) -> Union[gpd.GeoDataFrame, None]:
         """Merge the instances at the image boundaries.
 
@@ -39,6 +43,9 @@ class InstMerger:
                 If None, the merged GeoDataFrame is returned.
             simplify_level (int, default=1):
                 The level of simplification to apply to the merged instances.
+            precision (int, optional):
+                The precision level to apply to the merged instances. If None, no rounding
+                is applied.
 
         Returns:
             Union[gpd.GeoDataFrame, None]:
@@ -67,6 +74,11 @@ class InstMerger:
             drop=True
         )
         merged.geometry = merged.geometry.simplify(simplify_level)
+        merged = _set_uid(_set_crs(merged), drop=True)
+
+        if precision is not None:
+            set_prec = partial(_set_geom_precision, precision=precision)
+            merged["geometry"] = merged["geometry"].apply(set_prec)
 
         if dst is not None:
             if suff == ".parquet":
@@ -238,3 +250,22 @@ class InstMerger:
             class_names.append(objs.loc[objs.area.idxmax()]["class_name"])
 
         return class_names
+
+
+def _set_uid(
+    gdf: gpd.GeoDataFrame, start_ix: int = 0, id_col: str = "uid", drop: bool = False
+) -> gpd.GeoDataFrame:
+    # if id_col not in gdf.columns:
+    gdf = gdf.assign(**{id_col: range(start_ix, len(gdf) + start_ix)})
+    gdf = gdf.set_index(id_col, drop=drop)
+
+    return gdf
+
+
+def _set_crs(gdf: gpd.GeoDataFrame, crs: int = 4328) -> bool:
+    return gdf.set_crs(epsg=crs, allow_override=True)
+
+
+def _set_geom_precision(geom: BaseGeometry, precision: int = 6) -> BaseGeometry:
+    wkt_str = dumps(geom, rounding_precision=precision)
+    return wkt.loads(wkt_str)

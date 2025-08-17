@@ -99,7 +99,14 @@ class WsiSegmenter:
 
         self._has_processed = True
 
-    def merge_instances(self, src: str, dst: str, clear_in_dir: bool = False) -> None:
+    def merge_instances(
+        self,
+        src: str,
+        dst: str,
+        clear_in_dir: bool = False,
+        simplify_level: int = 0.3,
+        precision: int = None,
+    ) -> None:
         """Merge the instances at the image boundaries.
 
         Parameters:
@@ -110,6 +117,11 @@ class WsiSegmenter:
                 '.parquet', '.geojson', and '.feather'.
             clear_in_dir (bool, default=False):
                 Whether to clear the source directory after merging.
+            simplify_level (int, default=1):
+                The level of simplification to apply to the merged instances.
+            precision (int, optional):
+                The precision level to apply to the merged instances. If None, no rounding
+                is applied.
         """
         if not self._has_processed:
             raise ValueError("You must segment the instances first.")
@@ -117,7 +129,7 @@ class WsiSegmenter:
         in_dir = Path(src)
         gdf = gpd.read_parquet(in_dir)
         merger = InstMerger(gdf, self.coordinates)
-        merger.merge(dst)
+        merger.merge(dst, simplify_level=simplify_level, precision=precision)
 
         if clear_in_dir:
             for f in in_dir.glob("*"):
