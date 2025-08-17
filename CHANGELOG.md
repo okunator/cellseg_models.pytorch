@@ -1,4 +1,11 @@
-<a id='changelog-0.1.26'></a>
+<a id='changelog-0.1.28'></a>
+# 0.1.28 — 2025-08-17
+
+## Fixed
+
+- `gdf2inst` fixed for empty masks.
+
+<a id='changelog-0.1.27'></a>
 # 0.1.27 — 2025-07-25
 
 ## Fixed
