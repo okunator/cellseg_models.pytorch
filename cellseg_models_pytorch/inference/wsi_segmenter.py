@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from cellseg_models_pytorch.inference import Inferer
+from cellseg_models_pytorch.models.base._base_model_inst import BaseModelInst
 from cellseg_models_pytorch.torch_datasets import WSIDatasetInfer
 from cellseg_models_pytorch.wsi import SlideReader
 from cellseg_models_pytorch.wsi.inst_merger import InstMerger
@@ -17,8 +17,8 @@ __all__ = ["WsiSegmenter"]
 class WsiSegmenter:
     def __init__(
         self,
-        inferer: Inferer,
         reader: SlideReader,
+        model: BaseModelInst,
         level: int,
         coordinates: List[Tuple[int, int, int, int]],
         batch_size: int = 8,
@@ -27,9 +27,6 @@ class WsiSegmenter:
         """Class for segmenting WSIs.
 
         Parameters:
-            inferer (Inferer):
-                The initialized Inferer object for segmenting the WSIs. Can be either
-                `Inferer` or `SlidingWindowInferer`.
             reader (SlideReader):
                 The `SlideReader` object for reading the WSIs.
             level (int):
@@ -43,7 +40,7 @@ class WsiSegmenter:
         """
         self.batch_size = batch_size
         self.coordinates = coordinates
-        self.inferer = inferer
+        self.model = model
 
         self.dataset = WSIDatasetInfer(
             reader, coordinates, level=level, transform=normalization
@@ -87,10 +84,10 @@ class WsiSegmenter:
                     coords = [tuple(map(int, coord)) for coord in coords]
 
                     # predict
-                    probs = self.inferer.predict(im)
+                    probs = self.model.predict(im)
 
                     # post-process
-                    self.inferer.post_process(
+                    self.model.post_process(
                         probs,
                         dst=save_paths,
                         coords=coords,
