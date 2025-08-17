@@ -56,13 +56,6 @@ class BaseModelInst:
                     f" csmp-hub. One of {list(PRETRAINED[cls.model_name].keys())}."
                 )
 
-        try:
-            from safetensors.torch import load_model
-        except ImportError:
-            raise ImportError(
-                "Please install `safetensors` package to load .safetensors files."
-            )
-
         enc_name, n_nuc_classes, state_dict = cls._get_state_dict(
             weights_path, device=device
         )
@@ -77,6 +70,12 @@ class BaseModelInst:
         )
 
         if weights_path.suffix == ".safetensors":
+            try:
+                from safetensors.torch import load_model
+            except ImportError:
+                raise ImportError(
+                    "Please install `safetensors` package to load .safetensors files."
+                )
             load_model(model_inst.model, weights_path, device.type)
         else:
             model_inst.model.load_state_dict(state_dict, strict=True)

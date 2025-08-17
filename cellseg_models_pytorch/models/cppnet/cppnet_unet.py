@@ -16,7 +16,6 @@ from cellseg_models_pytorch.models.cppnet.sampling import SamplingFeatures
 __all__ = [
     "CPPNetUnet",
     "cppnet_nuclei",
-    "cppnet_panoptic",
 ]
 
 
@@ -332,41 +331,6 @@ def cppnet_nuclei(n_rays: int, n_nuc_classes: int, **kwargs) -> nn.Module:
         heads={
             "stardist": {"nuc_stardist": n_rays, "nuc_binary": 1},
             "type": {"nuc_type": n_nuc_classes},
-        },
-        n_rays=n_rays,
-        **kwargs,
-    )
-
-    return cppnet
-
-
-def cppnet_panoptic(
-    n_rays: int, n_nuc_classes: int, n_tissue_classes: int, **kwargs
-) -> nn.Module:
-    """Initialaize CPP-Net for panoptic segmentation.
-
-    CPP-Net:
-        - https://arxiv.org/abs/2102.06867
-
-    Parameters:
-        n_rays (int):
-            Number of rays predicted per each object
-        n_nuc_classes (int):
-            Number of nuclei type classes.
-        n_tissue_classes (int):
-            Number of tissue type classes.
-        **kwargs:
-            Arbitrary key word args for the CPPNet class.
-
-    Returns:
-        nn.Module: The initialized CPP-Net model.
-    """
-    cppnet = CPPNetUnet(
-        decoders=("stardist", "type", "tissue"),
-        heads={
-            "stardist": {"nuc_stardist": n_rays, "nuc_binary": 1},
-            "type": {"nuc_type": n_nuc_classes},
-            "tissue": {"tissue_type": n_tissue_classes},
         },
         n_rays=n_rays,
         **kwargs,

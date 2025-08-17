@@ -13,7 +13,6 @@ from cellseg_models_pytorch.models.cellvit._conf import _create_cellvit_args
 __all__ = [
     "CellVitSamUnet",
     "cellvit_nuclei",
-    "cellvit_panoptic",
 ]
 
 
@@ -258,42 +257,6 @@ def cellvit_nuclei(enc_name: str, n_nuc_classes: int, **kwargs) -> nn.Module:
         heads={
             "hovernet": {"nuc_hovernet": 2},
             "type": {"nuc_type": n_nuc_classes},
-        },
-        **kwargs,
-    )
-
-    return cellvit_sam
-
-
-def cellvit_panoptic(
-    enc_name: str, n_nuc_classes: int, n_tissue_classes: int, **kwargs
-) -> nn.Module:
-    """Initialaize CellVit for panoptic segmentation.
-
-    CellVit:
-        - https://arxiv.org/abs/2306.15350
-
-    Parameters:
-        enc_name (str):
-            Name of the encoder. One of: "samvit_base_patch16", "samvit_base_patch16_224",
-            "samvit_huge_patch16", "samvit_large_patch16"
-        n_nuc_classes (int):
-            Number of nuclei type classes.
-        n_tissue_classes (int):
-            Number of tissue type classes.
-        **kwargs:
-            Arbitrary key word args for the CellVitSAM class.
-
-    Returns:
-        nn.Module: The initialized CellVitSAM+ model.
-    """
-    cellvit_sam = CellVitSamUnet(
-        enc_name=enc_name,
-        decoders=("hovernet", "type", "tissue"),
-        heads={
-            "hovernet": {"nuc_hovernet": 2},
-            "type": {"nuc_type": n_nuc_classes},
-            "tissue": {"tissue_type": n_tissue_classes},
         },
         **kwargs,
     )

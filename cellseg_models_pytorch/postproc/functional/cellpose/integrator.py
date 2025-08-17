@@ -33,6 +33,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
+
 from typing import Tuple
 
 import numpy as np
@@ -214,7 +215,7 @@ def follow_flows(
 
     # run dynamics on subset of pixels.
     # NOTE: Uses only xmap or ymap (dP[0|1])
-    seeds = np.abs(dP[0]) > 1e-3
+    seeds = np.abs(dP[1]) > 1e-3
     if mask is not None:
         seeds = np.logical_or(mask, seeds)
 

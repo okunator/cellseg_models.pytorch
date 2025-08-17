@@ -13,7 +13,6 @@ from cellseg_models_pytorch.models.hovernet._conf import _create_hovernet_args
 __all__ = [
     "HoverNetUnet",
     "hovernet_nuclei",
-    "hovernet_panoptic",
 ]
 
 
@@ -239,40 +238,6 @@ def hovernet_nuclei(n_nuc_classes: int, **kwargs) -> nn.Module:
         heads={
             "hovernet": {"nuc_hovernet": 2},
             "type": {"nuc_type": n_nuc_classes},
-        },
-        **kwargs,
-    )
-
-    return hovernet
-
-
-def hovernet_panoptic(
-    n_nuc_classes: int,
-    n_tissue_classes: int,
-    **kwargs,
-) -> nn.Module:
-    """Initialaize HoverNet+ for panoptic segmentation.
-
-    HoVer-Net:
-        - https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub
-
-    Parameters:
-        n_nuc_classes (int):
-            Number of nuclei type classes.
-        n_tissue_classes (int):
-            Number of tissue type classes.
-        **kwargs:
-            Arbitrary key word args for the HoverNet class.
-
-    Returns:
-        nn.Module: The initialized HoVer-Net+ model.
-    """
-    hovernet = HoverNetUnet(
-        decoders=("hovernet", "type", "tissue"),
-        heads={
-            "hovernet": {"nuc_hovernet": 2},
-            "type": {"nuc_type": n_nuc_classes},
-            "tissue": {"tissue_type": n_tissue_classes},
         },
         **kwargs,
     )

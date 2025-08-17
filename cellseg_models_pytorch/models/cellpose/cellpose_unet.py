@@ -13,9 +13,7 @@ from cellseg_models_pytorch.models.cellpose._conf import _create_cellpose_args
 __all__ = [
     "CellPoseUnet",
     "cellpose_nuclei",
-    "cellpose_panoptic",
     "omnipose_nuclei",
-    "omnipose_panoptic",
 ]
 
 
@@ -249,34 +247,6 @@ def cellpose_nuclei(n_nuc_classes: int, **kwargs) -> nn.Module:
     return cellpose_unet
 
 
-def cellpose_panoptic(n_nuc_classes: int, n_tissue_classes: int, **kwargs) -> nn.Module:
-    """Initialize Cellpose for panoptic segmentation.
-
-    Cellpose:
-    - https://www.nature.com/articles/s41592-020-01018-x
-
-    Parameters
-        n_nuc_classes (int):
-            Number of nuclei type classes.
-        n_tissue_classes (int):
-            Number of tissue type classes.
-        **kwargs:
-            Arbitrary key word args for the CellPoseUnet class.
-
-    Returns:
-        nn.Module: The initialized Cellpose+ U-net model.
-    """
-    cellpose_unet = CellPoseUnet(
-        decoders=("type", "tissue"),
-        heads={
-            "type": {"nuc_cellpose": 2, "nuc_type": n_nuc_classes},
-            "tissue": {"tissue_type": n_tissue_classes},
-        },
-        **kwargs,
-    )
-    return cellpose_unet
-
-
 def omnipose_nuclei(n_nuc_classes: int, **kwargs) -> nn.Module:
     """Create the baseline Omnipose U-net for nuclei segmentation.
 
@@ -295,36 +265,6 @@ def omnipose_nuclei(n_nuc_classes: int, **kwargs) -> nn.Module:
     cellpose_unet = CellPoseUnet(
         decoders=("type",),
         heads={"type": {"nuc_omnipose": 2, "nuc_type": n_nuc_classes}},
-        **kwargs,
-    )
-    cellpose_unet.aux_key = "omnipose"
-
-    return cellpose_unet
-
-
-def omnipose_panoptic(n_nuc_classes: int, n_tissue_classes: int, **kwargs) -> nn.Module:
-    """Create the Omnipose U-net with nuclei- and tissue segmentation decoders.
-
-    Omnipose:
-    - https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
-
-    Parameters:
-        n_nuc_classes (int):
-            Number of nuclei type classes.
-        n_tissue_classes (int):
-            Number of tissue type classes.
-        **kwargs:
-            Arbitrary key word args for the CellPoseUnet class.
-
-    Returns:
-        nn.Module: The initialized Cellpose+ U-net model.
-    """
-    cellpose_unet = CellPoseUnet(
-        decoders=("type", "tissue"),
-        heads={
-            "type": {"nuc_omnipose": 2, "nuc_type": n_nuc_classes},
-            "tissue": {"tissue_type": n_tissue_classes},
-        },
         **kwargs,
     )
     cellpose_unet.aux_key = "omnipose"

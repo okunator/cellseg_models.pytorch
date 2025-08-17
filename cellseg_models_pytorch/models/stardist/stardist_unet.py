@@ -10,7 +10,7 @@ from cellseg_models_pytorch.decoders.multitask_decoder import (
 from cellseg_models_pytorch.encoders import Encoder
 from cellseg_models_pytorch.models.stardist._conf import _create_stardist_args
 
-__all__ = ["StarDistUnet", "stardist_nuclei", "stardist_panoptic"]
+__all__ = ["StarDistUnet", "stardist_nuclei"]
 
 
 class StarDistUnet(nn.ModuleDict):
@@ -242,43 +242,6 @@ def stardist_nuclei(n_rays: int, n_nuc_classes: int, **kwargs) -> nn.Module:
                 "nuc_binary": 1,
                 "nuc_type": n_nuc_classes,
             }
-        },
-        **kwargs,
-    )
-
-    return stardist_unet
-
-
-def stardist_panoptic(
-    n_rays: int, n_nuc_classes: int, n_tissue_classes: int, **kwargs
-) -> nn.Module:
-    """Initialize Stardist model for panoptic segmentation.
-
-    Stardist:
-    - https://arxiv.org/abs/1806.03535
-
-    Parameters:
-        n_rays (int):
-            Number of rays predicted per each object
-        n_nuc_classes (int):
-            Number of nuclei type classes.
-        n_tissue_classes (int):
-            Number of tissue type classes.
-        **kwargs:
-            Arbitrary key word args for the StarDistUnet class.
-
-    Returns:
-        nn.Module: The initialized Panoptic Stardist model.
-    """
-    stardist_unet = StarDistUnet(
-        decoders=("stardist", "tissue"),
-        heads={
-            "stardist": {
-                "nuc_stardist": n_rays,
-                "nuc_binary": 1,
-                "nuc_type": n_nuc_classes,
-            },
-            "tissue": {"tissue_type": n_tissue_classes},
         },
         **kwargs,
     )
