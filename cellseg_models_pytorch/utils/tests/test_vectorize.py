@@ -22,7 +22,7 @@ def test_inst2gdf_basic():
     gdf = inst2gdf(inst_map, type_map, class_dict=class_dict)
     
     assert isinstance(gdf, gpd.GeoDataFrame)
-    assert 'id' in gdf.columns
+    assert 'uid' in gdf.columns
     assert 'class_name' in gdf.columns
     assert 'geometry' in gdf.columns
 
@@ -44,7 +44,7 @@ def test_inst2gdf_with_smoothing():
     gdf = inst2gdf(inst_map, type_map, class_dict=class_dict, smooth_func=gaussian_smooth)
     
     assert isinstance(gdf, gpd.GeoDataFrame)
-    assert 'id' in gdf.columns
+    assert 'uid' in gdf.columns
     assert 'class_name' in gdf.columns
     assert 'geometry' in gdf.columns
 
@@ -60,7 +60,7 @@ def test_sem2gdf_basic():
     gdf = sem2gdf(sem_map, class_dict=class_dict)
     
     assert isinstance(gdf, gpd.GeoDataFrame)
-    assert 'id' in gdf.columns
+    assert 'uid' in gdf.columns
     assert 'class_name' in gdf.columns
     assert 'geometry' in gdf.columns
 
@@ -76,6 +76,6 @@ def test_sem2gdf_with_smoothing():
     gdf = sem2gdf(sem_map, class_dict=class_dict, smooth_func=gaussian_smooth)
     
     assert isinstance(gdf, gpd.GeoDataFrame)
-    assert 'id' in gdf.columns
+    assert 'uid' in gdf.columns
     assert 'class_name' in gdf.columns
     assert 'geometry' in gdf.columns
