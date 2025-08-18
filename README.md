@@ -4,15 +4,16 @@
 
 **Python library for 2D cell/nuclei instance segmentation models written with [PyTorch](https://pytorch.org/).**
 
-[![Generic badge](https://img.shields.io/badge/License-MIT-<COLOR>.svg?style=for-the-badge)](https://github.com/okunator/cellseg_models.pytorch/blob/master/LICENSE)
-[![PyTorch - Version](https://img.shields.io/badge/PYTORCH-2+-red?style=for-the-badge&logo=pytorch)](https://pytorch.org/)
-[![Python - Version](https://img.shields.io/badge/PYTHON-3.10+-red?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Generic badge](https://img.shields.io/badge/License-MIT-<COLOR>.svg)](https://github.com/okunator/cellseg_models.pytorch/blob/master/LICENSE)
+[![PyTorch - Version](https://img.shields.io/badge/PYTORCH-2+-red?&logo=pytorch)](https://pytorch.org/)
+[![Python - Version](https://img.shields.io/badge/PYTHON-3.10+-red?&logo=python&logoColor=white)](https://www.python.org/)
+[![Model Checkpoints](https://img.shields.io/badge/%F0%9F%A4%97%20HF-Model%20Hub-yellow)](https://huggingface.co/csmp-hub) 
 <br>
-[![Github Test](https://img.shields.io/github/actions/workflow/status/okunator/cellseg_models.pytorch/tests.yml?label=Tests&logo=github&&style=for-the-badge)](https://github.com/okunator/cellseg_models.pytorch/actions/workflows/tests.yml)
-[![Pypi](https://img.shields.io/pypi/v/cellseg-models-pytorch?color=blue&logo=pypi&style=for-the-badge)](https://pypi.org/project/cellseg-models-pytorch/)
-[![Codecov](https://img.shields.io/codecov/c/github/okunator/cellseg_models.pytorch?logo=codecov&style=for-the-badge&token=oGSj7FZ1lm)](https://codecov.io/gh/okunator/cellseg_models.pytorch)
-<br>
+[![Github Test](https://img.shields.io/github/actions/workflow/status/okunator/cellseg_models.pytorch/tests.yml?label=Tests&logo=github)](https://github.com/okunator/cellseg_models.pytorch/actions/workflows/tests.yml)
+[![Pypi](https://img.shields.io/pypi/v/cellseg-models-pytorch?color=blue&logo=pypi)](https://pypi.org/project/cellseg-models-pytorch/)
+[![Codecov](https://img.shields.io/codecov/c/github/okunator/cellseg_models.pytorch?logo=codecov)](https://codecov.io/gh/okunator/cellseg_models.pytorch)
 [![DOI](https://zenodo.org/badge/450787123.svg)](https://zenodo.org/badge/latestdoi/450787123)
+<br>
 
 </div>
 
