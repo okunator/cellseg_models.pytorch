@@ -1,7 +1,7 @@
 import gc
 from functools import partial
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union
 
 import numpy as np
 import torch
@@ -52,13 +52,16 @@ class PostProcessor:
         save_path: Union[Path, str] = None,
         coords: Tuple[int, int, int, int] = None,
         class_dict: Dict[str, int] = None,
+        smooth_func: Callable = None,
     ) -> np.ndarray:
         """Run tissue map post-processing."""
         tissue_map = remove_debris_semantic(tissue_map, min_size=5000)
         tissue_map = fill_holes_semantic(tissue_map, min_size=5000).astype("i4")
 
         if save_path is not None:
-            self._save_sem2vector(save_path, tissue_map, coords, class_dict)
+            self._save_sem2vector(
+                save_path, tissue_map, coords, class_dict, smooth_func=smooth_func
+            )
             gc.collect()
         else:
             gc.collect()
@@ -72,13 +75,21 @@ class PostProcessor:
         save_path: Union[Path, str] = None,
         coords: Tuple[int, int, int, int] = None,
         class_dict: Dict[str, int] = None,
+        smooth_func: Callable = gaussian_smooth,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Run instace map post-processing."""
         inst_map = self.postproc_func(inst_map, aux_map).astype("i4")
         type_map = majority_vote_sequential(type_map, inst_map).astype("i4")
 
         if save_path is not None:
-            self._save_inst2vector(save_path, inst_map, type_map, coords, class_dict)
+            self._save_inst2vector(
+                save_path,
+                inst_map,
+                type_map,
+                coords,
+                class_dict,
+                smooth_func=smooth_func,
+            )
             gc.collect()
         else:
             gc.collect()
@@ -97,6 +108,9 @@ class PostProcessor:
         class_dict_nuc: Dict[int, str] = None,
         class_dict_cyto: Dict[int, str] = None,
         class_dict_tissue: Dict[int, str] = None,
+        nuc_smooth_func: Callable = gaussian_smooth,
+        cyto_smooth_func: Callable = gaussian_smooth,
+        tissue_smooth_func: Callable = None,
     ) -> Dict[str, List[np.ndarray]]:
         """Post-process the masks in parallel using multiprocessing."""
         # set up input args for
@@ -135,7 +149,11 @@ class PostProcessor:
             if soft_masks["nuc"] is not None:
                 nuc_results = self._pool_map(
                     pool,
-                    partial(self.postproc_inst, class_dict=class_dict_nuc),
+                    partial(
+                        self.postproc_inst,
+                        class_dict=class_dict_nuc,
+                        smooth_func=nuc_smooth_func,
+                    ),
                     list(
                         zip(
                             nuc_inst_maps,
@@ -151,7 +169,11 @@ class PostProcessor:
             if soft_masks["cyto"] is not None:
                 cyto_results = self._pool_map(
                     pool,
-                    partial(self.postproc_inst, class_dict=class_dict_cyto),
+                    partial(
+                        self.postproc_inst,
+                        class_dict=class_dict_cyto,
+                        smooth_func=cyto_smooth_func,
+                    ),
                     list(
                         zip(
                             cyto_inst_maps,
@@ -167,7 +189,11 @@ class PostProcessor:
             if soft_masks["tissue"] is not None:
                 tissue_results = self._pool_map(
                     pool,
-                    partial(self.postproc_tissuemap, class_dict=class_dict_tissue),
+                    partial(
+                        self.postproc_tissuemap,
+                        class_dict=class_dict_tissue,
+                        smooth_func=tissue_smooth_func,
+                    ),
                     list(zip(tissue_maps, save_paths_tissue, coords)),
                     progress_bar=progress_bar,
                 )
@@ -186,6 +212,9 @@ class PostProcessor:
         class_dict_nuc: Dict[int, str] = None,
         class_dict_cyto: Dict[int, str] = None,
         class_dict_tissue: Dict[int, str] = None,
+        nuc_smooth_func: Callable = gaussian_smooth,
+        cyto_smooth_func: Callable = gaussian_smooth,
+        tissue_smooth_func: Callable = None,
     ) -> Dict[str, List[np.ndarray]]:
         """Post-process the masks in parallel using async."""
         # set up input args for
@@ -225,7 +254,11 @@ class PostProcessor:
             if soft_masks["nuc"] is not None:
                 nuc_results = self._pool_apply_async(
                     pool,
-                    partial(self.postproc_inst, class_dict=class_dict_nuc),
+                    partial(
+                        self.postproc_inst,
+                        class_dict=class_dict_nuc,
+                        smooth_func=nuc_smooth_func,
+                    ),
                     list(
                         zip(
                             nuc_inst_maps,
@@ -240,7 +273,11 @@ class PostProcessor:
             if soft_masks["cyto"] is not None:
                 cyto_results = self._pool_apply_async(
                     pool,
-                    partial(self.postproc_inst, class_dict=class_dict_cyto),
+                    partial(
+                        self.postproc_inst,
+                        class_dict=class_dict_cyto,
+                        smooth_func=cyto_smooth_func,
+                    ),
                     list(
                         zip(
                             cyto_inst_maps,
@@ -255,7 +292,11 @@ class PostProcessor:
             if soft_masks["tissue"] is not None:
                 tissue_results = self._pool_apply_async(
                     pool,
-                    partial(self.postproc_tissuemap, class_dict=class_dict_tissue),
+                    partial(
+                        self.postproc_tissuemap,
+                        class_dict=class_dict_tissue,
+                        smooth_func=tissue_smooth_func,
+                    ),
                     list(zip(tissue_maps, save_paths_tissue, coords)),
                 )
 
@@ -276,6 +317,9 @@ class PostProcessor:
         class_dict_nuc: Dict[int, str] = None,
         class_dict_cyto: Dict[int, str] = None,
         class_dict_tissue: Dict[int, str] = None,
+        nuc_smooth_func: Callable = gaussian_smooth,
+        cyto_smooth_func: Callable = gaussian_smooth,
+        tissue_smooth_func: Callable = None,
     ) -> Dict[str, List[np.ndarray]]:
         """Run post-processing sequentially."""
         nuc_inst_maps, nuc_aux_maps, nuc_type_maps = self._prepare_inst_maps(
@@ -306,7 +350,13 @@ class PostProcessor:
         if soft_masks["nuc"] is not None:
             nuc_results = [
                 self.postproc_inst(
-                    inst_map, aux_map, type_map, save_path, coord, class_dict_nuc
+                    inst_map,
+                    aux_map,
+                    type_map,
+                    save_path,
+                    coord,
+                    class_dict_nuc,
+                    smooth_func=nuc_smooth_func,
                 )
                 for inst_map, aux_map, type_map, save_path, coord in zip(
                     nuc_inst_maps,
@@ -320,7 +370,13 @@ class PostProcessor:
         if soft_masks["cyto"] is not None:
             cyto_results = [
                 self.postproc_inst(
-                    inst_map, aux_map, type_map, save_path, coord, class_dict_cyto
+                    inst_map,
+                    aux_map,
+                    type_map,
+                    save_path,
+                    coord,
+                    class_dict_cyto,
+                    smooth_func=cyto_smooth_func,
                 )
                 for inst_map, aux_map, type_map, save_path, coord in zip(
                     cyto_inst_maps,
@@ -333,7 +389,13 @@ class PostProcessor:
 
         if soft_masks["tissue"] is not None:
             tissue_results = [
-                self.postproc_tissuemap(tissue_map, save_path, coord, class_dict_tissue)
+                self.postproc_tissuemap(
+                    tissue_map,
+                    save_path,
+                    coord,
+                    class_dict_tissue,
+                    smooth_func=tissue_smooth_func,
+                )
                 for tissue_map, save_path, coord in zip(
                     tissue_maps, save_paths_tissue, coords
                 )
@@ -398,6 +460,7 @@ class PostProcessor:
         class_dict: dict = None,
         compute_centroids: bool = False,
         compute_bboxes: bool = False,
+        smooth_func: Callable = gaussian_smooth,
     ) -> None:
         save_path = Path(save_path)
 
@@ -410,7 +473,7 @@ class PostProcessor:
             xoff=xoff,
             yoff=yoff,
             class_dict=class_dict,
-            smooth_func=gaussian_smooth,
+            smooth_func=smooth_func,
         )
 
         if compute_centroids:
@@ -426,6 +489,7 @@ class PostProcessor:
         sem_map: np.ndarray,
         coords: List[Tuple[int, int, int, int]] = None,
         class_dict: dict = None,
+        smooth_func: Callable = None,
     ) -> None:
         save_path = Path(save_path)
 
@@ -437,6 +501,7 @@ class PostProcessor:
             xoff=xoff,
             yoff=yoff,
             class_dict=class_dict,
+            smooth_func=smooth_func,
         )
 
         FileHandler.gdf_to_file(sem_gdf, save_path, silence_warnings=True)
