@@ -1,5 +1,14 @@
+<a id='changelog-0.1.29'></a>
+# 0.1.29 — 2025-10-21
+
+# Fixed
+Fixed a bug in result segmentation smoothing after vectorizing.
+
 <a id='changelog-0.1.28'></a>
 # 0.1.28 — 2025-08-17
+
+## Features
+- Added `precision` param to WSISegmenter
 
 ## Fixed
 

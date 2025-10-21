@@ -33,13 +33,8 @@
 
 - High level API to define cell/nuclei instance segmentation models.
 - 6 cell/nuclei instance segmentation model architectures
-- Open source datasets for training and benchmarking.
 - Flexibility to modify the components of the model architectures.
 - Sliding window inference for large images.
-- Popular training losses and benchmarking metrics.
-- Benchmarking utilities
-- Regularization techniques to tackle batch effects/domain shifts such as [Strong Augment](https://arxiv.org/abs/2206.15274), [Spectral decoupling](https://arxiv.org/abs/2011.09468), [Label smoothing](https://arxiv.org/abs/1512.00567).
-
 
 ## Installation 🛠️
 
