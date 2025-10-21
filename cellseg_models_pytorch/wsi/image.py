@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Sequence, Union
 
 import numpy as np
 
@@ -9,6 +9,7 @@ try:
 except ImportError:
     _has_matplotlib = False
 
+from matplotlib import colormaps
 from PIL import Image, ImageDraw, ImageFont
 
 from .tiles import _divide_xywh
@@ -34,6 +35,10 @@ def get_annotated_image(
     text_proportion: float = 0.75,
     text_font: str = "monospace",
     alpha: float = 0.0,
+    cmap: str = None,
+    values: np.ndarray = None,
+    breaks: Sequence[float] = None,
+    n_bins: int = 30,
 ) -> Image.Image:
     """Function to draw tiles to an image. Useful for visualising tiles/predictions.
 
@@ -65,6 +70,14 @@ def get_annotated_image(
             Passed to matplotlib's `fontManager.find_font` function.
         alpha (float, default=0.0):
             Alpha value for blending the original image and drawn image.
+        cmap (str, default=None):
+            Colormap to use for the tiles. E.g. "viridis", "plasma", "inferno".
+        values (np.ndarray, default=None):
+            Values to map to the colormap. Must be same length as `coordinates`.
+        breaks (Sequence[float], default=None):
+            Breakpoints for the colormap. If not provided, will be computed from `values`.
+        n_bins (int, default=30):
+            Number of bins to use for the colormap.
 
     Raises:
         ValueError: Text item length does not match length of coordinates.
@@ -91,14 +104,33 @@ def get_annotated_image(
     font = None
     annotated = image.copy()
     draw = ImageDraw.Draw(annotated)
+
+    pal = None
+    if cmap is not None and values is not None:
+        if values.dtype.kind in ["U", "S", "O", "i"]:
+            unique_vals = np.unique(values)
+            values = np.searchsorted(unique_vals, values)
+            breaks = np.arange(len(unique_vals))
+        elif breaks is None:
+            min_val = np.round((values.min()), 1)
+            max_val = np.round((values.max()), 1)
+            step = np.round(((max_val - min_val) / n_bins), 3)
+            breaks = np.arange(min_val, max_val, step)
+
+        pal = colormaps.get_cmap(cmap).resampled(len(breaks))
+
     for idx, (xywh, text) in enumerate(zip(coordinates, text_items)):
         # Downscale coordinates.
         x, y, w, h = _divide_xywh(xywh, downsample)
         # Draw rectangle.
+        rgb_uint8 = None
+        if pal is not None:
+            rgb_uint8 = tuple((np.array(pal(values[idx])) * 255).astype(np.uint8))
+
         draw.rectangle(
             ((x, y), (x + w, y + h)),
             fill=rectangle_fill,
-            outline=rectangle_outline,
+            outline=rectangle_outline if rgb_uint8 is None else rgb_uint8,
             width=rectangle_width,
         )
         if text is not None:
