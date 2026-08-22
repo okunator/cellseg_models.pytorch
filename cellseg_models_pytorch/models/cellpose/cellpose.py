@@ -1,4 +1,5 @@
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Dict, Tuple, Union
 
 import torch
 
@@ -63,3 +64,25 @@ class CellPose(BaseModelInst):
             postproc_kwargs={"use_gpu": True},
         )
         self.inference_mode = True
+
+    def export_onnx(
+        self,
+        output_path: Union[str, Path],
+        input_shape: Tuple[int, int, int, int] = (1, 3, 256, 256),
+        opset_version: int = 18,
+        dynamic_batch: bool = True,
+    ) -> Path:
+        """Export the CellPose dense prediction network to ONNX.
+
+        Flow integration and instance reconstruction are intentionally left in the
+        existing Python post-processing pipeline.
+        """
+        from cellseg_models_pytorch.models.cellpose.onnx import export_cellpose_onnx
+
+        return export_cellpose_onnx(
+            self,
+            output_path=output_path,
+            input_shape=input_shape,
+            opset_version=opset_version,
+            dynamic_batch=dynamic_batch,
+        )
