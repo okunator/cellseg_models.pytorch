@@ -29,17 +29,12 @@ def _compute_padding(kernel_size: list[int]) -> list[int]:
 def filter2D(input_tensor: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
     """Convolves a given kernel on input tensor without losing dimensional shape.
 
-    Parameters
-    ----------
-        input_tensor : torch.Tensor
-            Input image/tensor.
-        kernel : torch.Tensor
-            Convolution kernel/window.
+    Args:
+        input_tensor: Input image/tensor.
+        kernel: Convolution kernel/window.
 
-    Returns
-    -------
-        torch.Tensor:
-            The convolved tensor of same shape as the input.
+    Returns:
+        The convolved tensor of same shape as the input.
     """
     (_, channel, _, _) = input_tensor.size()
 
@@ -58,21 +53,14 @@ def gaussian(
 ) -> torch.Tensor:
     """Create a gaussian 1D tensor.
 
-    Parameters
-    ----------
-        window_size : int
-            Number of elements for the output tensor.
-        sigma : float
-            Std of the gaussian distribution.
-        device : torch.device
-            Device for the tensor.
-        dtype : torch.dtype
-            Data type for the tensor.
+    Args:
+        window_size: Number of elements for the output tensor.
+        sigma: Std of the gaussian distribution.
+        device: Device for the tensor.
+        dtype: Data type for the tensor.
 
-    Returns
-    -------
-        torch.Tensor:
-            A gaussian 1D tensor. Shape: (window_size, ).
+    Returns:
+        A gaussian 1D tensor. Shape: (window_size, ).
     """
     if dtype is None:
         dtype = torch.float32
@@ -95,24 +83,17 @@ def gaussian_kernel2d(
 ) -> torch.Tensor:
     """Create 2D window_size**2 sized kernel a gaussial kernel.
 
-    Parameters
-    ----------
-        window_size : int
-            Number of rows and columns for the output tensor.
-        sigma : float
-            Std of the gaussian distribution.
-        n_channel : int
+    Args:
+        window_size: Number of rows and columns for the output tensor.
+        sigma: Std of the gaussian distribution.
+        n_channel (int):
             Number of channels in the image that will be convolved with
             this kernel.
-        device : torch.device
-            Device for the kernel.
-        dtype : torch.dtype
-            Data type for the kernel.
+        device: Device for the kernel.
+        dtype: Data type for the kernel.
 
     Returns:
-    -----------
-        torch.Tensor:
-            A tensor of shape (1, 1, window_size, window_size)
+        A tensor of shape (1, 1, window_size, window_size)
     """
     kernel_x = gaussian(window_size, sigma, device=device, dtype=dtype)
     kernel_y = gaussian(window_size, sigma, device=device, dtype=dtype)

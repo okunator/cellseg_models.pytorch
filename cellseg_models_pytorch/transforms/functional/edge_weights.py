@@ -35,19 +35,13 @@ def gen_weight_maps(
 ) -> np.ndarray:
     """Generate a weight map like in U-Net paper.
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
-        sigma : float
-            Sigma factor.
-        w0 : float
-            Weight multiplied to the penalty map.
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
+        sigma: Sigma factor.
+        w0: Weight multiplied to the penalty map.
 
-    Returns
-    -------
-        np.ndarray:
-            Object boundary boundary weight map. Shape (H, W).
+    Returns:
+        Object boundary boundary weight map. Shape (H, W).
     """
     inst_list = list(np.unique(inst_map))
     if 0 in inst_list:

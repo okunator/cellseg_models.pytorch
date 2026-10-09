@@ -51,29 +51,23 @@ def mish(x: torch.Tensor):
 
 class Mish(nn.Module):
     def __init__(self, inplace: bool = False, **kwargs) -> None:
-        """
-        Element-wise mish.
+        """Element-wise mish.
 
         https://github.com/digantamisra98/Mish
 
-        Parameters
-        ----------
-            inplace : bool, default=False
-                This is not used, exists only for compatibility.
+        Args:
+            inplace: This is not used, exists only for compatibility.
+                Defaults to False.
         """
         super().__init__()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         """Forward pass of the function.
 
-        Parameters
-        ----------
-            input : torch.Tensor
-                Input tensor. Can be of any shape (C, *).
+        Args:
+            input: Input tensor. Can be of any shape (C, *).
 
-        Returns
-        -------
-            torch.Tensor:
-                activated output tensor. Shape same as input.
+        Returns:
+            activated output tensor. Shape same as input.
         """
         return mish(input)

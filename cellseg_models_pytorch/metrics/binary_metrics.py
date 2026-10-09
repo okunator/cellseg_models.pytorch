@@ -10,18 +10,13 @@ def get_stats(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute basic metrics for diagnostic tests.
 
-    Parameters
-    ----------
-        true : np.ndarray
-            Ground truth binary mask. Shape (H, W)
-        pred : np.ndarray
-            Predicted binary mask. Shape (H, W)
+    Args:
+        true: Ground truth binary mask. Shape (H, W)
+        pred: Predicted binary mask. Shape (H, W)
 
-    Returns
-    -------
-        Tuple[np.ndarray, np.ndarray, np.ndarray]:
-            The computed TP, FP, and FN pixels in a labelled mask.
-            Shapes: (H, W)
+    Returns:
+        The computed TP, FP, and FN pixels in a labelled mask.
+        Shapes: (H, W)
     """
     tp = true * pred
     fp = np.bitwise_xor(pred, tp)
@@ -35,21 +30,15 @@ def iou_score(
 ) -> float:
     """Compute the intersection over union (Jaccard-index).
 
-    Parameters
-    ----------
-        tp : np.ndarray
-            True positive pixels. Shape (H, W).
-        fp : np.ndarray
-            False postive pixels. Shape (H, W).
-        fn : np.ndarray
-            False negative pixels. Shape (H, W).
-        eps : float, default=1e-8:
-            Epsilon to avoid zero div errors.
+    Args:
+        tp: True positive pixels. Shape (H, W).
+        fp: False postive pixels. Shape (H, W).
+        fn: False negative pixels. Shape (H, W).
+        eps: Epsilon to avoid zero div errors.
+            Defaults to 1e-8.
 
-    Returns
-    -------
-        float:
-            The computed intersection over union.
+    Returns:
+        The computed intersection over union.
     """
     numerator = tp.sum()
     denominator = fp.sum() + fn.sum() + numerator + eps
@@ -62,21 +51,15 @@ def dice_coef(
 ) -> float:
     """Compute the Sørensen-Dice coefficient.
 
-    Parameters
-    ----------
-        tp : np.ndarray
-            True positive pixels. Shape (H, W).
-        fp : np.ndarray
-            False postive pixels. Shape (H, W).
-        fn : np.ndarray
-            False negative pixels. Shape (H, W).
-        eps : float, default=1e-8:
-            Epsilon to avoid zero div errors.
+    Args:
+        tp: True positive pixels. Shape (H, W).
+        fp: False postive pixels. Shape (H, W).
+        fn: False negative pixels. Shape (H, W).
+        eps: Epsilon to avoid zero div errors.
+            Defaults to 1e-8.
 
-    Returns
-    -------
-        float:
-            The computed dice coefficient.
+    Returns:
+        The computed dice coefficient.
     """
     numerator = 2 * tp.sum()
     denominator = fp.sum() + fn.sum() + numerator + eps
@@ -89,21 +72,15 @@ def accuracy(
 ) -> float:
     """Compute the binary accuracy.
 
-    Parameters
-    ----------
-        tp : np.ndarray
-            True positive pixels. Shape (H, W).
-        fp : np.ndarray
-            False postive pixels. Shape (H, W).
-        fn : np.ndarray
-            False negative pixels. Shape (H, W).
-        eps : float, default=1e-8:
-            Epsilon to avoid zero div errors.
+    Args:
+        tp: True positive pixels. Shape (H, W).
+        fp: False postive pixels. Shape (H, W).
+        fn: False negative pixels. Shape (H, W).
+        eps: Epsilon to avoid zero div errors.
+            Defaults to 1e-8.
 
-    Returns
-    -------
-        float:
-            The computed binary accuracy.
+    Returns:
+        The computed binary accuracy.
     """
     tn = 1 - (tp + fn + fp)
     numerator = tn.sum() + tp.sum()
@@ -115,22 +92,15 @@ def accuracy(
 def f1score(tp: np.ndarray, fp: np.ndarray, fn: np.ndarray, eps: float = 1e-8) -> float:
     """Compute the binary f1-score.
 
-    Parameters
-    ----------
-        tp : np.ndarray
-            True positive pixels. Shape (H, W).
-        fp : np.ndarray
-            False postive pixels. Shape (H, W).
-        fn : np.ndarray
-            False negative pixels. Shape (H, W).
-        eps : float, default=1e-8:
-            Epsilon to avoid zero div errors.
+    Args:
+        tp: True positive pixels. Shape (H, W).
+        fp: False postive pixels. Shape (H, W).
+        fn: False negative pixels. Shape (H, W).
+        eps: Epsilon to avoid zero div errors.
+            Defaults to 1e-8.
 
-
-    Returns
-    -------
-        float:
-            The computed f1-score.
+    Returns:
+        The computed f1-score.
     """
     numerator = tp.sum()
     denominator = 0.5 * fp.sum() + 0.5 * fn.sum() + numerator + eps

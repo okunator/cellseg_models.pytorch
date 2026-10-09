@@ -19,20 +19,23 @@ class MSE(WeightedBaseLoss):
     ) -> None:
         """MSE-loss.
 
-        Parameters:
-            apply_sd (bool, default=False):
+        Args:
+            apply_sd:
                 If True, Spectral decoupling regularization will be applied  to the
                 loss matrix.
-            apply_ls (bool, default=False):
-                If True, Label smoothing will be applied to the target.
-            apply_svls (bool, default=False):
+                Defaults to False.
+            apply_ls: If True, Label smoothing will be applied to the target.
+                Defaults to False.
+            apply_svls:
                 If True, spatially varying label smoothing will be applied to the target
-            apply_mask (bool, default=False):
+                Defaults to False.
+            apply_mask:
                 If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
-            edge_weight (float, default=none):
-                Weight that is added to object borders.
-            class_weights (torch.Tensor, default=None):
-                Class weights. A tensor of shape (n_classes,).
+                Defaults to False.
+            edge_weight: Weight that is added to object borders.
+                Defaults to none.
+            class_weights: Class weights. A tensor of shape (n_classes,).
+                Defaults to None.
         """
         super().__init__(
             apply_sd, apply_ls, apply_svls, apply_mask, class_weights, edge_weight
@@ -48,15 +51,13 @@ class MSE(WeightedBaseLoss):
     ) -> torch.Tensor:
         """Compute the MSE-loss.
 
-        Parameters:
-            yhat (torch.Tensor):
-                The prediction map. Shape (B, C, H, W).
-            target (torch.Tensor):
-                the ground truth annotations. Shape (B, H, W).
-            target_weight (torch.Tensor, default=None):
-                The edge weight map. Shape (B, H, W).
-            mask (torch.Tensor, default=None):
-                The mask map. Shape (B, H, W).
+        Args:
+            yhat: The prediction map. Shape (B, C, H, W).
+            target: the ground truth annotations. Shape (B, H, W).
+            target_weight: The edge weight map. Shape (B, H, W).
+                Defaults to None.
+            mask: The mask map. Shape (B, H, W).
+                Defaults to None.
 
         Returns:
             torch.Tensor:

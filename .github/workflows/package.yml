@@ -1,0 +1,75 @@
+name: Validate distributions
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Install build tools
+        run: python -m pip install poetry==2.2.1 twine==6.2.0
+      - name: Check release metadata
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: python tools/check_release_metadata.py
+      - name: Test release guards
+        run: python -m unittest discover -s tools/tests -v
+      - name: Build and check distributions
+        run: |
+          poetry build
+          python -m twine check --strict dist/*
+      - name: Preserve distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-distributions
+          path: dist/*
+          if-no-files-found: error
+
+  install:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11"]
+        distribution: [wheel, sdist]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: package-distributions
+          path: dist
+      - name: Install the built distribution
+        env:
+          DISTRIBUTION: ${{ matrix.distribution }}
+        run: |
+          python -m venv "$RUNNER_TEMP/package-env"
+          if [ "$DISTRIBUTION" = wheel ]; then
+            "$RUNNER_TEMP/package-env/bin/python" -m pip install dist/*.whl
+          else
+            "$RUNNER_TEMP/package-env/bin/python" -m pip install dist/*.tar.gz
+          fi
+          "$RUNNER_TEMP/package-env/bin/python" -m pip check
+      - name: Check installed imports and CPU model training
+        working-directory: ${{ runner.temp }}
+        env:
+          NUMBA_DISABLE_JIT: "1"
+          HF_HUB_OFFLINE: "1"
+        run: '"$RUNNER_TEMP/package-env/bin/python" "$GITHUB_WORKSPACE/tools/check_installed_package.py"'

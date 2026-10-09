@@ -47,19 +47,13 @@ def polygons_to_label_coord(
 ) -> np.ndarray:
     """Render polygons to image given a shape.
 
-    Parameters
-    ----------
-        coord.shape : np.ndarray
-            Shape: (n_polys, n_rays)
-        shape : Tuple[int, int]
-            Shape of the output mask.
-        labels : np.ndarray, optional
-            Sorted indices of the centroids.
+    Args:
+        coord.shape (np.ndarray): Shape: (n_polys, n_rays)
+        shape: Shape of the output mask.
+        labels: Sorted indices of the centroids.
 
-    Returns
-    -------
-        np.ndarray:
-            Instance labelled mask. Shape: (H, W).
+    Returns:
+        Instance labelled mask. Shape: (H, W).
     """
     coord = np.asarray(coord)
     if labels is None:
@@ -86,19 +80,15 @@ def dist_to_coord(
 ) -> np.ndarray:
     """Convert list of distances and centroids from polar to cartesian coordinates.
 
-    Parameters
-    ----------
-        dist : np.ndarray
+    Args:
+        dist:
             The centerpoint pixels of the radial distance map. Shape (n_polys, n_rays).
-        points : np.ndarray
-            The centroids of the instances. Shape: (n_polys, 2).
-        scale_dist : Tuple[int, int], default=(1, 1)
-            Scaling factor.
+        points: The centroids of the instances. Shape: (n_polys, 2).
+        scale_dist: Scaling factor.
+            Defaults to (1, 1).
 
-    Returns
-    -------
-        np.ndarray:
-            Cartesian cooridnates of the polygons. Shape (n_polys, 2, n_rays).
+    Returns:
+        Cartesian cooridnates of the polygons. Shape (n_polys, 2, n_rays).
     """
     dist = np.asarray(dist)
     points = np.asarray(points)
@@ -146,26 +136,20 @@ def polygons_to_label(
 ) -> np.ndarray:
     """Convert distances and center points to instance labelled mask.
 
-    Parameters
-    ----------
-        dist : np.ndarray
+    Args:
+        dist:
             The centerpoint pixels of the radial distance map. Shape (n_polys, n_rays).
-        points : np.ndarray
-            The centroids of the instances. Shape: (n_polys, 2).
-        shape : Tuple[int, int]:
-            Shape of the output mask.
-        prob : np.ndarray, optional
-            The centerpoint pixels of the regressed distance transform.
+        points: The centroids of the instances. Shape: (n_polys, 2).
+        shape: Shape of the output mask.
+        prob: The centerpoint pixels of the regressed distance transform.
             Shape: (n_polys, n_rays).
-        thresh : float, default=-np.inf
-            Threshold for the regressed distance transform.
-        scale_dist : Tuple[int, int], default=(1, 1)
-            Scaling factor.
+        thresh: Threshold for the regressed distance transform.
+            Defaults to -np.inf.
+        scale_dist: Scaling factor.
+            Defaults to (1, 1).
 
-    Returns
-    -------
-        np.ndarray:
-            Instance labelled mask. Shape (H, W).
+    Returns:
+        Instance labelled mask. Shape (H, W).
     """
     dist = np.asarray(dist)
     points = np.asarray(points)
@@ -204,26 +188,23 @@ def post_proc_stardist(
     faster than the original version if `trim_bboxes` is set to True. The resulting
     segmentation is not an exact match but the differences are mostly neglible.
 
-    Parameters
-    ----------
-        dist_map : np.ndarray
-            Predicted distance transform. Shape: (H, W).
-        stardist_map : np.ndarray
-            Predicted radial distances. Shape: (n_rays, H, W).
-        score_thresh : float, default=0.4
-            Threshold for the regressed distance transform.
-        iou_thresh : float, default=0.4
-            Threshold for the non-maximum suppression.
-        trim_bboxes : bool, default=True
+    Args:
+        dist_map: Predicted distance transform. Shape: (H, W).
+        stardist_map: Predicted radial distances. Shape: (n_rays, H, W).
+        score_thresh: Threshold for the regressed distance transform.
+            Defaults to 0.4.
+        iou_thresh: Threshold for the non-maximum suppression.
+            Defaults to 0.4.
+        trim_bboxes:
             If True, The non-zero pixels are computed only from the cell contours
             which prunes down the pixel search space drastically.
-        normalize : bool, default=True
+            Defaults to True.
+        normalize:
             If True, the distance transform is normalized to the range 0-1.
+            Defaults to True.
 
-    Returns
-    -------
-        np.ndarray:
-            Instance labelled mask. Shape: (H, W).
+    Returns:
+        Instance labelled mask. Shape: (H, W).
     """
     if (
         not dist_map.ndim == 2
@@ -301,19 +282,14 @@ def post_proc_stardist_orig(
 
     NOTE: to use this the `stardist` package needs to be installed.
 
-    Parameters
-    ----------
-        dist_map : np.ndarray
-            Predicted distance transform. Shape: (H, W).
-        stardist_map : np.ndarray
-            Predicted radial distances. Shape: (n_rays, H, W).
-        thresh : float, default=0.4
-            Threshold for the regressed distance transform.
+    Args:
+        dist_map: Predicted distance transform. Shape: (H, W).
+        stardist_map: Predicted radial distances. Shape: (n_rays, H, W).
+        thresh: Threshold for the regressed distance transform.
+            Defaults to 0.4.
 
-    Returns
-    -------
-        np.ndarray:
-            Instance labelled mask. Shape: (H, W).
+    Returns:
+        Instance labelled mask. Shape: (H, W).
     """
     try:
         from stardist import non_maximum_suppression

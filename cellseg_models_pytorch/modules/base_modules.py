@@ -30,13 +30,10 @@ class Activation(nn.Module):
     def __init__(self, name: str, **kwargs) -> None:
         """Activation wrapper class.
 
-        Parameters:
-        -----------
-            name : str
-                Name of the activation method.
+        Args:
+            name: Name of the activation method.
 
-        Raises
-        ------
+        Raises:
             ValueError: if the activation method name is illegal.
         """
         super().__init__()
@@ -70,13 +67,10 @@ class Norm(nn.Module):
     def __init__(self, name: str, **kwargs) -> None:
         """Normalize wrapper class.
 
-        Parameters:
-        -----------
-            name : str
-                Name of the normalization method.
+        Args:
+            name: Name of the normalization method.
 
-        Raises
-        ------
+        Raises:
             ValueError: if the normalization method name is illegal.
         """
         super().__init__()
@@ -107,16 +101,13 @@ class Up(nn.Module):
     def __init__(self, name: str, scale_factor: int = 2, **kwargs) -> None:
         """Upsample wrapper class.
 
-        Parameters:
-        -----------
-            name : str
-                Name of the upsampling method. One of: 'bilinear', 'bicubic',
+        Args:
+            name: Name of the upsampling method. One of: 'bilinear', 'bicubic',
                 'fixed-unpool', 'conv_transpose', 'nearest'
-            scale_factor : int, default=2
-                Upsampling scale factor. scale_factor*(H, W)
+            scale_factor: Upsampling scale factor. scale_factor*(H, W)
+                Defaults to 2.
 
-        Raises
-        ------
+        Raises:
             ValueError: if the upsampling method name is illegal.
         """
         super().__init__()
@@ -161,13 +152,10 @@ class Conv(nn.Module):
     def __init__(self, name: str, **kwargs) -> None:
         """Convolution wrapper class.
 
-        Parameters:
-        -----------
-            name : str
-                Name of the convolution method.
+        Args:
+            name: Name of the convolution method.
 
-        Raises
-        ------
+        Raises:
             ValueError: if the convolution method name is illegal.
         """
         super().__init__()
@@ -195,13 +183,10 @@ class MultiHeadSelfAttention(nn.Module):
     def __init__(self, name: str, **kwargs) -> None:
         """Multi-head self-attention wrapper class.
 
-        Parameters:
-        -----------
-            name : str
-                Name of the mhsa method.
+        Args:
+            name: Name of the mhsa method.
 
-        Raises
-        ------
+        Raises:
             ValueError: if the mhsa method name is illegal.
         """
         super().__init__()

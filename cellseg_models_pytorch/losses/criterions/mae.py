@@ -22,16 +22,19 @@ class MAE(WeightedBaseLoss):
         Note:
             additionally apply spectral decoupling and edge weights to the loss matrix.
 
-        Parameters:
-            alpha (float, default=1e-4)
+        Args:
+            alpha:
                 Weight regulizer b/w [0,1]. In stardist repo, this is the parameter
                 'train_background_reg'.
-            apply_sd (bool, default=False):
+                Defaults to 1e-4.
+            apply_sd:
                 If True, applies Spectral decoupling regularization to the loss matrix.
-            apply_mask (bool, default=False):
+                Defaults to False.
+            apply_mask:
                 If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
-            edge_weight (float, default=none):
-                Weight that is added to object borders.
+                Defaults to False.
+            edge_weight: Weight that is added to object borders.
+                Defaults to none.
         """
         super().__init__(apply_sd, False, False, apply_mask, False, edge_weight)
         self.alpha = alpha
@@ -47,15 +50,13 @@ class MAE(WeightedBaseLoss):
     ) -> torch.Tensor:
         """Compute the masked MAE loss.
 
-        Parameters:
-            yhat (torch.Tensor):
-                The prediction map. Shape (B, C, H, W).
-            target (torch.Tensor):
-                the ground truth annotations. Shape (B, H, W).
-            target_weight (torch.Tensor, default=None):
-                The edge weight map. Shape (B, H, W).
-            mask (torch.Tensor, default=None):
-                The mask map. Shape (B, H, W).
+        Args:
+            yhat: The prediction map. Shape (B, C, H, W).
+            target: the ground truth annotations. Shape (B, H, W).
+            target_weight: The edge weight map. Shape (B, H, W).
+                Defaults to None.
+            mask: The mask map. Shape (B, H, W).
+                Defaults to None.
 
         Returns:
             torch.Tensor:

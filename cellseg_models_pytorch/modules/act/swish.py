@@ -42,24 +42,19 @@ class Swish(nn.Module):
     def __init__(self, inplace: bool = False, **kwargs) -> None:
         """Apply the element-wise swish function.
 
-        Parameters
-        ----------
-            inplace : bool, default=False
-                This is not used, exists only for compatibility.
+        Args:
+            inplace: This is not used, exists only for compatibility.
+                Defaults to False.
         """
         super().__init__()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         """Forward pass of swish activation.
 
-        Parameters
-        ----------
-            input : torch.Tensor
-                Input tensor. Can be of any shape (C, *)
+        Args:
+            input: Input tensor. Can be of any shape (C, *)
 
-        Returns
-        -------
-            torch.Tensor:
-                Activated output tensor. Shape same as input.
+        Returns:
+            Activated output tensor. Shape same as input.
         """
         return swish(input)

@@ -20,15 +20,11 @@ class TimmEncoder(nn.Module):
         Note:
             The input timm model should have a `forward_intermediates` method.
 
-        Parameters:
-            model_name (str):
-                Name of the timm model to use.
-            pretrained (bool):
-                Flag, whether to load pretrained weights.
-            out_indices (tuple):
-                Indices of the intermediate features to return.
-            extra_kwargs (dict):
-                Extra keyword arguments to pass to the timm model.
+        Args:
+            model_name: Name of the timm model to use.
+            pretrained: Flag, whether to load pretrained weights.
+            out_indices: Indices of the intermediate features to return.
+            extra_kwargs: Extra keyword arguments to pass to the timm model.
         """
         super().__init__()
         self.model_name = model_name

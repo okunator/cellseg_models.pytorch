@@ -9,10 +9,8 @@ class LayerNorm2d(nn.LayerNorm):
     def __init__(self, num_features: int, **kwargs) -> None:
         """Layernorm wrap for BCHW shaped tensors.
 
-        Parameters
-        ----------
-            num_features : int
-                Number of input channels/features.
+        Args:
+            num_features: Number of input channels/features.
         """
         super().__init__(num_features)
 

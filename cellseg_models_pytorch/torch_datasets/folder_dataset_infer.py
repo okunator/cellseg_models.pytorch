@@ -25,21 +25,17 @@ class FolderDatasetInfer(Dataset):
 
         NOTE: loads only images.
 
-        Parameters
-        ----------
-            path : str | Path
-                Path to the folder containing image files.
-            pattern: str, default="*"
+        Args:
+            path (str | Path): Path to the folder containing image files.
+            pattern:
                 File pattern for filtering only the files that contain the pattern.
-            transform : Callable, optional
-                Transform to be applied to the images.
-            n_images : int, optional
-                First n-number of images used from the folder.
+                Defaults to "*".
+            transform (Callable): Transform to be applied to the images.
+            n_images: First n-number of images used from the folder.
 
-        Raises
-        ------
-            ValueError if `path` does not exist.
-            ValueError if `path` is not a folder.
+        Raises:
+            ValueError: if `path` does not exist.
+            ValueError: if `path` is not a folder.
         """
         super().__init__()
 

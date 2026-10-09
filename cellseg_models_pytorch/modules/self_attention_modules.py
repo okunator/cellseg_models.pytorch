@@ -29,38 +29,35 @@ class SelfAttention(nn.Module):
         Input Shape: (B, H'*W', query_dim).
         Output Shape: (B, H'*W', query_dim).
 
-        Parameters
-        ----------
-            query_dim : int
+        Args:
+            query_dim:
                 The number of channels in the query. Typically: num_heads*head_dim
-            name : str
-                Name of the attention method. One of ("exact", "linformer").
-            how : str, default="basic"
-                How to compute the self-attention matrix.
+            name: Name of the attention method. One of ("exact", "linformer").
+            how: How to compute the self-attention matrix.
                 One of ("basic", "flash", "slice", "memeff", "slice-memeff").
                 "basic": the normal O(N^2) self attention.
                 "flash": the flash attention (by xformers library),
                 "slice": batch sliced attention operation to save mem.
                 "memeff": xformers.memory_efficient_attention.
                 "slice-memeff": Conmbine slicing and memory_efficient_attention.
-            cross_attention_dim : int, optional
+                Defaults to "basic".
+            cross_attention_dim:
                 Number of channels in the context tensor. Cross attention combines
                 asymmetrically two separate embeddings (context and input embeddings).
                 E.g. passage from transformer encoder to transformer decoder. If this is
                 set to None, no cross attention is applied.
-            num_heads : int, default=8
-                Number of heads for multi-head attention.
-            head_dim : int, default=64
-                Number of output channels per head.
-            dropout : float, default=0.0
-                Dropout probability.
-            bias : bool, default=False
-                Flag to set bias for Q, K and V.
-            slice_size : int, default=4
-                Slice size for sliced self-attention. This is used only if
+            num_heads: Number of heads for multi-head attention.
+                Defaults to 8.
+            head_dim: Number of output channels per head.
+                Defaults to 64.
+            dropout: Dropout probability.
+                Defaults to 0.0.
+            bias: Flag to set bias for Q, K and V.
+                Defaults to False.
+            slice_size: Slice size for sliced self-attention. This is used only if
                 `self_attention = "slice"`.
-            **kwargs:
-                Extra key-word arguments for the MHSA-module
+                Defaults to 4.
+            **kwargs: Extra key-word arguments for the MHSA-module
         """
         super().__init__()
         self.out_channels = query_dim
@@ -96,19 +93,15 @@ class SelfAttention(nn.Module):
         from that. If `context=None`, key and value is computed from the input
         features. This allows cross-attention.
 
-        Parameters
-        ----------
-            features : torch.Tensor
+        Args:
+            features:
                 Input tensor. Usually a projection of the input features into the shape
                 of a query tensor. Shape: (B, H*W, proj_dim).
-            context : torch.Tensor, optional
-                A context tensor. Same shape as `features`.
+            context: A context tensor. Same shape as `features`.
 
-        Returns
-        -------
-            Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-                The query, key & value tensors.
-                Shaped: (B*num_heads, H*W, proj_dim//num_heads).
+        Returns:
+            The query, key & value tensors.
+            Shaped: (B*num_heads, H*W, proj_dim//num_heads).
         """
         query = self.to_q(features)
         context = context if context is not None else features
@@ -131,16 +124,12 @@ class SelfAttention(nn.Module):
 
         Step 2. Then bake the heads dim into batch dimension.
 
-        Parameters
-        ----------
-            x : torch.Tensor
-                Input tensor. Either, the query, key or value tensor.
+        Args:
+            x: Input tensor. Either, the query, key or value tensor.
                 Shape: (B, H*W, proj_dim).
 
-        Returns
-        -------
-            torch.Tensor
-                A reshaped input of shape: (B*num_heads, H*W, proj_dim//num_heads).
+        Returns:
+            A reshaped input of shape: (B*num_heads, H*W, proj_dim//num_heads).
         """
         B, seq_len, proj_dim = x.shape
         x = x.reshape(B, seq_len, self.num_heads, proj_dim // self.num_heads)
@@ -153,16 +142,13 @@ class SelfAttention(nn.Module):
     def _batch2heads(self, x: torch.Tensor) -> torch.Tensor:
         """Reshape the attention scores back to (B, H*W, proj_dim).
 
-        Parameters
-        ----------
-            x : torch.Tensor
+        Args:
+            x:
                 Input tensor. The attention scores from the self attention computation.
                 Shape: (B*num_heads, H*W, proj_dim//num_heads).
 
-        Returns
-        -------
-            torch.Tensor:
-                A reshaped attention score tensor of shape: (B, H*W, proj_dim).
+        Returns:
+            A reshaped attention score tensor of shape: (B, H*W, proj_dim).
         """
         # num_heads = self.num_heads
         B, seq_len, head_out_channels = x.shape
@@ -217,36 +203,34 @@ class SelfAttentionBlock(nn.Module):
         Input Shape: (B, H'*W', query_dim).
         Output Shape: (B, H'*W', query_dim).
 
-        Parameters
-        ----------
-            name : str
-                Name of the attention method. One of ("exact", "linformer").
-            how : str, default="basic"
-                How to compute the self-attention matrix.
+        Args:
+            name: Name of the attention method. One of ("exact", "linformer").
+            how: How to compute the self-attention matrix.
                 One of ("basic", "flash", "slice", "memeff", "slice-memeff").
                 "basic": the normal O(N^2) self attention.
                 "flash": the flash attention (by xformers library),
                 "slice": batch sliced attention operation to save mem.
                 "memeff": xformers.memory_efficient_attention.
                 "slice-memeff": Conmbine slicing and memory_efficient_attention.
-            query_dim : int
+                Defaults to "basic".
+            query_dim:
                 The number of channels in the query. Typically: num_heads*head_dim
-            cross_attention_dim : int, optional
+            cross_attention_dim:
                 Number of channels in the context tensor. Cross attention combines
                 asymmetrically two separate embeddings (context and input embeddings).
                 E.g. passage from transformer encoder to transformer decoder. If this is
                 set to None, no cross attention is applied.
-            num_heads : int, default=8
-                Number of heads for multi-head attention.
-            head_dim : int, default=64
-                Number of output channels per head.
-            dropout : float, default=0.0
-                Dropout probability.
-            bias : bool, default=False
-                Flag to set bias for Q, K and V.
-            slice_size : int, default=4
-                Slice size for sliced self-attention. This is used only if
+            num_heads: Number of heads for multi-head attention.
+                Defaults to 8.
+            head_dim: Number of output channels per head.
+                Defaults to 64.
+            dropout: Dropout probability.
+                Defaults to 0.0.
+            bias: Flag to set bias for Q, K and V.
+                Defaults to False.
+            slice_size: Slice size for sliced self-attention. This is used only if
                 `self_attention = "slice"`.
+                Defaults to 4.
         """
         super().__init__()
 

@@ -18,17 +18,17 @@ class Encoder(nn.Module):
     ) -> None:
         """Wrap timm encoders to one class.
 
-        Parameters:
-            timm_encoder_name (str):
+        Args:
+            timm_encoder_name:
                 Name of the encoder. If the name is in `TR_ENCODERS.keys()`, a transformer
                 will be used. Otherwise, a timm encoder will be used.
-            timm_encoder_out_indices (Tuple[int, ...]):
-                Indices of the output features.
-            timm_encoder_pretrained (bool, default=True):
-                If True, load pretrained timm weights.
-            timm_extra_kwargs (Dict[str, Any], default={}):
+            timm_encoder_out_indices: Indices of the output features.
+            timm_encoder_pretrained: If True, load pretrained timm weights.
+                Defaults to True.
+            timm_extra_kwargs:
                 Key-word arguments for any `timm` based encoder. These arguments are
                 used in `timm.create_model(**kwargs)` function call.
+                Defaults to {}.
         """
         super().__init__()
 

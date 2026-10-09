@@ -30,26 +30,21 @@ class LinformerAttention(BaseSelfAttention):
         `memory_efficient_attention`, linformer needs more memory for long sequences
         (due to the linear layers) than computing exact `memory_efficient_attention`.
 
-        Parameters
-        ----------
-            seq_len : int
-                The length of the sequence. (For per-pixel patches H*W).
-            head_dim : int
-                Out dim per attention head.
-            num_heads : int
-                Number of heads.
-            k : int, optional
-                Divisor for key and value matrices to get low-rank attention matrix.
-            how : str, default="basic"
-                How to compute the self-attention matrix.
-                One of ("basic", "flash", "slice", "memeff", "slice_memeff").
-                "basic": the normal O(N^2) self attention.
-                "flash": the flash attention (by xformers library),
-                "slice": batch sliced attention operation to save mem.
-                "memeff": xformers.memory_efficient_attention.
-                "slice_memeff": Conmbine slicing and memory_efficient_attention.
-            slice_size, int, optional
-                The size of the slice. Used only if `how in ('slice', 'slice_memeff)`.
+        Args:
+            seq_len: The length of the sequence. (For per-pixel patches H*W).
+            head_dim: Out dim per attention head.
+            num_heads: Number of heads.
+            k: Divisor for key and value matrices to get low-rank attention matrix.
+            how: How to compute the self-attention matrix.
+                    One of ("basic", "flash", "slice", "memeff", "slice_memeff").
+                    "basic": the normal O(N^2) self attention.
+                    "flash": the flash attention (by xformers library),
+                    "slice": batch sliced attention operation to save mem.
+                    "memeff": xformers.memory_efficient_attention.
+                    "slice_memeff": Conmbine slicing and memory_efficient_attention.
+                slice_size, int, optional
+                    The size of the slice. Used only if `how in ('slice', 'slice_memeff)`.
+                Defaults to "basic".
         """
         super().__init__(
             head_dim=head_dim,

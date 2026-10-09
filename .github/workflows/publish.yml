@@ -3,33 +3,37 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
-    branches: [main]
+  # Manual runs validate the package but never publish it.
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  build-and-publish:
+  validate:
+    uses: ./.github/workflows/tests.yml
+
+  publish:
+    if: github.event_name == 'release'
+    needs: validate
     runs-on: ubuntu-latest
-
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/p/cellseg-models-pytorch
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-
-      - name: Setup Python
-        uses: actions/setup-python@v2
+      - name: Download verified distributions
+        uses: actions/download-artifact@v8
         with:
-          python-version: "3.10"
+          name: package-distributions
+          path: dist
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: latest
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Configure poetry
-        env:
-          pypi_token: ${{ secrets.PYPI_TOKEN }}
-        run: poetry config pypi-token.pypi $pypi_token
-
-      - name: Build and publish
-        run: poetry publish --build
+      - name: Publish verified distributions
+        uses: pypa/gh-action-pypi-publish@release/v1

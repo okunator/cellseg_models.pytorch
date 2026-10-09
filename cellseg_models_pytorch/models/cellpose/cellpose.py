@@ -28,17 +28,16 @@ class CellPose(BaseModelInst):
         Cellpose:
         - https://www.nature.com/articles/s41592-020-01018-x
 
-        Parameters:
-            n_nuc_classes (int):
-                Number of nuclei type classes.
-            enc_name (str, default="efficientnet_b5"):
-                Name of the pytorch-image-models encoder.
-            enc_pretrain (bool, default=True):
-                Whether to use pretrained weights in the encoder.
-            enc_freeze (bool, default=False):
-                Freeze encoder weights for training.
-            device (torch.device, default=torch.device("cuda")):
-                Device to run the model on. Default is "cuda".
+        Args:
+            n_nuc_classes: Number of nuclei type classes.
+            enc_name: Name of the pytorch-image-models encoder.
+                Defaults to "efficientnet_b5".
+            enc_pretrain: Whether to use pretrained weights in the encoder.
+                Defaults to True.
+            enc_freeze: Freeze encoder weights for training.
+                Defaults to False.
+            device: Device to run the model on. Default is "cuda".
+                Defaults to torch.device("cuda").
         """
         super().__init__()
         self.model = cellpose_nuclei(

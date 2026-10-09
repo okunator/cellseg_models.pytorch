@@ -18,14 +18,12 @@ class LayerScale(nn.Module):
         NOTE: Copied from timm vision_transformer.py
 
 
-        Parameters
-        ----------
-            dim : int
-                The dimensionality of the input.
-            init_values : float, default=1e-5
-                Initialization values for the learnable weights.
-            inplace : bool, default=False
-                Flag, whether the scaling is an inplace operation.
+        Args:
+            dim: The dimensionality of the input.
+            init_values: Initialization values for the learnable weights.
+                Defaults to 1e-5.
+            inplace: Flag, whether the scaling is an inplace operation.
+                Defaults to False.
         """
         super().__init__()
         self.dim = dim
@@ -52,17 +50,15 @@ class ChannelPool(nn.Module):
     ) -> None:
         """Channel pooling/downsampling module for convenience.
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels.
-            out_channels : int
-                Number of output channels.
-            normalization : str, default="bn":
-                Normalization method.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            normalization: Normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", "lrn", None
-            convolution : str, default="conv"
+                Defaults to "bn".
+            convolution:
                 The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
+                Defaults to "conv".
         """
         super().__init__()
         self.in_channels = in_channels
@@ -92,12 +88,9 @@ class StyleBlock(nn.Module):
         Cellpose:
         - https://www.nature.com/articles/s41592-020-01018-x
 
-        Parameters
-        ----------
-            style_channels : int
-                Number of style vector channels.
-            out_channels : int
-                Number of output channels.
+        Args:
+            style_channels: Number of style vector channels.
+            out_channels: Number of output channels.
         """
         super().__init__()
         self.out_channels = out_channels
@@ -128,22 +121,18 @@ class StyleReshape(nn.Module):
         Takes in a feature map (B, C, H, W). Then averages, and normalizes it
         into to a style feature vector.
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels.
-            style_channels : int
-                Number of style vector channels.
-            normalization : str, default="bn":
-                Normalization method.
+        Args:
+            in_channels: Number of input channels.
+            style_channels: Number of style vector channels.
+            normalization: Normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", "lrn", None
-            convolution : str, default="conv"
+                Defaults to "bn".
+            convolution:
                 The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
+                Defaults to "conv".
 
-        Returns
-        -------
-            torch.Tensor:
-                Style vector. Shape: (B, C).
+        Returns:
+            torch.Tensor: Style vector. Shape: (B, C).
         """
         super().__init__()
         self.flatten = nn.Flatten()

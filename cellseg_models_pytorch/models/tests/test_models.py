@@ -14,7 +14,7 @@ from cellseg_models_pytorch.models.instanseg.instanseg_unet import instanseg_nuc
 def test_cppnet_fwdbwd(enc_name):
     n_rays = 3
     x = torch.rand([1, 3, 64, 64])
-    model = cppnet_nuclei(n_rays, 3, enc_name=enc_name)
+    model = cppnet_nuclei(n_rays, 3, enc_name=enc_name, enc_pretrain=False)
 
     y = model(x)
     y["nuc"].aux_map.mean().backward()
@@ -46,7 +46,7 @@ def test_cellvit_fwdbwd(enc_name):
 @pytest.mark.parametrize("enc_name", ["resnet18", "samvit_base_patch16"])
 def test_hovernet_fwdbwd(enc_name):
     x = torch.rand([1, 3, 64, 64])
-    model = hovernet_nuclei(3, enc_name=enc_name)
+    model = hovernet_nuclei(3, enc_name=enc_name, enc_pretrain=False)
 
     y = model(x)
     y["nuc"].aux_map.mean().backward()
@@ -59,7 +59,7 @@ def test_hovernet_fwdbwd(enc_name):
 def test_stardist_fwdbwd(enc_name):
     n_rays = 3
     x = torch.rand([1, 3, 64, 64])
-    model = stardist_nuclei(n_rays, 3, enc_name=enc_name)
+    model = stardist_nuclei(n_rays, 3, enc_name=enc_name, enc_pretrain=False)
 
     y = model(x)
     y["nuc"].aux_map.mean().backward()
@@ -71,7 +71,7 @@ def test_stardist_fwdbwd(enc_name):
 @pytest.mark.parametrize("enc_name", ["resnet18", "samvit_base_patch16"])
 def test_cellpose_fwdbwd(enc_name):
     x = torch.rand([1, 3, 64, 64])
-    model = cellpose_nuclei(3, enc_name=enc_name)
+    model = cellpose_nuclei(3, enc_name=enc_name, enc_pretrain=False)
 
     y = model(x)
     y["nuc"].aux_map.mean().backward()
@@ -84,7 +84,7 @@ def test_cellpose_fwdbwd(enc_name):
 def test_omnipose_fwdbwd(enc_name):
     x = torch.rand([1, 3, 64, 64])
 
-    model = omnipose_nuclei(3, enc_name=enc_name)
+    model = omnipose_nuclei(3, enc_name=enc_name, enc_pretrain=False)
 
     y = model(x)
     y["nuc"].aux_map.mean().backward()

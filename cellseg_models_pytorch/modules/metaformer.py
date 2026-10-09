@@ -29,133 +29,126 @@ class MetaFormer(nn.Module):
         Input shape: (B, in_channels, H, W)
         Output shape: (B, out_channels, H, W)
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels.
-            embed_kwargs : Dict[str, Any]
-                Key-word arguments for the patch embedding block.
-            mixer_kwargs : Dict[str, Any]
-                Key-word arguments for the token-mixer block.
-            mlp_kwargs : Dict[str, Any]
-                Key-word arguments for the final Mlp-block.
-            out_channels : int, optional
-                Number of output channels.
-            layer_scale : bool, default=False
-                Flag, whether to use layer-scaling.
-            dropout : float, default=0.0
-                Drop-path probaility.
+        Args:
+            in_channels: Number of input channels.
+            embed_kwargs: Key-word arguments for the patch embedding block.
+            mixer_kwargs: Key-word arguments for the token-mixer block.
+            mlp_kwargs: Key-word arguments for the final Mlp-block.
+            out_channels: Number of output channels.
+            layer_scale: Flag, whether to use layer-scaling.
+                Defaults to False.
+            dropout: Drop-path probaility.
+                Defaults to 0.0.
 
-        Examples
-        --------
-        MetaFormer with exact memory-efficient self-attention:
-        >>> import torch
-        >>> import torch.nn as nn
+        Examples:
+            MetaFormer with exact memory-efficient self-attention:
+            >>> import torch
+            >>> import torch.nn as nn
 
-        >>> in_channels = 3
-        >>> head_dim = 64
-        >>> num_heads = 8
-        >>> query_dim = head_dim*num_heads
+            >>> in_channels = 3
+            >>> head_dim = 64
+            >>> num_heads = 8
+            >>> query_dim = head_dim*num_heads
 
-        >>> # patch embedding kwargs
-        >>> embed_kwargs = {
-                "in_channels": 3,
-                "kernel_size": 7,
-                "stride": 4,
-                "pad": 2,
-                "head_dim": head_dim,
-                "num_heads": num_heads,
-            }
+            >>> # patch embedding kwargs
+            >>> embed_kwargs = {
+                    "in_channels": 3,
+                    "kernel_size": 7,
+                    "stride": 4,
+                    "pad": 2,
+                    "head_dim": head_dim,
+                    "num_heads": num_heads,
+                }
 
-        >>> # token-mixer kwargs
-        >>> mixer_kwargs = {
-                "token_mixer": "self-attention",
-                "normalization": "ln",
-                "residual": True,
+            >>> # token-mixer kwargs
+            >>> mixer_kwargs = {
+                    "token_mixer": "self-attention",
+                    "normalization": "ln",
+                    "residual": True,
+                    "norm_kwargs": {
+                        "normalized_shape": query_dim
+                    },
+                    "mixer_kwargs": {
+                        "query_dim": query_dim,
+                        "name": "exact",
+                        "how": "memeff",
+                        "cross_attention_dim": None,
+                    }
+                }
+
+            >>> # mlp-kwargs
+            >>> mlp_kwargs = {
+                    "in_channels": query_dim,
+                    "norm_kwargs": {"normalized_shape": query_dim}
+                }
+
+            >>> # init metaformer
+            >>> metaformer = MetaFormer(
+                    in_channels=in_channels,
+                    embed_kwargs=embed_kwargs,
+                    mixer_kwargs=mixer_kwargs,
+                    mlp_kwargs=mlp_kwargs,
+                    layer_scale=True,
+                    dropout=0.1
+                )
+
+            >>> x = torch.rand([8, 3, 256, 256])
+            >>> print(metaformer(x).shape)
+            >>> # torch.Size([8, 4096, 512])
+
+
+            MetaFormer with multi-scale convolutional attention.:
+            >>> import torch
+            >>> import torch.nn as nn
+
+            >>> in_channels = 3
+            >>> head_dim = 64
+            >>> num_heads = 8
+            >>> query_dim = head_dim*num_heads
+            >>> out_channels = 128
+
+            >>> # patch embedding kwargs
+            >>> embed_kwargs = {
+                    "in_channels": 3,
+                    "kernel_size": 7,
+                    "stride": 4,
+                    "pad": 2,
+                    "head_dim": head_dim,
+                    "num_heads": num_heads,
+                }
+
+            >>> # token-mixer kwargs
+            >>> mixer_kwargs = {
+                "token_mixer": "mscan",
+                "normalization": "bn",
                 "norm_kwargs": {
-                    "normalized_shape": query_dim
+                    "num_features": query_dim,
                 },
-                "mixer_kwargs": {
-                    "query_dim": query_dim,
-                    "name": "exact",
-                    "how": "memeff",
-                    "cross_attention_dim": None,
+                "mixer_kwargs":{
+                    "in_channels": query_dim,
                 }
             }
 
-        >>> # mlp-kwargs
-        >>> mlp_kwargs = {
-                "in_channels": query_dim,
-                "norm_kwargs": {"normalized_shape": query_dim}
-            }
+            >>> # mlp-kwargs
+            >>> mlp_kwargs = {
+                    "in_channels": query_dim,
+                    "norm_kwargs": {"normalized_shape": query_dim}
+                }
 
-        >>> # init metaformer
-        >>> metaformer = MetaFormer(
-                in_channels=in_channels,
-                embed_kwargs=embed_kwargs,
-                mixer_kwargs=mixer_kwargs,
-                mlp_kwargs=mlp_kwargs,
-                layer_scale=True,
-                dropout=0.1
-            )
+            >>> # init metaformer
+            >>> metaformer = MetaFormer(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    embed_kwargs=embed_kwargs,
+                    mixer_kwargs=mixer_kwargs,
+                    mlp_kwargs=mlp_kwargs,
+                    layer_scale=True,
+                    dropout=0.1
+                )
 
-        >>> x = torch.rand([8, 3, 256, 256])
-        >>> print(metaformer(x).shape)
-        >>> # torch.Size([8, 4096, 512])
-
-
-        MetaFormer with multi-scale convolutional attention.:
-        >>> import torch
-        >>> import torch.nn as nn
-
-        >>> in_channels = 3
-        >>> head_dim = 64
-        >>> num_heads = 8
-        >>> query_dim = head_dim*num_heads
-        >>> out_channels = 128
-
-        >>> # patch embedding kwargs
-        >>> embed_kwargs = {
-                "in_channels": 3,
-                "kernel_size": 7,
-                "stride": 4,
-                "pad": 2,
-                "head_dim": head_dim,
-                "num_heads": num_heads,
-            }
-
-        >>> # token-mixer kwargs
-        >>> mixer_kwargs = {
-            "token_mixer": "mscan",
-            "normalization": "bn",
-            "norm_kwargs": {
-                "num_features": query_dim,
-            },
-            "mixer_kwargs":{
-                "in_channels": query_dim,
-            }
-        }
-
-        >>> # mlp-kwargs
-        >>> mlp_kwargs = {
-                "in_channels": query_dim,
-                "norm_kwargs": {"normalized_shape": query_dim}
-            }
-
-        >>> # init metaformer
-        >>> metaformer = MetaFormer(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                embed_kwargs=embed_kwargs,
-                mixer_kwargs=mixer_kwargs,
-                mlp_kwargs=mlp_kwargs,
-                layer_scale=True,
-                dropout=0.1
-            )
-
-        >>> x = torch.rand([8, 3, 256, 256])
-        >>> print(metaformer(x).shape)
-        >>> # torch.Size([8, 128, 256, 256])
+            >>> x = torch.rand([8, 3, 256, 256])
+            >>> print(metaformer(x).shape)
+            >>> # torch.Size([8, 128, 256, 256])
         """
         super().__init__()
         self.out_channels = out_channels if out_channels is not None else in_channels

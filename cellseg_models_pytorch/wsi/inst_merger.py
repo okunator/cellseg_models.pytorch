@@ -21,10 +21,9 @@ class InstMerger:
     ) -> None:
         """Merge instances at the boundaries of bbox coordinates.
 
-        Parameters:
-            gdf (gpd.GeoDataFrame):
-                The GeoDataFrame containing the non-merged instances.
-            coordinates (List[Tuple[int, int, int, int]]):
+        Args:
+            gdf: The GeoDataFrame containing the non-merged instances.
+            coordinates:
                 The bounding box coordinates from `reader.get_tile_coordinates()`.
         """
         # Convert xywh coordinates to bounding box polygons
@@ -37,13 +36,13 @@ class InstMerger:
     ) -> Union[gpd.GeoDataFrame, None]:
         """Merge the instances at the image boundaries.
 
-        Parameters:
-            dst (str):
-                The destination directory to save the merged instances.
+        Args:
+            dst: The destination directory to save the merged instances.
                 If None, the merged GeoDataFrame is returned.
-            simplify_level (int, default=1):
+            simplify_level:
                 The level of simplification to apply to the merged instances.
-            precision (int, optional):
+                Defaults to 1.
+            precision:
                 The precision level to apply to the merged instances. If None, no rounding
                 is applied.
 

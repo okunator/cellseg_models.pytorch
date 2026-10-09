@@ -61,66 +61,79 @@ class CellPoseUnet(nn.ModuleDict):
             - In the original implementation, all the outputs originate from one head,
               here each output has a distinct segmentation head.
 
-        Parameters:
-            decoders (Tuple[str, ...]):
+        Args:
+            decoders:
                 Names of the decoder branches of this network. E.g. ("cellpose", "sem")
-            heads (Dict[str, Dict[str, int]]):
+            heads:
                 Names of the decoder branches (has to match `decoders`) mapped to dicts
                  of output name - number of output classes. E.g.
                 {"cellpose": {"type": 4, "cellpose": 2}, "sem": {"sem": 5}}
-            depth (int, default=4):
+            depth:
                 The depth of the encoder. I.e. Number of returned feature maps from
                 the encoder. Maximum depth = 5.
-            out_channels (Tuple[int, ...], default=(256, 128, 64, 32)):
-                Out channels for each decoder stage.
-            layer_depths (Tuple[int, ...], default=(4, 4, 4, 4)):
-                The number of conv blocks at each decoder stage.
-            style_channels (int, default=256):
+                Defaults to 4.
+            out_channels: Out channels for each decoder stage.
+                Defaults to (256, 128, 64, 32).
+            layer_depths: The number of conv blocks at each decoder stage.
+                Defaults to (4, 4, 4, 4).
+            style_channels:
                 Number of style vector channels. If None, style vectors are ignored.
-            enc_name (str, default="resnet50"):
-                Name of the encoder. See timm docs for more info.
-            enc_pretrain (bool, default=True):
-                Whether to use imagenet pretrained weights in the encoder.
-            enc_freeze (bool, default=False):
-                Freeze encoder weights for training.
-            enc_out_indices (Tuple[int, ...], default=None):
+                Defaults to 256.
+            enc_name: Name of the encoder. See timm docs for more info.
+                Defaults to "resnet50".
+            enc_pretrain: Whether to use imagenet pretrained weights in the encoder.
+                Defaults to True.
+            enc_freeze: Freeze encoder weights for training.
+                Defaults to False.
+            enc_out_indices:
                 Indices of the output features from the encoder. If None, indices are
                 set to `range(len(depth))`
-            upsampling (str, default="fixed-unpool"):
+                Defaults to None.
+            upsampling:
                 The upsampling method. One of: "fixed-unpool", "bilinear", "nearest",
                 "conv_transpose", "bicubic"
-            long_skip (str, default="unet"):
+                Defaults to "fixed-unpool".
+            long_skip:
                 long skip method. One of: "unet", "unetpp", "unet3p", "unet3p-lite", None
-            merge_policy (str, default="sum"):
-                The long skip merge policy. One of: "sum", "cat"
-            short_skip (str, default="basic"):
+                Defaults to "unet".
+            merge_policy: The long skip merge policy. One of: "sum", "cat"
+                Defaults to "sum".
+            short_skip:
                 The name of the short skip method. One of: "residual", "dense", "basic"
-            normalization (str, default="bn"):
+                Defaults to "basic".
+            normalization:
                 Normalization method. One of: "bn", "bcn", "gn", "in", "ln", None
-            activation (str, default="relu"):
+                Defaults to "bn".
+            activation:
                 Activation method. One of: "mish", "swish", "relu", "relu6", "rrelu",
                 "selu", "celu", "gelu", "glu", "tanh", "sigmoid", "silu", "prelu",
                 "leaky-relu", "elu", "hardshrink", "tanhshrink", "hardsigmoid"
-            convolution (str, default="conv"):
+                Defaults to "relu".
+            convolution:
                 The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-            preactivate (bool, default=True):
-                If True, normalization will be applied before convolution.
-            attention (str, default=None):
-                Attention method. One of: "se", "scse", "gc", "eca", None
-            preattend (bool, default=False):
+                Defaults to "conv".
+            preactivate: If True, normalization will be applied before convolution.
+                Defaults to True.
+            attention: Attention method. One of: "se", "scse", "gc", "eca", None
+                Defaults to None.
+            preattend:
                 If True, Attention is applied at the beginning of forward pass.
-            out_size (int, default=None):
+                Defaults to False.
+            out_size:
                 If specified, the output size of the model will be (out_size, out_size).
                 I.e. the outputs will be interpolated to this size.
-            encoder_kws (Dict[str, Any], default=None):
+                Defaults to None.
+            encoder_kws:
                 Extra keyword arguments for the encoder. See timm docs for more info.
-            skip_kws (Dict[str, Any], default=None):
-                Extra keyword arguments for the skip-connection module.
-            stem_skip_kws (Dict[str, Any], default=None):
+                Defaults to None.
+            skip_kws: Extra keyword arguments for the skip-connection module.
+                Defaults to None.
+            stem_skip_kws:
                 Extra keyword arguments for the stem skip-connection module.
-            inst_key (str, default="type"):
-                The key for the model output that will be used in the instance
+                Defaults to None.
+            inst_key: The key for the model output that will be used in the instance
                 segmentation post-processing pipeline as the binary segmentation result.
+                Defaults to "type".
         """
         super().__init__()
         self.inst_key = inst_key
@@ -190,14 +203,15 @@ class CellPoseUnet(nn.ModuleDict):
     def forward(self, x: torch.Tensor, return_pred_only: bool = True) -> Dict[str, Any]:
         """Forward pass of Cellpose U-net.
 
-        Parameters:
             x (torch.Tensor):
                 Input image batch. Shape: (B, C, H, W).
             return_pred_only (bool, default=True):
                 If True, only the dense prediction maps are returned. If False, the
                 encoder features and decoder features are also returned.
 
-        Returns: Dict[str, Any]:
+
+        Args:
+            Returns (Dict[str, Any]):
                 The output of the model. The keys of the dict are:
                     - "nuc": SoftInstanceOutput(type_map, aux_map, Optional[binary_map]).
                     - "cyto": SoftInstanceOutput(type_map, aux_map, Optional[binary_map]).
@@ -229,11 +243,9 @@ def cellpose_nuclei(n_nuc_classes: int, **kwargs) -> nn.Module:
     Cellpose:
     - https://www.nature.com/articles/s41592-020-01018-x
 
-    Parameters:
-        n_nuc_classes (int):
-            Number of nuclei type classes.
-        **kwargs:
-            Arbitrary key word args for the CellPoseUnet class.
+    Args:
+        n_nuc_classes: Number of nuclei type classes.
+        **kwargs: Arbitrary key word args for the CellPoseUnet class.
 
     Returns:
         nn.Module: The initialized Cellpose U-net model.
@@ -253,11 +265,9 @@ def omnipose_nuclei(n_nuc_classes: int, **kwargs) -> nn.Module:
     Omnipose:
     - https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
 
-    Parameters:
-        n_nuc_classes (int):
-            Number of nuclei type classes.
-        **kwargs:
-            Arbitrary key word args for the CellPoseUnet class.
+    Args:
+        n_nuc_classes: Number of nuclei type classes.
+        **kwargs: Arbitrary key word args for the CellPoseUnet class.
 
     Returns:
         nn.Module: The initialized Cellpose U-net model.

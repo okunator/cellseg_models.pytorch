@@ -37,49 +37,57 @@ class ConvLayer(nn.ModuleDict):
         Optional:
             - add a style vector to the output at the end of each conv block (Cellpose)
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels.
-            out_channels : int
-                Number of output channels.
-            n_blocks : int, default=2
-                Number of ConvBlocks used in this layer.
-            layer_residual : bool, default=False
-                Apply a layer level residual skip. I.e x + layer(x)
-            style_channels : int, default=None
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            n_blocks: Number of ConvBlocks used in this layer.
+                Defaults to 2.
+            layer_residual: Apply a layer level residual skip. I.e x + layer(x)
+                Defaults to False.
+            style_channels:
                 Number of style vector channels. If None, style vectors are ignored.
-            short_skip : str, default="residual"
+                Defaults to None.
+            short_skip:
                 The name of the short skip method. One of: "residual", "dense", "basic"
-            expand_ratios : Tuple[float, ...], default=(1.0, 1.0):
+                Defaults to "residual".
+            expand_ratios (Tuple[float, ...]):
                 Expansion/Squeeze ratios for the out channels of each conv block.
-            block_types : Tuple[str, ...], default=("basic", "basic")
+                Defaults to (1.0, 1.0).
+            block_types:
                 The name of the conv-blocks. Length of the tuple has to equal `n_blocks`
                 One of: "basic". "mbconv", "fmbconv" "dws", "bottleneck".
-            normalizations : Tuple[str, ...], default=("bn", "bn"):
+                Defaults to ("basic", "basic").
+            normalizations:
                 Normalization methods. One of: "bn", "bcn", "gn", "in", "ln", "lrn"
-            activations : Tuple[str, ...], default=("relu", "relu")
+                Defaults to ("bn", "bn").
+            activations:
                 Activation methods. One of: "mish", "swish", "relu", "relu6", "rrelu",
                 "selu", "celu", "gelu", "glu", "tanh", "sigmoid", "silu", "prelu",
                 "leaky-relu", "elu", "hardshrink", "tanhshrink", "hardsigmoid"
-            convolutions : Tuple[str, ...], default=("conv", "conv")
+                Defaults to ("relu", "relu").
+            convolutions:
                 The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-            preactivates : Tuple[bool, ...], default=(False, False)
-                Pre-activations flags for the conv-blocks.
-            kernel_sizes : Tuple[int, ...], default=(3, 3)
-                The size of the convolution kernels in each conv block.
-            groups : int, default=(1, 1)
+                Defaults to ("conv", "conv").
+            preactivates: Pre-activations flags for the conv-blocks.
+                Defaults to (False, False).
+            kernel_sizes: The size of the convolution kernels in each conv block.
+                Defaults to (3, 3).
+            groups (int):
                 Number of groups for the kernels in each convolution blocks.
-            biases : bool, default=(True, True)
-                Include bias terms in the convolution blocks.
-            attentions : Tuple[str, ...], default=(None, None)
+                Defaults to (1, 1).
+            biases (bool): Include bias terms in the convolution blocks.
+                Defaults to (True, True).
+            attentions:
                 Attention method. One of: "se", "scse", "gc", "eca", "msca", None
-            preattends : Tuple[bool, ...], default=(False, False)
+                Defaults to (None, None).
+            preattends:
                 If True, Attention is applied at the beginning of forward pass.
-            use_styles : bool, default=(False, False)
+                Defaults to (False, False).
+            use_styles (bool):
                 If True and `style_channels` is not None, adds a style vec to output.
-        Raises
-        ------
+                Defaults to (False, False).
+
+        Raises:
             ValueError:
                 If lengths of the tuple arguments are not equal to `n_blocks`.
         """

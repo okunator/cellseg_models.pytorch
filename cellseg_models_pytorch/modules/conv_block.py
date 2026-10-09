@@ -96,52 +96,54 @@ class ConvBlock(nn.Module, ShortSkipMixIn):
         Optional:
             - add a style vector to the output at the end of the block (Cellpose).
 
-        Parameters
-        ----------
-            name : str
+        Args:
+            name:
                 The name of the conv-block. One of: "basic". "mbconv", "fmbconv" "dws",
                 "bottleneck".
-            in_channels : int
-                Number of input channels.
-            out_channels : int
-                Number of output channels.
-            style_channels : int, default=None
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            style_channels:
                 Number of style vector channels. If None, style vectors are ignored.
-            short_skip : str, default="residual"
+                Defaults to None.
+            short_skip:
                 The name of the short skip method. One of: "residual", "dense", "basic"
-            same_padding : bool, default=True
-                if True, performs same-covolution.
-            normalization : str, default="bn":
-                Normalization method.
+                Defaults to "residual".
+            same_padding: if True, performs same-covolution.
+                Defaults to True.
+            normalization: Normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", "lrn", None
-            activation : str, default="relu"
-                Activation method.
+                Defaults to "bn".
+            activation: Activation method.
                 One of: "mish", "swish", "relu", "relu6", "rrelu", "selu",
                 "celu", "gelu", "glu", "tanh", "sigmoid", "silu", "prelu",
                 "leaky-relu", "elu", "hardshrink", "tanhshrink", "hardsigmoid"
-            convolution : str, default="conv"
+                Defaults to "relu".
+            convolution:
                 The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-            preactivate : bool, default=False
-                If True, normalization will be applied before convolution.
-            kernel_size : int, default=3
-                The size of the convolution kernel.
-            groups : int, default=1
-                Number of groups the kernels are divided into. If `groups == 1`
+                Defaults to "conv".
+            preactivate: If True, normalization will be applied before convolution.
+                Defaults to False.
+            kernel_size: The size of the convolution kernel.
+                Defaults to 3.
+            groups: Number of groups the kernels are divided into. If `groups == 1`
                 normal convolution is applied. If `groups = in_channels`
                 depthwise convolution is applied.
-            bias : bool, default=True,
+                Defaults to 1.
+            bias:
                 Include bias term in the convolution block. Only used for `BaasicConv`.
-            attention : str, default=None
+                Defaults to True.
+            attention:
                 Attention method. One of: "se", "scse", "gc", "eca", "msca", None
-            preattend : bool, default=False
+                Defaults to None.
+            preattend:
                 If True, Attention is applied at the beginning of forward pass.
-            use_style : bool, default=False
+                Defaults to False.
+            use_style:
                 If True and `style_channels` is not None, adds a style vec to output.
+                Defaults to False.
 
-        Raises
-        ------
-            ValueError:
-                - If illegal `name`is given as input argument.
+        Raises:
+            ValueError: - If illegal `name`is given as input argument.
                 - If illegal `short_skip` is given as input argument.
         """
         super().__init__()

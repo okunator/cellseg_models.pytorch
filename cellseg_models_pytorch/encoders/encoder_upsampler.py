@@ -17,13 +17,10 @@ class FeatUpsampleBlock(nn.Module):
 
         TransConv + Conv layers
 
-        Parameters:
-            in_channels (int):
-                Number of input channels.
-            out_channels (int):
-                Number of output channels.
-            scale_factor (int):
-                Scale factor for upsampling. Defaults to 2.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            scale_factor: Scale factor for upsampling. Defaults to 2.
         """
         super().__init__()
         if out_channels is None:
@@ -74,15 +71,15 @@ class EncoderUpsampler(nn.Module):
             and upsamples them such that the scale factor between the upsampled features
             are two. Builds an image-pyramid like structure.
 
-        Parameters:
-            feature_info (Tuple[dict, ...]):
+        Args:
+            feature_info:
                 timm feature info of the backbone. Assumes that the feature info dicts
                 are in bottleneck first order I.e. the deepest encoder block first.
                 For example: [
                     {'module': 'blocks.8', 'num_chs': 1024, 'reduction': 16},
                     {'module': 'blocks.4', 'num_chs': 1024, 'reduction': 16}
                 }
-            out_channels (Tuple[int, ...]):
+            out_channels:
                 Number of channels in the output tensor of each upsampling block.
                 Defaults to None.
         """
@@ -146,8 +143,8 @@ class EncoderUpsampler(nn.Module):
     def forward(self, feats: Tuple[torch.Tensor]) -> Tuple[torch.Tensor, ...]:
         """Forward pass of the encoder upsampler.
 
-        Parameters:
-            feats (Tuple[torch.Tensor]):
+        Args:
+            feats:
                 Tuple of features from the backbone in bottleneck first order. I.e. the
                 bottleneck (deepest) feature is the first element in the tuple.
 
