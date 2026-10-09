@@ -30,6 +30,7 @@ def main() -> None:
         "losses",
         "inference",
         "utils",
+        "wsi",
     ):
         importlib.import_module(f"cellseg_models_pytorch.{module}")
 

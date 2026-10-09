@@ -8,6 +8,11 @@
   are unchanged. Dynamic batches retain fixed spatial dimensions, and export
   preserves model dtype and individual module training modes.
 
+## Fixes
+
+- Allow importing `wsi.SlideReader` without optional Matplotlib. Visualization
+  still reports its Matplotlib requirement when requested.
+
 <a id='changelog-0.1.30'></a>
 # 0.1.30 — 2025-11-14
 

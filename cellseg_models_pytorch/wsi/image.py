@@ -3,13 +3,13 @@ from typing import Optional, Sequence, Union
 import numpy as np
 
 try:
+    from matplotlib import colormaps
     from matplotlib.font_manager import fontManager
 
     _has_matplotlib = True
 except ImportError:
     _has_matplotlib = False
 
-from matplotlib import colormaps
 from PIL import Image, ImageDraw, ImageFont
 
 from .tiles import _divide_xywh
