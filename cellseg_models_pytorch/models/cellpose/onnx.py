@@ -71,24 +71,19 @@ def export_cellpose_onnx(
     Flow integration and instance reconstruction remain in the existing Python
     post-processing pipeline.
 
-    Parameters
-    ----------
-    model : CellPose or torch.nn.Module
-        A high-level ``CellPose`` instance or its underlying ``.model`` module.
-    output_path : str or pathlib.Path
-        Destination ``.onnx`` file.
-    input_shape : tuple of int, default=(1, 3, 256, 256)
-        Example BCHW tensor shape used while exporting the model. Spatial dimensions
-        are fixed in the exported graph.
-    opset_version : int, default=18
-        ONNX opset version.
-    dynamic_batch : bool, default=True
-        Mark the input batch dimension dynamic. Output batch dimensions inherit the
-        same symbolic dimension through the exported graph.
+    Args:
+        model: A high-level ``CellPose`` instance or its underlying ``.model``
+            module.
+        output_path: Destination ``.onnx`` file.
+        input_shape: Example BCHW tensor shape used while exporting the model.
+            Spatial dimensions are fixed in the exported graph. Defaults to
+            ``(1, 3, 256, 256)``.
+        opset_version: ONNX opset version. Defaults to 18.
+        dynamic_batch: Mark the input batch dimension dynamic. Output batch
+            dimensions inherit the same symbolic dimension through the exported
+            graph. Defaults to True.
 
-    Returns
-    -------
-    pathlib.Path
+    Returns:
         Path to the exported ONNX model.
     """
     if len(input_shape) != 4 or any(dim <= 0 for dim in input_shape):
