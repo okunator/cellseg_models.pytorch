@@ -173,23 +173,35 @@ including Linux source tests and clean wheel/source installs on Python 3.10 and 
 All seven hosted checks also passed for the completed agent guidance and OIDC
 publishing configuration on [run 37950270241](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37950270241).
 Checkboxes identify implemented changes; publisher authentication
-still requires the maintainer's PyPI setup. No contribution has been merged and
-no package has been published.
+still requires an authorized release to verify authentication. Maintenance PRs
+84 and 85 and ONNX contributions 80 and 81 have since been merged. No package
+has been published as part of this maintenance work.
 
 The contributor ONNX runtime tests were exercised with the optional packages
 installed. Both original PRs fail dynamic-batch parity because batch-one tracing
-specializes the graph. Corrections and additional tests are prepared independently
-on `codex/onnx-maintenance`; they have not been applied to the contributor branches
-or merged. The combined source suite passed 2,041 tests before the export-version
+specializes the graph. Corrections and additional tests were prepared independently
+on `fix/onnx-maintenance`. The original contributions were merged without those
+corrections; the fixes and explicit ONNX CI gate are now carried separately on
+`fix/onnx-export-correctness`, based on docstring PR 86. The combined source suite passed 2,041 tests before the export-version
 guard was tightened. Real-checkpoint comparisons produced identical instance and
 type masks on the recorded image, but StarDist still exceeds the original dense
 tolerance. PyTorch 2.5 export failed, so the prepared export API requires the tested
 minimum 2.7. All nine hosted checks passed on [run 37955000998](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37955000998),
 including explicit ONNX tests on PyTorch 2.7.1 and 2.14.1. StarDist dense parity
-and a representative prediction baseline remain open before merging both
-contributions or upgrading runtime dependencies.
+and a representative prediction baseline remain open before upgrading runtime
+dependencies.
 
 The dependency audit snapshot contains 42 open alerts across 15 packages.
 [The review record](maintenance-review.md) identifies the initial priority groups
 and reachable paths; no alerts have been dismissed and no runtime upgrades have
 been applied.
+
+The follow-up ONNX fix branch preserves the merged contributor attribution and
+Google-style docstrings. Local CPU checks on Python 3.11 / PyTorch 2.7.1 passed
+32 exporter tests with zero skips (the two pretrained-image cases were excluded
+and retain the separately recorded results). Configured hooks and workflow lint
+passed. The locked ordinary suite passed 2,041 tests with 5,191 skips: the gated
+decoder matrix, one CUDA case, four optional runtime comparisons (run separately
+above), and two pretrained-image cases. Hosted validation of this follow-up
+remains required. Runtime dependency
+bounds and the lockfile are unchanged; PyTorch 2.7 is required only for ONNX export.

@@ -80,3 +80,68 @@ jobs:
 
   packages:
     uses: ./.github/workflows/package.yml
+
+  onnx:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - torch-version: "2.7.1"
+            torchvision-version: "0.22.1"
+          - torch-version: "2.14.1"
+            torchvision-version: "0.29.1"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            poetry.lock
+            tools/onnx-requirements.txt
+
+      - name: Install locked baseline
+        run: |
+          python -m pip install "poetry==$POETRY_VERSION"
+          poetry sync --no-interaction --all-extras
+
+      # Only this optional compatibility job overrides the locked PyTorch pair.
+      - name: Install CPU exporter and optional test packages
+        env:
+          TORCH_VERSION: ${{ matrix.torch-version }}
+          TORCHVISION_VERSION: ${{ matrix.torchvision-version }}
+        run: |
+          poetry run python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==$TORCH_VERSION+cpu" "torchvision==$TORCHVISION_VERSION+cpu"
+          poetry run python -m pip install -r tools/onnx-requirements.txt
+          poetry run python -m pip check
+
+      - name: Run ONNX Runtime comparisons and exporter regressions
+        env:
+          NUMBA_DISABLE_JIT: "1"
+          HF_HUB_OFFLINE: "1"
+          OMP_NUM_THREADS: "2"
+        run: |
+          poetry run python -c "import onnx, onnxscript, onnxruntime"
+          poetry run pytest cellseg_models_pytorch/models/tests/test_cellpose_onnx.py cellseg_models_pytorch/models/tests/test_stardist_onnx.py -k 'not pretrained' --junitxml=onnx-results.xml
+          poetry run python - <<'PY'
+          import xml.etree.ElementTree as ET
+          cases = ET.parse("onnx-results.xml").findall(".//testcase")
+          assert cases and not any(case.find("skipped") is not None for case in cases)
+          for family in ("cellpose", "stardist"):
+              assert sum(case.attrib["name"].startswith(f"test_{family}_onnxruntime_matches_pytorch") for case in cases) == 2
+          PY
+
+      - name: Preserve ONNX test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: onnx-reports-${{ matrix.torch-version }}
+          path: onnx-results.xml
+          if-no-files-found: warn
