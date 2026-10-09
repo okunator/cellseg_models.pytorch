@@ -20,7 +20,7 @@ run these categories separately from ordinary tests.
 
 ## First patch for CI and publication
 
-- [ ] Verify the locked environment on the existing Python 3.10 and 3.11 matrix.
+- [x] Verify the locked environment on the existing Python 3.10 and 3.11 matrix.
 - [x] Update Actions and pin Poetry. Always synchronize dependencies and install
   the current package; cache downloads rather than installed environments.
 - [x] Preserve test and coverage reports, check that coverage was generated, and
@@ -74,7 +74,8 @@ Completion requires a clean installation and a reproducible inference baseline.
 
 ## Dependency upgrades and support policy
 
-- [ ] Update development tooling separately from runtime packages; keep Poetry.
+- [ ] Update development tooling separately from runtime packages. Keep Poetry
+  until the dedicated uv migration below; do not maintain competing lockfiles.
 - [ ] Upgrade PyTorch and timm, the NumPy and numerical/image stack, and the
   geospatial stack in separate batches. Update manifest and lockfile together.
 - [ ] Verify checkpoint loading, predictions, masks, metrics, and training after
@@ -87,6 +88,40 @@ Completion requires a clean installation and a reproducible inference baseline.
   requires lazy imports and installation tests for every supported extra.
 - [ ] Evaluate the five old Dependabot PRs and close superseded ones after their
   replacements land. Group future weekly dependency and Actions updates.
+
+## Agent guidance and gradual typing
+
+- [x] Add a shared `AGENTS.md`, Claude pointer, contributor guide, PR template,
+  and compact commit/review skills. Preserve the Ponytail instructions and adapt
+  reusable Python and ML guidance to this repository's actual layout and devices.
+- [ ] Upgrade mypy and align Ruff, hooks, configuration, and development commands
+  in a separate tooling change. Inventory annotation errors and third-party stubs.
+- [ ] Establish one explicit, useful module scope with passing type checks in CI;
+  start with tractable numerical helpers or output contracts selected by the audit.
+  Increase coverage gradually, preventing new errors in the checked scope.
+- [ ] Correct optional tensor fields, model/output types, NumPy array dtypes, and
+  public parameter/return types without changing runtime representations or APIs.
+  Keep shapes, ranges, and device requirements documented and tested at boundaries.
+- [ ] Avoid blanket suppressions, manufactured casts, and a project-wide strict
+  switch that cannot pass. Document narrow unavoidable third-party gaps.
+- [ ] Package and verify `py.typed` once the supported typing surface and downstream
+  consumer checks are ready. Validate type information in the built distributions.
+
+## Poetry to uv migration
+
+Migrate after the dependency audit and a verified baseline, in a dedicated PR
+without bundling runtime upgrades, a source-layout move, or a build-backend rewrite.
+
+- [ ] Convert metadata to standard `[project]` fields and development dependency
+  groups; preserve package identity, extras, Python bounds, URLs, and wheel contents.
+- [ ] Generate `uv.lock`, inspect dependency differences, and verify the supported
+  CPU/platform matrix. Make PyTorch index choices explicit where needed.
+- [ ] Replace Poetry commands in CI, release checks, hooks, contributor and agent
+  guidance together. Teach the version guard to read the new metadata location.
+- [ ] Verify clean wheel/source installation, public/checkpoint behavior, and the
+  prediction baseline. Keep the current build backend unless changing it is needed.
+- [ ] Remove `poetry.lock` and obsolete tooling only when uv is the single verified
+  project workflow; use locked synchronization in CI and documented local setup.
 
 ## Issues and documentation
 
@@ -110,8 +145,13 @@ as separate feature work.
 - [ ] Produce a release candidate and install its wheel and source distribution
   from a clean environment. Test the supported platform and Python matrix.
 - [ ] Verify version/tag agreement and write migration notes for intentional breaks.
-- [ ] Publish the validated artifacts only after required checks pass. Consider
-  PyPI trusted publishing after configuring the publisher account separately.
+- [x] Prepare the publishing job for PyPI OIDC, with a `pypi` environment and
+  `id-token: write` limited to publication. Remove the stored PyPI token input.
+- [ ] The maintainer configures the matching PyPI trusted publisher and GitHub
+  environment as described in [the release guide](releasing.md), then verifies
+  authentication on an authorized release. There is no stored-token fallback.
+- [ ] Publish the validated artifacts only after required checks pass and publisher
+  configuration is ready. Workflow lint and PR tests cannot verify PyPI account setup.
 - [ ] Keep each maintenance batch independently revertible. Preserve the previous
   release and baseline artifacts; fix or revert regressions before advancing.
 
@@ -126,7 +166,10 @@ Clean wheel and source installations passed dependency checks, public imports,
 and a CPU optimizer step outside the checkout, using the dependencies selected
 from the declared ranges rather than the development lockfile.
 
-Hosted Linux checks on Python 3.10 and 3.11 remain required before merging the
-first patch. Checkboxes above identify implemented changes; the stage is complete
-only when hosted validation passes. No contribution has been merged and no package
-has been published.
+All seven hosted checks for the initial implementation passed on
+[run 37948669248](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37948669248),
+including Linux source tests and clean wheel/source installs on Python 3.10 and 3.11.
+Agent guidance and the OIDC publishing configuration are the next additions to
+the draft PR. Checkboxes identify implemented changes; publisher authentication
+still requires the maintainer's PyPI setup. No contribution has been merged and
+no package has been published.
