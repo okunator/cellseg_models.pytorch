@@ -177,7 +177,7 @@ indent-width = 4
 target-version = "py310"
 
 [tool.ruff.pydocstyle]
- # Use numpy-style docstrings.
+# Use Google-style docstrings.
 convention = "google"
 
 [tool.ruff.lint]

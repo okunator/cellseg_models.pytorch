@@ -6,17 +6,65 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-The starting commit is `8deead255420b4a581e45d12fa471478d0509b42`, version
-`0.1.30`. The inspected runs for [CellPose ONNX PR 80](https://github.com/okunator/cellseg_models.pytorch/pull/80)
-and [StarDist ONNX PR 81](https://github.com/okunator/cellseg_models.pytorch/pull/81)
-passed their test steps. Their Python 3.10 runs each reported 2,012 passed and
-5,187 skipped. Codecov uploads failed with HTTP 429 and an empty token; fail-fast
-cancelled the Python 3.11 jobs during cleanup. The ONNX Runtime comparisons skipped
-because ONNX was absent. These results do not establish export correctness.
+Status reconciled on 2026-10-09 against `main` at
+`574a10d6c25fb091dc9f4b47798dcf53120ee625`, version `0.1.30`.
+Maintenance PR 84, Google-style docstring PR 85, contributor ONNX PRs 80 and 81,
+and corrective PR 87 are merged. PR 86 is closed because PR 87 included its
+Google-style exporter docstrings. The old `fix/onnx-maintenance` checkout is a
+historical review workspace; its corrections are now on main.
 
-Of the skipped cases, 5,184 belong to one deliberately gated decoder matrix.
-The `--slow`, `--optional`, and `--cuda` flags select only their own categories;
-run these categories separately from ordinary tests.
+All nine checks passed on the merged main commit in
+[run 37966314883](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37966314883):
+source suites on Python 3.10/3.11, package build, four clean distribution installs,
+and CPU ONNX checks on PyTorch 2.7.1/2.14.1. Ordinary inference requirements and
+`poetry.lock` remain unchanged. ONNX export requires PyTorch 2.7 or newer.
+
+The original contributor PRs passed ordinary tests but skipped runtime comparisons
+without optional ONNX packages. They were merged before the corrective patch;
+PR 87 supplied the batching/state/dtype fixes and explicit runtime checks. This
+sequence deviated from the original merge gate and is now corrected on main.
+Pretrained StarDist dense parity and representative prediction coverage remain
+open; passing synthetic-model checks does not resolve those gaps.
+
+Of the ordinary suite's skipped cases, 5,184 belong to a deliberately gated
+decoder matrix. `--slow`, `--optional`, and `--cuda` each select only their own
+category; run them separately from ordinary tests.
+
+## Next work, in order
+
+1. Repair the confirmed clean-install WSI import failure caused by the unguarded
+   Matplotlib colormap import. Preserve the existing optional visualization
+   error, add an absent-Matplotlib regression, and exercise `wsi.SlideReader`
+   in both clean wheel/source smoke checks. Inspect concrete inference/data
+   entry points next; importing an empty package does not cover their APIs.
+2. Finish direct-runtime dependency declarations and optional import boundaries.
+   Reproduce issue 68 with the locked environment and clean range-based installs.
+   Keep optional slide/training backends separate from mandatory runtime packages.
+3. Refresh advisory triage before each small I/O or downloader security batch.
+   Record affected paths and resolved advisory IDs; update manifest/lock together
+   where needed. These focused fixes can precede the broader numerical baseline,
+   with image-decoding/checkpoint checks appropriate to each changed dependency.
+4. Complete the reproducible prediction baseline: immutable checkpoint/image
+   identities, encoder/class/output settings, preprocessing, dense outputs,
+   reconstructed masks and counts. Add representative images/models and investigate
+   the existing StarDist ONNX tolerance failure without relaxing it for a green CI.
+   A new scientific tolerance requires an independently justified validation change.
+5. Modernize development tooling and introduce one explicit passing typing scope.
+   These can proceed independently of the numerical baseline; keep them separate
+   from runtime upgrades and the uv migration.
+6. Upgrade model, numerical/image, and geospatial dependencies in separate batches
+   once their baseline checks exist. Add newer Python CI coverage after dependency
+   wheel/compatibility checks; change the Python floor only in an explicit support
+   policy patch. Python 3.10/3.11 remain the tested source matrix today.
+7. Migrate Poetry to uv after dependency audit and baseline validation, then
+   complete release-candidate checks. Update user documentation and address
+   installation/correctness issues alongside each relevant batch rather than
+   waiting for uv. Keep trusted publisher authentication pending until an
+   authorized publication verifies it.
+
+Do not wait for merges to perform independent read-only audits. Keep each code,
+tooling, or dependency batch independently reviewable; do not combine all phases
+into one PR.
 
 ## First patch for CI and publication
 
@@ -63,15 +111,17 @@ Completion requires a clean installation and a reproducible inference baseline.
   See [the review record](maintenance-review.md) for confirmed blockers and prepared fixes.
 - [x] Install ONNX, ONNX Script, and ONNX Runtime in an explicit validation job.
   Require that export and runtime comparison tests execute rather than skip.
-- [ ] Test batches of size one and greater than one, output names, fixed spatial
+- [x] Test batches of size one and greater than one, output names, fixed spatial
   dimensions, missing dependencies, export failure, model dtype, and restoration
   of model training state, including mixed child-module states.
 - [ ] Repeat pretrained-image comparisons using the recorded checkpoint and image.
   Document that ONNX covers dense prediction; reconstruction remains in Python.
 - [x] Check the declared minimum export PyTorch version and a current supported
   version. Keep export dependencies optional for ordinary PyTorch inference.
-- [ ] Merge separately only after review and passing checks, then validate their
-  combined behavior. Resolve duplicated helpers if needed without broad refactoring.
+- [x] Merge the separate contributions and validate their combined corrected
+  behavior through PR 87 and merged-main CI. The original merge sequence deviated
+  from the planned ONNX gate, as recorded above. Shared-helper cleanup is not
+  needed to complete these fixes.
 
 ## Dependency upgrades and support policy
 
@@ -139,7 +189,7 @@ as separate feature work.
   compatibility changes. Smoke-test examples in CI.
 - [ ] Review issue 78 without silently changing preprocessing or dependency
   licensing. Prefer the project's existing normalization helper where suitable.
-- [ ] Add contributor instructions and repeatable release steps.
+- [x] Add contributor instructions and repeatable release steps.
 
 ## Release and rollback
 
@@ -148,60 +198,47 @@ as separate feature work.
 - [ ] Verify version/tag agreement and write migration notes for intentional breaks.
 - [x] Prepare the publishing job for PyPI OIDC, with a `pypi` environment and
   `id-token: write` limited to publication. Remove the stored PyPI token input.
-- [ ] The maintainer configures the matching PyPI trusted publisher and GitHub
-  environment as described in [the release guide](releasing.md), then verifies
-  authentication on an authorized release. There is no stored-token fallback.
+- [x] The maintainer reports configuring the matching PyPI trusted publisher and
+  GitHub `pypi` environment as described in [the release guide](releasing.md).
+- [ ] Verify publisher authentication on an authorized release. Repository CI
+  cannot confirm PyPI account configuration; there is no stored-token fallback.
 - [ ] Publish the validated artifacts only after required checks pass and publisher
   configuration is ready. Workflow lint and PR tests cannot verify PyPI account setup.
 - [ ] Keep each maintenance batch independently revertible. Preserve the previous
   release and baseline artifacts; fix or revert regressions before advancing.
 
-## Progress
+## Progress and remaining evidence
 
-The first patch implements the CI and publication changes above. Local validation
-on macOS with Python 3.11 passed 2,013 tests; 5,185 cases remained intentionally
-skipped. Ten model unit tests now disable pretrained encoder downloads, and the
-ordinary source suite runs with Hugging Face Hub offline. The five release guard
-tests passed, as did workflow validation and strict distribution metadata checks.
-Clean wheel and source installations passed dependency checks, public imports,
-and a CPU optimizer step outside the checkout, using the dependencies selected
-from the declared ranges rather than the development lockfile.
+CI/publication guidance, agent instructions, and Google-style library docstrings
+are implemented through PRs 84, 85, and 87. All nine merged-main checks passed;
+no package has been published as part of this maintenance work.
 
-All seven hosted checks for the initial implementation passed on
-[run 37948669248](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37948669248),
-including Linux source tests and clean wheel/source installs on Python 3.10 and 3.11.
-All seven hosted checks also passed for the completed agent guidance and OIDC
-publishing configuration on [run 37950270241](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37950270241).
-Checkboxes identify implemented changes; publisher authentication
-still requires an authorized release to verify authentication. Maintenance PRs
-84 and 85 and ONNX contributions 80 and 81 have since been merged. No package
-has been published as part of this maintenance work.
+The corrective ONNX branch passed 32 local exporter tests with zero skips on
+Python 3.11 / PyTorch 2.7.1. Its locked ordinary suite passed 2,041 tests with
+5,191 skips: 5,184 gated decoder cases, one CUDA case, four optional runtime
+comparisons exercised separately, and two pretrained-image cases. Configured
+hooks and workflow lint passed. Both Linux exporter versions passed in
+[PR validation run 37964614158](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37964614158)
+and in the merged-main run linked above. Half/double tests cover sample
+construction; accelerator and end-to-end reduced-precision runtime support
+remain unverified.
 
-The contributor ONNX runtime tests were exercised with the optional packages
-installed. Both original PRs fail dynamic-batch parity because batch-one tracing
-specializes the graph. Corrections and additional tests were prepared independently
-on `fix/onnx-maintenance`. The original contributions were merged without those
-corrections; the fixes and explicit ONNX CI gate are now carried separately on
-`fix/onnx-export-correctness`, based on docstring PR 86. The combined source suite passed 2,041 tests before the export-version
-guard was tightened. Real-checkpoint comparisons produced identical instance and
-type masks on the recorded image, but StarDist still exceeds the original dense
-tolerance. PyTorch 2.5 export failed, so the prepared export API requires the tested
-minimum 2.7. All nine hosted checks passed on [run 37955000998](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37955000998),
-including explicit ONNX tests on PyTorch 2.7.1 and 2.14.1. StarDist dense parity
-and a representative prediction baseline remain open before upgrading runtime
-dependencies.
+[The baseline metadata](validation/onnx-baseline.json) records two immutable
+checkpoint revisions/digests, one image digest, preprocessing, package versions,
+instance counts, and measured ONNX differences. Both models produced identical
+instance/type masks on that image, but StarDist dense outputs exceeded their
+original tolerance. This is a partial local CPU record, not a representative
+baseline or a completed public download/checkpoint-loading compatibility check.
 
-The dependency audit snapshot contains 42 open alerts across 15 packages.
-[The review record](maintenance-review.md) identifies the initial priority groups
-and reachable paths; no alerts have been dismissed and no runtime upgrades have
-been applied.
+The refreshed GitHub snapshot has 49 open alerts: 27 high, 19 medium, and 3 low,
+across 16 normalized package names in `poetry.lock` (GitHub lists Pillow with two
+capitalizations). [The review record](maintenance-review.md) preserves the initial
+priority groups and reachable paths. No alerts have been dismissed or runtime
+dependencies upgraded during this maintenance work; refresh advisory details
+before selecting each upgrade.
 
-The follow-up ONNX fix branch preserves the merged contributor attribution and
-Google-style docstrings. Local CPU checks on Python 3.11 / PyTorch 2.7.1 passed
-32 exporter tests with zero skips (the two pretrained-image cases were excluded
-and retain the separately recorded results). Configured hooks and workflow lint
-passed. The locked ordinary suite passed 2,041 tests with 5,191 skips: the gated
-decoder matrix, one CUDA case, four optional runtime comparisons (run separately
-above), and two pretrained-image cases. Hosted validation of this follow-up
-remains required. Runtime dependency
-bounds and the lockfile are unchanged; PyTorch 2.7 is required only for ONNX export.
+The direct-import inventory and clean WSI import failure are confirmed, but
+required dependency declarations, optional boundaries, representative inference
+coverage, and installation issue 68 remain incomplete. Tooling/type checking,
+newer Python CI, support-floor changes, and uv remain planned work rather than
+features already available in this repository.
