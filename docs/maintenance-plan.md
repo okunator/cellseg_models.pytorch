@@ -39,6 +39,9 @@ checks that cannot be reproduced locally.
 
 ## Dependency audit and prediction baseline
 
+- [ ] Triage the repository's dependency security advisories and prioritize fixes
+  affecting reachable code paths. Include resolved advisories in each upgrade's
+  validation record.
 - [ ] Inventory direct imports, including Hugging Face Hub, safetensors, Pillow,
   and geospatial packages. Declare required packages directly or provide an
   explicit, documented extra with tested import boundaries.
