@@ -10,6 +10,9 @@
 
 ## Fixes
 
+- Declare Pillow, Hugging Face Hub, safetensors, pandas, Shapely, and NetworkX
+  as direct runtime requirements instead of relying on transitive dependencies.
+
 - Allow importing `wsi.SlideReader` without optional Matplotlib. Visualization
   still reports its Matplotlib requirement when requested.
 

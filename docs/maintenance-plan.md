@@ -32,11 +32,9 @@ category; run them separately from ordinary tests.
 
 ## Next work, in order
 
-1. Repair the confirmed clean-install WSI import failure caused by the unguarded
-   Matplotlib colormap import. Preserve the existing optional visualization
-   error, add an absent-Matplotlib regression, and exercise `wsi.SlideReader`
-   in both clean wheel/source smoke checks. Inspect concrete inference/data
-   entry points next; importing an empty package does not cover their APIs.
+1. Completed in PR 89: repair the clean-install WSI Matplotlib import guard,
+   add an absent-Matplotlib regression, and import WSI in wheel/source smoke
+   checks. Continue coverage of concrete inference/data APIs below.
 2. Finish direct-runtime dependency declarations and optional import boundaries.
    Reproduce issue 68 with the locked environment and clean range-based installs.
    Keep optional slide/training backends separate from mandatory runtime packages.
@@ -242,3 +240,18 @@ required dependency declarations, optional boundaries, representative inference
 coverage, and installation issue 68 remain incomplete. Tooling/type checking,
 newer Python CI, support-floor changes, and uv remain planned work rather than
 features already available in this repository.
+
+The next dependency-declaration patch makes Pillow, Hugging Face Hub, safetensors,
+pandas, Shapely, and NetworkX explicit runtime requirements. Bounds include the
+locked versions and the versions already exercised in isolated range-based
+installation checks. Poetry 2.2.1 refreshes lockfile format/metadata while retaining
+all 116 package versions and artifact hashes. The installed-package smoke check
+now imports the concrete predictor module. Optional dataset/training imports
+remain a separate unresolved boundary; the broad dependency-inventory checkbox
+stays open until those APIs and declarations are complete.
+
+Issue 68's original Linux/Python 3.12 failure was reproduced at resolution time:
+`torch==2.1.1` has no CPython 3.12 wheel. Current metadata no longer pins that
+version. This establishes the original cause, not current Python 3.12 installation
+or runtime compatibility. Validate current wheel/source installs on 3.12 before
+closing the issue or advertising a newer tested Python matrix.

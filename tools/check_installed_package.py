@@ -28,7 +28,7 @@ def main() -> None:
         "models.instanseg",
         "metrics",
         "losses",
-        "inference",
+        "inference.predictor",
         "utils",
         "wsi",
     ):
