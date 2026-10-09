@@ -156,11 +156,10 @@ Do not bypass hooks to hide a failure; repair it or report the actual blocker.
 
 ## Documentation and delivery
 
-Use Google-style docstrings throughout the library, including relevant arguments,
+Write Google-style docstrings for new public APIs, including relevant arguments,
 output semantics, exceptions, and a working example. Describe tensor shapes and
 preprocessing; omit empty boilerplate sections and types already in signatures.
-Preserve documented contracts, examples, and attribution when converting existing
-docstrings; keep executable code changes separate from style conversions.
+Preserve clear existing docstrings instead of reformatting unrelated APIs.
 Use generic example paths and no machine-specific identifiers or patient data.
 
 Keep commits thematic and use Conventional Commits. Leave unrelated user edits
