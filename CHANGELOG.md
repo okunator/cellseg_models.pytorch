@@ -1,3 +1,13 @@
+# Unreleased
+
+## Features
+
+- Add CellPose and StarDist dense-network ONNX export (contributed by
+  Ajinkya Kulkarni). Instance reconstruction remains in Python. Export requires
+  PyTorch 2.7 or newer and optional ONNX packages; ordinary inference requirements
+  are unchanged. Dynamic batches retain fixed spatial dimensions, and export
+  preserves model dtype and individual module training modes.
+
 <a id='changelog-0.1.30'></a>
 # 0.1.30 — 2025-11-14
 
