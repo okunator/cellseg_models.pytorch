@@ -32,14 +32,15 @@ class WsiSegmenter:
             coordinates:
                 The bounding box coordinates from `reader.get_tile_coordinates()`.
             batch_size: The batch size for the DataLoader.
-            normalization: The normalization function for the DataLoader.
+            normalization: Callable receiving ``image=tile`` and returning a
+                dictionary containing the transformed HWC ``image``.
         """
         self.batch_size = batch_size
         self.coordinates = coordinates
         self.model = model
 
         self.dataset = WSIDatasetInfer(
-            reader, coordinates, level=level, transform=normalization
+            reader, coordinates, level=level, transforms=normalization
         )
         self.dataloader = DataLoader(
             self.dataset, batch_size=batch_size, shuffle=False, pin_memory=True

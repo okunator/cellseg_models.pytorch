@@ -24,19 +24,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Dict, Iterator
+from collections.abc import Callable, Sequence
 
 import numpy as np
 from torch.utils.data import Dataset
 
 from cellseg_models_pytorch.wsi.reader import SlideReader
-
-try:
-    import albumentations as A
-
-    has_albu = True
-except ModuleNotFoundError:
-    has_albu = False
 
 __all__ = ["WSIDatasetInfer"]
 
@@ -45,30 +38,23 @@ class WSIDatasetInfer(Dataset):
     def __init__(
         self,
         reader: SlideReader,
-        coordinates: Iterator[tuple[int, int, int, int]],
+        coordinates: Sequence[tuple[int, int, int, int]],
         level: int = 0,
-        transforms: A.Compose = None,
+        transforms: Callable[..., dict[str, np.ndarray]] | None = None,
     ) -> None:
         """Initialize WSIReaderDataset.
 
         Args:
             reader: `SlideReader` instance.
-            coordinates: Iterator of xywh-coordinates.
+            coordinates: Indexable sequence of xywh-coordinates.
             level: Slide level for reading tile images.
             transforms:
-                Albumentations Compose object ocntaining transformations for tile images.
+                Callable receiving an HWC image as ``image=tile`` and returning
+                a dictionary containing the transformed HWC ``image``.
+                Albumentations Compose objects follow this contract.
                 Defaults to None.
-
-        Raises:
-            ImportError: Could not import `PyTorch`.
         """
         super().__init__()
-        if not has_albu:
-            raise ModuleNotFoundError(
-                "The albumentations lib is needed for TrainDatasetH5. "
-                "Install with `pip install albumentations`"
-            )
-
         self.reader = reader
         self.coordinates = coordinates
         self.level = level
@@ -77,7 +63,7 @@ class WSIDatasetInfer(Dataset):
     def __len__(self) -> int:
         return len(self.coordinates)
 
-    def __getitem__(self, index: int) -> Dict[str, np.ndarray]:
+    def __getitem__(self, index: int) -> dict[str, np.ndarray | str]:
         xywh = self.coordinates[index]
         tile = self.reader.read_region(xywh, level=self.level)
         if self.transforms is not None:
