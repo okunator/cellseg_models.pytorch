@@ -59,15 +59,16 @@ Completion requires a clean installation and a reproducible inference baseline.
 
 ## ONNX contribution review
 
-- [ ] Review PRs 80 and 81 individually, preserving contributor attribution.
-- [ ] Install ONNX, ONNX Script, and ONNX Runtime in an explicit validation job.
+- [x] Review PRs 80 and 81 individually, preserving contributor attribution.
+  See [the review record](maintenance-review.md) for confirmed blockers and prepared fixes.
+- [x] Install ONNX, ONNX Script, and ONNX Runtime in an explicit validation job.
   Require that export and runtime comparison tests execute rather than skip.
 - [ ] Test batches of size one and greater than one, output names, fixed spatial
   dimensions, missing dependencies, export failure, model dtype, and restoration
   of model training state, including mixed child-module states.
 - [ ] Repeat pretrained-image comparisons using the recorded checkpoint and image.
   Document that ONNX covers dense prediction; reconstruction remains in Python.
-- [ ] Check the declared minimum export PyTorch version and a current supported
+- [x] Check the declared minimum export PyTorch version and a current supported
   version. Keep export dependencies optional for ordinary PyTorch inference.
 - [ ] Merge separately only after review and passing checks, then validate their
   combined behavior. Resolve duplicated helpers if needed without broad refactoring.
@@ -169,7 +170,26 @@ from the declared ranges rather than the development lockfile.
 All seven hosted checks for the initial implementation passed on
 [run 37948669248](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37948669248),
 including Linux source tests and clean wheel/source installs on Python 3.10 and 3.11.
-Agent guidance and the OIDC publishing configuration are the next additions to
-the draft PR. Checkboxes identify implemented changes; publisher authentication
+All seven hosted checks also passed for the completed agent guidance and OIDC
+publishing configuration on [run 37950270241](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37950270241).
+Checkboxes identify implemented changes; publisher authentication
 still requires the maintainer's PyPI setup. No contribution has been merged and
 no package has been published.
+
+The contributor ONNX runtime tests were exercised with the optional packages
+installed. Both original PRs fail dynamic-batch parity because batch-one tracing
+specializes the graph. Corrections and additional tests are prepared independently
+on `codex/onnx-maintenance`; they have not been applied to the contributor branches
+or merged. The combined source suite passed 2,041 tests before the export-version
+guard was tightened. Real-checkpoint comparisons produced identical instance and
+type masks on the recorded image, but StarDist still exceeds the original dense
+tolerance. PyTorch 2.5 export failed, so the prepared export API requires the tested
+minimum 2.7. All nine hosted checks passed on [run 37955000998](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37955000998),
+including explicit ONNX tests on PyTorch 2.7.1 and 2.14.1. StarDist dense parity
+and a representative prediction baseline remain open before merging both
+contributions or upgrading runtime dependencies.
+
+The dependency audit snapshot contains 42 open alerts across 15 packages.
+[The review record](maintenance-review.md) identifies the initial priority groups
+and reachable paths; no alerts have been dismissed and no runtime upgrades have
+been applied.
