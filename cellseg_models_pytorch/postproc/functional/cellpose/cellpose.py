@@ -51,25 +51,21 @@ def get_seeds(
 
     Return also the histogram and flows.
 
-    Parameters
-    ----------
-        p : np.ndarray
-            The computed flows. Shape (2, H, W). Dtype: float32.
-        rpad : int, default=20
-            The amount of padding when computing seeds.
-        dims : int, default=2
-            The number of dimensions in the input data.
+    Args:
+        p: The computed flows. Shape (2, H, W). Dtype: float32.
+        rpad: The amount of padding when computing seeds.
+            Defaults to 20.
+        dims: The number of dimensions in the input data.
+            Defaults to 2.
 
-    Returns
-    -------
-        Tuple[Tuple[np.ndarray, np.ndarray], np.ndarray, List[np.ndarray]]:
-            seeds : Tuple[np.ndarray, np.ndarray]
-                The y- and x- seeds sorted by descending bincount.
-                np.ndarray.shape: (n_cells, ). Dtype: int32.
-            h : np.ndarray
-                The 2D histogram of the flows p. Shape (H+pad, W+pad).
-            pflows : List[np.ndarray]
-                The flattend y and x flows. Array shape: (H*W).
+    Returns:
+        seeds : Tuple[np.ndarray, np.ndarray]
+            The y- and x- seeds sorted by descending bincount.
+            np.ndarray.shape: (n_cells, ). Dtype: int32.
+        h : np.ndarray
+            The 2D histogram of the flows p. Shape (H+pad, W+pad).
+        pflows : List[np.ndarray]
+            The flattend y and x flows. Array shape: (H*W).
     """
     shape = p.shape[1:]
     dims = len(p)
@@ -105,20 +101,15 @@ def expand_seed_pixels(
 ) -> Tuple[Tuple[np.ndarray, np.ndarray]]:
     """Expand the seed pixels to 3x3 neihgborhood of pixels for every seed.
 
-    Parameters
-    ----------
-        seeds : Tuple[np.ndarray, np.ndarray]
-            The y- and x- seeds sorted by descending bincount.
+    Args:
+        seeds: The y- and x- seeds sorted by descending bincount.
             np.ndarray.shape: (n_cells, ). Dtype: int32.
-        h : np.ndarray
-            The 2D histogram of the flows. Shape (H+pad, W+pad).
-        dims : int, default=2
-            The number of dimensions in the input data.
+        h: The 2D histogram of the flows. Shape (H+pad, W+pad).
+        dims: The number of dimensions in the input data.
+            Defaults to 2.
 
-    Returns
-    -------
-        Tuple[Tuple[np.ndarray, np.ndarray]]:
-            The expanded pixel neighborhood coords for all the seeds
+    Returns:
+        The expanded pixel neighborhood coords for all the seeds
     """
     pix: List[Tuple[np.ndarray, np.ndarray]] = list(np.array(seeds).T)
     shape: Tuple[int, int] = h.shape
@@ -167,17 +158,13 @@ def get_masks_cellpose(p: np.ndarray, rpad: int = 20) -> np.ndarray:
     they include all pixels with more than 2 final pixels p. Discards
     masks with flow errors greater than the threshold.
 
-    Parameters
-    ----------
-        p : np.ndarray
-            Final locations of each pixel after dynamics. Shape (2, H, W).
-        rpad : int, default=20
-            Histogram edge padding.
+    Args:
+        p: Final locations of each pixel after dynamics. Shape (2, H, W).
+        rpad: Histogram edge padding.
+            Defaults to 20.
 
-    Returns
-    -------
-        np.ndarray:
-            Instance labelled mask. Shape (H, W).
+    Returns:
+        Instance labelled mask. Shape (H, W).
     """
     shape0 = p.shape[1:]
     dims = len(p)
@@ -218,27 +205,23 @@ def post_proc_cellpose(
 
     https://www.nature.com/articles/s41592-020-01018-x
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled or binary mask. Shape (H, W).
-        flow_map : np.ndarray
-            Y- and x-flows. Shape: (2, H, W)
-        return_flows : bool, default=False
+    Args:
+        inst_map: Instance labelled or binary mask. Shape (H, W).
+        flow_map: Y- and x-flows. Shape: (2, H, W)
+        return_flows:
             If True, returns the HSV converted flows. They are just not
             needed for anything relevant.
-        min_size : int
-            The minimum size for the objects that will not be removed.
-        interp : bool, default=True
-            Use bilinear interpolation when integrating the flow dynamics.
-        use_gpu : bool, default=True
+            Defaults to False.
+        min_size: The minimum size for the objects that will not be removed.
+        interp: Use bilinear interpolation when integrating the flow dynamics.
+            Defaults to True.
+        use_gpu:
             Use gpu accelerated bilinear interpolation. If `interp` == False, this is
             ignored.
+            Defaults to True.
 
-    Returns
-    -------
-        np.ndarray:
-            The instance labelled segmentation mask. Shape (H, W)
+    Returns:
+        The instance labelled segmentation mask. Shape (H, W)
     """
     binary_mask = binarize(inst_map).astype(bool)
 

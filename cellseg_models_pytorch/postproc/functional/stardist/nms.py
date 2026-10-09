@@ -20,16 +20,12 @@ def get_bboxes(
 
     NOTE: jit compiled and parallelized with numba.
 
-    Parameters
-    ----------
-        dist : np.ndarray
+    Args:
+        dist:
             The non-zero values of the radial distance maps. Shape: (n_nonzero, n_rays).
-        points : np.ndarray
-            The yx-coordinates of the non-zero points. Shape (n_nonzero, 2).
+        points: The yx-coordinates of the non-zero points. Shape (n_nonzero, 2).
 
-    Returns
-    -------
-    Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, int]:
+    Returns:
         Returns the x0, y0, x1, y1 bbox coordinates, bbox areas and the maximum
         radial distance in the image.
     """
@@ -119,32 +115,28 @@ def nms_stardist(
     and is fully written in python. The differenecs in the resulting instance
     segmentation masks are neglible.
 
-    Parameters
-    ----------
-        boxes : np.ndarray
-            An array of bbox coords in pascal VOC format (x0, y0, x1, y1).
+    Args:
+        boxes: An array of bbox coords in pascal VOC format (x0, y0, x1, y1).
             Shape: (n_points, 4). Dtype: float64.
-        points : np.ndarray
+        points:
             The yx-coordinates of the non-zero points. Shape (n_points, 2). Dtype: int64
-        scores : np.ndarray
+        scores:
             The probability values at the point coordinates. Shape (n_points,).
             Dtype: float32/float64.
-        areas : np.ndarray
+        areas:
             The areas of the bounding boxes at the point coordinates. Shape (n_points,).
             Dtype: float32/float64.
-        radius_outer : np.ndarray
+        radius_outer (np.ndarray):
             The radial distances to background at each point. Shape (n_points, )
-        max_dist : float
-            The maximum radial distance of all the radial distances
-        score_threshold : float, default=0.5
-            Threshold for the probability distance map.
-        iou_threshold : float, default=0.5
+        max_dist: The maximum radial distance of all the radial distances
+        score_threshold: Threshold for the probability distance map.
+            Defaults to 0.5.
+        iou_threshold:
             Threshold for the IoU metric deciding whether to suppres a bbox.
+            Defaults to 0.5.
 
-    Returns
-    -------
-        np.ndarray:
-            The indices of the bboxes that are not suppressed. Shape: (n_kept, ).
+    Returns:
+        The indices of the bboxes that are not suppressed. Shape: (n_kept, ).
     """
     keep = []
 

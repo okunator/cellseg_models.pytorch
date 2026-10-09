@@ -25,14 +25,11 @@ class LongSkip(nn.Module):
     def __init__(self, name: str, **kwargs) -> None:
         """Long skip wrapper class.
 
-        Parameters
-        ----------
-            name : str
-                The name of the long skip method.
+        Args:
+            name: The name of the long skip method.
                 One of "unet", "unet3p", "unet3p-lite", "unetpp".
 
-        Raises
-        ------
+        Raises:
             ValueError: if the long skip method name is illegal.
         """
         super().__init__()

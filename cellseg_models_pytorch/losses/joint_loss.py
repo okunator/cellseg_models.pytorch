@@ -16,11 +16,10 @@ class JointLoss(nn.ModuleDict):
         each loss in the list and at the end sums the outputs together
         as one joint loss.
 
-        Parameters:
-            losses (List[nn.Module]):
-                List of initialized nn.Module losses.
-            weights (List[float], default=None):
-                List of weights for each loss.
+        Args:
+            losses: List of initialized nn.Module losses.
+            weights: List of weights for each loss.
+                Defaults to None.
 
         Raises:
             ValueError:

@@ -31,12 +31,9 @@ class GEGLU(nn.Module):
 
         https://arxiv.org/abs/2002.05202.
 
-        Parameters
-        ----------
-            dim_in : int
-                The number of channels in the input.
-            dim_out : int
-                The number of channels in the output.
+        Args:
+            dim_in: The number of channels in the input.
+            dim_out: The number of channels in the output.
         """
         super().__init__()
         self.proj = nn.Linear(dim_in, dim_out * 2)
@@ -57,12 +54,9 @@ class ApproximateGELU(nn.Module):
 
         https://arxiv.org/abs/1606.08415
 
-        Parameters
-        ----------
-            dim_in : int
-                The number of channels in the input.
-            dim_out : int
-                The number of channels in the output.
+        Args:
+            dim_in: The number of channels in the input.
+            dim_out: The number of channels in the output.
         """
         super().__init__()
         self.proj = nn.Linear(dim_in, dim_out)

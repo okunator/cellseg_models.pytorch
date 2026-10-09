@@ -44,19 +44,15 @@ def gen_hv_maps(inst_map: np.ndarray, min_size: int = 5) -> np.ndarray:
 
     https://www.sciencedirect.com/science/article/pii/S1361841519301045
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
-        min_size : int, default=5
-            Min size for objects. Objects less than this many pixels
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
+        min_size: Min size for objects. Objects less than this many pixels
             are removed.
+            Defaults to 5.
 
-    Returns
-    -------
-        np.ndarray:
-            The Y- and X-gradient maps in this order. Shape (2, H, W).
-            Dtype: float64.
+    Returns:
+        The Y- and X-gradient maps in this order. Shape (2, H, W).
+        Dtype: float64.
     """
     x_map = np.zeros_like(inst_map, dtype=np.float64)
     y_map = np.zeros_like(inst_map, dtype=np.float64)

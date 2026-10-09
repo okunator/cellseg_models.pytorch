@@ -38,17 +38,13 @@ class Downloader:
     ) -> None:
         """Download a file from google drive.
 
-        Parameters
-        ----------
-            file_id : str
-                Google drive file ID.
-            file_name : str
-                Name of the file to be saved. Typically .zip file.
-            chunk_size : int, default=32768
-                Chunk size for loading the file in bytes. Here 32^3.
+        Args:
+            file_id: Google drive file ID.
+            file_name: Name of the file to be saved. Typically .zip file.
+            chunk_size: Chunk size for loading the file in bytes. Here 32^3.
+                Defaults to 32768.
 
-        Example
-        -------
+        Examples:
             >>> save_dir = "/path/to/save_dir"
             >>> gdrive_id = "123gdriveID"
             >>> downloader = Downloader(save_dir)
@@ -62,15 +58,12 @@ class Downloader:
     def download(self, url: str, chunk_size: int = 32768) -> None:
         """Download a file from url.
 
-        Parameters
-        ----------
-            url : str
-                The url of the file to be downloaded.
-            chunk_size : int, default=32768
-                Chunk size for loading the file in bytes. Here 32^3.
+        Args:
+            url: The url of the file to be downloaded.
+            chunk_size: Chunk size for loading the file in bytes. Here 32^3.
+                Defaults to 32768.
 
-        Example
-        -------
+        Examples:
             >>> save_dir = "/path/to/save_dir"
             >>> url = "https://url/to/file/"
             >>> downloader = Downloader(save_dir)

@@ -33,23 +33,19 @@ class TrainDatasetFolder(Dataset):
     ) -> None:
         """Folder train dataset for cell/panoptic segmentation models.
 
-        Parameters:
-            path_img (str):
-                Path to the image folder.
-            path_label (str):
-                Path to the label folder.
-            mask_keys (Tuple[str, ...]):
-                Tuple of keys to be read from the .mat file.
-            transforms (A.Compose):
-                Albumentations compose object for image and mask transforms.
-            inst_transforms (ApplyEach):
-                ApplyEach object for instance transforms.
-            map_out_keys (Dict[str, str], default=None):
+        Args:
+            path_img: Path to the image folder.
+            path_label: Path to the label folder.
+            mask_keys: Tuple of keys to be read from the .mat file.
+            transforms: Albumentations compose object for image and mask transforms.
+            inst_transforms: ApplyEach object for instance transforms.
+            map_out_keys:
                 A dictionary to map the default output keys to new output keys. .
                 Useful if you want to match the output keys with model output keys.
                 e.g. {"inst": "decoder1-inst", "inst-cellpose": decoder2-cellpose}.
                 The default output keys are any of 'image', 'inst', 'type', 'cyto_inst',
                 'cyto_type', 'sem' & inst-{transform.name}, cyto_inst-{transform.name}.
+                Defaults to None.
 
         Raises:
             ModuleNotFoundError: If albumentations or tables is not installed.

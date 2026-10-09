@@ -39,38 +39,37 @@ class ContiguousEmbed(nn.Module):
 
         NOTE: Optional normalization of the input before patching and projecting.
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels in the input tensor. (3 for RGB).
-            patch_size : int, default=1
+        Args:
+            in_channels: Number of input channels in the input tensor. (3 for RGB).
+            patch_size:
                 Size of the patch. Defaults to 1, meaning that every pixel is a patch.
                 (Given that stride is equal to 1.) If `kernel_size` is given, this will
                 be ignored.
-            stride : int, default=1
+                Defaults to 1.
+            stride:
                 The sliding window stride. Defaults to 1, meaning that every pixel is a
                 patch. (Given that patch_size is equal to 1).
-            kernel_size : int, optional
+                Defaults to 1.
+            kernel_size:
                 The kernel size for the convolution. If None, the `patch_size` is used.
-            pad : int, default=0
-                Size of the padding.
-            head_dim : int, default=64
-                Number of channels per each head.
-            num_heads : int, default=8
-                Number of heads in multi-head self-attention.
-            flatten : bool, default=True
+            pad: Size of the padding.
+                Defaults to 0.
+            head_dim: Number of channels per each head.
+                Defaults to 64.
+            num_heads: Number of heads in multi-head self-attention.
+                Defaults to 8.
+            flatten:
                 If True, the output will be flattened to a sequence. After flattening
                 output will have shape (B, H'*W', head_dim*num_heads). If False, the
                 output shape will remain (B, C, H', W').
-            normalization : str, optional
-                The name of the normalization method.
+                Defaults to True.
+            normalization: The name of the normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", "lrn", None
-            **norm_kwargs : Dict[str, Any]
+            **norm_kwargs:
                 key-word args for the normalization layer. Ignored if normalization
                 is None.
 
-        Examples
-        --------
+        Examples:
             >>> x = torch.rand([1, 3, 256, 256])
 
             >>> # per-pixel patches of shape 256*256
@@ -169,25 +168,21 @@ class PatchEmbed(nn.Module):
         - Patched shape: (B, H//patch_size * W//patch_size, C*patch_size**2)
         - Embedded output shape: (B, H//patch_size * W//patch_size, head_dim*num_heads)
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels in the input tensor.
-            patch_size : int, default=16
-                The H and W size of the patch.
-            head_dim : int, default=64
-                Number of channels per each head.
-            num_heads : int, default=8
-                Number of heads in multi-head self-attention.
-            normalization : str, optional
-                The name of the normalization method.
+        Args:
+            in_channels: Number of input channels in the input tensor.
+            patch_size: The H and W size of the patch.
+                Defaults to 16.
+            head_dim: Number of channels per each head.
+                Defaults to 64.
+            num_heads: Number of heads in multi-head self-attention.
+                Defaults to 8.
+            normalization (str): The name of the normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", "lrn", None
-            **norm_kwargs : Dict[str, Any]
+            **norm_kwargs (Dict[str, Any]):
                 key-word args for the normalization layer. Ignored if normalization
                 is None.
 
-        Examples
-        --------
+        Examples:
             >>> x = torch.rand([1, 3, 256, 256])
 
             >>> # patches of shape 16*16
@@ -197,7 +192,6 @@ class PatchEmbed(nn.Module):
                 )
             >>> print(lin_patch(x).shape)
             >>> # torch.Size([1, 256, 512])
-
         """
         super().__init__()
         self.proj_dim = head_dim * num_heads
@@ -210,16 +204,12 @@ class PatchEmbed(nn.Module):
 
         Adapted from: PyTorch Lightning ViT tutorial.
 
-        Parameters
-        ----------
-            x : torch.Tensor
-                Input image of shape (B, C, H, W).
+        Args:
+            x: Input image of shape (B, C, H, W).
 
-        Returns
-        -------
-            torch.Tensor:
-                Patched and flattened input image.
-                Shape: (B, H//patch_size * W//patch_size, C*patch_size**2)
+        Returns:
+            Patched and flattened input image.
+            Shape: (B, H//patch_size * W//patch_size, C*patch_size**2)
         """
         B, C, H, W = x.shape
         x = x.reshape(

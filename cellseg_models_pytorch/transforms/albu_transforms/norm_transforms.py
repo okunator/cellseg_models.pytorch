@@ -27,15 +27,15 @@ class MinMaxNormalization(ImageOnlyTransform):
     ) -> None:
         """Min-max normalization. Normalizes to range [amin, amax].
 
-        Parameters:
-            amin (float, default=0.0)
-                Normalization lower limit.
-            amax (float, default=1.0)
-                Normalization upper limit.
-            p (float, default=1.0):
-                Probability of applying the transformation.
-            copy (bool, default=False):
-                If True, normalize the copy of the input.
+        Args:
+            amin: Normalization lower limit.
+                Defaults to 0.0.
+            amax: Normalization upper limit.
+                Defaults to 1.0.
+            p: Probability of applying the transformation.
+                Defaults to 1.0.
+            copy: If True, normalize the copy of the input.
+                Defaults to False.
         """
         if not HAS_ALBU:
             raise ModuleNotFoundError(
@@ -51,9 +51,8 @@ class MinMaxNormalization(ImageOnlyTransform):
     def apply(self, image: np.ndarray, **kwargs) -> np.ndarray:
         """Apply min-max normalization.
 
-        Parameters:
-            image (np.ndarray):
-                Input image to be normalized. Shape (H, W, C)|(H, W).
+        Args:
+            image: Input image to be normalized. Shape (H, W, C)|(H, W).
 
         Returns:
             np.ndarray:
@@ -77,15 +76,15 @@ class PercentileNormalization(ImageOnlyTransform):
     ) -> None:
         """Percentile normalization. Normalizes to percentile range [lower, upper].
 
-        Parameters:
-            lower (float, default=0.01):
-                Lower percentile.
-            upper (float, default=99.99):
-                Clamp max value. No clamping performed if None.
-            p (float, default=1.0):
-                Probability of applying the transformation.
-            copy (bool, default=False):
-                If True, normalize the copy of the input.
+        Args:
+            lower: Lower percentile.
+                Defaults to 0.01.
+            upper: Clamp max value. No clamping performed if None.
+                Defaults to 99.99.
+            p: Probability of applying the transformation.
+                Defaults to 1.0.
+            copy: If True, normalize the copy of the input.
+                Defaults to False.
         """
         if not HAS_ALBU:
             raise ModuleNotFoundError(
@@ -101,9 +100,8 @@ class PercentileNormalization(ImageOnlyTransform):
     def apply(self, image: np.ndarray, **kwargs) -> np.ndarray:
         """Apply percentile normalization to input image.
 
-        Parameters:
-            image (np.ndarray):
-                Input image to be normalized. Shape (H, W, C)|(H, W).
+        Args:
+            image: Input image to be normalized. Shape (H, W, C)|(H, W).
 
         Returns:
             np.ndarray:
@@ -129,15 +127,13 @@ class Normalization(ImageOnlyTransform):
 
         NOTE: this is not dataset-level normalization but image-level.
 
-        Parameters:
-            mean (np.ndarray):
-                Mean values for each channel. Shape (C,)
-            std (np.ndarray):
-                Standard deviation values for each channel. Shape (C,)
-            p (float, default=1.0):
-                Probability of applying the transformation.
-            copy (bool, default=False):
-                If True, normalize the copy of the input.
+        Args:
+            mean: Mean values for each channel. Shape (C,)
+            std: Standard deviation values for each channel. Shape (C,)
+            p: Probability of applying the transformation.
+                Defaults to 1.0.
+            copy: If True, normalize the copy of the input.
+                Defaults to False.
         """
         if not HAS_ALBU:
             raise ModuleNotFoundError(
@@ -152,9 +148,8 @@ class Normalization(ImageOnlyTransform):
     def apply(self, image: np.ndarray, **kwargs) -> np.ndarray:
         """Apply image-level normalization to input image.
 
-        Parameters:
-            image (np.ndarray):
-                Input image to be normalized. Shape (H, W, C)|(H, W).
+        Args:
+            image: Input image to be normalized. Shape (H, W, C)|(H, W).
 
         Returns:
             np.ndarray:

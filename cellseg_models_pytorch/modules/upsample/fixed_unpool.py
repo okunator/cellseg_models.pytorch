@@ -12,10 +12,9 @@ class FixedUnpool(nn.Module):
 
         TensorPack (library) fixed unpooling in pytorch.
 
-        Parameters
-        ----------
-            scale_factor : int, default=2
-                Upsampling scale factor. scale_factor*(H, W)
+        Args:
+            scale_factor: Upsampling scale factor. scale_factor*(H, W)
+                Defaults to 2.
         """
         super().__init__()
         self.scale_factor = scale_factor

@@ -39,11 +39,9 @@ class CPPRefine(nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Refine the stardist map and confidence map.
 
-        Parameters:
-            stardist_map (torch.Tensor):
-                The stardist map. Shape: (B, n_rays, H, W)
-            features (torch.Tensor):
-                The features from the encoder. Shape: (B, C, H, W)
+        Args:
+            stardist_map: The stardist map. Shape: (B, n_rays, H, W)
+            features: The features from the encoder. Shape: (B, C, H, W)
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor]
@@ -124,69 +122,80 @@ class CPPNetUnet(nn.ModuleDict):
         - CPP-Net: Context-aware Polygon Proposal Network for Nucleus Segmentation
         - https://arxiv.org/abs/2102.06867
 
-        Parameters:
-            decoders (Tuple[str, ...]):
+        Args:
+            decoders:
                 Names of the decoder branches of this network. E.g. ("cppnet", "sem")
-            heads (Dict[str, Dict[str, int]]):
-                The decoder branches mapped to segmentation heads E.g.
+            heads: The decoder branches mapped to segmentation heads E.g.
                 {"cppnet": {"type": 4, "stardist": 32}, "sem": {"sem": 5}}
-            n_rays (int):
-                Number of rays predicted per object.
-            depth (int, default=4):
+            n_rays: Number of rays predicted per object.
+            depth:
                 The depth of the encoder. I.e. Number of returned feature maps from
                 the encoder. Maximum depth = 5.
-            out_channels (Tuple[int, ...], default=(256, 128, 64, 32)):
-                Out channels for each decoder stage.
-            style_channels (int, default=256):
+                Defaults to 4.
+            out_channels: Out channels for each decoder stage.
+                Defaults to (256, 128, 64, 32).
+            style_channels:
                 Number of style vector channels. If None, style vectors are ignored.
-            enc_name (str, default="resnet50"):
-                Name of the encoder. See timm docs for more info.
-            enc_pretrain (bool, default=True):
-                Whether to use imagenet pretrained weights in the encoder.
-            enc_freeze (bool, default=False):
-                Freeze encoder weights for training.
-            enc_out_indices (Tuple[int, ...], default=None):
+                Defaults to 256.
+            enc_name: Name of the encoder. See timm docs for more info.
+                Defaults to "resnet50".
+            enc_pretrain: Whether to use imagenet pretrained weights in the encoder.
+                Defaults to True.
+            enc_freeze: Freeze encoder weights for training.
+                Defaults to False.
+            enc_out_indices:
                 Indices of the encoder output features. If None, indices is set to
                 `range(len(depth))`.
-            upsampling (str, default="fixed-unpool"):
+                Defaults to None.
+            upsampling:
                 The upsampling method. One of: "fixed-unpool", "nearest", "bilinear",
                 "bicubic", "conv_transpose"
-            long_skip (str, default="unet"):
+                Defaults to "fixed-unpool".
+            long_skip:
                 long skip method to be used. One of: "unet", "unetpp", "unet3p",
                 "unet3p-lite", None
-            merge_policy (str, default="sum"):
-                The long skip merge policy. One of: "sum", "cat"
-            short_skip (str, default="basic"):
+                Defaults to "unet".
+            merge_policy: The long skip merge policy. One of: "sum", "cat"
+                Defaults to "sum".
+            short_skip:
                 The name of the short skip method. One of: "residual", "dense", "basic"
-            block_type (str, default="basic"):
+                Defaults to "basic".
+            block_type:
                 The type of the convolution block type. One of: "basic". "mbconv",
                 "fmbconv" "dws", "bottleneck".
-            normalization (str, default="bn"):
+                Defaults to "basic".
+            normalization:
                 Normalization method. One of: "bn", "bcn", "gn", "in", "ln", None
-            activation (str, default="relu"):
+                Defaults to "bn".
+            activation:
                 Activation method. One of: "mish", "swish", "relu", "relu6", "rrelu",
                 "selu", "celu", "gelu", "glu", "tanh", "sigmoid", "silu", "prelu",
                 "leaky-relu", "elu", "hardshrink", "tanhshrink", "hardsigmoid"
-            convolution (str, default="conv"):
+                Defaults to "relu".
+            convolution:
                 The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-            preactivate (bool, default=True):
-                If True, normalization will be applied before convolution.
-            attention (str, default=None):
-                Attention method. One of: "se", "scse", "gc", "eca", None
-            preattend (bool, default=False):
+                Defaults to "conv".
+            preactivate: If True, normalization will be applied before convolution.
+                Defaults to True.
+            attention: Attention method. One of: "se", "scse", "gc", "eca", None
+                Defaults to None.
+            preattend:
                 If True, Attention is applied at the beginning of forward pass.
-            out_size (int, optional):
+                Defaults to False.
+            out_size:
                 If specified, the output size of the model will be (out_size, out_size).
                 I.e. the outputs will be interpolated to this size.
-            encoder_kws (Dict[str, Any], default=None):
+            encoder_kws:
                 Extra keyword arguments for the encoder. See timm docs for more info.
-            skip_kws (Dict[str, Any], default=None):
-                Extra keyword arguments for the skip-connection module.
-            stem_skip_kws (Dict[str, Any], default=None):
+                Defaults to None.
+            skip_kws: Extra keyword arguments for the skip-connection module.
+                Defaults to None.
+            stem_skip_kws:
                 Extra keyword arguments for the stem skip-connection module.
-            inst_key (str, default="dist"):
-                The key for the model output that will be used in the instance
+                Defaults to None.
+            inst_key: The key for the model output that will be used in the instance
                 segmentation post-processing pipeline as the binary segmentation result.
+                Defaults to "dist".
         """
         super().__init__()
         self.out_size = out_size
@@ -263,14 +272,15 @@ class CPPNetUnet(nn.ModuleDict):
     def forward(self, x: torch.Tensor, return_pred_only: bool = True) -> Dict[str, Any]:
         """Forward pass of Cellpose U-net.
 
-        Parameters:
             x (torch.Tensor):
                 Input image batch. Shape: (B, C, H, W).
             return_pred_only (bool, default=True):
                 If True, only the dense prediction maps are returned. If False, the
                 encoder features and decoder features are also returned.
 
-        Returns: Dict[str, Any]:
+
+        Args:
+            Returns (Dict[str, Any]):
                 The output dictionary of the model. The keys of the dict are:
                     - "nuc": SoftInstanceOutput(type_map, aux_map, Optional[binary_map]).
                     - "cyto": SoftInstanceOutput(type_map, aux_map, Optional[binary_map]).
@@ -315,7 +325,6 @@ def cppnet_nuclei(n_rays: int, n_nuc_classes: int, **kwargs) -> nn.Module:
     CPP-Net:
         - https://arxiv.org/abs/2102.06867
 
-    Parameters:
         n_rays (int):
             Number of rays predicted per each object
         n_nuc_classes (int):
@@ -323,8 +332,9 @@ def cppnet_nuclei(n_rays: int, n_nuc_classes: int, **kwargs) -> nn.Module:
         **kwargs:
             Arbitrary key word args for the CPPNet class.
 
-    Returns
-        nn.Module: The initialized CPP-Net model.
+
+    Args:
+        Returns: nn.Module: The initialized CPP-Net model.
     """
     cppnet = CPPNetUnet(
         decoders=("stardist", "type"),

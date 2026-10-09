@@ -16,7 +16,7 @@ def to_tensor(x: np.ndarray) -> torch.Tensor:
 def to_device(tensor: Union[torch.Tensor, np.ndarray]) -> torch.Tensor:
     """Push torch.Tensor or np.ndarray to GPU if it is available.
 
-    Parameters:
+    Args:
         tensor (torch.Tensor or np.ndarray):
             Multi dim array to be pushed to gpu.
 

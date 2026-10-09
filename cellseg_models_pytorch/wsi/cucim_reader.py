@@ -24,8 +24,8 @@ class CucimReader(SlideReaderBackend):
     def __init__(self, path: str) -> None:
         """Initialize CUCIMBackend class instance.
 
-        Parameters:
-            path (str): Path to the slide image.
+        Args:
+            path: Path to the slide image.
 
         Raises:
             ImportError: CUCIM could not be imported.

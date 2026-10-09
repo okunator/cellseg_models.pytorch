@@ -23,16 +23,12 @@ class HDF5DatasetInfer(Dataset, FileHandler):
 
         NOTE: loads only images.
 
-        Parameters
-        ----------
-            path : str | Path
-                Path to the folder containing image files.
-            n_images : int, optional
-                First n-number of images used from the folder.
+        Args:
+            path (str | Path): Path to the folder containing image files.
+            n_images: First n-number of images used from the folder.
 
-        Raises
-        ------
-            ValueError if the input path has incorrect suffix.
+        Raises:
+            ValueError: if the input path has incorrect suffix.
         """
         if not HAS_TABLES:
             raise ImportError(

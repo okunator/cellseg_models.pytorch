@@ -37,19 +37,16 @@ def gen_dist_maps(
 ) -> np.ndarray:
     """Compute distance transforms for every labelled object.
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
-        normalize : bool, default=True
-            Normalize the distance maps to [0, 1].
-        euclidean : bool, default=True
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
+        normalize: Normalize the distance maps to [0, 1].
+            Defaults to True.
+        euclidean:
             If True, uses the euclidean transformation. Else, the chessboard one.
+            Defaults to True.
 
-    Returns
-    -------
-        np.ndarray:
-            Distance map of the labelled objects. Shape (H, W).
+    Returns:
+        Distance map of the labelled objects. Shape (H, W).
     """
     dist = np.zeros_like(inst_map, dtype=np.float64)
 

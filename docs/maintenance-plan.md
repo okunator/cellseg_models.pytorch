@@ -126,6 +126,10 @@ without bundling runtime upgrades, a source-layout move, or a build-backend rewr
 
 ## Issues and documentation
 
+- [x] Convert NumPy-style and mixed-format docstrings to Google style in a
+  separate documentation patch, including example notebooks. Preserve contracts
+  and examples, and verify executable Python and notebook metadata are unchanged.
+
 Prioritize installation issue 68 and metric-matching issue 73, then the working
 training example requested in issue 76, model/backbone guidance in issue 74, and
 in-memory inference guidance in issue 69. Add reproducing tests for correctness

@@ -32,45 +32,49 @@ class StemSkip(nn.Module):
         I.e. High resolution skip connection from the input image to the final decoder
         stage.
 
-        Parameters
-        ----------
-            out_channels : int
-                Number of output channels.
-            merge_policy : str, default="cat"
+        Args:
+            out_channels: Number of output channels.
+            merge_policy:
                 Merge policy to be used for the skip connection. Allowed: "cat", "add",
                 "none".
-            in_channels : int, default=3
-                Number of input channels.
-            short_skip : str, default="residual"
+                Defaults to "cat".
+            in_channels: Number of input channels.
+                Defaults to 3.
+            short_skip:
                 The name of the short skip method. One of: "residual", "dense", "basic"
-            block_type : str
+                Defaults to "residual".
+            block_type:
                 The name of the conv-block. One of: "basic". "mbconv", "fmbconv" "dws",
                 "bottleneck".
-            normalization : str, default="bn":
-                Normalization method.
+            normalization: Normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", "lrn", None
-            activation : str, default="relu"
-                Activation method.
+                Defaults to "bn".
+            activation: Activation method.
                 One of: "mish", "swish", "relu", "relu6", "rrelu", "selu",
                 "celu", "gelu", "glu", "tanh", "sigmoid", "silu", "prelu",
                 "leaky-relu", "elu", "hardshrink", "tanhshrink", "hardsigmoid"
-            convolution : str, default="conv"
+                Defaults to "relu".
+            convolution:
                 The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-            kernel_size : int, default=3
-                The size of the convolution kernel.
-            groups : int, default=1
-                Number of groups the kernels are divided into. If `groups == 1`
+                Defaults to "conv".
+            kernel_size: The size of the convolution kernel.
+                Defaults to 3.
+            groups: Number of groups the kernels are divided into. If `groups == 1`
                 normal convolution is applied. If `groups = in_channels`
                 depthwise convolution is applied.
-            bias : bool, default=True,
+                Defaults to 1.
+            bias:
                 Include bias term in the convolution block. Only used for `BaasicConv`.
-            preactivate : bool, default=False
-                If True, normalization will be applied before convolution.
-            attention : str, default=None
+                Defaults to True.
+            preactivate: If True, normalization will be applied before convolution.
+                Defaults to False.
+            attention:
                 Attention method. One of: "se", "scse", "gc", "eca", "msca", None
-            preattend : bool, default=False
+                Defaults to None.
+            preattend:
                 If True, Attention is applied at the beginning of forward pass.
-            **kwargs
+                Defaults to False.
+            **kwargs:
                 Additional arguments to be passed to the `ConvLayer` and `Merge`.
         """
         super().__init__()

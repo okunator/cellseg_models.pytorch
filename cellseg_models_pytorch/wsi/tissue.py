@@ -65,18 +65,19 @@ def get_tissue_mask(
 ) -> tuple[int, np.ndarray]:
     """Detect tissue from image.
 
-    Parameters:
-        image (np.ndarray):
-            Input image.
-        threshold (int, default=None):
+    Args:
+        image: Input image.
+        threshold (int):
             Threshold for tissue detection. If set, will detect tissue by global
             thresholding, and otherwise Otsu's method is used to find a threshold.
-        multiplier (float, default=1.0):
+            Defaults to None.
+        multiplier:
             Otsu's method is used to find an optimal threshold by minimizing the weighted
             within-class variance. This threshold is then multiplied with `multiplier`.
             Ignored if `threshold` is not None.
-        sigma (float, default=1.0):
-            Sigma for gaussian blurring. Defaults to 1.0.
+            Defaults to 1.0.
+        sigma: Sigma for gaussian blurring. Defaults to 1.0.
+            Defaults to 1.0.
 
     Raises:
         ValueError: Threshold not between 0 and 255.

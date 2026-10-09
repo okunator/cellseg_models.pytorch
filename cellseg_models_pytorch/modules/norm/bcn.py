@@ -20,16 +20,14 @@ class BCNorm(nn.Module):
         magic number 16 comes from the paper:
         https://arxiv.org/abs/1803.08494
 
-        Parameters
-        ----------
-            num_features : int
-                Number of input channels/features.
-            num_groups : int, default=None
-                Number of groups to group the channels.
-            eps : float, default=1e-7
-                Small constant for numerical stability.
-            estimate : bool, default=False
-                If True, Uses `EstBN` instead of BN.
+        Args:
+            num_features: Number of input channels/features.
+            num_groups (int): Number of groups to group the channels.
+                Defaults to None.
+            eps: Small constant for numerical stability.
+                Defaults to 1e-7.
+            estimate: If True, Uses `EstBN` instead of BN.
+                Defaults to False.
         """
         super().__init__()
 

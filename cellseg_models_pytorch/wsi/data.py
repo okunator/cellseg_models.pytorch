@@ -37,17 +37,13 @@ import numpy as np
 class TileCoordinates:
     """Data class representing a collection of tile coordinates.
 
-    Parameters:
+    Args:
         coordinates (list[tuple[int, int, int, int]]):
             List of `xywh`-coordinates.
-        width (int):
-            Tile width.
-        height (int):
-            Tile height.
-        overlap (float):
-            Overlap between neighbouring tiles.
-        max_background (float):
-            Maximum amount of background in each tile.
+        width (int): Tile width.
+        height (int): Tile height.
+        overlap (float): Overlap between neighbouring tiles.
+        max_background (float): Maximum amount of background in each tile.
         tissue_mask (np.ndarray):
             Tissue mask used for filtering tiles based on `max_background`.
     """

@@ -17,15 +17,12 @@ def feature_sampling(
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Sample features from feature map with boundary-pixel coordinates.
 
-    Parameters:
-        feature_map (torch.Tensor):
-            Input feature map. Shape: (B, C, H, W)
-        coord_map (torch.Tensor):
-            Boundary-pixel coordinate grid. Shape: (B, n_rays, 2, H, W)
-        nd_sampling (int):
-            Number of sampling points in each ray.
-        sampling_mode (str, default="nearest"):
-            Sampling mode, by default "nearest".
+    Args:
+        feature_map: Input feature map. Shape: (B, C, H, W)
+        coord_map: Boundary-pixel coordinate grid. Shape: (B, n_rays, 2, H, W)
+        nd_sampling: Number of sampling points in each ray.
+        sampling_mode: Sampling mode, by default "nearest".
+            Defaults to "nearest".
 
     Returns:
         Tuple[torch.Tensor, torch.Tensor]
@@ -83,11 +80,12 @@ class SamplingFeatures(nn.Module):
     def __init__(self, n_rays: int, sampling_mode: str = "nearest") -> None:
         """Sample features from feature map with boundary-pixel coordinates.
 
-        Parameters:
-            n_rays (int)_
-                Number of rays.
-            sampling_mode (str, default="nearest"):
-                Sampling mode, by default 'nearest'.
+        n_rays (int)_
+            Number of rays.
+
+        Args:
+            sampling_mode: Sampling mode, by default 'nearest'.
+                Defaults to "nearest".
         """
         super().__init__()
         self.n_rays = n_rays
@@ -103,13 +101,10 @@ class SamplingFeatures(nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Sample features and coords.
 
-        Parameters:
-            feature_map (torch.Tensor):
-                Input feature map. Shape: (B, C, H, W)
-            dist (torch.Tensor):
-                Radial distance map. Shape: (B, n_rays, H, W)
-            nd_sampling (int):
-                Number of sampling points in each ray.
+        Args:
+            feature_map: Input feature map. Shape: (B, C, H, W)
+            dist: Radial distance map. Shape: (B, n_rays, H, W)
+            nd_sampling: Number of sampling points in each ray.
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor]:

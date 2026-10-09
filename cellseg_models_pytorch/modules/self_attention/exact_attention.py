@@ -23,32 +23,27 @@ class ExactSelfAttention(BaseSelfAttention):
         - memeff: `xformers.ops.memory_efficient_attention` from xformers package.
         - slice-memeff-attention: Comnbines slice-attention and memeff
 
-        Parameters
-        ----------
-            head_dim : int
-                Out dim per attention head.
-            num_heads : int
-                Number of heads.
-            how : str, default="basic"
-                How to compute the self-attention matrix.
-                One of ("basic", "flash", "slice", "memeff", "slice-memeff").
-                "basic": the normal O(N^2) self attention.
-                "flash": the flash attention (by xformers library),
-                "slice": batch sliced attention operation to save mem.
-                "memeff": xformers.memory_efficient_attention.
-                "slice-memeff": Conmbine slicing and memory_efficient_attention.
-            slice_size, int, optional
-                The size of the slice. Used only if `how in ('slice', 'slice_memeff)`.
+        Args:
+            head_dim: Out dim per attention head.
+            num_heads: Number of heads.
+            how: How to compute the self-attention matrix.
+                    One of ("basic", "flash", "slice", "memeff", "slice-memeff").
+                    "basic": the normal O(N^2) self attention.
+                    "flash": the flash attention (by xformers library),
+                    "slice": batch sliced attention operation to save mem.
+                    "memeff": xformers.memory_efficient_attention.
+                    "slice-memeff": Conmbine slicing and memory_efficient_attention.
+                slice_size, int, optional
+                    The size of the slice. Used only if `how in ('slice', 'slice_memeff)`.
+                Defaults to "basic".
 
-        Raises
-        ------
-            - ValueError:
-                - If illegal self attention (`how`) method is given.
+        Raises:
+            ValueError: - If illegal self attention (`how`) method is given.
                 - If `how` is set to `slice` while `num_heads` | `slice_size`
                     args are not given proper integer values.
                 - If `how` is set to `memeff` or `slice_memeff` but cuda is not
                     available.
-            - ModuleNotFoundError:
+            ModuleNotFoundError:
                 - If `self_attention` is set to `memeff` and `xformers` package is not
                 installed
         """
@@ -66,19 +61,13 @@ class ExactSelfAttention(BaseSelfAttention):
 
         I.e softmax(Q @ K'/sqrt(head_dim)) @ V
 
-        Parameters
-        ----------
-            query : torch.Tensor
-                Query tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-            key : torch.Tensor
-                Key tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-            value : torch.Tensor
-                Value tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+        Args:
+            query: Query tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+            key: Key tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+            value: Value tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
 
-        Returns
-        -------
-            torch.Tensor:
-                The self-attention matrix. Same shape as inputs.
+        Returns:
+            The self-attention matrix. Same shape as inputs.
         """
         attn = compute_mha(
             query,

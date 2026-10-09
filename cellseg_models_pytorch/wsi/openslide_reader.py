@@ -61,9 +61,8 @@ class OpenSlideReader(SlideReaderBackend):
     def __init__(self, path: str) -> None:
         """Initialize OpenSlideBackend class instance.
 
-        Parameters:
-            path (str):
-                Path to the slide image.
+        Args:
+            path: Path to the slide image.
 
         Raises:
             ImportError: OpenSlide could not be imported.

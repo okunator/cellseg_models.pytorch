@@ -28,22 +28,20 @@ class Mlp(nn.Module):
         - Input shape: (B, N, embed_dim)
         - Output shape: (B, seq_len, embed_dim)
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input features.
-            mlp_ratio : int, default=2
+        Args:
+            in_channels: Number of input features.
+            mlp_ratio:
                 Scaling factor to get the number hidden features from the `in_channels`.
-            activation : str, default="star_relu"
-                The name of the activation function.
-            dropout : float, default=0.0
-                Dropout ratio.
-            bias : bool, default=False
-                Flag whether to use bias terms in the nn.Linear modules.
-            out_channels : int, optional
+                Defaults to 2.
+            activation: The name of the activation function.
+                Defaults to "star_relu".
+            dropout: Dropout ratio.
+                Defaults to 0.0.
+            bias: Flag whether to use bias terms in the nn.Linear modules.
+                Defaults to False.
+            out_channels:
                 Number of out channels. If None `out_channels = in_channels`
-            act_kwargs : Dict[str, Any], optional
-                Arbitrary key-word arguments for the activation function.
+            act_kwargs: Arbitrary key-word arguments for the activation function.
         """
         super().__init__()
         act_kwargs = act_kwargs if act_kwargs is not None else {}
@@ -86,22 +84,20 @@ class ConvMlp(nn.Module):
         Input shape: (B, in_channels, H, W).
         Output shape: (B, out_channels, H, W).
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input features.
-            mlp_ratio : int, default=2
+        Args:
+            in_channels: Number of input features.
+            mlp_ratio:
                 Scaling factor to get the number hidden features from the `in_channels`.
-            activation : str, default="star_relu"
-                The name of the activation function.
-            dropout : float, default=0.0
-                Dropout ratio.
-            bias : bool, default=False
-                Flag whether to use bias terms in the nn.Linear modules.
-            out_channels : int, optional
+                Defaults to 2.
+            activation: The name of the activation function.
+                Defaults to "star_relu".
+            dropout: Dropout ratio.
+                Defaults to 0.0.
+            bias: Flag whether to use bias terms in the nn.Linear modules.
+                Defaults to False.
+            out_channels:
                 Number of out channels. If None `out_channels = in_channels`
-            act_kwargs : Dict[str, Any], optional
-                Arbitrary key-word arguments for the activation function.
+            act_kwargs: Arbitrary key-word arguments for the activation function.
         """
         super().__init__()
         act_kwargs = act_kwargs if act_kwargs is not None else {}
@@ -145,27 +141,25 @@ class MlpBlock(nn.Module):
 
         I.e. norm -> mlp -> residual
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input features.
-            mlp_type : str, default="linear"
-                Flag for either nn.Linear or nn.Conv2d mlp-layer.
+        Args:
+            in_channels: Number of input features.
+            mlp_type: Flag for either nn.Linear or nn.Conv2d mlp-layer.
                 One of "conv", "linear".
-            mlp_ratio : int, default=2
+                Defaults to "linear".
+            mlp_ratio:
                 Scaling factor to get the number hidden features from the `in_channels`.
-            activation : str, default="star_relu"
-                The name of the activation function.
-            act_kwargs : Dict[str, Any], optional
-                key-word args for the activation module.
-            dropout : float, default=0.0
-                Dropout ratio.
-            bias : bool, default=False
-                Flag whether to use bias terms in the nn.Linear modules.
-            normalization : str, default="ln"
-                The name of the normalization method.
+                Defaults to 2.
+            activation: The name of the activation function.
+                Defaults to "star_relu".
+            act_kwargs: key-word args for the activation module.
+            dropout: Dropout ratio.
+                Defaults to 0.0.
+            bias: Flag whether to use bias terms in the nn.Linear modules.
+                Defaults to False.
+            normalization: The name of the normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", "lrn", None
-            norm_kwargs : Dict[str, Any], optional
+                Defaults to "ln".
+            norm_kwargs:
                 key-word args for the normalization layer. Ignored if normalization
                 is None.
         """

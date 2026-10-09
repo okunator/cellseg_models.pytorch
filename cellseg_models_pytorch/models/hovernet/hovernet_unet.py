@@ -55,68 +55,76 @@ class HoverNetUnet(nn.ModuleDict):
             - Different encoder, (any encoder from timm-library).
             - Dense blocks have transition conv-blocks like in the original dense-net.
 
-        Parameters:
-            decoders : Tuple[str, ...]
+        Args:
+            decoders:
                 Names of the decoder branches of this network. E.g. ("hovernet", "sem")
-            heads : Dict[str, Dict[str, int]]
+            heads:
                 The segmentation heads of the architecture. I.e. Names of the decoder
                 branches (has to match `decoders`) mapped to dicts
                 of output name - number of output classes. E.g.
                 {"hovernet": {"hovernet": 2}, "sem": {"sem": 5}, "type": {"type": 5}}
-            depth : int, default=4
+            depth:
                 The depth of the encoder. I.e. Number of returned feature maps from
                 the encoder. Maximum depth = 5.
-            out_channels : Tuple[int, ...], default=(512, 256, 64, 64)
-                Out channels for each decoder stage.
-            style_channels : int, default=None
+                Defaults to 4.
+            out_channels: Out channels for each decoder stage.
+                Defaults to (512, 256, 64, 64).
+            style_channels:
                 Number of style vector channels. If None, style vectors are ignored.
-            enc_name : str, default="resnet50"
-                Name of the encoder. See timm docs for more info.
-            enc_pretrain : bool, default=True
-                Whether to use imagenet pretrained weights in the encoder.
-            enc_freeze : bool, default=False
-                Freeze encoder weights for training.
-            enc_out_indices : Tuple[int, ...], optional
+                Defaults to None.
+            enc_name: Name of the encoder. See timm docs for more info.
+                Defaults to "resnet50".
+            enc_pretrain: Whether to use imagenet pretrained weights in the encoder.
+                Defaults to True.
+            enc_freeze: Freeze encoder weights for training.
+                Defaults to False.
+            enc_out_indices:
                 Indices of the encoder output features. If None, indices is set to
                 `range(len(depth))`.
-            upsampling : str, default="fixed-unpool"
+            upsampling:
                 The upsampling method to be used. One of: "fixed-unpool", "nearest",
                 "bilinear", "bicubic", "conv_transpose"
-            long_skip : str, default="unet"
+                Defaults to "fixed-unpool".
+            long_skip:
                 long skip method to be used. One of: "unet", "unetpp", "unet3p",
                 "unet3p-lite", None
-            merge_policy : str, default="sum"
-                The long skip merge policy. One of: "sum", "cat"
-            n_dense : Tuple[int, int], default=(8, 4)
-                Number of dense blocks in the dense decoder stages.
-            normalization : str, default="bn":
-                Normalization method.
+                Defaults to "unet".
+            merge_policy: The long skip merge policy. One of: "sum", "cat"
+                Defaults to "sum".
+            n_dense: Number of dense blocks in the dense decoder stages.
+                Defaults to (8, 4).
+            normalization: Normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", None
-            activation : str, default="relu"
-                Activation method.
+                Defaults to "bn".
+            activation: Activation method.
                 One of: "mish", "swish", "relu", "relu6", "rrelu", "selu",
                 "celu", "gelu", "glu", "tanh", "sigmoid", "silu", "prelu",
                 "leaky-relu", "elu", "hardshrink", "tanhshrink", "hardsigmoid"
-            convolution : str, default="conv"
+                Defaults to "relu".
+            convolution:
                 The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-            preactivate : bool, default=True
-                If True, normalization will be applied before convolution.
-            attention : str, default=None
-                Attention method. One of: "se", "scse", "gc", "eca", None
-            preattend : bool, default=False
+                Defaults to "conv".
+            preactivate: If True, normalization will be applied before convolution.
+                Defaults to True.
+            attention: Attention method. One of: "se", "scse", "gc", "eca", None
+                Defaults to None.
+            preattend:
                 If True, Attention is applied at the beginning of forward pass.
-            out_size : int, optional
+                Defaults to False.
+            out_size:
                 If specified, the output size of the model will be (out_size, out_size).
                 I.e. the outputs will be interpolated to this size.
-            encoder_kws (Dict[str, Any], default=None):
+            encoder_kws:
                 Extra keyword arguments for the encoder. See timm docs for more info.
-            skip_kws (Dict[str, Any], default=None):
-                Extra keyword arguments for the skip-connection module.
-            stem_skip_kws (Dict[str, Any], default=None):
+                Defaults to None.
+            skip_kws: Extra keyword arguments for the skip-connection module.
+                Defaults to None.
+            stem_skip_kws:
                 Extra keyword arguments for the stem skip-connection module.
-            inst_key : str, default="inst"
-                The key for the model output that will be used in the instance
+                Defaults to None.
+            inst_key: The key for the model output that will be used in the instance
                 segmentation post-processing pipeline as the binary segmentation result.
+                Defaults to "inst".
         """
         super().__init__()
         self.inst_key = inst_key
@@ -185,14 +193,15 @@ class HoverNetUnet(nn.ModuleDict):
     def forward(self, x: torch.Tensor, return_pred_only: bool = True) -> Dict[str, Any]:
         """Forward pass of Cellpose U-net.
 
-        Parameters:
             x (torch.Tensor):
                 Input image batch. Shape: (B, C, H, W).
             return_pred_only (bool, default=True):
                 If True, only the dense prediction maps are returned. If False, the
                 encoder features and decoder features are also returned.
 
-        Returns: Dict[str, Any]:
+
+        Args:
+            Returns (Dict[str, Any]):
                 The output dictionary of the model. The keys of the dict are:
                     - "nuc": SoftInstanceOutput(type_map, aux_map, Optional[binary_map]).
                     - "cyto": SoftInstanceOutput(type_map, aux_map, Optional[binary_map]).
@@ -224,11 +233,9 @@ def hovernet_nuclei(n_nuc_classes: int, **kwargs) -> nn.Module:
     HoVer-Net:
         - https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub
 
-    Parameters:
-        n_nuc_classes (int):
-            Number of nuclei type classes.
-        **kwargs:
-            Arbitrary key word args for the HoverNet class.
+    Args:
+        n_nuc_classes: Number of nuclei type classes.
+        **kwargs: Arbitrary key word args for the HoverNet class.
 
     Returns:
         nn.Module: The initialized HoVer-Net model.

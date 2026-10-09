@@ -26,15 +26,12 @@ class ScaledWSConv2d(nn.Conv2d):
 
         https://arxiv.org/abs/2101.08692
 
-        Parameters
-        ----------
-            Refer to nn.Conv2d.
+        Refer to nn.Conv2d.
 
-            gamma : float
-                Fixed constant to preserve the variance of residual-blocks.
-            gain_init : float
-                Init value for the gain tensor.
 
+        Args:
+            gamma: Fixed constant to preserve the variance of residual-blocks.
+            gain_init: Init value for the gain tensor.
         """
         super().__init__(
             in_channels,

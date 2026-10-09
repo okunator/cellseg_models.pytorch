@@ -27,10 +27,10 @@ class PostProcessor:
     def __init__(self, postproc_method: str, postproc_kwargs: dict = {}) -> None:
         """A class for post-processing of all the different types of model outputs.
 
-        Parameters:
-            postproc_method (str):
+        Args:
+            postproc_method:
                 The post-processing method for the instance segmentation mask.
-            postproc_kwargs (dict):
+            postproc_kwargs:
                 Arbitrary post-processing kwargs for the postproc method.
 
         Raises:

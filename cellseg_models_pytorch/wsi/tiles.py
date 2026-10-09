@@ -64,17 +64,15 @@ def get_tile_coordinates(
 ) -> list[XYWH]:
     """Create tile coordinates (xywh).
 
-    Parameters:
-        dimensions (tuple[int, int]):
-            Image dimensions (height, width).
-        width (int):
-            Tile width.
-        height (int, default=None):
-            Tile height. If None, will be set to `width`.
-        overlap (float, default=0.0):
-            Overlap between neighbouring tiles.
-        out_of_bounds (bool, default=False):
-            Allow tiles to go out of image bounds.
+    Args:
+        dimensions: Image dimensions (height, width).
+        width: Tile width.
+        height (int): Tile height. If None, will be set to `width`.
+            Defaults to None.
+        overlap: Overlap between neighbouring tiles.
+            Defaults to 0.0.
+        out_of_bounds: Allow tiles to go out of image bounds.
+            Defaults to False.
 
     Raises:
         TypeError: Height and/or width are not integers.
@@ -86,7 +84,7 @@ def get_tile_coordinates(
         List[XYWH]:
             List of xywh-coordinates.
 
-    Example:
+    Examples:
         >>> get_tile_coordinates((16, 8), width=8, overlap=0.5)
         [(0, 0, 8, 8), (0, 4, 8, 8), (0, 8, 8, 8)]
     """
@@ -124,15 +122,12 @@ def get_region_from_array(
 ) -> np.ndarray:
     """Read region from an image array.
 
-    Parameters:
-        image (np.ndarray):
-            Input image.
-        xywh (tuple[int, int, int, int]):
-            Region coordinates.
-        downsample (float, tuple[float, float]):
-            Downsample for coordinates.
-        fill (int, default=0):
-            Fill value for out of bounds areas.
+    Args:
+        image: Input image.
+        xywh (tuple[int, int, int, int]): Region coordinates.
+        downsample (float, tuple[float, float]): Downsample for coordinates.
+        fill: Fill value for out of bounds areas.
+            Defaults to 0.
 
     Returns:
         np.ndarray:
@@ -157,13 +152,10 @@ def get_background_percentages(
 ) -> list[float]:
     """Calculate background percentages for tile coordinates.
 
-    Parameters:
-        tile_coordinates (list[XYWH]):
-            List of xywh-coordinates.
-        tissue_mask (np.ndarray):
-            Tissue mask.
-        downsample (float, tuple[float, float]):
-            Downsample of the tissue mask.
+    Args:
+        tile_coordinates: List of xywh-coordinates.
+        tissue_mask: Tissue mask.
+        downsample (float, tuple[float, float]): Downsample of the tissue mask.
 
     Returns:
         List of background percentages for each tile.
@@ -180,11 +172,9 @@ def get_background_percentages(
 def get_overlap_index(xywh: XYWH, coordinates: list[XYWH]) -> np.ndarray:
     """Indices of tiles in `coordinates` which overlap with `xywh`.
 
-    Parameters:
-        xywh (tuple[int, int, int, int]):
-            Coordinates.
-        coordinates (list[XYWH]):
-            List of tile coordinates.
+    Args:
+        xywh (tuple[int, int, int, int]): Coordinates.
+        coordinates: List of tile coordinates.
 
     Returns:
         Indices of tiles which overlap with xywh.
@@ -206,11 +196,9 @@ def get_overlap_area(
 ) -> np.ndarray:
     """Calculate how much each coordinate overlaps with `xywh`.
 
-    Parameters:
-        xywh (tuple[int, int, int, int]):
-            Coordinates.
-        coordinates (list[XYWH]):
-            List of coordinates.
+    Args:
+        xywh: Coordinates.
+        coordinates: List of coordinates.
 
     Returns:
         np.ndarray:
@@ -236,17 +224,15 @@ def get_downsample(
 ) -> tuple[float, float]:
     """Calculate height and width dowmsaple between image and dimensions.
 
-    Parameters:
-        image (np.ndarray):
-            Input image.
-        dimensions (tuple[int, int]):
-            Original dimensions.
+    Args:
+        image: Input image.
+        dimensions: Original dimensions.
 
     Returns:
         tuple[float, float]:
             Height and width dowmsample.
 
-    Example:
+    Examples:
         >>> image = np.zeros((8, 8, 3))
         >>> get_downsample(image, dimensions=(128, 128))
         (16.0, 16.0)
@@ -297,13 +283,11 @@ def _pad_tile(
 ) -> np.ndarray:
     """Pad tile image into shape with `fill` values.
 
-    Parameters:
-        tile (np.ndarray):
-            Tile image.
-        shape (tuple[int, int]):
-            Output shape.
-        fill (int, default=255):
-            Fill value.
+    Args:
+        tile: Tile image.
+        shape: Output shape.
+        fill: Fill value.
+            Defaults to 255.
 
     Returns:
         np.ndarray:

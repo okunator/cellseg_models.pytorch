@@ -16,15 +16,14 @@ def percentile_normalize(
 ) -> np.ndarray:
     """Channelwise percentile normalization to range [0, 1].
 
-    Parameters:
-        img (np.ndarray):
-            Input image to be normalized. Shape (H, W, C)|(H, W).
-        lower (float, default=0.01):
-            The lower percentile
-        upper (float, default=99.99):
-            The upper percentile
-        copy (bool, default=False):
-            If True, normalize the copy of the input.
+    Args:
+        img: Input image to be normalized. Shape (H, W, C)|(H, W).
+        lower: The lower percentile
+            Defaults to 0.01.
+        upper: The upper percentile
+            Defaults to 99.99.
+        copy: If True, normalize the copy of the input.
+            Defaults to False.
 
     Returns:
         np.ndarray:
@@ -59,11 +58,10 @@ def percentile_normalize99(
 ) -> np.ndarray:
     """Channelwise 1-99 percentile normalization. Optional clamping.
 
-    Parameters:
-        img (np.ndarray)
-            Input image to be normalized. Shape (H, W, C)|(H, W).
-        copy (bool, default=False):
-            If True, normalize the copy of the input.
+    Args:
+        img: Input image to be normalized. Shape (H, W, C)|(H, W).
+        copy: If True, normalize the copy of the input.
+            Defaults to False.
 
     Returns:
         np.ndarray:
@@ -102,20 +100,21 @@ def normalize(
 ) -> np.ndarray:
     """Channelwise mean centering or standardizing of an image. Optional clamping.
 
-    Parameters:
-        img (np.ndarray):
-            Input image to be normalized. Shape (H, W, C)|(H, W).
-        mean (np.ndarray, default=None):
+    Args:
+        img: Input image to be normalized. Shape (H, W, C)|(H, W).
+        mean:
             Channel-wise mean values to subtract from the image. Shape (C,). If None,
             the channel-wise mean of the input image is used.
-        denom (np.ndarray, default=None):
+            Defaults to None.
+        denom:
             Value to divide the image by. In practice, we do a multiplication because
             it's faster. So set this to the reciprocal of intended denominator. E.g.
             the inputs, if you want to standardize, use the reciprocal of the standard
             deviation of the inputs. Shape (C,). If None, the channel-wise reciprocal
             standard deviation of the input image is used.
-        copy (bool, default=False):
-            If True, normalize the copy of the input.
+            Defaults to None.
+        copy: If True, normalize the copy of the input.
+            Defaults to False.
 
     Returns:
         np.ndarray:
@@ -156,15 +155,14 @@ def minmax_normalize(
 ) -> np.ndarray:
     """Min-max normalization per image channel. Optional clamping.
 
-    Parameters:
-        img (np.ndarray):
-            Input image to be normalized. Shape (H, W, C)|(H, W).
-        amin (float, default=0.0):
-            Clamp min value. No clamping performed if None.
-        amax (float, default=1.0):
-            Clamp max value. No clamping performed if None.
-        copy (bool, default=False):
-            If True, normalize the copy of the input.
+    Args:
+        img: Input image to be normalized. Shape (H, W, C)|(H, W).
+        amin: Clamp min value. No clamping performed if None.
+            Defaults to 0.0.
+        amax: Clamp max value. No clamping performed if None.
+            Defaults to 1.0.
+        copy: If True, normalize the copy of the input.
+            Defaults to False.
 
     Returns:
         np.ndarray:
@@ -195,12 +193,11 @@ def float2ubyte(mat: np.ndarray, normalize: bool = False) -> np.ndarray:
     Float matrix values need to be in range [-1, 1] for img_as_ubyte so
     the image is normalized or clamped before conversion.
 
-    Parameters:
-        mat (np.ndarray):
-            A float64 matrix. Shape (H, W, C).
-        normalize (bool, default=False):
-            Normalizes input to [0, 1] first. If not True,
+    Args:
+        mat: A float64 matrix. Shape (H, W, C).
+        normalize: Normalizes input to [0, 1] first. If not True,
             clips values between [-1, 1].
+            Defaults to False.
 
     Returns:
         np.ndarray:
