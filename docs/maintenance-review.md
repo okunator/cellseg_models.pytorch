@@ -5,7 +5,7 @@
 All seven checks passed for maintenance PR 82 at `61a53d9`, including source tests
 and clean wheel/source installs on Python 3.10 and 3.11. The latest verified run is
 [37950270241](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37950270241).
-The PR remains a draft. Trusted-publisher authentication requires an authorized
+The maintenance changes were subsequently merged through PR 84. Trusted-publisher authentication requires an authorized
 release; passing PR checks do not verify PyPI account configuration.
 
 ## ONNX contribution findings
@@ -26,12 +26,13 @@ The following defects affect both exporters:
 | Sample dtype differs from model dtype | A float64 model receives a float32 sample and fails with an input/bias dtype mismatch. The same forced dtype affects half-precision models. | Select the sample device and floating dtype from the model; test float16 and float64 input construction. |
 | Advertised minimum export version is unverified and fails | PyTorch 2.5.1 fails ONNX conversion with both ONNX Script 0.7.2 and 0.1.0. This does not prove every historical package combination fails, but the unrestricted installation advice cannot establish support. | Require the tested minimum PyTorch 2.7 for this new export API. Ordinary inference retains its existing PyTorch bounds. |
 
-Corrections are saved on `codex/onnx-maintenance`, based on the CI maintenance
+Corrections were prepared on `fix/onnx-maintenance`, based on the CI maintenance
 branch, with the original contributor commits and attribution preserved. The
-CellPose fix is `be704a1`; the StarDist fix is `3ecf256`. This is a combined review
-checkout, not approval to merge the contributions together. Each correction can
-be applied independently after its contribution. Contributor branches remain
-unchanged, and no review or message has been posted externally.
+original contributions have since been merged as PRs 80 and 81 without these
+corrections. The fixes, regression tests, and explicit ONNX gate are now extracted
+onto `fix/onnx-export-correctness`, based on Google-style docstring PR 86. This
+follow-up changes neither ordinary inference dependency bounds nor the lockfile.
+No external review or contributor message has been posted.
 
 ## Validation and remaining gaps
 
