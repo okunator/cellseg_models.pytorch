@@ -22,6 +22,12 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/p/cellseg-models-pytorch
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Download verified distributions
         uses: actions/download-artifact@v8
@@ -31,6 +37,3 @@ jobs:
 
       - name: Publish verified distributions
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_TOKEN }}
-          attestations: false
