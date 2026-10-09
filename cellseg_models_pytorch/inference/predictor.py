@@ -24,11 +24,9 @@ def compute_pyramid_patch_weight_loss(width: int, height: int) -> np.ndarray:
 
     Ported from: pytorch-toolbelt
 
-    Parameters:
-        width (int):
-            Tile width.
-        height (int):
-            Tile height.
+    Args:
+        width: Tile width.
+        height: Tile height.
 
     Returns:
         np.ndxay:
@@ -83,16 +81,17 @@ class BasePredictor:
         Note:
             No post-processing is applied.
 
-        Parameters:
-            x (Union[torch.Tensor, np.ndarray, Image]):
-                Input image (H, W, C) or input image batch (B, C, H, W).
-            apply_boundary_weight (bool, default=True):
+        Args:
+            x: Input image (H, W, C) or input image batch (B, C, H, W).
+            apply_boundary_weight:
                 Whether to apply boundary weights to mitigate boundary artefacts
                 in aux predictions.
-            save_intermediate (bool, default=False):
+                Defaults to True.
+            save_intermediate:
                 Whether to save intermediate results (logits). If True, the method
                 returns a tuple (final predictions, intermediate results), where the
                 intermediate results are the raw model outputs before argmax.
+                Defaults to False.
 
         Returns:
             Dict[str, torch.Tensor]:
@@ -284,22 +283,21 @@ class Predictor(BasePredictor):
         Note:
             No post-processing is applied.
 
-        Parameters:
-            x (Union[torch.Tensor, np.ndarray, Image]):
-                Input image (H, W, C) or input image batch (B, C, H, W).
-            window_size (Tuple[int, int]):
-                Height and width of the window size.
-            stride (int):
-                The amount of stride for sliding window.
-            padding (int, default=20):
-                Padding during applying sliding window.
-            apply_boundary_weight (bool, default=True):
+        Args:
+            x: Input image (H, W, C) or input image batch (B, C, H, W).
+            window_size: Height and width of the window size.
+            stride: The amount of stride for sliding window.
+            padding: Padding during applying sliding window.
+                Defaults to 20.
+            apply_boundary_weight:
                 Whether to apply boundary weights to mitigate boundary artefacts
                 in aux predictions.
-            save_intermediate (bool, default=False):
+                Defaults to True.
+            save_intermediate:
                 Whether to save intermediate results (logits). If True, the method
                 returns a tuple (final predictions, intermediate results), where the
                 intermediate results are the raw model outputs before argmax.
+                Defaults to False.
 
         Returns:
             Dict[str, torch.Tensor]:

@@ -20,22 +20,15 @@ def multihead_attention(
 ) -> torch.Tensor:
     """Compute exact self attention with torch. Complexity: O(N**2).
 
-    Parameters
-    ----------
-        query : torch.Tensor
-            Query tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-        key : torch.Tensor
-            Key tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-        value : torch.Tensor
-            Value tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-        scale : float, optional
-            Scaling factor for Q @ K'. If None, query.shape[-1]**-0.5 will
+    Args:
+        query: Query tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+        key: Key tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+        value: Value tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+        scale: Scaling factor for Q @ K'. If None, query.shape[-1]**-0.5 will
             be used
 
-    Returns
-    -------
-        torch.Tensor:
-            The self-attention matrix. Same shape as inputs.
+    Returns:
+        The self-attention matrix. Same shape as inputs.
     """
     if scale is None:
         scale = query.shape[-1] ** -0.5
@@ -58,24 +51,17 @@ def mha(
 
     I.e softmax(Q @ K'/sqrt(head_dim)) @ V
 
-    Parameters
-    ----------
-        query : torch.Tensor
-            Query tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-        key : torch.Tensor
-            Key tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-        value : torch.Tensor
-            Value tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-        att_type : str, default="basic"
-            The type of the self-attention computation.
+    Args:
+        query: Query tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+        key: Key tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+        value: Value tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+        att_type: The type of the self-attention computation.
             One of: ("basic", "flash", "memeff").
-        **kwargs:
-            Extra key-word arguments for the mha computation.
+            Defaults to "basic".
+        **kwargs: Extra key-word arguments for the mha computation.
 
-    Returns
-    -------
-        torch.Tensor:
-            The self-attention matrix. Same shape as inputs.
+    Returns:
+        The self-attention matrix. Same shape as inputs.
     """
     if att_type == "memeff":
         if _has_xformers:
@@ -124,28 +110,20 @@ def slice_mha(
 
     NOTE: The input is sliced in the batch dimension.
 
-    Parameters
-    ----------
-        query : torch.Tensor
-            Query tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-        key : torch.Tensor
-            Key tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-        value : torch.Tensor
-            Value tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-        proj_channels : int
-            Number of out channels in the token projections.
-        num_heads : int
-            Number of heads in the mha.
-        slice_size : int, default=4
-            The size of the batch dim slice.
-        att_type : str, default="basic"
-            The type of the self-attention computation.
+    Args:
+        query: Query tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+        key: Key tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+        value: Value tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+        proj_channels: Number of out channels in the token projections.
+        num_heads: Number of heads in the mha.
+        slice_size: The size of the batch dim slice.
+            Defaults to 4.
+        att_type: The type of the self-attention computation.
             One of: ("memeff", "slice-memeff").
+            Defaults to "basic".
 
-    Returns
-    -------
-        torch.Tensor:
-            The self-attention matrix. Same shape as inputs.
+    Returns:
+        The self-attention matrix. Same shape as inputs.
     """
     allowed = ("slice", "slice-memeff")
     if att_type not in allowed:
@@ -200,24 +178,19 @@ def compute_mha(
 ) -> torch.Tensor:
     """Wrap all the different attention matrix computation types under this.
 
-    Parameters
-    ----------
-        query : torch.Tensor
-            Query tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-        key : torch.Tensor
-            Key tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-        value : torch.Tensor
-            Value tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
-        how : str, default="basic"
-            How to compute the self-attention matrix.
+    Args:
+        query: Query tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+        key: Key tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+        value: Value tensor. Shape: (B*num_heads, H*W, proj_dim//num_heads).
+        how: How to compute the self-attention matrix.
             One of ("basic", "flash", "slice", "memeff", "slice-memeff").
             "basic": the normal O(N^2) self attention.
             "flash": the flash attention (by xformers library),
             "slice": batch sliced attention operation to save mem.
             "memeff": xformers.memory_efficient_attention.
             "slice-memeff": Conmbine slicing and memory_efficient_attention.
-        **kwargs:
-            Extra key-word args for the attention matrix computation.
+            Defaults to "basic".
+        **kwargs: Extra key-word args for the attention matrix computation.
     """
     allowed = ("basic", "flash", "slice", "memeff", "slice-memeff")
     if how not in allowed:

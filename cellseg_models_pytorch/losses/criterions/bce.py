@@ -49,15 +49,13 @@ class BCELoss(WeightedBaseLoss):
     ) -> torch.Tensor:
         """Compute binary cross entropy loss.
 
-        Parameters:
-            yhat (torch.Tensor):
-                The prediction map. Shape (B, C, H, W).
-            target (torch.Tensor):
-                the ground truth annotations. Shape (B, H, W).
-            target_weight (torch.Tensor, default=None):
-                The edge weight map. Shape (B, H, W).
-            mask (torch.Tensor, default=None):
-                The mask map. Shape (B, H, W).
+        Args:
+            yhat: The prediction map. Shape (B, C, H, W).
+            target: the ground truth annotations. Shape (B, H, W).
+            target_weight: The edge weight map. Shape (B, H, W).
+                Defaults to None.
+            mask: The mask map. Shape (B, H, W).
+                Defaults to None.
 
         Returns:
             torch.Tensor:

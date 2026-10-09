@@ -17,19 +17,17 @@ class SegHead(nn.Module):
     ) -> None:
         """Segmentation head at the end of decoder branches.
 
-        Parameters:
-            in_channels (int):
-                Number of channels in the input tensor.
-            out_channels (int):
-                Number of channels in the output tensor.
-            kernel_size (int, default=1):
-                Kernel size for the conv operation.
-            bias (bool, default=False):
-                If True, add a bias term to the conv operation.
-            excitation_channels (int, default=None):
+        Args:
+            in_channels: Number of channels in the input tensor.
+            out_channels: Number of channels in the output tensor.
+            kernel_size: Kernel size for the conv operation.
+                Defaults to 1.
+            bias: If True, add a bias term to the conv operation.
+                Defaults to False.
+            excitation_channels:
                 Number of channels in an optional excitation conv layer before the
                 output head.
-
+                Defaults to None.
         """
         super().__init__()
         self.n_classes = out_channels

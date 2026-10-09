@@ -41,15 +41,11 @@ __all__ = ["gen_flows", "fill_holes_and_remove_small_masks", "normalize_field"]
 def normalize_field(mu: np.ndarray) -> np.ndarray:
     """Normalize the flow field.
 
-    Parameters
-    ----------
-        mu : np.ndarray
-            The un-normalized y- and x- flows. Shape (2, H, W).
+    Args:
+        mu: The un-normalized y- and x- flows. Shape (2, H, W).
 
-    Returns
-    -------
-        np.ndarray:
-            The normalized y- and x- flows. Shape (2, H, W).
+    Returns:
+        The normalized y- and x- flows. Shape (2, H, W).
     """
     mag = np.sqrt(np.nansum(mu**2, axis=0))
     mask = np.logical_and(mag != 0, ~np.isnan(mag))
@@ -62,15 +58,11 @@ def normalize_field(mu: np.ndarray) -> np.ndarray:
 def gen_flows(hover: np.ndarray) -> np.ndarray:
     """Convert Horizontal and Vertical gradients to cellpose flows.
 
-    Parameters
-    ----------
-        flows : np.ndarray
-            Horizontal and Vertical flows. Shape: (2, H, W).
+    Args:
+        flows (np.ndarray): Horizontal and Vertical flows. Shape: (2, H, W).
 
-    Returns
-    -------
-        np.ndarray:
-            The optical flow representation. Shape (H, W, 3).
+    Returns:
+        The optical flow representation. Shape (H, W, 3).
     """
     enhanced = percentile_normalize99(hover, amin=-1, amax=1)
     H = (np.arctan2(enhanced[0], enhanced[1]) + np.pi) / (2 * np.pi)
@@ -87,20 +79,15 @@ def fill_holes_and_remove_small_masks(
 ) -> np.ndarray:
     """Fill holes in inst_map and discard objects smaller than `min_size`.
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
-        min_size : int, default=15
-            Minimum number of pixels per mask, can turn off with -1.
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
+        min_size: Minimum number of pixels per mask, can turn off with -1.
+            Defaults to 15.
 
-    Returns
-    -------
-        np.ndarray:
-            Processed iinstance labelled mask. Shape (H, W).
+    Returns:
+        Processed iinstance labelled mask. Shape (H, W).
 
-    Raises
-    ------
+    Raises:
         ValueError: If input has wrong shape.
     """
     if inst_map.ndim != 2:

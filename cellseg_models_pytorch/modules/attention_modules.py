@@ -46,10 +46,8 @@ class MSCA(nn.Module):
 
         - SegNeXt: http://arxiv.org/abs/2209.08575
 
-        Parameters
-        ----------
-            in_channels : int
-                The number of input channels.
+        Args:
+            in_channels: The number of input channels.
         """
         super().__init__()
         # depth-wise projection
@@ -116,18 +114,16 @@ class SqueezeAndExcite(nn.Module):
 
         https://arxiv.org/abs/1709.01507
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels.
-            squeeze_ratio : float, default=0.25
-                Ratio of squeeze.
-            conv : str, default="conv"
-                Convolution layer type.
-            activation : str, default="relu"
-                Activation layer after squeeze.
-            gate_activation : str, default="sigmoid"
-                Attention gate function.
+        Args:
+            in_channels: Number of input channels.
+            squeeze_ratio: Ratio of squeeze.
+                Defaults to 0.25.
+            conv: Convolution layer type.
+                Defaults to "conv".
+            activation: Activation layer after squeeze.
+                Defaults to "relu".
+            gate_activation: Attention gate function.
+                Defaults to "sigmoid".
         """
         super().__init__()
 
@@ -185,18 +181,16 @@ class SCSqueezeAndExcite(SqueezeAndExcite):
 
         https://arxiv.org/abs/1803.02579
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels.
-            squeeze_ratio : float, default=0.25
-                Ratio of squeeze.
-            conv : str, default="conv"
-                Convolution layer type.
-            activation : str, default="relu"
-                Activation layer after squeeze.
-            gate_activation : str, default="sigmoid"
-                Attention gate function.
+        Args:
+            in_channels: Number of input channels.
+            squeeze_ratio: Ratio of squeeze.
+                Defaults to 0.25.
+            conv: Convolution layer type.
+                Defaults to "conv".
+            activation: Activation layer after squeeze.
+                Defaults to "relu".
+            gate_activation: Attention gate function.
+                Defaults to "sigmoid".
         """
         super().__init__(
             in_channels=in_channels,
@@ -239,16 +233,14 @@ class ECA(nn.Module):
 
         https://arxiv.org/abs/1910.03151
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels.
-            beta : int, default=1
-                Coefficient used to compute the kernel size adaptively.
-            gamma : int, default=2
-                Coefficient used to compute the kernel size adaptively.
-            gate_activation : str, default="sigmoid"
-                Attention gate function.
+        Args:
+            in_channels: Number of input channels.
+            beta: Coefficient used to compute the kernel size adaptively.
+                Defaults to 1.
+            gamma: Coefficient used to compute the kernel size adaptively.
+                Defaults to 2.
+            gate_activation: Attention gate function.
+                Defaults to "sigmoid".
         """
         super().__init__()
 
@@ -289,16 +281,14 @@ class GlobalContext(nn.Module):
 
         NOTE: Only the (attn + add)-fusion (the best) variant implemented.
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels.
-            squeeze_ratio : float, default=0.125
-                Ratio of squeeze.
-            conv : str, default="conv"
-                Convolution layer type.
-            activation : str, default="relu"
-                Activation layer after squeeze.
+        Args:
+            in_channels: Number of input channels.
+            squeeze_ratio: Ratio of squeeze.
+                Defaults to 0.125.
+            conv: Convolution layer type.
+                Defaults to "conv".
+            activation: Activation layer after squeeze.
+                Defaults to "relu".
         """
         super().__init__()
 
@@ -375,10 +365,8 @@ class Attention(nn.Module):
     def __init__(self, name: str, **kwargs) -> None:
         """Attention wrapper class.
 
-        Parameters:
-        -----------
-            name : str
-                Name of the attention method.
+        Args:
+            name: Name of the attention method.
         """
         super().__init__()
 

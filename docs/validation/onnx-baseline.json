@@ -1,0 +1,122 @@
+{
+  "image": "cellseg_models_pytorch/utils/tests/data/HE.png",
+  "image_sha256": "677d0b8828afc0ee2c6bc911945c2425baa32b68a6648bbc546b31706e37dd1e",
+  "size": [
+    256,
+    256
+  ],
+  "preprocessing": "RGB, PIL bilinear resize, per-image minmax_normalize",
+  "versions": {
+    "torch": "2.7.1",
+    "ort": "1.31.0",
+    "numpy": "1.26.4",
+    "timm": "1.0.19",
+    "onnx": "1.23.2",
+    "onnxscript": "0.7.2",
+    "ml-dtypes": "0.5.4"
+  },
+  "models": {
+    "cellpose": {
+      "checkpoint": {
+        "repo_id": "csmp-hub/cellpose-histo-hgsc-nuc-v1",
+        "revision": "88c7ffd3a9106d1673c3dd6e6a9e42476e8320d2",
+        "filename": "cellpose_hgsc_v1_efficientnet_b5.safetensors",
+        "sha256": "d6e29abb0b1c60668961f1bf074e609091583cae8340f1360e6ccfcb1cf17bb4"
+      },
+      "instances": 96,
+      "runtime": {
+        "optimized": {
+          "dense": [
+            {
+              "output": "flow_map",
+              "max_absolute_error": 5.163252353668213e-06,
+              "outside_original_tolerance": 0
+            },
+            {
+              "output": "type_map",
+              "max_absolute_error": 1.609325408935547e-05,
+              "outside_original_tolerance": 0
+            }
+          ],
+          "instance_mask_different_pixels": 0,
+          "type_mask_different_pixels": 0,
+          "instances": 96
+        },
+        "unoptimized": {
+          "dense": [
+            {
+              "output": "flow_map",
+              "max_absolute_error": 4.075467586517334e-06,
+              "outside_original_tolerance": 0
+            },
+            {
+              "output": "type_map",
+              "max_absolute_error": 2.1219253540039062e-05,
+              "outside_original_tolerance": 2
+            }
+          ],
+          "instance_mask_different_pixels": 0,
+          "type_mask_different_pixels": 0,
+          "instances": 96
+        }
+      }
+    },
+    "stardist": {
+      "checkpoint": {
+        "repo_id": "csmp-hub/stardist-histo-hgsc-nuc-v1",
+        "revision": "7e5521b389b0a7c68f7eb53491e843fa5fe08620",
+        "filename": "stardist_hgsc_v1_efficientnet_b5.safetensors",
+        "sha256": "94f5fa68a68cacf366bf0e219cc3494a36c4eb58295bf273778ed00702c7b1b1"
+      },
+      "instances": 79,
+      "runtime": {
+        "optimized": {
+          "dense": [
+            {
+              "output": "binary_map",
+              "max_absolute_error": 2.7418136596679688e-06,
+              "outside_original_tolerance": 0
+            },
+            {
+              "output": "ray_map",
+              "max_absolute_error": 4.9591064453125e-05,
+              "outside_original_tolerance": 0
+            },
+            {
+              "output": "type_map",
+              "max_absolute_error": 4.7206878662109375e-05,
+              "outside_original_tolerance": 7
+            }
+          ],
+          "instance_mask_different_pixels": 0,
+          "type_mask_different_pixels": 0,
+          "instances": 79
+        },
+        "unoptimized": {
+          "dense": [
+            {
+              "output": "binary_map",
+              "max_absolute_error": 2.7418136596679688e-06,
+              "outside_original_tolerance": 0
+            },
+            {
+              "output": "ray_map",
+              "max_absolute_error": 5.435943603515625e-05,
+              "outside_original_tolerance": 0
+            },
+            {
+              "output": "type_map",
+              "max_absolute_error": 4.3392181396484375e-05,
+              "outside_original_tolerance": 11
+            }
+          ],
+          "instance_mask_different_pixels": 0,
+          "type_mask_different_pixels": 0,
+          "instances": 79
+        }
+      }
+    }
+  },
+  "platform": "macOS arm64, Python 3.11, CPU float32, two PyTorch threads",
+  "scope": "One public repository image and one immutable checkpoint per model; not a representative dataset baseline."
+}

@@ -51,15 +51,13 @@ class WSIDatasetInfer(Dataset):
     ) -> None:
         """Initialize WSIReaderDataset.
 
-        Parameters:
-            reader (SlideReader):
-                `SlideReader` instance.
-            coordinates (Iterator[tuple[int, int, int, int]]):
-                Iterator of xywh-coordinates.
-            level (int):
-                Slide level for reading tile images.
-            transforms (A.Compose, default=None):
+        Args:
+            reader: `SlideReader` instance.
+            coordinates: Iterator of xywh-coordinates.
+            level: Slide level for reading tile images.
+            transforms:
                 Albumentations Compose object ocntaining transformations for tile images.
+                Defaults to None.
 
         Raises:
             ImportError: Could not import `PyTorch`.

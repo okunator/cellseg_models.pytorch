@@ -40,15 +40,11 @@ __all__ = ["normalize_field", "gen_flow_maps"]
 def normalize_field(mu: np.ndarray) -> np.ndarray:
     """Normalize the flow field.
 
-    Parameters
-    ----------
-        mu : np.ndarray
-            The un-normalized y- and x- flows. Shape (2, H, W).
+    Args:
+        mu: The un-normalized y- and x- flows. Shape (2, H, W).
 
-    Returns
-    -------
-        np.ndarray:
-            The normalized y- and x- flows. Shape (2, H, W).
+    Returns:
+        The normalized y- and x- flows. Shape (2, H, W).
     """
     mag = np.sqrt(np.nansum(mu**2, axis=0))
     mask = np.logical_and(mag != 0, ~np.isnan(mag))
@@ -95,17 +91,13 @@ def gen_flow_maps(inst_map: np.ndarray, pad: int = 1) -> np.ndarray:
 
     https://www.nature.com/articles/s41592-020-01018-x
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
-        pad : int, default=1
-            Number of pixels for constant padding.
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
+        pad: Number of pixels for constant padding.
+            Defaults to 1.
 
-    Returns
-    -------
-        np.ndarray:
-            Y and X- flows in this order. Shape (2, H, W). Dtype: float64
+    Returns:
+        Y and X- flows in this order. Shape (2, H, W). Dtype: float64
     """
     H, W = inst_map.shape
     mu = np.zeros((2, H, W), np.float64)

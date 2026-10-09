@@ -32,13 +32,12 @@ class BaseModelInst:
     ) -> "BaseModelInst":
         """Load the model from pretrained weights.
 
-        Parameters:
-            model_name (str):
-                Name of the pretrained model.
-            device (torch.device, default=torch.device("cuda")):
-                Device to run the model on. Default is "cuda".
-            model_kwargs (Dict[str, Any], default={}):
-                Additional arguments for the model.
+        Args:
+            model_name (str): Name of the pretrained model.
+            device: Device to run the model on. Default is "cuda".
+                Defaults to torch.device("cuda").
+            model_kwargs: Additional arguments for the model.
+                Defaults to {}.
         """
         weights_path = Path(weights)
         if not weights_path.is_file():
@@ -92,17 +91,18 @@ class BaseModelInst:
     ) -> Dict[str, Union[SoftSemanticOutput, SoftInstanceOutput]]:
         """Predict the input image or image batch.
 
-        Parameters:
-            x (Union[torch.Tensor, np.ndarray, Image]):
-                Input image (H, W, C) or input image batch (B, C, H, W).
-            use_sliding_win (bool, default=False):
-                Whether to use sliding window for prediction.
-            window_size (Tuple[int, int], default=None):
+        Args:
+            x: Input image (H, W, C) or input image batch (B, C, H, W).
+            use_sliding_win: Whether to use sliding window for prediction.
+                Defaults to False.
+            window_size:
                 The height and width of the sliding window. If `use_sliding_win` is False
                 this argument is ignored.
-            stride (int, default=None):
+                Defaults to None.
+            stride:
                 The stride for the sliding window. If `use_sliding_win` is False this
                 argument is ignored.
+                Defaults to None.
 
         Returns:
             Dict[str, Union[SoftSemanticOutput, SoftInstanceOutput]]:
@@ -144,26 +144,32 @@ class BaseModelInst:
     ) -> Dict[str, List[np.ndarray]]:
         """Post-process the output of the model.
 
-        Parameters:
-            x (Dict[str, Union[SoftSemanticOutput, SoftInstanceOutput]]):
-                The output of the .predict() method.
-            use_async_postproc (bool, default=True):
+        Args:
+            x: The output of the .predict() method.
+            use_async_postproc:
                 Whether to use async post-processing. Can give some run-time benefits.
-            start_method (str, default="threading"):
+                Defaults to True.
+            start_method:
                 The start method. One of: "threading", "fork", "spawn". See mpire docs.
-            n_jobs (int, default=4):
-                The number of workers for the post-processing.
-            save_paths_nuc (List[Union[Path, str]], default=None):
+                Defaults to "threading".
+            n_jobs: The number of workers for the post-processing.
+                Defaults to 4.
+            save_paths_nuc:
                 The paths to save the nuclei masks. If None, the masks are not saved.
-            save_paths_cyto (List[Union[Path, str]], default=None):
+                Defaults to None.
+            save_paths_cyto:
                 The paths to save the cytoplasm masks. If None, the masks are not saved.
-            coords (List[Tuple[int, int, int, int]], default=None):
+                Defaults to None.
+            coords:
                 The XYWH coordinates of the image patch. If not None, the coordinates are
                 saved in the filenames of outputs.
-            class_dict_nuc (Dict[int, str], default=None):
+                Defaults to None.
+            class_dict_nuc:
                 The dictionary of nuclei classes. E.g. {0: "bg", 1: "neoplastic"}
-            class_dict_cyto (Dict[int, str], default=None):
+                Defaults to None.
+            class_dict_cyto:
                 The dictionary of cytoplasm classes. E.g. {0: "bg", 1: "macrophage_cyto"}
+                Defaults to None.
 
         Returns:
             Dict[str, List[np.ndarray]]:

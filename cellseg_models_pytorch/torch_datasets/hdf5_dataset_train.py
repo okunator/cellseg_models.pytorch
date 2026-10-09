@@ -36,19 +36,14 @@ class TrainDatasetH5(Dataset):
     ) -> None:
         """HDF5 train dataset for cell/panoptic segmentation models.
 
-        Parameters:
-            path (str):
-                Path to the h5 file.
-            img_key (str):
-                Key for the image data in the h5 file.
-            inst_keys (Tuple[str, ...]):
+        Args:
+            path: Path to the h5 file.
+            img_key: Key for the image data in the h5 file.
+            inst_keys:
                 Key for the instance data in the h5 file. This will be transformed
-            mask_keys (Tuple[str, ...]):
-                Keys for the semantic masks in the h5 file.
-            transforms (A.Compose):
-                Albumentations compose object for image and mask transforms.
-            inst_transforms (ApplyEach):
-                ApplyEach object for instance transforms.
+            mask_keys: Keys for the semantic masks in the h5 file.
+            transforms: Albumentations compose object for image and mask transforms.
+            inst_transforms: ApplyEach object for instance transforms.
 
         Raises:
             ModuleNotFoundError: If albumentations or tables is not installed.

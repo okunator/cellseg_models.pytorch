@@ -41,18 +41,14 @@ __all__ = ["post_proc_drfns"]
 def h_minima_reconstruction(inv_dist_map: np.ndarray, lamb: int = 7) -> np.ndarray:
     """Perform a H minimma reconstruction via an erosion method.
 
-    Parameters
-    ----------
-        inv_dist_map : np.ndarray
-            Inverse distance map. Shape: (H, W).
-        lamb : int, default=7
-            Intensity shift value lambda.
+    Args:
+        inv_dist_map: Inverse distance map. Shape: (H, W).
+        lamb: Intensity shift value lambda.
+            Defaults to 7.
 
-    Returns
-    -------
-        np.ndarray:
-            H minima reconstruction from the inverse distance transform.
-            Shape: (H, W).
+    Returns:
+        H minima reconstruction from the inverse distance transform.
+        Shape: (H, W).
     """
 
     def making_top_mask(x: np.ndarray, lamb: int = lamb) -> int:
@@ -73,18 +69,13 @@ def h_minima_reconstruction(inv_dist_map: np.ndarray, lamb: int = 7) -> np.ndarr
 def find_maxima(inv_dist_map: np.ndarray, mask: np.ndarray = None) -> np.ndarray:
     """Find all local maxima from 2D image.
 
-    Parameters
-    ----------
-        inv_dist_map : np.ndarray
-            Inverse distance map. Shape (H, W).
-        mask : np.ndarray, default=None
-            Binary mask to remove small debris. Shape (H, W).
+    Args:
+        inv_dist_map: Inverse distance map. Shape (H, W).
+        mask: Binary mask to remove small debris. Shape (H, W).
+            Defaults to None.
 
-    Returns
-    -------
-        np.ndarray:
-            The found maxima. Shape (H, W).
-
+    Returns:
+        The found maxima. Shape (H, W).
     """
     reconstructed = h_minima_reconstruction(inv_dist_map, 40)
 
@@ -102,19 +93,14 @@ def dynamic_ws_alias(
 
     Minor mods made. (Removed the suspicious stuff from the end.)
 
-    Parameters
-    ----------
-        dist_map : np.ndarray
-            A distance transform. Shape (H, W)
-        binary_mask : np.ndarray
-            A binary mask. Shape (H, W)
-        thresh : float, default=0.5
-            The threshold value to find markers from the `dist_map`.
+    Args:
+        dist_map: A distance transform. Shape (H, W)
+        binary_mask: A binary mask. Shape (H, W)
+        thresh: The threshold value to find markers from the `dist_map`.
+            Defaults to 0.5.
 
-    Returns
-    -------
-        np.ndarray:
-            The labelled instance segmentation result. Shape (H, W).
+    Returns:
+        The labelled instance segmentation result. Shape (H, W).
     """
     # binarize probs and dist map
     binary_dist_map = dist_map > thresh
@@ -144,19 +130,14 @@ def post_proc_drfns(
     in watershed. Markers are computed from the regressed distance map
     (inverted).
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled or binary mask. Shape (H, W).
-        dist_map : np.ndarray
-            Distance transform. Shape (H, W)
-        thresh : float, default=0.5
-            threshold value for markers and binary mask
+    Args:
+        inst_map: Instance labelled or binary mask. Shape (H, W).
+        dist_map: Distance transform. Shape (H, W)
+        thresh: threshold value for markers and binary mask
+            Defaults to 0.5.
 
-    Returns
-    -------
-        np.ndarray:
-            The instance labelled segmentation mask. Shape (H, W)
+    Returns:
+        The instance labelled segmentation mask. Shape (H, W)
     """
     dist_map = percentile_normalize99(dist_map, amin=0, amax=1)
     binary_mask = binarize(inst_map)

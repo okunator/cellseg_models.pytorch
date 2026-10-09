@@ -17,13 +17,13 @@ class MultiTaskLoss(nn.ModuleDict):
 
         Combines losses from different heades to one loss function.
 
-        Parameters:
+        Args:
             head_losses (Dict[str, nn.Module]):
                 Dictionary of head names mapped to a loss module.
                 e.g. {"inst": JointLoss(MSE(), Dice()), "type": Dice()}.
-            loss_weights (Dict[str, float], default=None):
-                Dictionary of head names mapped to the weight used for
+            loss_weights: Dictionary of head names mapped to the weight used for
                 that head loss.
+                Defaults to None.
 
         Raises:
             ValueError:
@@ -59,15 +59,13 @@ class MultiTaskLoss(nn.ModuleDict):
     ) -> torch.Tensor:
         """Compute the joint loss of the multi-task network.
 
-        Parameters:
-            yhats (Dict[str, torch.Tensor]):
-                Dictionary of head names mapped to the predicted masks.
+        Args:
+            yhats: Dictionary of head names mapped to the predicted masks.
                 e.g. {"inst": (B, C, H, W), "type": (B, C, H, W)}.
-            targets (Dict[str, torch.Tensor]):
-                Dictionary of head names mapped to the GT masks.
+            targets: Dictionary of head names mapped to the GT masks.
                 e.g. {"inst": (B, C, H, W), "type": (B, C, H, W)}.
-            mask (torch.Tensor, default=None):
-                The mask for masked losses. Shape (B, H, W).
+            mask: The mask for masked losses. Shape (B, H, W).
+                Defaults to None.
 
         Returns:
             torch.Tensor: Computed multi-task loss (Scalar).

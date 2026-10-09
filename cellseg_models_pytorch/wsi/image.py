@@ -42,42 +42,43 @@ def get_annotated_image(
 ) -> Image.Image:
     """Function to draw tiles to an image. Useful for visualising tiles/predictions.
 
-    Parameters:
-        image (Union[np.ndarray, Image.Image]):
-            Image to draw to.
-        coordinates (list[tuple[int, int, int, int]]):
-            Tile coordinates.
-        downsample (Union[float, tuple[float, float]]):
+    Args:
+        image: Image to draw to.
+        coordinates: Tile coordinates.
+        downsample:
             Downsample for the image. If coordinates are from the same image,
             set this to 1.0.
-        rectangle_outline (str, default="red"):
-            Outline color of each tile.
-        rectangle_fill (Optional[str], default=None):
-            Fill color of each tile..
-        rectangle_width (int, default=1):
-            Width of each tile edges.
-        highlight_first (bool, default=False):
-            Highlight first tile, useful when tiles overlap.
-        highlight_outline (str, default="blue"):
-            Highlight color for the first tile.
-        text_items (Optional[list[str]], default=None):
-            Text items for each tile. Length must match `coordinates`.
-        text_color (str, default="black"):
-            Text color.
-        text_proportion (float, default=0.75):
-            Proportion of space the text takes in each tile.
-        text_font (str, default="monospace"):
-            Passed to matplotlib's `fontManager.find_font` function.
-        alpha (float, default=0.0):
-            Alpha value for blending the original image and drawn image.
-        cmap (str, default=None):
+        rectangle_outline: Outline color of each tile.
+            Defaults to "red".
+        rectangle_fill: Fill color of each tile..
+            Defaults to None.
+        rectangle_width: Width of each tile edges.
+            Defaults to 1.
+        highlight_first: Highlight first tile, useful when tiles overlap.
+            Defaults to False.
+        highlight_outline: Highlight color for the first tile.
+            Defaults to "blue".
+        text_items: Text items for each tile. Length must match `coordinates`.
+            Defaults to None.
+        text_color: Text color.
+            Defaults to "black".
+        text_proportion: Proportion of space the text takes in each tile.
+            Defaults to 0.75.
+        text_font: Passed to matplotlib's `fontManager.find_font` function.
+            Defaults to "monospace".
+        alpha: Alpha value for blending the original image and drawn image.
+            Defaults to 0.0.
+        cmap:
             Colormap to use for the tiles. E.g. "viridis", "plasma", "inferno".
-        values (np.ndarray, default=None):
+            Defaults to None.
+        values:
             Values to map to the colormap. Must be same length as `coordinates`.
-        breaks (Sequence[float], default=None):
+            Defaults to None.
+        breaks:
             Breakpoints for the colormap. If not provided, will be computed from `values`.
-        n_bins (int, default=30):
-            Number of bins to use for the colormap.
+            Defaults to None.
+        n_bins: Number of bins to use for the colormap.
+            Defaults to 30.
 
     Raises:
         ValueError: Text item length does not match length of coordinates.

@@ -48,19 +48,15 @@ def smooth_distance(
 
     https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
-        device str : default="cpu"
-            One of "cuda" or "cpu".
-        pad : int, default=1
-            The number of pixels padded around the input.
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
+            device str : default="cpu"
+                One of "cuda" or "cpu".
+        pad: The number of pixels padded around the input.
+            Defaults to 1.
 
-    Returns
-    -------
-        np.ndarray:
-            Smooth distance transform. Shape: (H, W).
+    Returns:
+        Smooth distance transform. Shape: (H, W).
     """
     dists = ndi.distance_transform_edt(inst_map)
     inst_map = np.pad(inst_map, pad)
@@ -129,17 +125,13 @@ def gen_omni_flow_maps(inst_map: np.ndarray, pad: int = 1) -> np.ndarray:
 
     https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
-        pad (int, default=1):
-            number of pixels for constant padding
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
+        pad: number of pixels for constant padding
+            Defaults to 1.
 
-    Returns
-    -------
-        np.ndarray:
-            Y and X- flows in this order. Shape (2, H, W). Dtype: float64.
+    Returns:
+        Y and X- flows in this order. Shape (2, H, W). Dtype: float64.
     """
     # FMI euclidean distance transform
     dists = smooth_distance(inst_map)

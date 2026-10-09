@@ -38,14 +38,11 @@ class StrongAugTransform(ImageOnlyTransform):
 
         This is a albumentations wrapper for the StrongAugment transformations.
 
-        Parameters
-        ----------
-            operation_name : str
-                Name of the transformation to apply.
-            aug_space : Tuple[Any, Any]
+        Args:
+            operation_name: Name of the transformation to apply.
+            aug_space:
                 Tuple containing the lower and upper bounds for the transformation.
-            rng : np.random.RandomState
-                Random number generator.
+            rng: Random number generator.
         """
         if not HAS_ALBU:
             raise ModuleNotFoundError(
@@ -60,15 +57,11 @@ class StrongAugTransform(ImageOnlyTransform):
     def apply(self, image: np.ndarray, **kwargs) -> np.ndarray:
         """Apply a transformation from the StrognAugment augmentation space.
 
-        Parameters
-        ----------
-            image : np.ndarray:
-                Input image to be normalized. Shape (H, W, C)|(H, W).
+        Args:
+            image: Input image to be normalized. Shape (H, W, C)|(H, W).
 
-        Returns
-        -------
-            np.ndarray:
-                Transformed image. Same shape as input. dtype: float32.
+        Returns:
+            Transformed image. Same shape as input. dtype: float32.
         """
         kwargs = dict(
             name=self.op_name,
@@ -102,20 +95,19 @@ class AlbuStrongAugment(BaseCompose):
         Augment like there's no tomorrow: Consistently performing neural networks for
         medical imaging: https://arxiv.org/abs/2206.15274
 
-        Parameters
-        ----------
-            augment_space : Dict[str, tuple], default: AUGMENT_SPACE
-                Augmentation space to sample operations from.
-            operations : Tuple[int], default: [3, 4, 5].
-                Number of operations to apply. If None, sample from
+        Args:
+            augment_space: Augmentation space to sample operations from.
+                Defaults to AUGMENT_SPACE.
+            operations: Number of operations to apply. If None, sample from
                 [1, len(augment_space)].
-            probabilites : Tuple[float], default: [0.2, 0.3, 0.5]
-                Probabilities of sampling operations. If None, sample from
+                Defaults to [3, 4, 5]..
+            probabilites: Probabilities of sampling operations. If None, sample from
                 the uniform distribution.
-            seed : Optional[int], default: None
-                Random seed.
-            p : float, default: 1.0
-                Probability of applying the transform.
+                Defaults to [0.2, 0.3, 0.5].
+            seed: Random seed.
+                Defaults to None.
+            p (float): Probability of applying the transform.
+                Defaults to 1.0.
         """
         if not HAS_ALBU:
             raise ModuleNotFoundError(

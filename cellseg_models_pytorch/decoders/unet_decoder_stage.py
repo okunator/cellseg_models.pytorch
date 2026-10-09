@@ -55,121 +55,136 @@ class UnetDecoderStage(nn.Module):
         3. Conv block (optional, applied by default).
         4. Transformer block (optional, not applied by default).
 
-        Parameters
-        ----------
-            stage_ix : int
-                The index number of the current decoder stage.
-            dec_channels : Tuple[int, ...]
+        Args:
+            stage_ix: The index number of the current decoder stage.
+            dec_channels:
                 The number of output channels in the decoder output stages. First elem
                 is the number of channels in the encoder head or bottleneck.
-            up_factors : Tuple[int, ...]
+            up_factors:
                 The upsampling factors for each decoder stage. The tuple-length has to
                 match `dec_channels`.
-            skip_channels : Tuple[int, ...]
+            skip_channels:
                 List of the number of channels in the encoder skip tensors. Ignored if
                 `long_skip` == None.
-            long_skip : str, default="unet"
-                long skip method to be used.
+            long_skip: long skip method to be used.
                 Allowed: "cross-attn", "unet", "unetpp", "unet3p", "unet3p-lite", None
-            merge_policy : str, default="sum"
-                The long skip merge policy. One of: "sum", "cat"
-            skip_params : Dict[str, Any], default=None
+                Defaults to "unet".
+            merge_policy: The long skip merge policy. One of: "sum", "cat"
+                Defaults to "sum".
+            skip_params:
                 Extra keyword arguments for the skip-connection module. These depend
                 on the skip module. Refer to specific skip modules for more info.
-            upsampling : str, default="fixed-unpool"
+                Defaults to None.
+            upsampling:
                 Name of the upsampling method. One of: "fixed-unpool", "bilinear",
                 "nearest", "bicubic", "conv_transpose"
-            n_conv_layers : int, default=1
-                The number of conv layers inside one decoder stage.
-            style_channels : int, default=None
+                Defaults to "fixed-unpool".
+            n_conv_layers: The number of conv layers inside one decoder stage.
+                Defaults to 1.
+            style_channels:
                 Number of style vector channels. If None, style vectors are ignored.
                 Also, ignored if `n_conv_layers` is None.
-            layer_residual : bool, optional, default=False
+                Defaults to None.
+            layer_residual:
                 Apply a layer level residual short skip at each layer. I.e x + layer(x).
                 Ignored if `n_conv_layers` is None.
-            n_conv_blocks : Tuple[int, ...], default=(2,)
+                Defaults to False.
+            n_conv_blocks:
                 Number of conv-blocks inside each conv layer. The tuple-length has to
                 match `n_conv_layers`. Ignored if `n_conv_layers` is None.
-            short_skips : str, optional,  default=("residual", )
+                Defaults to (2,).
+            short_skips (str):
                 The short skip methods used inside the conv layers. Ignored if
                 `n_conv_layers` is None.
-            expand_ratios : Tuple[float, ...], default=((1.0, 1.0),):
+                Defaults to ("residual", ).
+            expand_ratios (Tuple[float, ...]):
                 Expansion/Squeeze ratios for the out channels of each conv block.
                 The tuple-length has to match `n_conv_layers`. Ignored if
                 `n_conv_layers` is None.
-            block_types : Tuple[Tuple[str, ...], ...], default=(("basic", "basic"), )
+                Defaults to ((1.0, 1.0),).
+            block_types:
                 The type of the convolution blocks in the conv blocks inside the layers.
                 The tuple-length has to match `n_conv_layers`. Ignored if
                 `n_conv_layers` is None.
-            normalizations : Tuple[Tuple[str, ...], ...], default: (("bn", "bn"), )
+                Defaults to (("basic", "basic"), ).
+            normalizations:
                 Normalization methods used in the conv blocks inside the conv layers.
                 The tuple-length has to match `n_conv_layers`. Ignored if
                 `n_conv_layers` is None.
-            activations : Tuple[Tuple[str, ...], ...], default: (("relu", "relu"), )
-                Activation methods used inside the conv layers.
+                Defaults to (("bn", "bn"), ).
+            activations: Activation methods used inside the conv layers.
                 The tuple-length has to match `n_conv_layers`. Ignored if
                 `n_conv_layers` is None.
-            attentions : Tuple[Tuple[str, ...], ...], default: ((None, "se"), )
-                Channel-attention methods used inside the conv layers.
-                The tuple-length has to match `n_conv_layers`. Ignored if
-                `n_conv_layers` is None. Allowed methods.: "se", "scse", "gc", "eca",
-                "msca", None.
-            preactivates Tuple[Tuple[bool, ...], ...], default: ((False, False), )
-                Boolean flags for the conv layers to use pre-activation.
-                The tuple-length has to match `n_conv_layers`. Ignored if
-                `n_conv_layers` is None.
-            preattends Tuple[Tuple[bool, ...], ...], default: ((False, False), )
-                Boolean flags for the conv layers to use pre-activation.
-                The tuple-length has to match `n_conv_layers`. Ignored if
-                `n_conv_layers` is None.
-            use_styles : Tuple[Tuple[bool, ...], ...], default=((False, False), )
+                Defaults to (("relu", "relu"), ).
+            attentions: Channel-attention methods used inside the conv layers.
+                    The tuple-length has to match `n_conv_layers`. Ignored if
+                    `n_conv_layers` is None. Allowed methods.: "se", "scse", "gc", "eca",
+                    "msca", None.
+                preactivates Tuple[Tuple[bool, ...], ...], default: ((False, False), )
+                    Boolean flags for the conv layers to use pre-activation.
+                    The tuple-length has to match `n_conv_layers`. Ignored if
+                    `n_conv_layers` is None.
+                preattends Tuple[Tuple[bool, ...], ...], default: ((False, False), )
+                    Boolean flags for the conv layers to use pre-activation.
+                    The tuple-length has to match `n_conv_layers`. Ignored if
+                    `n_conv_layers` is None.
+                Defaults to ((None, "se"), ).
+            use_styles:
                 Boolean flags for the conv layers to add style vectors at each block.
                 The tuple-length has to match `n_conv_layers`. Ignored if
                 `n_conv_layers` is None.
-            kernel_sizes : Tuple[int, ...], default=((3, 3),)
+                Defaults to ((False, False), ).
+            kernel_sizes (Tuple[int, ...]):
                 The size of the convolution kernels in each conv block.
                 The tuple-length has to match `n_conv_layers`. Ignored if
                 `n_conv_layers` is None.
-            groups : int, default=((1, 1),)
+                Defaults to ((3, 3),).
+            groups (int):
                 Number of groups for the kernels in each convolution blocks.
                 The tuple-length has to match `n_conv_layers`. Ignored if
                 `n_conv_layers` is None.
-            biases : bool, default=((False, False),)
-                Include bias terms in the convolution blocks.
+                Defaults to ((1, 1),).
+            biases (bool): Include bias terms in the convolution blocks.
                 The tuple-length has to match `n_conv_layers`. Ignored if
                 `n_conv_layers` is None.
-            n_transformers : int, optional
+                Defaults to ((False, False),).
+            n_transformers:
                 Number of self-attention tranformers applied after the conv-layer.
                 If this is None, no transformers will be added.
-            n_transformer_blocks : int, default=(2, ), optional
+            n_transformer_blocks (int):
                 Number of multi-head self attention blocks used in the transformer
                 layers. Ignored if `n_transformers` is None.
-            transformer_blocks : Tuple[Tuple[str, ...], ...], default=(("basic",),)
+                Defaults to (2, ), optional.
+            transformer_blocks:
                 The name of the SelfAttentionBlocks in the TransformerLayer(s).
                 Allowed values: "basic", "slice", "flash". Ignored if `n_transformers`
                 is None. Length of the tuple has to equal `n_transformer_blocks`.
                 Allowed names: ("exact", "linformer").
-            transformer_computations : Tuple[Tuple[str, ...],...], default=(("basic",),)
+                Defaults to (("basic",),).
+            transformer_computations:
                 The way of computing the attention matrices in the SelfAttentionBlocks
                 in the TransformerLayer(s). Length of the tuple has to equal
                 `n_transformer_blocks`. Allowed styles: "basic". "slice", "flash",
                 "memeff", "slice-memeff".
-            transformer_biases : Tuple[Tuple[bool, ...], ...], default=((False,),)
+                Defaults to (("basic",),).
+            transformer_biases:
                 Flags, whether to use biases in the transformer layers. Ignored if
                 `n_transformers` is None.
-            transformer_dropoouts : Tuple[Tuple[float, ...], ...], default=((0.0,),)
+                Defaults to ((False,),).
+            transformer_dropoouts (Tuple[Tuple[float, ...], ...]):
                 Dropout probabilities in the transformer layers. Ignored if
                 `n_transformers` is None.
-            transformer_layer_scales : Tuple[Tuple[bool, ...], ...], default=((False,),)
+                Defaults to ((0.0,),).
+            transformer_layer_scales:
                 Flags, whether to use layer scales in the transformer layers. Ignored if
                 `n_transformers` is None.
-            transformer_params : List[Dict[str, Any]]
+                Defaults to ((False,),).
+            transformer_params:
                 Extra keyword arguments for the transformer layers. Refer to
                 `Transformer2D` module for more info. Ignored if `n_transformers`
                 is None.
 
-        Raises
-        ------
+        Raises:
             ValueError:
                 If lengths of the conv layer tuple args are not equal to `n_conv_layers`
                 If lengths of the transformer layer tuple args are not equal to
@@ -350,23 +365,17 @@ class UnetDecoderStage(nn.Module):
     ) -> Tuple[torch.Tensor, Union[None, Tuple[torch.Tensor, ...]]]:
         """Forward pass of the decoder stage.
 
-        Parameters
-        ----------
-            x : torch.Tensor
-                Input tensor. Shape (B, C, H, W).
-            skips : Tuple[torch.Tensor, ...]
-                All of feature maps from consecutive encoder blocks.
+        Args:
+            x: Input tensor. Shape (B, C, H, W).
+            skips: All of feature maps from consecutive encoder blocks.
                 Order is bottom up. Shapes: (B, C, H, W).
-            extra_skips : Tuple[torch.Tensor, ...], default=None
-                Extra skip connections. Used in unet3+ and unet++.
-            style : torch.Tensor
-                Style vector. Shape (B, C).
+            extra_skips: Extra skip connections. Used in unet3+ and unet++.
+                Defaults to None.
+            style: Style vector. Shape (B, C).
 
-        Returns
-        -------
-            Tuple[torch.Tensor, Union[None, Tuple[torch.Tensor, ...]]]:
-                Output torch.Tensor and extra skip torch.Tensors. If no extra
-                skips are present, returns None as the second return value.
+        Returns:
+            Output torch.Tensor and extra skip torch.Tensors. If no extra
+            skips are present, returns None as the second return value.
         """
         x = self.upsample(x)  # (B, in_channels, H, W)
 

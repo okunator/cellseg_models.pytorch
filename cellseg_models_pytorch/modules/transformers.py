@@ -37,48 +37,54 @@ class Transformer2D(nn.Module):
 
         NOTE: The output shape is the same size as the input shape.
 
-        Parameters
-        ----------
-            in_channels : int
+        Args:
+            in_channels:
                 Number of channels in the 2D-input of shape (B, in_channels, H, W).
-            num_heads : int, default=8
-                Number of heads in multi-head attention.
-            head_dim : int, default=64
-                The out dim of the heads.
-            cross_attention_dims : int, optional
+            num_heads: Number of heads in multi-head attention.
+                Defaults to 8.
+            head_dim: The out dim of the heads.
+                Defaults to 64.
+            cross_attention_dims (int):
                 The out dim/length of the context query tensor. Cross attention combines
                 asymmetrically two separate embeddings (context and input embeddings).
                 E.g. passage from transformer encoder to transformer decoder. If this is
                 set to None, no cross attention is applied.
-            n_blocks : int, default=2
-                Number of Multihead attention blocks in the transformer.
-            block_types : Tuple[str, ...], default=("exact", "exact")
+            n_blocks: Number of Multihead attention blocks in the transformer.
+                Defaults to 2.
+            block_types:
                 The names/types of the SelfAttentionBlocks in the TransformerLayer.
                 Length of the tuple has to equal `n_blocks`.
                 Allowed names: ("exact", "linformer").
-            computation_types : Tuple[str, ...], default=("basic", "basic")
+                Defaults to ("exact", "exact").
+            computation_types:
                 The way of computing the attention matrices in the SelfAttentionBlocks
                 in the TransformerLayer. Length of the tuple has to equal `n_blocks`
                 Allowed styles: "basic". "slice", "flash", "memeff", "slice_memeff".
-            dropouts : Tuple[float, ...], default=(False, False)
-                Dropout probabilities for the SelfAttention blocks.
-            biases : bool, default=(True, True)
-                Include bias terms in the SelfAttention blocks.
-            layer_scales : bool, default=(False, False)
+                Defaults to ("basic", "basic").
+            dropouts: Dropout probabilities for the SelfAttention blocks.
+                Defaults to (False, False).
+            biases (bool): Include bias terms in the SelfAttention blocks.
+                Defaults to (True, True).
+            layer_scales (bool):
                 Learnable layer weights for the self-attention matrix.
-            activation : str, default="star_relu"
+                Defaults to (False, False).
+            activation:
                 The activation function applied at the end of the transformer layer fc.
                 One of ("geglu", "approximate_gelu", "star_relu").
-            num_groups : int, default=32
+                Defaults to "star_relu".
+            num_groups:
                 Number of groups in the first group-norm op before the input is
                 projected to be suitable for self-attention.
-            mlp_ratio : int, default=2
+                Defaults to 32.
+            mlp_ratio:
                 Scaling factor for the number of input features to get the number of
                 hidden features in the final `Mlp` layer of the transformer.
-            slice_size : int, optional, default=4
+                Defaults to 2.
+            slice_size (int):
                 Slice size for sliced self-attention. This is used only if
                 `name = "slice"` for a SelfAttentionBlock.
-            patch_embed_kwargs: Dict[str, Any], optional
+                Defaults to 4.
+            patch_embed_kwargs (Dict[str, Any]):
                 Extra key-word arguments for the patch embedding module. See the
                 `ContiguousEmbed` module for more info.
         """
@@ -119,18 +125,14 @@ class Transformer2D(nn.Module):
     def forward(self, x: torch.Tensor, context: torch.Tensor = None) -> torch.Tensor:
         """Forward pass of the 2D transformer.
 
-        Parameters
-        ----------
-            x : torch.Tensor
-                Input image-like tensor. Shape (B, C, H, W).
-            context : torch.Tensor, optional
+        Args:
+            x: Input image-like tensor. Shape (B, C, H, W).
+            context:
                 Context tensor. Shape (B, H*W, query_dim)). Can be used to add context
                 information from another source than the current transformer.
 
-        Returns
-        -------
-            torch.Tensor:
-                Self-attended input tensor. Same shape as output.
+        Returns:
+            Self-attended input tensor. Same shape as output.
         """
         B, _, H, W = x.shape
         residual = x
@@ -184,50 +186,53 @@ class TransformerLayer(nn.Module):
             - Forward input shape: (B, H*W, head_dim*num_heads)
             - Forward output sahpe: (B, H*W, head_dim*num_heads)
 
-        Parameters
-        ----------
-            query_dim : int
-                The length/dim of the query. Typically: num_heads*head_dim
-            num_heads : int, default=8
-                Number of heads in multi-head attention.
-            head_dim : int, default=64
-                The out dim of the heads.
-            cross_attention_dims : int, optional
+        Args:
+            query_dim: The length/dim of the query. Typically: num_heads*head_dim
+            num_heads: Number of heads in multi-head attention.
+                Defaults to 8.
+            head_dim: The out dim of the heads.
+                Defaults to 64.
+            cross_attention_dims (int):
                 The out dim/length of the context query tensor. Cross attention combines
                 asymmetrically two separate embeddings (context and input embeddings).
                 E.g. passage from transformer encoder to transformer decoder. If this is
                 set to None, no cross attention is applied.
-            activation : str, default="star_relu"
+            activation:
                 The activation function applied at the end of the transformer layer fc.
                 One of ("gelu", "geglu", "approximate_gelu", "star_relu").
-            n_blocks : int, default=2
-                Number of SelfAttentionBlocks used in this layer.
-            block_types : Tuple[str, ...], default=("exact", "exact")
+                Defaults to "star_relu".
+            n_blocks: Number of SelfAttentionBlocks used in this layer.
+                Defaults to 2.
+            block_types:
                 The name/type of the SelfAttentionBlocks in the TransformerLayer.
                 Length of the tuple has to equal `n_blocks`.
                 Allowed names: ("exact", "linformer").
-            computation_types : Tuple[str, ...], default=("basic", "basic")
+                Defaults to ("exact", "exact").
+            computation_types:
                 The way of computing the attention matrices in the SelfAttentionBlocks
                 in the TransformerLayer. Length of the tuple has to equal `n_blocks`
                 Allowed styles: "basic". "slice", "flash", "memeff", "slice_memeff".
-            dropouts : Tuple[float, ...], default=(False, False)
-                Dropout probabilities for the SelfAttention blocks.
-            biases : bool, default=(True, True)
-                Include bias terms in the SelfAttention blocks.
-            layer_scales : bool, default=(False, False)
+                Defaults to ("basic", "basic").
+            dropouts: Dropout probabilities for the SelfAttention blocks.
+                Defaults to (False, False).
+            biases (bool): Include bias terms in the SelfAttention blocks.
+                Defaults to (True, True).
+            layer_scales (bool):
                 Learnable layer weights for the self-attention matrix.
-            mlp_ratio : int, default=2
+                Defaults to (False, False).
+            mlp_ratio:
                 Scaling factor for the number of input features to get the number of
                 hidden features in the final `Mlp` layer of the transformer.
-            slice_size : int, optional, default=4
+                Defaults to 2.
+            slice_size (int):
                 Slice size for sliced self-attention. This is used only if
                 `name = "slice"` for a SelfAttentionBlock.
-            **kwargs:
-                Arbitrary key-word arguments.
+                Defaults to 4.
+            **kwargs: Arbitrary key-word arguments.
 
-        Raises
-        ------
-            ValueError: If the lengths of the tuple args are not equal to `n_blocks`.
+        Raises:
+            ValueError:
+                If the lengths of the tuple args are not equal to `n_blocks`.
         """
         super().__init__()
 
@@ -279,18 +284,14 @@ class TransformerLayer(nn.Module):
     def forward(self, x: torch.Tensor, context: torch.Tensor = None) -> torch.Tensor:
         """Forward pass of the transformer layer.
 
-        Parameters
-        ----------
-            x : torch.Tensor
-                Input query. Shape (B, H*W, query_dim)).
-            context : torch.Tensor, optional
+        Args:
+            x: Input query. Shape (B, H*W, query_dim)).
+            context:
                 Context tensor. Shape (B, H*W, query_dim)). Can be used to add context
                 information from another source than the current layer.
 
-        Returns
-        -------
-            torch.Tensor:
-                Self-attended input tensor. Shape (B, H*W, query_dim).
+        Returns:
+            Self-attended input tensor. Shape (B, H*W, query_dim).
         """
         n_blocks = len(self.tr_blocks)
 

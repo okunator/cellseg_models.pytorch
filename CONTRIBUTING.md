@@ -1,0 +1,59 @@
+# Contributing
+
+Bug reports, reproducible examples, documentation, tests, and code contributions
+are welcome. Discuss substantial API or architecture changes in an issue first;
+small fixes can go directly to a pull request.
+
+## Development setup
+
+Use a Python version in the current CI matrix and Poetry 2.2.1. From the repository
+root, install the locked development dependencies and hooks:
+
+```sh
+poetry sync --all-extras
+poetry run pre-commit install --hook-type pre-commit --hook-type pre-push
+```
+
+The package is currently at `cellseg_models_pytorch/`, with tests beside their
+modules. See [AGENTS.md](AGENTS.md) for the layout and development conventions,
+and [the maintenance plan](docs/maintenance-plan.md) for upcoming typing and uv
+work. Poetry remains the project manager until that migration lands.
+
+## Changes and checks
+
+Keep the change focused and update affected callers, exports, tests, and examples.
+Preserve public APIs, checkpoint loading, preprocessing, and segmentation output
+semantics unless the change explicitly addresses them. Report compatibility
+changes and provide a migration example when needed.
+
+Use small, seeded tests without downloading pretrained weights. Run a targeted
+test first, then the ordinary suite when relevant:
+
+```sh
+poetry run pytest path/to/test_file.py -x
+HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 poetry run pytest
+poetry run pre-commit run --files path/to/changed_file.py
+```
+
+The `--slow`, `--optional`, and `--cuda` flags select separate test categories.
+Describe which category and device you tested, and list any relevant skips.
+Optional integrations require their packages to be installed explicitly.
+For numerical changes, compare values and final masks, not only tensor shapes.
+For performance changes, include hardware, precision, workload, memory, and
+measurement details. Keep data/checkpoint licenses and attribution intact.
+
+Mypy is present but has no CI gate yet. The rollout will check explicit modules
+and grow coverage gradually; do not suppress the whole codebase to claim it is
+typed. Annotate new and changed APIs accurately and document tensor contracts.
+
+## Pull requests and releases
+
+Explain the problem, resulting behavior, validation, and any compatibility impact.
+Use small thematic commits and keep direct regression tests with their fixes.
+Document release-relevant public changes in `CHANGELOG.md`; do not invent a
+release date or version.
+
+CI checks the source suite and clean installations of both built distributions.
+Manual publication-workflow runs only validate. Release publication waits for
+these checks and uploads the verified artifacts through PyPI trusted publishing.
+Maintainers should follow [the release guide](docs/releasing.md).

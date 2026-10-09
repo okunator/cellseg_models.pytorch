@@ -120,7 +120,6 @@ def inst2gdf(
         This function should be applied to nuclei instance segmentation masks. Nuclei
         types can be provided with the `type_map` and `class_dict` arguments if needed.
 
-    Parameters:
         inst_map (np.ndarray):
             An instance segmentation mask. Shape (H, W).
         type_map (np.ndarray):
@@ -143,13 +142,14 @@ def inst2gdf(
             applies a uniform filter. `histolytics.utils._filters` also provides
             `gaussian_smooth` and `median_smooth` for smoothing.
 
-    returns:
-        gpd.GeoDataFrame:
-            A GeoDataFrame of the raster instance mask. Contains columns:
 
-                - 'id' - the numeric pixel value of the instance mask,
-                - 'class_name' - the name or index of the instance class (requires `type_map` and `class_dict`),
-                - 'geometry' - the geometry of the polygon.
+    Args:
+        returns: gpd.GeoDataFrame:
+                A GeoDataFrame of the raster instance mask. Contains columns:
+
+                    - 'id' - the numeric pixel value of the instance mask,
+                    - 'class_name' - the name or index of the instance class (requires `type_map` and `class_dict`),
+                    - 'geometry' - the geometry of the polygon.
 
     Examples:
         >>> from histolytics.utils.raster import inst2gdf
@@ -223,7 +223,6 @@ def sem2gdf(
     Note:
         This function should be applied to semantic tissue segmentation masks.
 
-    Parameters:
         sem_map (np.ndarray):
             A semantic segmentation mask. Shape (H, W).
         xoff (int):
@@ -242,13 +241,14 @@ def sem2gdf(
             as input and return a shapely Polygon. Defaults to `uniform_smooth`, which
             applies a uniform filter. `histolytics.utils._filters` also provides
             `gaussian_smooth` and `median_smooth` for smoothing.
-    returns:
-        gpd.GeoDataFrame:
-            A GeoDataFrame of the raster semantic mask. Contains columns:
 
-                - 'id' - the numeric pixel value of the semantic mask,
-                - 'class_name' - the name of the class (same as id if class_dict is None),
-                - 'geometry' - the geometry of the polygon.
+    Args:
+        returns: gpd.GeoDataFrame:
+                A GeoDataFrame of the raster semantic mask. Contains columns:
+
+                    - 'id' - the numeric pixel value of the semantic mask,
+                    - 'class_name' - the name of the class (same as id if class_dict is None),
+                    - 'geometry' - the geometry of the polygon.
 
     Examples:
         >>> from histolytics.utils.raster import sem2gdf

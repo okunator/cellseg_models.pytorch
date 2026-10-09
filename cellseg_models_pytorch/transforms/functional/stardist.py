@@ -47,17 +47,13 @@ def gen_stardist_maps(inst_map: np.ndarray, n_rays: int) -> np.ndarray:
     NOTE: Adapted from
     - https://github.com/stardist/stardist/blob/master/stardist/geometry/geom2d.py
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
-        n_rays : int, default=32
-            Number of rays.
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
+        n_rays: Number of rays.
+            Defaults to 32.
 
-    Returns
-    -------
-        np.ndarray:
-            The radial distance maps. Shape (n_rays, H, W). Dtype: float32
+    Returns:
+        The radial distance maps. Shape (n_rays, H, W). Dtype: float32
     """
     n_rays = int(n_rays)
     dist = np.empty(inst_map.shape + (n_rays,), np.float32)

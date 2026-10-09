@@ -52,20 +52,15 @@ def steps2D_interp_torch(p: np.ndarray, dP: np.ndarray, niter: int = 200) -> np.
      vertical gradient maps. We use finite differences with a step size
      of one."
 
-    Parameters
-    ----------
-        p : float32, 3D array
-            final locations of each pixel after dynamics,
+    Args:
+        p (float32, 3D array): final locations of each pixel after dynamics,
             size [axis x Ly x Lx].
-        dP : float32, 3D array
-            flows [axis x Ly x Lx]
-        niter : int (optional, default 200)
-            number of iterations of dynamics to run
+        dP (float32, 3D array): flows [axis x Ly x Lx]
+        niter: number of iterations of dynamics to run
+            Defaults to 200.
 
-    Returns
-    -------
-        np.ndarray:
-            The pixel locations after dynamics. Shape (2, H, W).
+    Returns:
+        The pixel locations after dynamics. Shape (2, H, W).
     """
     shape = dP.shape[1:]
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -99,17 +94,13 @@ def follow_flows(dP: np.ndarray, niter: int = 200) -> np.ndarray:
     Pixels are meshgrid. Only pixels with non-zero cell-probability
     are used (as defined by inds)
 
-    Parameters
-    ----------
-        dP : float32, 3D
-            flows [axis x Ly x Lx]
-        niter : int (optional, default 200)
-            number of iterations of dynamics to run
+    Args:
+        dP (float32, 3D): flows [axis x Ly x Lx]
+        niter: number of iterations of dynamics to run
+            Defaults to 200.
 
-    Returns
-    -------
-        p : float32, 3D array
-            Final locations of each pixel after dynamics
+    Returns:
+        Final locations of each pixel after dynamics as a 3D float32 array.
     """
     shape = np.array(dP.shape[1:]).astype(np.int32)
     niter = np.int32(niter)
@@ -149,30 +140,26 @@ def get_masks_cellpose_old(
     they include all pixels with more than 2 final pixels p. Discards
     masks with flow errors greater than the threshold.
 
-    Parameters
-    ----------
-        p: float32, 3D array
-            final locations of each pixel after dynamics,
+    Args:
+        p (float32, 3D array): final locations of each pixel after dynamics,
             size [axis x Ly x Lx].
-        rpad: int (optional, default 20)
-            histogram edge padding
-        threshold: float (optional, default 0.4)
+        rpad: histogram edge padding
+            Defaults to 20.
+        threshold (float):
             masks with flow error greater than threshold are discarded
             (if flows is not None)
-        flows: float, 3D array (optional, default None)
-            flows [axis x Ly x Lx]. If flows
+            Defaults to 0.4.
+        flows (float, 3D array): flows [axis x Ly x Lx]. If flows
             is not None, then masks with inconsistent flows are removed using
             `remove_bad_flow_masks`.
-        iscell: bool, 2D array
-            if iscell is not None, set pixels that are
+            Defaults to None.
+        iscell (bool, 2D array): if iscell is not None, set pixels that are
             iscell False to stay in their original location.
-    Returns
-    -------
-        M0: int, 2D array
-            masks with inconsistent flow masks removed,
+
+    Returns:
+        A 2D integer mask with inconsistent flow masks removed,
             0=NO masks; 1,2,...=mask labels,
             size [Ly x Lx]
-
     """
     pflows = []
     edges = []
@@ -256,17 +243,13 @@ def post_proc_cellpose_old(inst_map: np.ndarray, flow_map: np.ndarray) -> np.nda
     In general the flows are somewhat useless... except for nice viz..
 
     Args:
-    -----------
         inst_map : np.ndarray
             Instance labelled mask. Shape (H, W).
         flow_map : np.ndarray
             Horizontal and vertical flows. Shape (2, H, W).
 
-    Returns
-    -------
-        np.ndarray:
-            The instance labelled segmentation mask. Shape (H, W)
-
+    Returns:
+        The instance labelled segmentation mask. Shape (H, W)
     """
     binary_mask = binarize(inst_map).astype(bool)
     # dP = -1 * dp * binary_mask / 5.0 # Weird result, Dunno ??

@@ -45,20 +45,16 @@ def post_proc_hovernet(
 ) -> np.ndarray:
     """HoVer-Net post processing pipeline.
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled or binary mask. Shape (H, W).
-        hover_map : np.ndarray
+    Args:
+        inst_map: Instance labelled or binary mask. Shape (H, W).
+        hover_map:
             Regressed horizontal and vertical gradients. Shape: (2, H, W).
-        enhance : bool, default=True
-            Normalizes hover-maps to the 0-99 percentiles and clamps the
+        enhance: Normalizes hover-maps to the 0-99 percentiles and clamps the
             values to min=-1 and max=1.
+            Defaults to True.
 
-    Returns
-    -------
-        np.ndarray:
-            Post-processed inst map. Shape (H, W). Dtype: int32
+    Returns:
+        Post-processed inst map. Shape (H, W). Dtype: int32
     """
     v_dir = cv2.normalize(
         hover_map[0],
