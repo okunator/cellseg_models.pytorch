@@ -109,16 +109,16 @@ fixes at I/O boundaries can be handled as small independently validated batches.
 
 An AST inventory of library imports, excluding tests and legacy modules, confirms
 that Pillow, Hugging Face Hub, safetensors, pandas, Shapely, and NetworkX are used
-directly but arrive through other dependencies. Declare them deliberately in the
-runtime/extra audit rather than relying on the current resolver graph.
+directly. The follow-up declaration patch adds them as explicit runtime
+requirements while retaining locked versions and artifact hashes. This closes
+that metadata gap; optional dataset/training boundaries remain open.
 
-The inventory also found a concrete clean-install gap: `from
-cellseg_models_pytorch.wsi import SlideReader` fails with `No module named
-'matplotlib'` in the clean wheel environment. Matplotlib is a development-only
-requirement, and `wsi/image.py` guards its font-manager import but imports
-`colormaps` unconditionally. The installed-package smoke test currently imports
-an empty `inference/__init__.py` and does not exercise this WSI API. Extend smoke
-coverage to concrete entry points as the import boundaries are repaired.
+The inventory also found that `from cellseg_models_pytorch.wsi import SlideReader`
+failed without development-only Matplotlib. PR 89 is merged and guards both
+Matplotlib imports, preserves the visualization dependency error, and adds a
+regression plus WSI imports to clean distribution checks. The next smoke check
+also imports `inference.predictor`, rather than relying on the empty inference
+package initializer. More concrete data/slide APIs still need coverage.
 
 Training/data APIs import Albumentations and PyTables; slide backends use BioIO,
 cuCIM, or OpenSlide; optional attention uses xFormers; an alternate StarDist
