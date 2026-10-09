@@ -58,19 +58,14 @@ __all__ = ["post_proc_omnipose", "div_rescale", "get_masks_omnipose"]
 def div_rescale(dP: np.ndarray, mask: np.ndarray, pad: int = 1) -> np.ndarray:
     """Rescale the divergence of the regressed flows.
 
-    Parameters
-    ----------
-        dP : np.ndarray
-            The regressed eikonal flows. Shape (2, H, W).
-        mask : np.ndarray
-            Binary mask of the predicted cells. Shape (H, W).
-        pad : int, default=1
-            Number of padded pixels around the input.
+    Args:
+        dP: The regressed eikonal flows. Shape (2, H, W).
+        mask: Binary mask of the predicted cells. Shape (H, W).
+        pad: Number of padded pixels around the input.
+            Defaults to 1.
 
-    Returns
-    -------
-        np.ndarray:
-            The rescaled eikonal flow-maps. Shape: (2, H, W).
+    Returns:
+        The rescaled eikonal flow-maps. Shape: (2, H, W).
     """
     dP = dP.copy()
     dP *= mask
@@ -114,20 +109,14 @@ def get_masks_omnipose(
 ) -> np.ndarray:
     """Omnipose mask recontruction algorithm.
 
-    Parameters
-    ----------
-        p : np.ndarray
-            All the pixel locations for the pixels after running the
+    Args:
+        p: All the pixel locations for the pixels after running the
             euler integrator. Shape: (2, H, W). Dtype: float32.
-        mask : np.ndarray
-            The binary mask of the cells. Shape (H, W).
-        inds : np.ndarray
-            Indices of the non-zero pixels. Shape: (n non zero pxls, 2).
+        mask: The binary mask of the cells. Shape (H, W).
+        inds: Indices of the non-zero pixels. Shape: (n non zero pxls, 2).
 
-    Returns
-    -------
-        np.ndarray:
-            The instance labelled mask. Shape (H, W).
+    Returns:
+        The instance labelled mask. Shape (H, W).
     """
     eps = 1 + (1 / 3)
 
@@ -156,22 +145,17 @@ def post_proc_omnipose(
     More info in the omnipose paper:
     https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled or binary mask. Shape (H, W).
-        flow_map : np.ndarray
-            Y- and x-flows. Shape: (2, H, W)
-        return_flows : bool, default=False
+    Args:
+        inst_map: Instance labelled or binary mask. Shape (H, W).
+        flow_map: Y- and x-flows. Shape: (2, H, W)
+        return_flows:
             If True, returns the HSV converted flows. They are just not
             needed for anything relevant.
-        min_size : int
-            The minimum size for the objects that will not be removed.
+            Defaults to False.
+        min_size: The minimum size for the objects that will not be removed.
 
-    Returns
-    -------
-        np.ndarray:
-            Instance labelled mask. Shape (H, W). Dtype: int32.
+    Returns:
+        Instance labelled mask. Shape (H, W). Dtype: int32.
     """
     #  convert channels to CHW
     binary_mask = binarize(inst_map).astype(bool)

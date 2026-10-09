@@ -40,8 +40,8 @@ def get_spot_coordinates(
     Numbers each spot from top-left and takes into account missing spots etc in the
     numbering.
 
-    Parameters:
-        spot_mask (np.ndarray):
+    Args:
+        spot_mask:
             Tissue mask of TMA-slide, should only contain TMA spots an no artifacts.
 
     Returns:

@@ -25,9 +25,7 @@ class WSConv2d(nn.Conv2d):
 
         https://arxiv.org/abs/1903.10520
 
-        Parameters
-        ----------
-            Refer to nn.Conv2d
+        Refer to nn.Conv2d
         """
         super().__init__(
             in_channels=in_channels,

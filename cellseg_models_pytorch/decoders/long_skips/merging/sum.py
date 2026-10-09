@@ -21,15 +21,11 @@ class SumBlock(nn.ModuleDict):
 
         Handles clashing channel numbers with a regular conv block.
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels
-            skip_channels : Tuple[int, ...]:
-                Number of skip channels
-            convolution : str
-                Name of the convolution method in the downsampling blocks.
-            normalization : str
+        Args:
+            in_channels: Number of input channels
+            skip_channels: Number of skip channels
+            convolution: Name of the convolution method in the downsampling blocks.
+            normalization:
                 Name of the normalization method in the downsampling blocks.
         """
         super().__init__()
@@ -65,17 +61,12 @@ class SumBlock(nn.ModuleDict):
     ) -> torch.Tensor:
         """Forward of the sum block.
 
-        Parameters
-        ----------
-            x : torch.Tensor
-                Input tensor. Shape: (B, C, H, W)
-            skips : Tuple[torch.Tensor, ...]
-                All the skip features in a list. Shapes: (B, C, H, W).
+        Args:
+            x: Input tensor. Shape: (B, C, H, W)
+            skips: All the skip features in a list. Shapes: (B, C, H, W).
 
-        Returns
-        -------
-            torch.Tensor:
-                The summed output tensor. Shape (B, C, H, W).
+        Returns:
+            The summed output tensor. Shape (B, C, H, W).
         """
         if self.values():
             skips = list(skips)

@@ -33,17 +33,13 @@ __all__ = ["gen_contour_maps"]
 def gen_contour_maps(inst_map: np.ndarray, thickness: int = 1) -> np.ndarray:
     """Compute contours for every label object.
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
-        thickness : int, default=1
-            Thicnkness of the contour line.
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
+        thickness: Thicnkness of the contour line.
+            Defaults to 1.
 
-    Returns
-    -------
-        np.ndarray:
-            Contours of the labelled objects. Shape (H, W).
+    Returns:
+        Contours of the labelled objects. Shape (H, W).
     """
     contour_map = np.zeros_like(inst_map, np.uint8)
     disk = morph.disk(thickness)

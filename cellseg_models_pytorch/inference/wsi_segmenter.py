@@ -26,17 +26,13 @@ class WsiSegmenter:
     ) -> None:
         """Class for segmenting WSIs.
 
-        Parameters:
-            reader (SlideReader):
-                The `SlideReader` object for reading the WSIs.
-            level (int):
-                The level of the WSI to segment.
-            coordinates (List[Tuple[int, int, int, int]]):
+        Args:
+            reader: The `SlideReader` object for reading the WSIs.
+            level: The level of the WSI to segment.
+            coordinates:
                 The bounding box coordinates from `reader.get_tile_coordinates()`.
-            batch_size (int):
-                The batch size for the DataLoader.
-            normalization (Callable):
-                The normalization function for the DataLoader.
+            batch_size: The batch size for the DataLoader.
+            normalization: The normalization function for the DataLoader.
         """
         self.batch_size = batch_size
         self.coordinates = coordinates
@@ -53,10 +49,9 @@ class WsiSegmenter:
     def segment(self, save_dir: str, maptype: str = "amap") -> None:
         """Segment the WSIs and save the instances as parquet files to `save_dir`.
 
-        Parameters:
-            save_dir (str):
-                The directory to save the instances.
-            maptype (str):
+        Args:
+            save_dir: The directory to save the instances.
+            maptype:
                 The type of map to use for post-processing. Can be either 'amap','imap',
                 'uimap', or 'map'.
         """
@@ -106,17 +101,17 @@ class WsiSegmenter:
     ) -> None:
         """Merge the instances at the image boundaries.
 
-        Parameters:
-            src (str):
+        Args:
+            src:
                 The directory containing the instances segmentations (.parquet-files).
-            dst (str):
-                The destination path for the output file. Allowed formats are
+            dst: The destination path for the output file. Allowed formats are
                 '.parquet', '.geojson', and '.feather'.
-            clear_in_dir (bool, default=False):
-                Whether to clear the source directory after merging.
-            simplify_level (int, default=1):
+            clear_in_dir: Whether to clear the source directory after merging.
+                Defaults to False.
+            simplify_level:
                 The level of simplification to apply to the merged instances.
-            precision (int, optional):
+                Defaults to 1.
+            precision:
                 The precision level to apply to the merged instances. If None, no rounding
                 is applied.
         """

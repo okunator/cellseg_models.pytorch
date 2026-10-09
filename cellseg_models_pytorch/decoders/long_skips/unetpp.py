@@ -40,56 +40,61 @@ class UnetppSkip(nn.ModuleDict):
         UNet++: A Nested U-Net Architecture for Medical Image Segmentation
             - https://arxiv.org/abs/1807.10165
 
-        Parameters
-        ----------
-            stage_ix : int
-                The index number of the current decoder stage.
-            dec_channels : Tuple[int, ...]
+        Args:
+            stage_ix: The index number of the current decoder stage.
+            dec_channels:
                 The number of output channels in the decoder output stages. First elem
                 is the number of channels in the encoder head or bottleneck.
-            skip_channels : Tuple[int, ...]
+            skip_channels:
                 List of the number of channels in the encoder skip tensors.
-            up_factors : Tuple[int, ...]
-                The upscaling factors for each decoder stage.
-            hid_channels : int, default=256
+            up_factors: The upscaling factors for each decoder stage.
+            hid_channels:
                 Number of output channels from the hidden middle blocks of unet++.
-            n_layers : int, default=1
-                The number of conv layers inside one skip stage.
-            n_blocks : Tuple[int, ...], default=(1, )
+                Defaults to 256.
+            n_layers: The number of conv layers inside one skip stage.
+                Defaults to 1.
+            n_blocks:
                 Number of conv-blocks used at each layer of the skip connection.
-            short_skips : str, default=("residual", )
-                The short skip methods used inside the conv layers.
-            block_types : Tuple[Tuple[str, ...], ...], default=(("basic",), )
+                Defaults to (1, ).
+            short_skips (str): The short skip methods used inside the conv layers.
+                Defaults to ("residual", ).
+            block_types:
                 The type of the conv blocks in the conv blocks inside the layers.
-            normalizations : Tuple[Tuple[str, ...], ...], default: (("bn",), )
+                Defaults to (("basic",), ).
+            normalizations:
                 Normalization methods used in the conv blocks inside the conv layers.
-            convolutions : Tuple[str, ...], default=(("conv",),)
+                Defaults to (("bn",), ).
+            convolutions (Tuple[str, ...]):
                 The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-            activations : Tuple[Tuple[str, ...], ...], default: (("relu",), )
-                Activation methods used inside the conv layers.
-            kernel_sizes : Tuple[int, ...], default=(3, 3)
-                The size of the convolution kernels in each conv block.
-            groups : int, default=(1, 1)
+                Defaults to (("conv",),).
+            activations: Activation methods used inside the conv layers.
+                Defaults to (("relu",), ).
+            kernel_sizes: The size of the convolution kernels in each conv block.
+                Defaults to (3, 3).
+            groups (int):
                 Number of groups for the kernels in each convolution blocks.
-            biases : bool, default=(True, True)
-                Include bias terms in the convolution blocks.
-            attentions : Tuple[Tuple[str, ...], ...], default: ((None,), )
-                Attention methods used inside the conv layers.
-            preactivates Tuple[Tuple[bool, ...], ...], default: ((False,), )
-                Boolean flags for the conv layers to use pre-activation.
-            preattends Tuple[Tuple[bool, ...], ...], default: ((False,), )
-                Boolean flags for the conv layers to use pre-activation.
-            use_styles : Tuple[Tuple[bool, ...], ...], default=((False,), )
+                Defaults to (1, 1).
+            biases (bool): Include bias terms in the convolution blocks.
+                Defaults to (True, True).
+            attentions: Attention methods used inside the conv layers.
+                preactivates Tuple[Tuple[bool, ...], ...], default: ((False,), )
+                    Boolean flags for the conv layers to use pre-activation.
+                preattends Tuple[Tuple[bool, ...], ...], default: ((False,), )
+                    Boolean flags for the conv layers to use pre-activation.
+                Defaults to ((None,), ).
+            use_styles:
                 Boolean flags for the conv layers to add style vectors at each block.
-            expand_ratios : Tuple[float, float], default=((1.0, ),)
-                Expand ratios for the conv blocks.
-            upsampling : str, default="fixed-unpool"
-                Name of the upsampling method.
-            merge_policy : str, default="sum"
-                The long skip merge policy. One of: "sum", "cat"
-            lite_version : bool, default=False
+                Defaults to ((False,), ).
+            expand_ratios: Expand ratios for the conv blocks.
+                Defaults to ((1.0, ),).
+            upsampling (str): Name of the upsampling method.
+                Defaults to "fixed-unpool".
+            merge_policy: The long skip merge policy. One of: "sum", "cat"
+                Defaults to "sum".
+            lite_version (bool):
                 If True, the dense decoder-to-decoder skips are not utilized at all.
                 Reduces the model params quite a lot and computational cost.
+                Defaults to False.
         """
         super().__init__()
         self.stage_ix = stage_ix
@@ -190,20 +195,17 @@ class UnetppSkip(nn.ModuleDict):
     ) -> torch.Tensor:
         """Forward pass of the Unet++ skip connection.
 
-        Parameters
-        ----------
-            x : torch.Tensor
-                Input tensor. Shape (B, C, H, W).
-            skips : Tuple[torch.Tensor, ...]
+        Args:
+            x: Input tensor. Shape (B, C, H, W).
+            skips (Tuple[torch.Tensor, ...]):
                 All of feature maps from consecutive encoder blocks.
                 Order is bottom up. Shapes: (B, C, H, W).
-            extra_skips : Tuple[torch.Tensor, ...], default=None
+            extra_skips (Tuple[torch.Tensor, ...]):
                 Extra skip connections. (Previous mid features).
+                Defaults to None.
 
-        Returns
-        -------
-            torch.Tensor:
-                Output torch.Tensor. Shape: (B, C, H, W).
+        Returns:
+            Output torch.Tensor. Shape: (B, C, H, W).
         """
         mid_features = []
         fin_features = []

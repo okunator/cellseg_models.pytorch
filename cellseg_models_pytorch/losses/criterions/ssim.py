@@ -20,13 +20,11 @@ def ssim(
 
     UNET3+ https://arxiv.org/pdf/2004.08790.pdf
 
-    Parameters:
-        img1 (torch.Tensor):
-            Input image 1. Shape (B, C, H, W).
-        img2 (torch.Tensor):
-            Input image 2. Shape (B, C, H, W).
-        window_size (int, default=11):
-            Size of the gaussian kernel.
+    Args:
+        img1: Input image 1. Shape (B, C, H, W).
+        img2: Input image 2. Shape (B, C, H, W).
+        window_size: Size of the gaussian kernel.
+            Defaults to 11.
 
     Returns:
         torch.Tensor:
@@ -84,11 +82,11 @@ class SSIM(nn.Module):
         I.e. the dissimilarity:
         (1 - SSIM(x, y)) / 2
 
-        Parameters:
-            window_size (int, default=11):
-                Size of the gaussian kernel.
-            return_cs (bool, default=False):
-                Return also the the contrast sensitivity coeff.
+        Args:
+            window_size: Size of the gaussian kernel.
+                Defaults to 11.
+            return_cs: Return also the the contrast sensitivity coeff.
+                Defaults to False.
         """
         super().__init__()
         self.window_size = window_size
@@ -151,11 +149,9 @@ class MSSSIM(nn.Module):
     ) -> torch.Tensor:
         """Compute the MS-SSIM loss.
 
-        Parameters:
-            yhat (torch.Tensor):
-                The prediction map. Shape (B, C, H, W).
-            target (torch.Tensor):
-                the ground truth annotations. Shape (B, H, W).
+        Args:
+            yhat: The prediction map. Shape (B, C, H, W).
+            target: the ground truth annotations. Shape (B, H, W).
 
         Returns:
             torch.Tensor:

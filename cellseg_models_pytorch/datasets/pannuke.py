@@ -118,12 +118,12 @@ class Pannuke:
             "https://warwick.ac.uk/fac/cross_fac/tia/data/pannuke/"
         2. Pre-process and split the images and masks into train, valid and test sets.
 
-        Parameters:
-            rm_orig (bool, default=False):
-                After processing all the files, If True, removes the original
+        Args:
+            rm_orig: After processing all the files, If True, removes the original
                 un-processed files.
-            to_h5 (bool, default=False):
-                If True, saves the processed images and masks in one HDF5 file.
+                Defaults to False.
+            to_h5: If True, saves the processed images and masks in one HDF5 file.
+                Defaults to False.
         """
         if not self.has_downloaded:
             if self.verbose:

@@ -34,38 +34,38 @@ class BasicConv(nn.Module):
     ) -> None:
         """Conv-block (basic) parent class.
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels.
-            out_channels : int
-                Number of output channels.
-            same_padding : bool, default=True
-                if True, performs same-covolution.
-            normalization : str, default="bn":
-                Normalization method.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            same_padding: if True, performs same-covolution.
+                Defaults to True.
+            normalization: Normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", None
-            activation : str, default="relu"
-                Activation method.
+                Defaults to "bn".
+            activation: Activation method.
                 One of: "mish", "swish", "relu", "relu6", "rrelu", "selu",
                 "celu", "gelu", "glu", "tanh", "sigmoid", "silu", "prelu",
                 "leaky-relu", "elu", "hardshrink", "tanhshrink", "hardsigmoid"
-            convolution : str, default="conv"
+                Defaults to "relu".
+            convolution:
                 The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-            preactivate : bool, default=False
-                If True, normalization will be applied before convolution.
-            kernel_size : int, default=3
-                The size of the convolution kernel.
-            groups : int, default=1
-                Number of groups the kernels are divided into. If `groups == 1`
+                Defaults to "conv".
+            preactivate: If True, normalization will be applied before convolution.
+                Defaults to False.
+            kernel_size (int): The size of the convolution kernel.
+                Defaults to 3.
+            groups: Number of groups the kernels are divided into. If `groups == 1`
                 normal convolution is applied. If `groups = in_channels`
                 depthwise convolution is applied.
-            bias : bool, default=False,
-                Include bias term in the convolution.
-            attention : str, default=None
+                Defaults to 1.
+            bias: Include bias term in the convolution.
+                Defaults to False.
+            attention:
                 Attention method. One of: "se", "scse", "gc", "eca", "msca", None
-            preattend : bool, default=False
+                Defaults to None.
+            preattend:
                 If True, Attention is applied at the beginning of forward pass.
+                Defaults to False.
         """
         super().__init__()
         self.conv_choice = convolution
@@ -152,42 +152,42 @@ class BottleneckConv(nn.Module):
         Preact-ResNet: Identity Mappings in Deep Residual Networks:
             - https://arxiv.org/abs/1603.05027
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels.
-            out_channels : int
-                Number of output channels.
-            expand_ratio : float, default=4.0
-                The ratio of channel expansion in the bottleneck.
-            base_width : int, default=64
-                The minimum width for the conv x channels in this block.
-            same_padding : bool, default=True
-                if True, performs same-covolution.
-            normalization : str, default="bn":
-                Normalization method.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            expand_ratio: The ratio of channel expansion in the bottleneck.
+                Defaults to 4.0.
+            base_width: The minimum width for the conv x channels in this block.
+                Defaults to 64.
+            same_padding: if True, performs same-covolution.
+                Defaults to True.
+            normalization: Normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", None
-            activation : str, default="relu"
-                Activation method.
+                Defaults to "bn".
+            activation: Activation method.
                 One of: "mish", "swish", "relu", "relu6", "rrelu", "selu",
                 "celu", "gelu", "glu", "tanh", "sigmoid", "silu", "prelu",
                 "leaky-relu", "elu", "hardshrink", "tanhshrink", "hardsigmoid"
-            convolution : str, default="conv"
+                Defaults to "relu".
+            convolution:
                 The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-            preactivate : bool, default=False
-                If True, normalization will be applied before convolution.
-            kernel_size : int, default=3
-                The size of the convolution kernel.
-            groups : int, default=1
-                Number of groups the kernels are divided into. If `groups == 1`
+                Defaults to "conv".
+            preactivate: If True, normalization will be applied before convolution.
+                Defaults to False.
+            kernel_size: The size of the convolution kernel.
+                Defaults to 3.
+            groups: Number of groups the kernels are divided into. If `groups == 1`
                 normal convolution is applied. If `groups = in_channels`
                 depthwise convolution is applied.
-            bias : bool, default=False,
-                Include bias term in the convolution.
-            attention : str, default=None
+                Defaults to 1.
+            bias: Include bias term in the convolution.
+                Defaults to False.
+            attention:
                 Attention method. One of: "se", "scse", "gc", "eca", "msca", None
-            preattend : bool, default=False
+                Defaults to None.
+            preattend:
                 If True, Attention is applied at the beginning of forward pass.
+                Defaults to False.
         """
         super().__init__()
         self.conv_choice = convolution
@@ -312,32 +312,32 @@ class DepthWiseSeparableConv(nn.Module):
         Efficient Convolutional Neural Networks for Mobile Vision Applications:
             - https://arxiv.org/abs/1704.04861
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels.
-            out_channels : int
-                Number of output channels.
-            same_padding : bool, default=True
-                if True, performs same-covolution.
-            normalization : str, default="bn":
-                Normalization method.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            same_padding: if True, performs same-covolution.
+                Defaults to True.
+            normalization: Normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", None
-            activation : str, default="relu"
-                Activation method.
+                Defaults to "bn".
+            activation: Activation method.
                 One of: "mish", "swish", "relu", "relu6", "rrelu", "selu",
                 "celu", "gelu", "glu", "tanh", "sigmoid", "silu", "prelu",
                 "leaky-relu", "elu", "hardshrink", "tanhshrink", "hardsigmoid"
-            convolution : str, default="conv"
+                Defaults to "relu".
+            convolution:
                 The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-            preactivate : bool, default=False
-                If True, normalization will be applied before convolution.
-            kernel_size : int, default=3
-                The size of the convolution kernel.
-            attention : str, default=None
+                Defaults to "conv".
+            preactivate: If True, normalization will be applied before convolution.
+                Defaults to False.
+            kernel_size: The size of the convolution kernel.
+                Defaults to 3.
+            attention:
                 Attention method. One of: "se", "scse", "gc", "eca", "msca", None
-            preattend : bool, default=False
+                Defaults to None.
+            preattend:
                 If True, Attention is applied at the beginning of forward pass.
+                Defaults to False.
         """
         super().__init__()
         self.conv_choice = convolution
@@ -433,34 +433,34 @@ class InvertedBottleneckConv(nn.Module):
         MobileNetV2: Inverted Residuals and Linear Bottlenecks:
             - https://arxiv.org/abs/1801.04381
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels.
-            out_channels : int
-                Number of output channels.
-            expand_ratio : float, default=4.0
-                The ratio of channel expansion in the bottleneck.
-            same_padding : bool, default=True
-                if True, performs same-covolution.
-            normalization : str, default="bn":
-                Normalization method.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            expand_ratio: The ratio of channel expansion in the bottleneck.
+                Defaults to 4.0.
+            same_padding: if True, performs same-covolution.
+                Defaults to True.
+            normalization: Normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", None
-            activation : str, default="relu"
-                Activation method.
+                Defaults to "bn".
+            activation: Activation method.
                 One of: "mish", "swish", "relu", "relu6", "rrelu", "selu",
                 "celu", "gelu", "glu", "tanh", "sigmoid", "silu", "prelu",
                 "leaky-relu", "elu", "hardshrink", "tanhshrink", "hardsigmoid"
-            convolution : str, default="conv"
+                Defaults to "relu".
+            convolution:
                 The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-            preactivate : bool, default=False
-                If True, normalization will be applied before convolution.
-            kernel_size : int, default=3
-                The size of the convolution kernel.
-            attention : str, default=None
+                Defaults to "conv".
+            preactivate: If True, normalization will be applied before convolution.
+                Defaults to False.
+            kernel_size: The size of the convolution kernel.
+                Defaults to 3.
+            attention:
                 Attention method. One of: "se", "scse", "gc", "eca", "msca", None
-            preattend : bool, default=False
+                Defaults to None.
+            preattend:
                 If True, Attention is applied at the beginning of forward pass.
+                Defaults to False.
         """
         super().__init__()
 
@@ -587,36 +587,36 @@ class FusedMobileInvertedConv(nn.Module):
         EfficientNetV2: Smaller Models and Faster Training
             - https://arxiv.org/abs/2104.00298
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels.
-            out_channels : int
-                Number of output channels.
-            expand_ratio : float, default=4.0
-                The ratio of channel expansion in the bottleneck.
-            kernel_size : int, default=3
-                The size of the convolution kernel.
-            stride : int, default=1
-                The stride size.
-            same_padding : bool, default=True
-                if True, performs same-covolution.
-            normalization : str, default="bn":
-                Normalization method.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            expand_ratio: The ratio of channel expansion in the bottleneck.
+                Defaults to 4.0.
+            kernel_size: The size of the convolution kernel.
+                Defaults to 3.
+            stride: The stride size.
+                Defaults to 1.
+            same_padding: if True, performs same-covolution.
+                Defaults to True.
+            normalization: Normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", None
-            activation : str, default="relu"
-                Activation method.
+                Defaults to "bn".
+            activation: Activation method.
                 One of: "mish", "swish", "relu", "relu6", "rrelu", "selu",
                 "celu", "gelu", "glu", "tanh", "sigmoid", "silu", "prelu",
                 "leaky-relu", "elu", "hardshrink", "tanhshrink", "hardsigmoid"
-            convolution : str, default="conv"
+                Defaults to "relu".
+            convolution:
                 The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-            preactivate : bool, default=False
-                If True, normalization will be applied before convolution.
-            attention : str, default=None
+                Defaults to "conv".
+            preactivate: If True, normalization will be applied before convolution.
+                Defaults to False.
+            attention:
                 Attention method. One of: "se", "scse", "gc", "eca", "msca", None
-            preattend : bool, default=False
+                Defaults to None.
+            preattend:
                 If True, Attention is applied at the beginning of forward pass.
+                Defaults to False.
         """
         super().__init__()
         assert stride in (1, 2)
@@ -720,38 +720,38 @@ class HoverNetDenseConv(nn.Module):
         HoVer-Net:
         - https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub
 
-        Parameters
-        ----------
-            in_channels : int
-                Number of input channels.
-            out_channels : int
-                Number of output channels.
-            squeeze_ratio : float, default=4.0
-                The ratio of channel expansion in the bottleneck.
-            groups : int, default=1
-                Number of groups the kernels are divided into. If `groups == 1`
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            squeeze_ratio: The ratio of channel expansion in the bottleneck.
+                Defaults to 4.0.
+            groups: Number of groups the kernels are divided into. If `groups == 1`
                 normal convolution is applied. If `groups = in_channels`
                 depthwise convolution is applied.
-            same_padding : bool, default=True
-                if True, performs same-covolution.
-            normalization : str, default="bn":
-                Normalization method.
+                Defaults to 1.
+            same_padding: if True, performs same-covolution.
+                Defaults to True.
+            normalization: Normalization method.
                 One of: "bn", "bcn", "gn", "in", "ln", None
-            activation : str, default="relu"
-                Activation method.
+                Defaults to "bn".
+            activation: Activation method.
                 One of: "mish", "swish", "relu", "relu6", "rrelu", "selu",
                 "celu", "gelu", "glu", "tanh", "sigmoid", "silu", "prelu",
                 "leaky-relu", "elu", "hardshrink", "tanhshrink", "hardsigmoid"
-            convolution : str, default="conv"
+                Defaults to "relu".
+            convolution:
                 The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-            preactivate : bool, default=False
-                If True, normalization will be applied before convolution.
-            kernel_size : int, default=3
-                The size of the convolution kernel.
-            attention : str, default=None
+                Defaults to "conv".
+            preactivate: If True, normalization will be applied before convolution.
+                Defaults to False.
+            kernel_size: The size of the convolution kernel.
+                Defaults to 3.
+            attention:
                 Attention method. One of: "se", "scse", "gc", "eca", "msca", None
-            preattend : bool, default=False
+                Defaults to None.
+            preattend:
                 If True, Attention is applied at the beginning of forward pass.
+                Defaults to False.
         """
         super().__init__()
 

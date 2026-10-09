@@ -34,10 +34,11 @@ class CellposeTransform(OnlyInstMapTransform):
 
         https://www.nature.com/articles/s41592-020-01018-x
 
-        Parameters:
-            deduplicate (bool, default=True):
+        Args:
+            deduplicate:
                 Whether to fix duplicate values in the mask before transforming.
                 This adds overhead, so use only if you know that the mask has duplicates.
+                Defaults to True.
         """
         super().__init__()
         self.name = "cellpose"
@@ -47,9 +48,8 @@ class CellposeTransform(OnlyInstMapTransform):
     def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
         """Fix duplicate values and generate flows.
 
-        Parameters:
-            inst (np.ndarray):
-                Instance labelled mask. Shape (H, W).
+        Args:
+            inst: Instance labelled mask. Shape (H, W).
 
         Returns:
             np.ndarray:
@@ -66,10 +66,11 @@ class HoverNetTransform(OnlyInstMapTransform):
 
         https://www.sciencedirect.com/science/article/pii/S1361841519301045
 
-        Parameters:
-            deduplicate (bool, default=True):
+        Args:
+            deduplicate:
                 Whether to fix duplicate values in the mask before transforming.
                 This adds overhead, so use only if you know that the mask has duplicates.
+                Defaults to True.
         """
         super().__init__()
         self.name = "hovernet"
@@ -79,9 +80,8 @@ class HoverNetTransform(OnlyInstMapTransform):
     def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
         """Fix duplicate values and generate gradients.
 
-        Parameters:
-            inst (np.ndarray):
-                Instance labelled mask. Shape (H, W).
+        Args:
+            inst: Instance labelled mask. Shape (H, W).
 
         Returns:
             np.ndarray:
@@ -99,10 +99,11 @@ class OmniposeTransform(OnlyInstMapTransform):
 
         https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
 
-        Parameters:
-            deduplicate (bool, default=True):
+        Args:
+            deduplicate:
                 Whether to fix duplicate values in the mask before transforming.
                 This adds overhead, so use only if you know that the mask has duplicates.
+                Defaults to True.
         """
         super().__init__()
         self.name = "omnipose"
@@ -112,9 +113,8 @@ class OmniposeTransform(OnlyInstMapTransform):
     def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
         """Fix duplicate values and generate eikonal flows.
 
-        Parameters:
-            inst (np.ndarray):
-                Instance labelled mask. Shape (H, W).
+        Args:
+            inst: Instance labelled mask. Shape (H, W).
 
         Returns:
             np.ndarray:
@@ -132,12 +132,13 @@ class StardistTransform(OnlyInstMapTransform):
 
         https://arxiv.org/abs/1806.03535
 
-        Parameters:
-            n_rays (int, default=32):
-                Number of rays used for computing distance maps.
-            deduplicate (bool, default=True):
+        Args:
+            n_rays: Number of rays used for computing distance maps.
+                Defaults to 32.
+            deduplicate:
                 Whether to fix duplicate values in the mask before transforming.
                 This adds overhead, so use only if you know that the mask has duplicates.
+                Defaults to True.
         """
         super().__init__()
         self.name = "stardist"
@@ -168,10 +169,11 @@ class SmoothDistTransform(OnlyInstMapTransform):
 
         https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
 
-        Parameters:
-            deduplicate (bool, default=True):
+        Args:
+            deduplicate:
                 Whether to fix duplicate values in the mask before transforming.
                 This adds overhead, so use only if you know that the mask has duplicates.
+                Defaults to True.
         """
         super().__init__()
         self.name = "smoothdist"
@@ -199,10 +201,11 @@ class DistTransform(OnlyInstMapTransform):
     def __init__(self, deduplicate: bool = True) -> None:
         """Generate distance transforms from a label mask.
 
-        Parameters:
-            deduplicate (bool, default=True):
+        Args:
+            deduplicate:
                 Whether to fix duplicate values in the mask before transforming.
                 This adds overhead, so use only if you know that the mask has duplicates.
+                Defaults to True.
         """
         super().__init__()
         self.name = "dist"
@@ -230,10 +233,11 @@ class ContourTransform(OnlyInstMapTransform):
     def __init__(self, deduplicate: bool = True):
         """Generate contour map from a label mask.
 
-        Parameters:
-            deduplicate (bool, default=True):
+        Args:
+            deduplicate:
                 Whether to fix duplicate values in the mask before transforming.
                 This adds overhead, so use only if you know that the mask has duplicates.
+                Defaults to True.
         """
         super().__init__()
         self.name = "contour"
@@ -260,10 +264,11 @@ class EdgeWeightTransform(OnlyInstMapTransform):
     def __init__(self, deduplicate: bool = True) -> None:
         """Generate weight maps for object boundaries.
 
-        Parameters:
-            deduplicate (bool, default=True):
+        Args:
+            deduplicate:
                 Whether to fix duplicate values in the mask before transforming.
                 This adds overhead, so use only if you know that the mask has duplicates.
+                Defaults to True.
         """
         super().__init__()
         self.name = "edgeweight"
@@ -296,9 +301,8 @@ class BinarizeTransform(OnlyInstMapTransform):
     def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
         """Generate a binary mask from instance labelled mask.
 
-        Parameters:
-            inst (np.ndarray):
-                Instance labelled mask. Shape (H, W).
+        Args:
+            inst: Instance labelled mask. Shape (H, W).
 
         Returns:
             np.ndarray:

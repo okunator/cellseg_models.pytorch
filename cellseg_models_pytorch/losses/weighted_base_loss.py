@@ -19,20 +19,23 @@ class WeightedBaseLoss(nn.Module):
 
         Enables weighting for object instance edges and classes.
 
-        Parameters:
-        apply_sd (bool, default=False):
-            If True, Spectral decoupling regularization will be applied  to the
-            loss matrix.
-        apply_ls (bool, default=False):
-            If True, Label smoothing will be applied to the target.
-        apply_svls (bool, default=False):
-            If True, spatially varying label smoothing will be applied to the target
-        apply_mask (bool, default=False):
-            If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
-        class_weights (torch.Tensor, default=None):
-            Class weights. A tensor of shape (C, )
-        edge_weight (float, default=None):
-            Weight for the object instance border pixels
+        Args:
+            apply_sd:
+                If True, Spectral decoupling regularization will be applied  to the
+                loss matrix.
+                Defaults to False.
+            apply_ls: If True, Label smoothing will be applied to the target.
+                Defaults to False.
+            apply_svls:
+                If True, spatially varying label smoothing will be applied to the target
+                Defaults to False.
+            apply_mask:
+                If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
+                Defaults to False.
+            class_weights: Class weights. A tensor of shape (C, )
+                Defaults to None.
+            edge_weight: Weight for the object instance border pixels
+                Defaults to None.
         """
         super().__init__()
         self.apply_sd = apply_sd
@@ -49,13 +52,11 @@ class WeightedBaseLoss(nn.Module):
 
         https://arxiv.org/abs/2011.09468
 
-        Parameters:
-            loss_matrix (torch.Tensor):
-                Pixelwise losses. A tensor of shape (B, H, W).
-            yhat (torch.Tensor):
-                The pixel predictions of the model. Shape (B, C, H, W).
-            lam (float, default=0.01):
-                Lambda constant.
+        Args:
+            loss_matrix: Pixelwise losses. A tensor of shape (B, H, W).
+            yhat: The pixel predictions of the model. Shape (B, C, H, W).
+            lam: Lambda constant.
+                Defaults to 0.01.
 
         Returns:
             torch.Tensor:
@@ -74,7 +75,6 @@ class WeightedBaseLoss(nn.Module):
 
         https://arxiv.org/abs/1512.00567
 
-        Parameters:
             target (torch.Tensor):
                 The target one hot tensor. Shape (B, C, H, W). Dtype: Int64.
             n_classes (int):
@@ -82,9 +82,10 @@ class WeightedBaseLoss(nn.Module):
             label_smoothing (float, default=0.1):
                 The smoothing coeff alpha.
 
-        Retrurns:
-            Torch.Tensor:
-                Label smoothed target. Same shape as input.
+
+        Args:
+            Retrurns: Torch.Tensor:
+                    Label smoothed target. Same shape as input.
         """
         return target * (1 - label_smoothing) + label_smoothing / n_classes
 
@@ -100,7 +101,6 @@ class WeightedBaseLoss(nn.Module):
 
         https://arxiv.org/abs/2104.05788
 
-        Parameters:
             target (torch.Tensor):
                 The target one hot tensor. Shape (B, C, H, W). Dtype: Int64.
             n_classes (int):
@@ -110,9 +110,10 @@ class WeightedBaseLoss(nn.Module):
             sigma (int, default=3):
                 The std of the gaussian.
 
-        Retrurns:
-            Torch.Tensor:
-                Label smoothed target. Same shape as input.
+
+        Args:
+            Retrurns: Torch.Tensor:
+                    Label smoothed target. Same shape as input.
         """
         my, mx = kernel_size // 2, kernel_size // 2
         gaussian_kernel = gaussian_kernel2d(
@@ -133,11 +134,9 @@ class WeightedBaseLoss(nn.Module):
         Note:
             Does not apply normalization
 
-        Parameters:
-            loss_matrix (torch.Tensor):
-                Pixelwise losses. A tensor of shape (B, H, W).
-            target (torch.Tensor):
-                The target mask. Shape (B, H, W).
+        Args:
+            loss_matrix: Pixelwise losses. A tensor of shape (B, H, W).
+            target: The target mask. Shape (B, H, W).
 
         Returns:
             torch.Tensor:
@@ -155,11 +154,9 @@ class WeightedBaseLoss(nn.Module):
 
         Basically just computes `edge_weight`**`weight_map`.
 
-        Parameters:
-            loss_matrix (torch.Tensor):
-                Pixelwise losses. A tensor of shape (B, H, W).
-            weight_map (torch.Tensor):
-                Map that points to the pixels that will be weighted.
+        Args:
+            loss_matrix: Pixelwise losses. A tensor of shape (B, H, W).
+            weight_map: Map that points to the pixels that will be weighted.
                 Shape (B, H, W).
 
         Returns:
@@ -174,13 +171,12 @@ class WeightedBaseLoss(nn.Module):
     ) -> torch.Tensor:
         """Apply a mask to the loss matrix.
 
-        Parameters:
-            loss_matrix (torch.Tensor):
-                Pixelwise losses. A tensor of shape (B, H, W).
-            mask (torch.Tensor):
-                The mask. Shape (B, H, W).
-            norm (bool, default=True):
+        Args:
+            loss_matrix: Pixelwise losses. A tensor of shape (B, H, W).
+            mask: The mask. Shape (B, H, W).
+            norm:
                 If True, the loss matrix will be normalized by the mean of the mask.
+                Defaults to True.
 
         Returns:
             torch.Tensor:

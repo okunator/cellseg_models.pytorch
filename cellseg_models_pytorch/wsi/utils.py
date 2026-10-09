@@ -18,13 +18,12 @@ def get_sub_grids(
     Note:
         The order of the sub-grids is from ymin to ymax.
 
-    Parameters:
-        coordinates (List[Tuple[int, int, int, int]]):
-            List of grid coordinates in (x, y, w, h) format.
-        inds (Tuple[int, ...], default=None):
-            Indices of the connected components to extract.
-        min_size (int, default=1):
-            Minimum size of the sub grid.
+    Args:
+        coordinates: List of grid coordinates in (x, y, w, h) format.
+        inds: Indices of the connected components to extract.
+            Defaults to None.
+        min_size: Minimum size of the sub grid.
+            Defaults to 1.
 
     Returns:
         List[List[Tuple[int, int, int, int]]]:

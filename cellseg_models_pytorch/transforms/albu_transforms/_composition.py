@@ -36,13 +36,12 @@ class ApplyEach(A.BaseCompose):
 
         Returns outputs for each transform.
 
-        Parameters:
-            transforms (List[Any]):
-                List of transforms to apply.
-            p (float, default=1.0):
-                Probability of applying the transform.
-            as_list (bool, default=False):
-                Return the outputs as list with shapes (H, W, C).
+        Args:
+            transforms (List[Any]): List of transforms to apply.
+            p: Probability of applying the transform.
+                Defaults to 1.0.
+            as_list: Return the outputs as list with shapes (H, W, C).
+                Defaults to False.
         """
         super().__init__(transforms, p, **kwargs)
         self.names = [t.name for t in transforms]

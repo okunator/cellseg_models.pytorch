@@ -14,12 +14,10 @@ class GroupNorm(nn.GroupNorm):
         Magic number 16 comes from the paper:
         https://arxiv.org/abs/1803.08494
 
-        Parameters
-        ----------
-            num_features : int
-                Number of input channels/features.
-            num_groups : int, default=None
-                Number of groups to group the channels.
+        Args:
+            num_features: Number of input channels/features.
+            num_groups: Number of groups to group the channels.
+                Defaults to None.
         """
         if num_groups is None:
             num_groups, remainder = divmod(num_features, 16)

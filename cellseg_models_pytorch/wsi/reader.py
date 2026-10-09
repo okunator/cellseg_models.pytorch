@@ -61,11 +61,10 @@ class SlideReader:
     ) -> None:
         """Initialize `SlideReader` instance.
 
-        Parameters:
-            path (str, Path):
-                Path to slide image.
-            backend (str, default="OPENSLIDE"):
-                Backend to use for reading slide images.
+        Args:
+            path (str, Path): Path to slide image.
+            backend: Backend to use for reading slide images.
+                Defaults to "OPENSLIDE".
 
         Raises:
             FileNotFoundError: Path does not exist.
@@ -136,9 +135,8 @@ class SlideReader:
     def read_level(self, level: int) -> np.ndarray:
         """Read full pyramid level data.
 
-        Parameters:
-            level (int):
-                Slide pyramid level to read.
+        Args:
+            level: Slide pyramid level to read.
 
         Raises:
             ValueError: Invalid level argument.
@@ -154,11 +152,10 @@ class SlideReader:
     ) -> np.ndarray:
         """Read region based on `xywh`-coordinates.
 
-        Parameters:
-            xywh (tuple[int, int, int, int]):
-                Coordinates for the region.
-            level (int, default=0):
-                Slide pyramid level to read from.
+        Args:
+            xywh: Coordinates for the region.
+            level: Slide pyramid level to read from.
+                Defaults to 0.
 
         Raises:
             ValueError: Invalid `level` argument.
@@ -173,9 +170,9 @@ class SlideReader:
         """Find pyramid level with *both* dimensions less or equal to `max_dimension`.
         If one isn't found, return the last pyramid level.
 
-        Parameters:
-            max_dimension (int, default=4096):
-                Maximum dimension for the level.
+        Args:
+            max_dimension: Maximum dimension for the level.
+                Defaults to 4096.
 
         Returns:
             int:
@@ -189,9 +186,8 @@ class SlideReader:
     def level_from_dimensions(self, dimensions: tuple[int, int]) -> int:
         """Find pyramid level which is closest to `dimensions`.
 
-        Parameters:
-            dimensions (tuple[int, int]):
-                Height and width.
+        Args:
+            dimensions: Height and width.
 
         Returns:
             int:
@@ -215,19 +211,22 @@ class SlideReader:
     ) -> tuple[int, np.ndarray]:
         """Detect tissue from slide pyramid level image.
 
-        Parameters:
-            level (int, default=None):
+        Args:
+            level (int):
                 Slide pyramid level to use for tissue detection. If None, uses the
                 `level_from_max_dimension` method.
-            threshold (int, default=None):
+                Defaults to None.
+            threshold (int):
                 Threshold for tissue detection. If set, will detect tissue by global
                 thresholding. Otherwise Otsu's method is used to find a threshold.
-            multiplier (float, default=1.05):
+                Defaults to None.
+            multiplier:
                 Otsu's method finds an optimal threshold by minimizing the weighted
                 within-class variance. This threshold is then multiplied with
                 `multiplier`. Ignored if `threshold` is not None.
-            sigma (float, default=0.0):
-                Sigma for gaussian blurring.
+                Defaults to 1.05.
+            sigma: Sigma for gaussian blurring.
+                Defaults to 0.0.
 
         Raises:
             ValueError: Threshold not between 0 and 255.
@@ -260,21 +259,22 @@ class SlideReader:
     ) -> TileCoordinates:
         """Generate tile coordinates.
 
-        Parameters:
-            width (int):
-                Width of a tile.
-            tissue_mask (np.ndarray, default=None):
+        Args:
+            width: Width of a tile.
+            tissue_mask (np.ndarray):
                 Tissue mask for filtering tiles with too much background. If None,
                 the filtering is disabled.
-            height (int, default=None):
-                Height of a tile. If None, will be set to `width`.
-            overlap (float, default=0.0):
-                Overlap between neighbouring tiles.
-            max_background (float, default=0.95):
+                Defaults to None.
+            height (int): Height of a tile. If None, will be set to `width`.
+                Defaults to None.
+            overlap: Overlap between neighbouring tiles.
+                Defaults to 0.0.
+            max_background:
                 Maximum proportion of background in tiles. Ignored if `tissue_mask`
                 is None.
-            out_of_bounds (bool, default=True):
-                Keep tiles which contain regions outside of the image.
+                Defaults to 0.95.
+            out_of_bounds: Keep tiles which contain regions outside of the image.
+                Defaults to True.
 
         Raises:
             ValueError: Height and/or width are smaller than 1.
@@ -324,23 +324,25 @@ class SlideReader:
     ) -> SpotCoordinates:
         """Generate tissue microarray spot coordinates.
 
-        Parameters:
+        Args:
             tissue_mask:
                 Tissue mask of the slide. It's recommended to increase `sigma` value when
                 detecting tissue to remove non-TMA spots from the mask. Rest of the areas
                 can be handled with the following arguments.
-            min_area_pixel (int, default=10):
-                Minimum pixel area for contours.
-            max_area_pixel (int, default=None):
-                Maximum pixel area for contours.
-            min_area_relative (float, default=0.2):
+            min_area_pixel: Minimum pixel area for contours.
+                Defaults to 10.
+            max_area_pixel (int): Maximum pixel area for contours.
+                Defaults to None.
+            min_area_relative:
                 Relative minimum contour area, calculated from the median contour area
                 after filtering contours with `[min,max]_pixel` arguments
                 (`min_area_relative * median(contour_areas)`).
-            max_area_relative (float, default=2.0):
+                Defaults to 0.2.
+            max_area_relative (float):
                 Relative maximum contour area, calculated from the median contour area
                 after filtering contours with `[min,max]_pixel` arguments
                 (`max_area_relative * median(contour_areas)`).
+                Defaults to 2.0.
 
         Returns:
             SpotCoordinates:
@@ -374,13 +376,11 @@ class SlideReader:
     ) -> Image.Image:
         """Generate annotated thumbnail from coordinates.
 
-        Parameters:
-            image (np.ndarray):
-                Input image.
-            coordinates (Iterator[tuple[int, int, int, int]]):
-                Coordinates to annotate.
-            linewidth (int, default=1):
-                Width of rectangle lines.
+        Args:
+            image: Input image.
+            coordinates: Coordinates to annotate.
+            linewidth: Width of rectangle lines.
+                Defaults to 1.
 
         Returns:
             PIL.Image.Image:

@@ -35,54 +35,56 @@ class UnetDecoder(nn.ModuleDict):
             - TransformerLayer (optional)
                 - TransformerBlock(transformer_block_method)
 
-        Parameters
-        ----------
-            enc_channels : Tuple[int, ...]
-                Number of channels at each encoder layer.
-            enc_reductions : Tuple[int, ...]
+        Args:
+            enc_channels: Number of channels at each encoder layer.
+            enc_reductions:
                 The reduction factor from the input image size at each encoder layer.
-            out_channels : Tuple[int, ...]
-                Number of channels at each decoder layer output.
-            long_skip : Union[None, str, Tuple[str, ...]], default="unet"
+            out_channels: Number of channels at each decoder layer output.
+            long_skip:
                 long skip method to be used. The argument can be given as a tuple, where
                 each value indicates the long-skip method for each stage of the decoder,
                 allowing the mixing of long-skip methods in the decoder.
                 Allowed: "cross-attn", "unet", "unetpp", "unet3p", "unet3p-lite", None
-            n_conv_layers : Union[None, int, Tuple[int, ...]], default=1
+                Defaults to "unet".
+            n_conv_layers:
                 The number of convolution layers inside each of the decoder stages. The
                 argument can be given as a tuple, where each value indicates the number
                 of conv-layers inside each stage of the decoder allowing the mixing of
                 different sized layers inside the stages. If set to None, no conv-layers
                 will be included in the decoder.
-            n_transformers : Union[None, int, Tuple[int, ...]] , optional
+                Defaults to 1.
+            n_transformers:
                 The number of transformer layers inside each of the decoder stages. The
                 argument can be given as a tuple, where each value indicates the number
                 of transformer-layers inside each stage of the decoder stages allowing
                 the mixing of different sized layers inside the stages. If set to None,
                 no transformer layers will be included in the decoder.
-            n_conv_blocks : Union[int, Tuple[Tuple[int, ...], ...]], default=2
+            n_conv_blocks:
                 The number of blocks inside each conv-layer at each decoder stage. The
                 argument can be given as a nested tuple, where each value indicates the
                 number of `ConvBlock`s inside a single `ConvLayer` allowing different
                 sized blocks inside each conv-layer in the decoder.
-            n_transformer_blocks : Union[int, Tuple[Tuple[int], ...]], default=1
+                Defaults to 2.
+            n_transformer_blocks:
                 The number of transformer blocks inside each transformer-layer at each
                 decoder stage. The argument can be given as a nested tuple, where each
                 value indicates the number of `SelfAttention`s inside a single
                 `TranformerLayer` allowing different sized transformer blocks inside
                 each transformer-layer in the decoder.
-            stage_params : Tuple[Dict, ...], default=None
+                Defaults to 1.
+            stage_params:
                 The keyword args for each of the distinct decoder stages. Incudes the
                 parameters for the long skip connections, convolutional layers of the
                 decoder and transformer layers itself. See the `DecoderStage`
                 documentation for more info.
-            style_channels : int, default=None
+                Defaults to None.
+            style_channels:
                 Number of style vector channels. If None, style vectors are ignored.
                 If `n_conv_layers` is None, this is ignored since style vectors are
                 applied inside `ConvBlocks`.
+                Defaults to None.
 
-        Raises
-        ------
+        Raises:
             ValueError:
                 If there is a mismatch between encoder and decoder channel lengths.
         """

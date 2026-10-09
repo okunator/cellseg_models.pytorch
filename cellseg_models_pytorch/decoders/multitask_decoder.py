@@ -103,36 +103,35 @@ class MultiTaskDecoder(nn.ModuleDict):
     ) -> None:
         """Create a multi-task decoder.
 
-        Parameters:
-            decoders (Tuple[str, ...]):
-                Tuple of decoder names. E.g. ("decoder1", "decoder2").
-            heads (Dict[str, Dict[str, int]]):
+        Args:
+            decoders: Tuple of decoder names. E.g. ("decoder1", "decoder2").
+            heads:
                 Dict containing the heads for each decoder. The inner dict contains the
                 head name and the number of output channels. For example:
                 {"decoder1": {"inst": 2, "sem": 5}, "decoder2": {"cellpose": 2}}.
-            out_channels (Tuple[int, ...]):
+            out_channels:
                 Tuple of output channels for each decoder stage. The length of the tuple
                 should be equal to the number of enc_channels.
-            enc_feature_info (Tuple[Dict[str, Any], ...]):
+            enc_feature_info:
                 Tuple of encoder feature info dicts. Basically timm.model.feature_info
-            n_layers (Tuple[int, ...]):
-                Tuple of number of conv layers in each decoder stage.
-            n_blocks (Tuple[int, ...]):
-                Tuple of number of conv blocks in each decoder stage.
-            stage_kws (Tuple[Dict[str, Any], ...]):
+            n_layers: Tuple of number of conv layers in each decoder stage.
+            n_blocks: Tuple of number of conv blocks in each decoder stage.
+            stage_kws:
                 Tuple of kwargs for each decoder stage. See UnetDecoderStage for info.
-            stem_skip_kws (Dict[str, Any], default=None):
-                Optional kwargs for the stem skip connection.
-            long_skip (str, default="unet"):
-                The long skip connection method to be used in the decoder
-            out_size (int, default=None):
+            stem_skip_kws: Optional kwargs for the stem skip connection.
+                Defaults to None.
+            long_skip: The long skip connection method to be used in the decoder
+                Defaults to "unet".
+            out_size:
                 The output size of the model. If given, the output will be interpolated to this size.
-            style_channels (int, default=None):
-                The number of style channels for domain adaptation.
-            head_excitation_channels (int, default=None):
+                Defaults to None.
+            style_channels: The number of style channels for domain adaptation.
+                Defaults to None.
+            head_excitation_channels:
                 The number of excitation channels for the head. If None, no excitation is
                 used. Excitation is a conv block before the head that widens the output
                 channels before the head to avoid 'fight over features' (stardist).
+                Defaults to None.
         """
         super().__init__()
         self.out_size = out_size
@@ -259,12 +258,12 @@ class MultiTaskDecoder(nn.ModuleDict):
     ) -> Tuple[Dict[str, List[torch.Tensor]], Dict[str, torch.Tensor]]:
         """Forward pass style, decoders and optional stem skip.
 
-        Parameters:
-            enc_feats (Tuple[torch.Tensor, ...]):
+        Args:
+            enc_feats:
                 Tuple containing encoder feature tensors. Assumes that the deepest i.e.
                 the bottleneck features is the last element of the tuple.
-            x_in (torch.Tensor, default=None):
-                Optional (the input image) tensor for stem skip connection.
+            x_in: Optional (the input image) tensor for stem skip connection.
+                Defaults to None.
 
         Returns:
             Tuple[Dict[str, List[torch.Tensor]], Dict[str, torch.Tensor]]:

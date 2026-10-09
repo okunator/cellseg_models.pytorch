@@ -17,12 +17,11 @@ class MSCAN(nn.Module):
     ) -> None:
         """Create MSCAN spatial attention module.
 
-        Parameters
-        ----------
-            conv : str, default="conv"
-                Convolution layer type.
-            activation : str, default="relu"
-                Activation layer after squeeze.
+        Args:
+            conv: Convolution layer type.
+                Defaults to "conv".
+            activation: Activation layer after squeeze.
+                Defaults to "relu".
         """
         super().__init__()
         self.in_channels = in_channels
@@ -53,10 +52,9 @@ class Pooling(nn.Module):
 
         - PoolFormer: https://arxiv.org/abs/2111.11418
 
-        Parameters
-        ----------
-            kernel_size_size : int, default=3
-                The pooling kernel_size.
+        Args:
+            kernel_size_size (int): The pooling kernel_size.
+                Defaults to 3.
         """
         super().__init__()
         padding = (kernel_size - 1) // 2
@@ -75,9 +73,8 @@ class TokenMixer(nn.Module):
     def __init__(self, name: str, mixer_kwargs: Dict[str, Any], **kwargs) -> None:
         """Token mixer wrapper class.
 
-        Parameters
-        ----------
-            name : str
+        Args:
+            name:
                 Name of the token-mixer. Allowed: "pool", "self-attention", "mscan",
                 "identity", "mlp"
         """
@@ -115,20 +112,18 @@ class TokenMixerBlock(nn.Module):
 
         I.e. norm(x) -> tokenmixer(x) -> residual -> (reshape for MLP)
 
-        Parameters
-        ----------
-            token_mixer : str
+        Args:
+            token_mixer:
                 Name of the token mixer. Allowed: "pool", "self-attention", "mscan",
                 "identity", "mlp".
-            normalization : str
+            normalization:
                 Name of the normalization method. Allowed: "bn", "bcn", "gn", "in",
                 "ln", None.
-            residual : bool, default=True
+            residual:
                 Flag, whether to use a residual connection at the end of the mixer.
-            norm_kwargs : Dict[str, Any], optional
-                Arbitrary key-word arguments for the normalization method.
-            mixer_kwargs : Dict[str, Any], optional
-                Arbitrary key-word arguments for the token mixer module.
+                Defaults to True.
+            norm_kwargs: Arbitrary key-word arguments for the normalization method.
+            mixer_kwargs: Arbitrary key-word arguments for the token mixer module.
         """
         super().__init__()
         self.residual = residual
@@ -141,10 +136,8 @@ class TokenMixerBlock(nn.Module):
     def forward(self, x: torch.Tensor, **kwargs) -> torch.Tensor:
         """Forward pass of the token-mixer block.
 
-        Parameters
-        ----------
-            x : torch.Tensor
-                Input features of shape (B, C, H, W) or (B, N, C).
+        Args:
+            x: Input features of shape (B, C, H, W) or (B, N, C).
             **kwargs:
                 Arbitrary key-word arguments such e.g. `context` for cross-attn.
         """

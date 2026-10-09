@@ -32,8 +32,8 @@ class BioIOReader(SlideReaderBackend):
     def __init__(self, path: str) -> None:
         """Initialize BIOIOBackend class instance.
 
-        Parameters:
-            path (str): Path to the slide image.
+        Args:
+            path: Path to the slide image.
 
         Raises:
             ImportError: BIOIO could not be imported.

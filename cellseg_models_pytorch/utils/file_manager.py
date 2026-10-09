@@ -47,19 +47,16 @@ class H5Handler:
     ) -> None:
         """Initialize a mask array in the hdf5 file.
 
-        Parameters:
-            h5 (tb.file.File):
-                The hdf5 file.
-            name (str):
-                The name of the mask array.
-            patch_size (Tuple[int, int]):
-                The size of the mask patches.
-            chunk_size (int, default=1):
-                The chunk size for the hdf5 array.
-            complevel (int, default=5):
-                The compression level.
-            complib (str, default='blosc:lz4'):
-                The compression library
+        Args:
+            h5 (tb.file.File): The hdf5 file.
+            name: The name of the mask array.
+            patch_size: The size of the mask patches.
+            chunk_size: The chunk size for the hdf5 array.
+                Defaults to 1.
+            complevel: The compression level.
+                Defaults to 5.
+            complib: The compression library
+                Defaults to 'blosc:lz4'.
         """
         h5.create_earray(
             where=h5.root,
@@ -80,17 +77,15 @@ class H5Handler:
     ) -> None:
         """Initialize an image array in the hdf5 file.
 
-        Parameters:
-            h5 (tb.file.File):
-                The hdf5 file.
-            patch_size (Tuple[int, int]):
-                The size of the image patches.
-            chunk_size (int, default=1):
-                The chunk size for the hdf5 array.
-            complevel (int, default=5):
-                The compression level.
-            complib (str, default='blosc:lz4'):
-                The compression library.
+        Args:
+            h5 (tb.file.File): The hdf5 file.
+            patch_size: The size of the image patches.
+            chunk_size: The chunk size for the hdf5 array.
+                Defaults to 1.
+            complevel: The compression level.
+                Defaults to 5.
+            complib: The compression library.
+                Defaults to 'blosc:lz4'.
         """
         h5.create_earray(
             where=h5.root,
@@ -113,15 +108,14 @@ class H5Handler:
         I.e. the filename and the coordinates of the patches. Coordinate format
         is (x0, y0, width, height).
 
-        Parameters:
-            h5 (tb.file.File):
-                The hdf5 file.
-            chunk_size (int, default=1):
-                The chunk size for the hdf5 array.
-            complevel (int, default=5):
-                The compression level.
-            complib (str, default='blosc:lz4'):
-                The compression library.
+        Args:
+            h5 (tb.file.File): The hdf5 file.
+            chunk_size: The chunk size for the hdf5 array.
+                Defaults to 1.
+            complevel: The compression level.
+                Defaults to 5.
+            complib: The compression library.
+                Defaults to 'blosc:lz4'.
         """
         h5.create_earray(
             where=h5.root,
@@ -143,17 +137,15 @@ class H5Handler:
     def init_h5(path: str, keys: Tuple[str, ...], patch_size: Tuple[int, int]):
         """Initialize a hdf5 file for saving masks.
 
-        Parameters:
-            path (str):
-                The output path.
-            keys (Tuple[str, ...]):
-                The keys of the arrays to be saved.
-            patch_size (Tuple[int, int]):
-                The size of the mask patches.
+        Args:
+            path: The output path.
+            keys: The keys of the arrays to be saved.
+            patch_size: The size of the mask patches.
 
         Returns:
             File:
                 The hdf5 file.
+
         Raises:
             ModuleNotFoundError: If the tables library is not installed.
             ValueError: If invalid keys are given.
@@ -200,15 +192,11 @@ class FileHandler:
     def read_img(path: Union[str, Path]) -> np.ndarray:
         """Read an image & convert from bgr to rgb. (cv2 reads imgs in bgr).
 
-        Parameters
-        ----------
-            path : str or Path
-                Path to the image file.
+        Args:
+            path (str or Path): Path to the image file.
 
-        Returns
-        -------
-            np.ndarray:
-                The image. Shape (H, W, 3).
+        Returns:
+            The image. Shape (H, W, 3).
         """
         path = Path(path)
         return cv2.cvtColor(cv2.imread(path.as_posix()), cv2.COLOR_BGR2RGB)
@@ -217,9 +205,8 @@ class FileHandler:
     def read_mat(path: Union[str, Path]) -> Dict[str, np.ndarray]:
         """Read a .mat file.
 
-        Parameters:
-            path (str or Path):
-                Path to the .mat file.
+        Args:
+            path (str or Path): Path to the .mat file.
 
         Returns:
             Dict[str, np.ndarray]:
@@ -234,19 +221,17 @@ class FileHandler:
     ) -> Dict[str, np.ndarray]:
         """Read img & mask patches at index `ix` from a hdf5 db.
 
-        Parameters:
-            path (Path or str):
-                Path to the h5-db.
-            ix (int):
-                Index for the hdf5 db-arrays.
-            keys (Tuple[str, ...]):
-                Keys/Names of the arrays to be read.
+        Args:
+            path (Path or str): Path to the h5-db.
+            ix: Index for the hdf5 db-arrays.
+            keys: Keys/Names of the arrays to be read.
 
         Returns:
             Dict[str, np.ndarray]:
                 A Dict of numpy matrices. Img shape: (H, W, 3), mask shapes: (H, W).
                 keys of the dict are: "im", "inst", "type", "cyto_inst", "cyto_type",
                 "sem", "fname", "coords".
+
         Raises:
             IOError: If a mask that does not exist in the db is being read.
         """
@@ -271,12 +256,9 @@ class FileHandler:
     def write_img(path: Union[str, Path], img: np.ndarray) -> None:
         """Write an image.
 
-        Parameters:
-            path (str or Path):
-                Path to the image file.
-            img (np.ndarray):
-                The image to be written.
-
+        Args:
+            path (str or Path): Path to the image file.
+            img: The image to be written.
         """
         path = Path(path)
         cv2.imwrite(path.as_posix(), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
@@ -292,19 +274,17 @@ class FileHandler:
         - .parquet
         - .geojson
 
-        Parameters:
-            gdf (gpd.GeoDataFrame):
-                The GeoDataFrame to be written.
-            path (str or Path):
-                The output filename.
-            silence_warnings (bool, default=True):
-                If True, warnings are silenced.
+        Args:
+            gdf: The GeoDataFrame to be written.
+            path (str or Path): The output filename.
+            silence_warnings: If True, warnings are silenced.
+                Defaults to True.
 
         Raises:
-            ValueError: If an invalid format is given.
+                ValueError: If an invalid format is given.
 
-        Warnings:
-            If the input GeoDataFrame is empty, a warning is raised.
+            Warnings:
+                If the input GeoDataFrame is empty, a warning is raised.
         """
         if not _has_gpd:
             raise ModuleNotFoundError(
@@ -344,19 +324,20 @@ class FileHandler:
             - bbox: The bounding boxes of the instance masks. Shape (N, 4).
             - inst_type: The type array from the instance array. Shape (N, 1).
 
-        Parameters:
-            masks (Dict[str, np.ndarray]):
+        Args:
+            masks:
                 The masks to be saved. E.g. {"inst": np.ndarray, "type": np.ndarray}.
-            path (str or Path):
-                The output path.
-            coords (Tuple[int, int, int, int], default=None):
+            path (str or Path): The output path.
+            coords:
                 The XYWH-coordinates of the image patch. (x0, y0, width, height).
-            compute_centroids (bool, default=False):
-                Compute the centroids of the instance masks.
-            compute_bboxes (bool, default=False):
-                Compute the bounding boxes of the instance masks.
-            comute_type_array (bool, default=False):
+                Defaults to None.
+            compute_centroids: Compute the centroids of the instance masks.
+                Defaults to False.
+            compute_bboxes: Compute the bounding boxes of the instance masks.
+                Defaults to False.
+            comute_type_array (bool):
                 Compute the type array from the instance array. Shape (1, N).
+                Defaults to False.
         """
         fname = Path(path)
         res = {}
@@ -399,12 +380,10 @@ class FileHandler:
     ) -> None:
         """Write masks to a hdf5 file.
 
-        Parameters:
-            masks (Dict[str, np.ndarray]):
-                The masks to be written.
-            h5 (tb.file.File):
-                The hdf5 file.
-            coords (Tuple[int, int, int, int]):
+        Args:
+            masks: The masks to be written.
+            h5 (tb.file.File): The hdf5 file.
+            coords:
                 The XYWH-coordinates of the image patch. (x0, y0, width, height).
         """
         try:
@@ -442,11 +421,10 @@ class FileHandler:
     def extract_zips_in_folder(path: Union[str, Path], rm: bool = False) -> None:
         """Extract files from all the .zip files inside a folder.
 
-        Parameters:
-            path (str or Path):
-                Path to a folder containing .zip files.
-            rm (bool, default=False):
-                remove the .zip files after extraction.
+        Args:
+            path (str or Path): Path to a folder containing .zip files.
+            rm: remove the .zip files after extraction.
+                Defaults to False.
         """
         for f in Path(path).iterdir():
             if f.is_file() and f.suffix == ".zip":

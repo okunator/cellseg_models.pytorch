@@ -20,13 +20,10 @@ class Merge(nn.Module):
     def __init__(self, name: str, **kwargs) -> None:
         """Merge wrapper class.
 
-        Parameters
-        ----------
-            name : str
-                The name of the merging method. One of "sum", "cat".
+        Args:
+            name: The name of the merging method. One of "sum", "cat".
 
-        Raises
-        ------
+        Raises:
             ValueError: if the merging method name is illegal.
         """
         super().__init__()

@@ -23,18 +23,16 @@ class UnetSkip(nn.Module):
         U-Net: Convolutional Networks for Biomedical Image Segmentation
             - https://arxiv.org/abs/1505.04597#
 
-        Parameters
-        ----------
-            stage_ix : int
-                Index number signalling the current decoder stage
-            in_channels : int, default=None
-                The number of channels in the input tensor.
-            skip_channels : Tuple[int, ...]
-                Tuple of the number of channels in the encoder stages.
+        Args:
+            stage_ix: Index number signalling the current decoder stage
+            in_channels: The number of channels in the input tensor.
+                Defaults to None.
+            skip_channels: Tuple of the number of channels in the encoder stages.
                 Order is bottom up. This list does not include the final
                 bottleneck stage out channels. e.g. (1024, 512, 256, 64).
-            merge_policy : str, default="sum"
+            merge_policy:
                 Sum or concatenate the features together. One of ("sum", "cat").
+                Defaults to "sum".
         """
         super().__init__()
         self.merge_policy = merge_policy
@@ -66,17 +64,12 @@ class UnetSkip(nn.Module):
     ) -> Tuple[torch.Tensor, None]:
         """Forward pass of the U-net long skip connection.
 
-        Parameters
-        ----------
-            x : torch.Tensor
-                Input from the previous decoder layer. Shape (B, C, H, W).
-            skips : Tuple[torch.Tensor, ...]
-                All the encoder feature maps. Shapes: (B, C, H, W).
-            ix : int
-                Index of the decoder stage.
+        Args:
+            x: Input from the previous decoder layer. Shape (B, C, H, W).
+            skips: All the encoder feature maps. Shapes: (B, C, H, W).
+            ix (int): Index of the decoder stage.
 
-        Returns
-        -------
+        Returns:
             Tuple[torch.Tensor, ...]:
                 The skip connection tensor. Shape (B, C ( + n_skip_cahnnels), H, W).
         """

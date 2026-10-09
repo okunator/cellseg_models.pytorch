@@ -61,25 +61,19 @@ def steps2D_interp(
      vertical gradient maps. We use finite differences with a step size
      of one."
 
-    Parameters
-    ----------
-        p : np.ndarray
-            All the pixel locations for the pixels in the flow maps.
+    Args:
+        p: All the pixel locations for the pixels in the flow maps.
             Including zero-pixels. Shape: (2, H, W). Dtype: float32
-        dP : np.ndarray
-            Flow maps. Shape: (2, H, W). Dtype: float64
-        niter : int, default=200
-            Number of iterations of dynamics to run
-        suppress_euler : bool, default=False
-            Suppress euler step. Used for omnipose.
-        use_gpu : bool, default = True
-            Flag, wheter to use gpu.
+        dP: Flow maps. Shape: (2, H, W). Dtype: float64
+        niter: Number of iterations of dynamics to run
+            Defaults to 200.
+        suppress_euler: Suppress euler step. Used for omnipose.
+            Defaults to False.
+        use_gpu: Flag, wheter to use gpu.
+            Defaults to True.
 
-    Returns
-    -------
-        np.ndarray:
-            The pixel locations after dynamics. Shape (2, H, W).
-
+    Returns:
+        The pixel locations after dynamics. Shape (2, H, W).
     """
     device = "cuda" if torch.cuda.is_available() and use_gpu else "cpu"
 
@@ -132,25 +126,20 @@ def steps2D(
 
     Euler integration of dynamics dP for niter steps
 
-    Parameters
-    ----------
-        p : np.ndarray
-            All the pixel locations for the pixels in the flow maps.
+    Args:
+        p: All the pixel locations for the pixels in the flow maps.
             Including zero-pixels. Shape: (2, H, W). Dtype: float32
-        dP : np.ndarray
-            Flow maps. Shape: (2, H, W). Dtype: float64
-        inds: np.ndarray
+        dP: Flow maps. Shape: (2, H, W). Dtype: float64
+        inds:
             Non-zero pixels to run dynamics on. Shape: (npixels, 2). Dtype: int32.
-        niter : int, default=200
-            Number of iterations of dynamics to run.
-        suppress_euler : bool, default=False
-            Suppress euler step. Used for omnipose.
+        niter: Number of iterations of dynamics to run.
+            Defaults to 200.
+        suppress_euler: Suppress euler step. Used for omnipose.
+            Defaults to False.
 
-    Returns
-    -------
-        np.ndarray:
-            Final locations of each pixel after dynamics. Shape (2, H, W).
-            Dtype: float32.
+    Returns:
+        Final locations of each pixel after dynamics. Shape (2, H, W).
+        Dtype: float32.
     """
     shape = p.shape[1:]
     for t in prange(niter):
@@ -183,29 +172,27 @@ def follow_flows(
     Pixels are meshgrid. Only pixels with non-zero cell-probability
     are used (as defined by inds).
 
-    Parameters
-    ----------
-        dP : np.ndarray
-            Flow maps. Shape: (2, H, W). Dtype: float64.
-        mask : np.ndarray, default=None
-            Pixel mask to seed masks. Useful when flows have low magnitudes.
-        niter : int, default=200
-            Number of iterations of dynamics to run.
-        suppress_euler : bool, default=False
+    Args:
+        dP: Flow maps. Shape: (2, H, W). Dtype: float64.
+        mask: Pixel mask to seed masks. Useful when flows have low magnitudes.
+            Defaults to None.
+        niter: Number of iterations of dynamics to run.
+            Defaults to 200.
+        suppress_euler:
             Suppression factor for the euler intergator. Used for omnipose.
-        interp : bool, default=True
-            Use bilinear interpolation when integrating.
-        use_gpu : bool, default=True
+            Defaults to False.
+        interp: Use bilinear interpolation when integrating.
+            Defaults to True.
+        use_gpu:
             Use gpu accelerated bilinear interpolation. If `interp` == False, this is
             ignored.
+            Defaults to True.
 
-    Returns
-    ---------------
-        Tuple[np.ndarray, np.ndarray]:
-            A tuple of nd.arrays. The first index is teh final locations
-            of each pixel after dynamics (Shape: (2, H, W)) The second
-            index is the indices of the non-zero pixels.
-            Shape: (number of non zero pixels, 2)
+    Returns:
+        A tuple of nd.arrays. The first index is teh final locations
+        of each pixel after dynamics (Shape: (2, H, W)) The second
+        index is the indices of the non-zero pixels.
+        Shape: (number of non zero pixels, 2)
     """
     shape = np.array(dP.shape[1:]).astype(np.int32)
     niter = np.uint32(niter)

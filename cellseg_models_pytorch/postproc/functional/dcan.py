@@ -43,19 +43,14 @@ def post_proc_dcan(
 
     https://arxiv.org/abs/1604.02677
 
-    Parameters
-    ----------
-        prob_map : np.ndarray
-            Probablilty map. Shape (H, W).
-        contour_map : np.ndarray
-            Contour map. Shape (H, W).
-        thresh : float, default=0.5
-            Threshold for the difference between prob_map and contour_map.
+    Args:
+        prob_map: Probablilty map. Shape (H, W).
+        contour_map: Contour map. Shape (H, W).
+        thresh: Threshold for the difference between prob_map and contour_map.
+            Defaults to 0.5.
 
-    Returns
-    -------
-        np.ndarray:
-            Instance labelled mask. Shape (H, W).
+    Returns:
+        Instance labelled mask. Shape (H, W).
     """
     contour_map = percentile_normalize99(contour_map, amin=-1, amax=1)
     sub = prob_map - contour_map

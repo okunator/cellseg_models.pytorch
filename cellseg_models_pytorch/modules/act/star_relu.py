@@ -23,18 +23,17 @@ class StarReLU(nn.Module):
 
         StarReLU: s * relu(x) ** 2 + b
 
-        Parameters
-        ----------
-            scale_value : float, default=1.0
-                Learnable scaling factor for relu activation.
-            bias_value : float, default=0.0
-                Learnable bias term for relu activation.
-            scale_learnable : bool, default=True
-                Flag, whether to keep the scale factor learnable.
-            bias_learnable : bool, default=True
-                Flag, whether to keep the bias term learnable.
-            inplace : bool, default=False
-                Flag whether to apply inplace-relu.
+        Args:
+            scale_value: Learnable scaling factor for relu activation.
+                Defaults to 1.0.
+            bias_value: Learnable bias term for relu activation.
+                Defaults to 0.0.
+            scale_learnable: Flag, whether to keep the scale factor learnable.
+                Defaults to True.
+            bias_learnable: Flag, whether to keep the bias term learnable.
+                Defaults to True.
+            inplace: Flag whether to apply inplace-relu.
+                Defaults to False.
         """
         super().__init__()
         self.inplace = inplace

@@ -80,51 +80,48 @@ def remove_small_objects(
     This leads to potentially different behavior for bool and 0-and-1
     arrays.
 
-    Parameters
-    ----------
-    ar : ndarray (arbitrary shape, int or bool type)
-        The array containing the objects of interest. If the array type
-        is int, the ints must be non-negative.
-    min_size : int, optional (default: 64)
-        The smallest allowable object size.
-    connectivity : int, {1, 2, ..., ar.ndim}, optional (default: 1)
-        The connectivity defining the neighborhood of a pixel. Used
-        during labelling if `ar` is bool.
-    in_place : bool, optional (default: False)
-        If ``True``, remove the objects in the input array itself.
-        Otherwise, make a copy. Deprecated since version 0.19. Please
-        use `out` instead.
-    out : ndarray
-        Array of the same shape as `ar`, into which the output is
-        placed. By default, a new array is created.
-    Raises
-    ------
-    TypeError
-        If the input array is of an invalid type, such as float or
-        string.
-    ValueError
-        If the input array contains negative values.
-    Returns
-    -------
-    out : ndarray, same shape and type as input `ar`
-        The input array with small connected components removed.
-    Examples
-    --------
-    >>> from skimage import morphology
-    >>> a = np.array([[0, 0, 0, 1, 0], [1, 1, 1, 0, 0], [1, 1, 1, 0, 1]], bool)
-    >>> b = morphology.remove_small_objects(a, 6)
-    >>> b
-    array([[False, False, False, False, False],
-           [ True,  True,  True, False, False],
-           [ True,  True,  True, False, False]])
-    >>> c = morphology.remove_small_objects(a, 7, connectivity=2)
-    >>> c
-    array([[False, False, False,  True, False],
-           [ True,  True,  True, False, False],
-           [ True,  True,  True, False, False]])
-    >>> d = morphology.remove_small_objects(a, 6, out=a)
-    >>> d is a
-    True
+    Args:
+        ar (ndarray (arbitrary shape, int or bool type)):
+            The array containing the objects of interest. If the array type
+            is int, the ints must be non-negative.
+        min_size: The smallest allowable object size.
+            Defaults to 64.
+        connectivity (int, {1, 2, ..., ar.ndim}):
+            The connectivity defining the neighborhood of a pixel. Used
+            during labelling if `ar` is bool.
+            Defaults to 1.
+        in_place: If ``True``, remove the objects in the input array itself.
+            Otherwise, make a copy. Deprecated since version 0.19. Please
+            use `out` instead.
+            Defaults to False.
+        out (ndarray): Array of the same shape as `ar`, into which the output is
+            placed. By default, a new array is created.
+
+    Raises:
+        TypeError: If the input array is of an invalid type, such as float or
+            string.
+        ValueError: If the input array contains negative values.
+
+    Returns:
+        ndarray: The input array with small connected components removed,
+            with the same shape and type as input `ar`.
+
+    Examples:
+        >>> from skimage import morphology
+        >>> a = np.array([[0, 0, 0, 1, 0], [1, 1, 1, 0, 0], [1, 1, 1, 0, 1]], bool)
+        >>> b = morphology.remove_small_objects(a, 6)
+        >>> b
+        array([[False, False, False, False, False],
+               [ True,  True,  True, False, False],
+               [ True,  True,  True, False, False]])
+        >>> c = morphology.remove_small_objects(a, 7, connectivity=2)
+        >>> c
+        array([[False, False, False,  True, False],
+               [ True,  True,  True, False, False],
+               [ True,  True,  True, False, False]])
+        >>> d = morphology.remove_small_objects(a, 6, out=a)
+        >>> d is a
+        True
     """
     if out is not None:
         in_place = False
@@ -163,15 +160,11 @@ def remove_small_objects(
 def binarize(inst_map: np.ndarray) -> np.ndarray:
     """Binarize a labelled instance map.
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
 
-    Returns
-    -------
-        np.ndarray:
-            Binary mask. Shape (H, W). Type: uint8.
+    Returns:
+        Binary mask. Shape (H, W). Type: uint8.
     """
     return (inst_map > 0).astype("uint8")
 
@@ -180,16 +173,12 @@ def binarize(inst_map: np.ndarray) -> np.ndarray:
 def fix_duplicates(inst_map: np.ndarray) -> np.ndarray:
     """Re-label duplicated instances in an instance labelled mask.
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
 
-    Returns
-    -------
-        np.ndarray:
-            The instance labelled mask without duplicated indices.
-            Shape (H, W).
+    Returns:
+        The instance labelled mask without duplicated indices.
+        Shape (H, W).
     """
     current_max_id = np.amax(inst_map)
     inst_list = list(np.unique(inst_map))
@@ -210,16 +199,12 @@ def fix_duplicates(inst_map: np.ndarray) -> np.ndarray:
 def remove_1px_boundary(inst_map: np.ndarray) -> np.ndarray:
     """Remove 1px around object instances.
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
 
     Returns:
-    -----------
-        np.ndarray:
-            The instance labelled mask with 1px of instance boundaries
-            removed. Shape (H, W).
+        The instance labelled mask with 1px of instance boundaries
+        removed. Shape (H, W).
     """
     new_inst_map = np.zeros(inst_map.shape[:2], np.int32)
     inst_list = list(np.unique(inst_map))
@@ -237,19 +222,13 @@ def remove_1px_boundary(inst_map: np.ndarray) -> np.ndarray:
 def center_crop(img: np.ndarray, ch: int, cw: int) -> np.ndarray:
     """Center crop an input image.
 
-    Parameters
-    ----------
-        img : np.ndarray
-            Input img. Shape (H, W).
-        ch : int
-            Crop height.
-        cw : int
-            Crop width.
+    Args:
+        img: Input img. Shape (H, W).
+        ch: Crop height.
+        cw: Crop width.
 
-    Returns
-    -------
-        np.ndarray:
-            Center cropped image. Shape (ch, cw).
+    Returns:
+        Center cropped image. Shape (ch, cw).
     """
     if len(img.shape) == 3:
         H, W, _ = img.shape
@@ -273,15 +252,11 @@ def bounding_box(inst_map: np.ndarray) -> List[int]:
 
     This assumes that the `inst_map` has only one instance in it.
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
 
-    Returns
-    -------
-        List[int]:
-            List of the origin- and end-point coordinates of the bbox.
+    Returns:
+        List of the origin- and end-point coordinates of the bbox.
     """
     rows = np.any(inst_map, axis=1)
     cols = np.any(inst_map, axis=0)
@@ -302,15 +277,11 @@ def remap_label(inst_map: np.ndarray) -> np.ndarray:
 
     I.e [0, 1, 2, 3] not [0, 2, 4, 6].
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
 
-    Returns
-    -------
-        np.ndarray:
-            Instance labelled mask with remapped contiguous labels.
+    Returns:
+        Instance labelled mask with remapped contiguous labels.
     """
     inst_list = list(np.unique(inst_map))
     inst_list.remove(0)
@@ -328,15 +299,11 @@ def remap_label(inst_map: np.ndarray) -> np.ndarray:
 def get_inst_centroid(inst_map: np.ndarray) -> np.ndarray:
     """Get centroid x, y coordinates from each unique nuclei instance.
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
 
     Returns:
-    ----------
-        np.ndarray:
-            An array of shape (num_instances, 2).
+        An array of shape (num_instances, 2).
     """
     inst_centroid_list = []
     inst_id_list = list(np.unique(inst_map))
@@ -355,15 +322,11 @@ def get_inst_centroid(inst_map: np.ndarray) -> np.ndarray:
 def get_inst_types(inst_map: np.ndarray, type_map: np.ndarray) -> np.ndarray:
     """Get the each instance type of a instance labelled mask.
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
-        type_map : np.ndarray
-            Type labelled mask. Shape (H, W).
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
+        type_map: Type labelled mask. Shape (H, W).
 
-    Returns
-    -------
+    Returns:
         An np.ndarray of shape (num_instances, 1).
     """
     inst_ids = list(np.unique(inst_map))
@@ -384,20 +347,14 @@ def get_type_instances(
 ) -> np.ndarray:
     """Get the instances of the input that belong to class `class_num`.
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
-        type_map : np.ndarray
-            Type labelled mask. Shape (H, W).
-        class_num : int
-            Class label.
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
+        type_map: Type labelled mask. Shape (H, W).
+        class_num: Class label.
 
-    Returns
-    -------
-        np.ndarray:
-            An array  of shape (H, W) where the values equalling
-            `class_num` are dropped.
+    Returns:
+        An array  of shape (H, W) where the values equalling
+        `class_num` are dropped.
     """
     t = type_map.astype("uint8") == class_num
     imap = np.copy(inst_map)
@@ -409,24 +366,17 @@ def get_type_instances(
 def one_hot(type_map: np.ndarray, num_classes: int) -> np.ndarray:
     """Convert a type labelled mask of shape (H, W) to one hot (H, W, C).
 
-    Parameters
-    ----------
-        type_map : np.ndarray
-            Type labelled mask. Shape (H, W).
-        num_classes (int):
-            Number of classes in the dataset.
+    Args:
+        type_map: Type labelled mask. Shape (H, W).
+        num_classes: Number of classes in the dataset.
 
     Raises:
-    -------
-        ValueError:
-            If the given `num_classes` is less than the observed number
+        ValueError: If the given `num_classes` is less than the observed number
             of classes
 
     Returns:
-    -----------
-        np.ndarray:
-            An array of the input array (H, W) in one hot format.
-            Shape: (H, W, num_classes). Dtype: float64
+        An array of the input array (H, W) in one hot format.
+        Shape: (H, W, num_classes). Dtype: float64
     """
     ntypes = len(np.unique(type_map)) - 1
     if num_classes < ntypes:
@@ -444,15 +394,11 @@ def type_map_flatten(type_map: np.ndarray) -> np.ndarray:
     Converts a one hot type map of shape (H, W, C) to a single channel
     indice map of shape (H, W).
 
-    Parameters
-    ----------
-        type_map : np.ndarray
-            Type labelled mask. Shape (H, W, C).
+    Args:
+        type_map: Type labelled mask. Shape (H, W, C).
 
-    Returns
-    -------
-        np.ndarray:
-            Flattened one hot np.ndarray. Shape (H, W).
+    Returns:
+        Flattened one hot np.ndarray. Shape (H, W).
     """
     type_out = np.zeros([type_map.shape[0], type_map.shape[1]])
     for t in range(type_map.shape[-1]):
@@ -464,15 +410,11 @@ def type_map_flatten(type_map: np.ndarray) -> np.ndarray:
 def soft_type_flatten(type_map: np.ndarray) -> np.ndarray:
     """Flatten a one hot soft mask of shape (H, W, C).
 
-    Parameters
-    ----------
-        type_map : np.ndarray
-            Type labelled mask. Shape (H, W, C).
+    Args:
+        type_map: Type labelled mask. Shape (H, W, C).
 
-    Returns
-    -------
-        np.ndarray:
-            Flattened soft mask. Shape (H, W).
+    Returns:
+        Flattened soft mask. Shape (H, W).
     """
     type_out = np.zeros([type_map.shape[0], type_map.shape[1]])
     for i in range(1, type_map.shape[-1]):
@@ -485,15 +427,11 @@ def soft_type_flatten(type_map: np.ndarray) -> np.ndarray:
 def remove_debris_binary(binary_mask: np.ndarray) -> np.ndarray:
     """Take in a binary mask -> fill holes -> removes small objects.
 
-    Parameters
-    -----------
-        binary_mask : np.ndarray
-            A binary mask. Shape (H, W)|(H, W, C).
+    Args:
+        binary_mask: A binary mask. Shape (H, W)|(H, W, C).
 
-    Returns
-    -------
-        np.ndarray:
-            Cleaned binary mask of shape (H, W).
+    Returns:
+        Cleaned binary mask of shape (H, W).
     """
     if len(binary_mask.shape) == 3:
         binary_mask = binary_mask[..., 1]
@@ -509,17 +447,13 @@ def remove_debris_instance(inst_map: np.ndarray, min_size: int = 10):
 
     (When skimage and ndimage fails)
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance labelled mask. Shape (H, W).
-        min_size : int, default=10
-            Min size for the objects that are left untouched.
+    Args:
+        inst_map: Instance labelled mask. Shape (H, W).
+        min_size: Min size for the objects that are left untouched.
+            Defaults to 10.
 
-    Returns
-    -------
-        np.ndarray:
-            Cleaned instance labelled mask of shape (H, W).
+    Returns:
+        np.ndarray: Cleaned instance labelled mask of shape (H, W).
     """
     res = np.zeros(inst_map.shape, np.int32)
     for ix in np.unique(inst_map)[1:]:
@@ -545,17 +479,13 @@ def remove_debris_instance(inst_map: np.ndarray, min_size: int = 10):
 def remove_debris_semantic(sem_map: np.ndarray, min_size: int = 10000):
     """Remove small objects from a semantic area map.
 
-    Parameters
-    ----------
-        sem_map : np.ndarray
-            Semantic segmentation mask. Shape (H, W).
-        min_size : int, default=10000
-            Min size for the objects that are left untouched
+    Args:
+        sem_map: Semantic segmentation mask. Shape (H, W).
+        min_size: Min size for the objects that are left untouched
+            Defaults to 10000.
 
-    Returns
-    -------
-        np.ndarray:
-            Cleaned semantic segmentation mask of shape (H, W).
+    Returns:
+        np.ndarray: Cleaned semantic segmentation mask of shape (H, W).
     """
     res = np.copy(sem_map)
     classes = np.unique(sem_map)
@@ -594,17 +524,13 @@ def remove_debris_semantic(sem_map: np.ndarray, min_size: int = 10000):
 def fill_holes_semantic(sem_map: np.ndarray, min_size: int = 5000):
     """Fill holes (background) from a semantic segmentation map.
 
-    Parameters
-    ----------
-        sem_map : np.ndarray
-            Semantic segmentation mask. Shape (H, W).
-        min_size : int, default=5000
-            Min size for the objects that are left untouched.
+    Args:
+        sem_map: Semantic segmentation mask. Shape (H, W).
+        min_size: Min size for the objects that are left untouched.
+            Defaults to 5000.
 
-    Returns
-    -------
-        np.ndarray:
-            Cleaned semantic segmentation mask of shape (H, W).
+    Returns:
+        np.ndarray: Cleaned semantic segmentation mask of shape (H, W).
     """
     res = np.copy(sem_map)
     bg = res == 0
@@ -641,17 +567,13 @@ def fill_holes_semantic(sem_map: np.ndarray, min_size: int = 5000):
 def label_semantic(sem_map: np.ndarray, sort: bool = True) -> np.ndarray:
     """Labels a given semantic segmentation map.
 
-    Parameters
-    ----------
-        sem_map : np.ndarray
-            Semantic segmentation map. Shape (H, W)
-        sort : bool, default=True
-            Sort the semantic areas by size in descending order.
+    Args:
+        sem_map: Semantic segmentation map. Shape (H, W)
+        sort: Sort the semantic areas by size in descending order.
+            Defaults to True.
 
-    Returns
-    -------
-        np.ndarray:
-            The labelled segmentation map. Shape (H, W).
+    Returns:
+        The labelled segmentation map. Shape (H, W).
     """
     sem_inst = np.zeros_like(sem_map)
 
@@ -705,28 +627,20 @@ def draw_thing_contours(
 ) -> np.ndarray:
     """Find coloured contours for an instance labelled mask.
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance segmentation map. Shape (H, W).
-        image : np.ndarray
-            Original image.
-        type_map : np.ndarray, optional
-            Semantic segmentation map. Shape (H, W)
-        fill_contours bool, default=False
-            If True, contours are filled
-        thickness : int, default=2
-            Thickness of the contour lines
-        classes : Dict[str, int], optional
-            Classes dict e.g. {"bg":0, "cancer":1, "immune":2}
-        colors : Dict[str, Tuple[float, float, float]], optional
-            Color dict for the classes.
+    Args:
+        inst_map: Instance segmentation map. Shape (H, W).
+        image: Original image.
+        type_map: Semantic segmentation map. Shape (H, W)
+            fill_contours bool, default=False
+                If True, contours are filled
+        thickness: Thickness of the contour lines
+            Defaults to 2.
+        classes: Classes dict e.g. {"bg":0, "cancer":1, "immune":2}
+        colors: Color dict for the classes.
             E.g. {"cancer": (125., 100. ,122.), "immune": (56., 37, 160.)}
 
-    Returns
-    -------
-        np.ndarray:
-            The contours overlaid on top of original image. Shape: (H, W, 3).
+    Returns:
+        The contours overlaid on top of original image. Shape: (H, W, 3).
     """
     bg = np.copy(image)
 
@@ -804,28 +718,20 @@ def draw_stuff_contours(
 ) -> np.ndarray:
     """Find coloured contours for a semantic segmentation mask.
 
-    Parameters
-    ----------
-        inst_map : np.ndarray
-            Instance segmentation map. Shape: (H, W).
-        image : np.ndarray
-            Original image. Shape: (H, W, 3).
-        type_map : np.ndarray, optional
-            Semantic segmentation map. Shape (H, W)
-        fill_contours bool, default=False
-            If True, contours are filled
-        thickness : int, default=2
-            Thickness of the contour lines
-        classes : Dict[str, int], optional
-            Classes dict e.g. {"bg":0, "cancer":1, "immune":2}
-        colors : Dict[str, Tuple[float, float, float]], optional
-            Color dict for the classes.
+    Args:
+        inst_map: Instance segmentation map. Shape: (H, W).
+        image: Original image. Shape: (H, W, 3).
+        type_map: Semantic segmentation map. Shape (H, W)
+            fill_contours bool, default=False
+                If True, contours are filled
+        thickness: Thickness of the contour lines
+            Defaults to 2.
+        classes: Classes dict e.g. {"bg":0, "cancer":1, "immune":2}
+        colors: Color dict for the classes.
             E.g. {"cancer": (125., 100. ,122.), "immune": (56., 37, 160.)}
 
     Returns:
-    ---------
-        np.ndarray:
-            The contours overlaid on top of original image. Shape (H, W, 3).
+        The contours overlaid on top of original image. Shape (H, W, 3).
     """
     bg = np.copy(image)
 
@@ -883,17 +789,12 @@ def majority_vote_parallel(type_map: np.ndarray, inst_map: np.ndarray) -> np.nda
 
     NOTE: This gives a performance boost over the sequential version.
 
-    Parameters
-    ----------
-        type_map : np.ndarray
-            A raw type map (after an argmax function). Shape: (H, W).
-        inst_map : np.ndarray
-            An instance labelled mask. Shape: (H, W).
+    Args:
+        type_map: A raw type map (after an argmax function). Shape: (H, W).
+        inst_map: An instance labelled mask. Shape: (H, W).
 
-    Returns
-    -------
-        np.ndarray:
-            Post-processed type map. Shape: (H, W).
+    Returns:
+        Post-processed type map. Shape: (H, W).
     """
     tmap = np.zeros_like(inst_map)
     types = np.unique(type_map)
@@ -923,17 +824,12 @@ def majority_vote_sequential(type_map: np.ndarray, inst_map: np.ndarray) -> np.n
     Adapted from:
     https://github.com/vqdang/hover_net/blob/master/models/hovernet/post_proc.py
 
-    Parameters
-    ----------
-        type_map : np.ndarray
-            A raw type map (after an argmax function). Shape: (H, W).
-        inst_map : np.ndarray
-            An instance labelled mask. Shape: (H, W).
+    Args:
+        type_map: A raw type map (after an argmax function). Shape: (H, W).
+        inst_map: An instance labelled mask. Shape: (H, W).
 
-    Returns
-    -------
-        np.ndarray:
-            Post-processed type map. Shape: (H, W).
+    Returns:
+        Post-processed type map. Shape: (H, W).
     """
     type_map = binarize(inst_map) * type_map
     pred_id_list = np.unique(inst_map)[1:]
@@ -960,15 +856,12 @@ def med_filt_parallel(sem_map: np.ndarray, kernel_size: Tuple[int, int]) -> np.n
     NOTE: Can bring latency benefits if a lot of cores are available. If not,
     only slows down things.
 
-    Parameters
-    ----------
-        sem_map : np.ndarray
+    Args:
+        sem_map:
             Input semantic segmentation prob map. Shape: (C, H, W). Dtype: uint8.
-        kernel_size : Tuple[int, int]
-            Size of the kernel.
+        kernel_size: Size of the kernel.
 
-    Returns
-    -------
+    Returns:
         Median filtered probability map. Shape: (C, H, W). Dtype: uint8.
     """
     _, ny, nx = sem_map.shape
@@ -995,13 +888,11 @@ def med_filt_parallel(sem_map: np.ndarray, kernel_size: Tuple[int, int]) -> np.n
 def med_filt_sequential(sem_map: np.ndarray, kernel_width: int = 15) -> np.ndarray:
     """Sequential median filter.
 
-    Parameters
-    ----------
-        sem_map : np.ndarray
+    Args:
+        sem_map:
             Input semantic segmentation prob map. Shape: (C, H, W). Dtype: uint8.
 
-    Returns
-    -------
+    Returns:
         Median filtered probability map. Shape: (C, H, W). Dtype: uint8.
     """
     sem = np.zeros_like(sem_map)
@@ -1015,17 +906,12 @@ def med_filt_sequential(sem_map: np.ndarray, kernel_width: int = 15) -> np.ndarr
 def intersection(boxA: np.ndarray, boxB: np.ndarray):
     """Compute area of intersection of two boxes.
 
-    Parameters
-    ----------
-        boxA : np.ndarray
-            First boxes
-        boxB : np.ndarray
-            Second box
+    Args:
+        boxA: First boxes
+        boxB: Second box
 
-    Returns
-    -------
-        float64:
-            Area of intersection
+    Returns:
+        float64: Area of intersection
     """
     xA = max(boxA[..., 0], boxB[..., 0])
     xB = min(boxA[..., 2], boxB[..., 2])
