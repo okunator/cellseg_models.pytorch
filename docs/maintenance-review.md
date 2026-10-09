@@ -3,10 +3,11 @@
 ## CI baseline
 
 All seven checks passed for maintenance PR 82 at `61a53d9`, including source tests
-and clean wheel/source installs on Python 3.10 and 3.11. The latest verified run is
+and clean wheel/source installs on Python 3.10 and 3.11. That initial run is
 [37950270241](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37950270241).
-The maintenance changes were subsequently merged through PR 84. Trusted-publisher authentication requires an authorized
-release; passing PR checks do not verify PyPI account configuration.
+The maintenance changes were subsequently merged through PR 84. All nine checks
+passed on current main (`574a10d`) in [run 37966314883](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37966314883).
+Trusted-publisher authentication requires an authorized release; passing PR checks do not verify PyPI account configuration.
 
 ## ONNX contribution findings
 
@@ -17,22 +18,21 @@ at `590d8d575abe94f85e5f96adc62d81815cd79f0f`.
 Both contributions preserve the existing inference API and keep reconstruction
 in Python. Their optional dependencies are imported lazily.
 
-The following defects affect both exporters:
+The following defects affected both original exporters and are corrected in PR 87:
 
-| Finding | Concrete trigger and result | Prepared correction |
+| Finding | Concrete trigger and result | Merged correction |
 | --- | --- | --- |
 | Dynamic batch export specializes batch one | Export with the default batch-one shape and `dynamic_batch=True`; ONNX Runtime rejects batch two with `Expected: 1`. Both original runtime tests fail once optional packages are installed. | Trace with a batch of at least two for dynamic export; compare runtime batches one, two, and three and preserve fixed spatial dimensions. |
 | Individual training states are lost | A training model with an evaluation-mode BatchNorm child ends with that child training, even after export fails. Failure while constructing the sample input also leaves the model in evaluation mode. | Construct the sample before changing modes, then restore each module's exact training flag in `finally`. |
 | Sample dtype differs from model dtype | A float64 model receives a float32 sample and fails with an input/bias dtype mismatch. The same forced dtype affects half-precision models. | Select the sample device and floating dtype from the model; test float16 and float64 input construction. |
 | Advertised minimum export version is unverified and fails | PyTorch 2.5.1 fails ONNX conversion with both ONNX Script 0.7.2 and 0.1.0. This does not prove every historical package combination fails, but the unrestricted installation advice cannot establish support. | Require the tested minimum PyTorch 2.7 for this new export API. Ordinary inference retains its existing PyTorch bounds. |
 
-Corrections were prepared on `fix/onnx-maintenance`, based on the CI maintenance
-branch, with the original contributor commits and attribution preserved. The
-original contributions have since been merged as PRs 80 and 81 without these
-corrections. The fixes, regression tests, and explicit ONNX gate are now extracted
-onto `fix/onnx-export-correctness`, based on Google-style docstring PR 86. This
-follow-up changes neither ordinary inference dependency bounds nor the lockfile.
-No external review or contributor message has been posted.
+Corrections were prepared on `fix/onnx-maintenance` and then extracted into
+PR 87 after the original contributions were merged. PR 87 is now merged on main,
+including Google-style exporter docstrings, regression tests, and the explicit
+ONNX gate. PR 86 was closed as superseded. Ordinary inference dependency bounds
+and the lockfile remain unchanged. No external contributor review or message
+has been posted.
 
 ## Validation and remaining gaps
 
@@ -70,7 +70,7 @@ type logits; disabling graph optimization measured 11. This is a remaining
 numerical validation gap, not evidence of an incorrect final segmentation on
 this image. No tolerance has been loosened.
 
-The review branch now has an explicit hosted ONNX job that installs compatible
+Main now has an explicit hosted ONNX job that installs compatible
 optional packages, tests PyTorch 2.7.1 and 2.14.1, and fails if either runtime
 comparison skips. The same gate passed locally with 32 tests and zero skips.
 [Linux validation run 37955000998](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37955000998)
@@ -84,9 +84,13 @@ The single-image CPU record is insufficient to approve runtime dependency upgrad
 
 ## Dependency advisory snapshot
 
-GitHub reports 42 open alerts: 21 high, 18 medium, and 3 low, affecting 15 packages
-in `poetry.lock`. Severity alone does not establish exploitability. The initial
+The refreshed 2026-10-09 GitHub snapshot reports 49 open alerts: 27 high,
+19 medium, and 3 low, affecting 16 normalized package names in `poetry.lock`.
+Pillow appears with two capitalizations in the API; count it once. Severity alone does not establish exploitability. The initial
 source-path audit gives the following upgrade groups; no alerts were dismissed.
+The table records the initial advisory triage, not a fresh verification of every
+patched version. Recheck advisory ranges before selecting an upgrade, including
+the newly reported fsspec/download boundary.
 
 | Group | Initial scope and priority |
 | --- | --- |
@@ -122,4 +126,4 @@ postprocessor imports the external StarDist package. Inspect each import guard
 and caller before declaring extras or making modules lazy. In particular,
 `torch_datasets/__init__.py` eagerly imports the training datasets, so importing
 `WSIDatasetInfer` also reaches training dependencies. These are separate packaging
-fixes, not ONNX regressions, and are not resolved by the current review branch.
+fixes, not ONNX regressions, and are not resolved by the merged ONNX corrections.
