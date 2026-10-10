@@ -170,3 +170,31 @@ The upgraded locked offline suite passed 2,047 tests with 5,191 expected skips.
 These checks do not reproduce malicious proxy, compression-bomb, or symlink-race
 attacks and do not replace broader prediction validation. GitHub can close alerts
 after merge and dependency analysis; no alerts were manually dismissed.
+
+
+## Pillow security update 2026 10 10
+
+Raise Pillow from 11.3.0 to 12.3.0 in the published minimum and lockfile. All 18
+recorded advisory IDs are outside their affected ranges at the new version.
+[The validation record](validation/pillow-upgrade.json) lists IDs, image hashes,
+operations, and prediction results. Other locked versions and artifact hashes
+are unchanged; the Python floor stays 3.10.
+
+[The Pillow 12 release notes](https://pillow.readthedocs.io/en/stable/releasenotes/12.0.0.html)
+were checked against repository calls; no uses of the removed APIs were found.
+[The 12.3 release notes](https://pillow.readthedocs.io/en/stable/releasenotes/12.3.0.html)
+and advisory ranges establish the security minimum. Parsing and annotation are
+reachable, but some advisories require specific formats, viewers, fonts, or
+invalid coordinates not demonstrated here. Version remediation does not
+establish every exploit precondition.
+
+Across six images and synthetic PNG/TIFF/JPEG fixtures, 46 decoding,
+preprocessing, and annotation arrays retained identical values and dtypes.
+Recorded immutable CellPose and StarDist checkpoints produced identical PyTorch
+dense predictions, instance masks, and type masks on HE.png: 96 and 79 instances.
+This does not close the StarDist ONNX difference or establish representative
+prediction parity. The offline suite passed 2,047 tests with 5,191 expected skips.
+
+PyArrow remains a separate major-version/serialization batch. Its IPC
+pre-buffering advisory must be distinguished from this repo's GeoParquet paths;
+neither its bounds nor its locked version changes in this patch.
