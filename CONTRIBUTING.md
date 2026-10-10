@@ -6,7 +6,9 @@ small fixes can go directly to a pull request.
 
 ## Development setup
 
-Use a Python version in the current CI matrix and Poetry 2.2.1. From the repository
+CI targets Python 3.10, 3.11, and 3.12 on Linux for source tests and clean wheel
+and source-distribution installation checks. The minimum remains Python 3.10.
+Use a Python version in this matrix and Poetry 2.2.1. From the repository
 root, install the locked development dependencies and hooks:
 
 ```sh

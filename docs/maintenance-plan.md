@@ -53,7 +53,8 @@ category; run them separately from ordinary tests.
 6. Upgrade model, numerical/image, and geospatial dependencies in separate batches
    once their baseline checks exist. Add newer Python CI coverage after dependency
    wheel/compatibility checks; change the Python floor only in an explicit support
-   policy patch. Python 3.10/3.11 remain the tested source matrix today.
+   policy patch. The Python floor remains 3.10. A separate CI patch adds Python 3.12 source
+   and clean distribution checks; newer versions still require validation.
 7. Migrate Poetry to uv after dependency audit and baseline validation, then
    complete release-candidate checks. Update user documentation and address
    installation/correctness issues alongside each relevant batch rather than
@@ -255,3 +256,18 @@ Issue 68's original Linux/Python 3.12 failure was reproduced at resolution time:
 version. This establishes the original cause, not current Python 3.12 installation
 or runtime compatibility. Validate current wheel/source installs on 3.12 before
 closing the issue or advertising a newer tested Python matrix.
+
+
+## Python 3.12 installation validation
+
+The Python 3.12 CI patch extends both the locked source matrix and the clean
+wheel/source install matrix, preserving Python 3.10 and 3.11 checks. It exercises
+current repository artifacts on Linux, covering the environment family reported
+in issue 68. The historical `torch==2.1.1` requirement cannot resolve on CPython
+3.12; the current manifest has no such exact pin. This patch changes neither
+runtime dependencies nor the lockfile nor the Python minimum.
+
+Hosted validation must pass the new source and distribution jobs. It does not
+validate every optional package, GPU, platform, or Python version above 3.12.
+Issue 68 should remain open until the relevant fixes are available in a published
+release and the maintainer decides whether its original report is resolved.
