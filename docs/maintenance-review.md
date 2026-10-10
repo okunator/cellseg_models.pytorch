@@ -144,3 +144,29 @@ Import and sampling coverage is distinct from full slide execution. The existing
 `segment()` method references `self.inferer`, which its constructor never defines,
 and uses `dst`/`maptype` keywords absent from `BaseModelInst.post_process`.
 These confirmed execution gaps remain for a separate inference regression/fix.
+
+
+## Download and cache security update 2026 10 10
+
+Only four locked packages change. Explicit security minimums prevent consumer
+installs from retaining older affected versions. The refreshed snapshot identifies
+ten alerts across these packages. Version remediation does not establish that all
+exploit preconditions apply to this repository.
+
+| Package | Locked change | Minimum | Advisory IDs | Applicability |
+| --- | --- | --- | --- | --- |
+| requests | 2.32.4 → 2.34.2 | 2.33.0 | [GHSA-gc5v-m9x4-r6x2](https://github.com/advisories/GHSA-gc5v-m9x4-r6x2) | Zipped CA-bundle extraction is an indirect Requests path; archive/temp-file preconditions were not demonstrated here. |
+| urllib3 | 2.5.0 → 2.8.0 | 2.8.0 | [GHSA-vxq7-64xx-v4gw](https://github.com/advisories/GHSA-vxq7-64xx-v4gw), [GHSA-8988-9cw3-xx77](https://github.com/advisories/GHSA-8988-9cw3-xx77), [GHSA-qccp-gfcp-xxvc](https://github.com/advisories/GHSA-qccp-gfcp-xxvc), [GHSA-38jv-5279-wg99](https://github.com/advisories/GHSA-38jv-5279-wg99), [GHSA-2xpw-w6gg-jr37](https://github.com/advisories/GHSA-2xpw-w6gg-jr37), [GHSA-gm62-xv2j-4w53](https://github.com/advisories/GHSA-gm62-xv2j-4w53) | Streaming/decompression are used by Downloader; proxy-specific issues require the corresponding proxy configuration. |
+| idna | 3.10 → 3.20 | 3.15 | [GHSA-65pc-fj4g-8rjx](https://github.com/advisories/GHSA-65pc-fj4g-8rjx) | HTTP hostname encoding is reachable; crafted attacker-controlled names are a precondition. |
+| filelock | 3.19.1 → 3.32.7 | 3.20.3 | [GHSA-qmgc-5h2g-mvrw](https://github.com/advisories/GHSA-qmgc-5h2g-mvrw), [GHSA-w853-jp5j-5j7f](https://github.com/advisories/GHSA-w853-jp5j-5j7f) | Checkpoint cache locking is reachable; symlink races depend on filesystem/attacker permissions and the selected lock implementation. |
+
+Compatibility checks cover chunked HTTP streaming, gzip decoding, and redirects
+against a local server; lock exclusion/release; Unicode hostname encoding; and
+both recorded checkpoint cache SHA-256 digests. A 4,973-byte public Hugging Face
+README was fetched over HTTPS at the recorded immutable CellPose revision and
+read back from cache. No model weights were downloaded in that network smoke.
+The upgraded locked offline suite passed 2,047 tests with 5,191 expected skips.
+
+These checks do not reproduce malicious proxy, compression-bomb, or symlink-race
+attacks and do not replace broader prediction validation. GitHub can close alerts
+after merge and dependency analysis; no alerts were manually dismissed.
