@@ -6,18 +6,20 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-Status reconciled on 2026-10-09 against `main` at
-`574a10d6c25fb091dc9f4b47798dcf53120ee625`, version `0.1.30`.
-Maintenance PR 84, Google-style docstring PR 85, contributor ONNX PRs 80 and 81,
-and corrective PR 87 are merged. PR 86 is closed because PR 87 included its
-Google-style exporter docstrings. The old `fix/onnx-maintenance` checkout is a
-historical review workspace; its corrections are now on main.
+Status reconciled on 2026-10-10 against main at `edfc92c`, version `0.1.30`.
+PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
+exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
+runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
+PRs 93/94 update the HTTP/cache stack and Pillow. PR 86 is superseded and closed.
+The old ONNX review checkout is historical; its corrections are merged.
 
-All nine checks passed on the merged main commit in
-[run 37966314883](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37966314883):
-source suites on Python 3.10/3.11, package build, four clean distribution installs,
-and CPU ONNX checks on PyTorch 2.7.1/2.14.1. Ordinary inference requirements and
-`poetry.lock` remain unchanged. ONNX export requires PyTorch 2.7 or newer.
+The completed upgrade PRs passed all 12 hosted checks on Python 3.10/3.11/3.12,
+including source suites, build, six clean installs and two ONNX jobs. See
+[Python 3.12 validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38041808171),
+[HTTP validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38044641492),
+and [Pillow validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38045922826).
+The Python minimum remains 3.10. Model/numerical locked versions are retained;
+ONNX export requires PyTorch 2.7 or newer. No maintenance release is published.
 
 The original contributor PRs passed ordinary tests but skipped runtime comparisons
 without optional ONNX packages. They were merged before the corrective patch;
@@ -35,10 +37,12 @@ category; run them separately from ordinary tests.
 1. Completed in PR 89: repair the clean-install WSI Matplotlib import guard,
    add an absent-Matplotlib regression, and import WSI in wheel/source smoke
    checks. Continue coverage of concrete inference/data APIs below.
-2. Finish direct-runtime dependency declarations and optional import boundaries.
-   Reproduce issue 68 with the locked environment and clean range-based installs.
-   Keep optional slide/training backends separate from mandatory runtime packages.
-3. Refresh advisory triage before each small I/O or downloader security batch.
+2. Direct declarations and dataset import repairs are merged (90/91). Python
+   3.12 source and clean-install checks pass (92). Finish the remaining optional
+   feature inventory and test real slide/training backends; issue 68 still needs
+   the relevant fixes available in a published release.
+3. Continue grouped dependency updates: HTTP/cache and Pillow are complete
+   (93/94); geometry/serialization is next. Refresh advisory triage per batch.
    Record affected paths and resolved advisory IDs; update manifest/lock together
    where needed. These focused fixes can precede the broader numerical baseline,
    with image-decoding/checkpoint checks appropriate to each changed dependency.
@@ -89,11 +93,15 @@ checks that cannot be reproduced locally.
 - [ ] Triage the repository's dependency security advisories and prioritize fixes
   affecting reachable code paths. Include resolved advisories in each upgrade's
   validation record.
-- [ ] Inventory direct imports, including Hugging Face Hub, safetensors, Pillow,
-  and geospatial packages. Declare required packages directly or provide an
-  explicit, documented extra with tested import boundaries.
-- [ ] Reproduce installation issue 68 on supported platforms and Python versions.
-  Test both the locked development environment and published dependency ranges.
+- [x] Declare the six audited direct runtime imports explicitly (PR 90).
+- [x] Repair optional training dataset imports and WSI visualization imports
+  without dynamic package export workarounds (PRs 89/91).
+- [ ] Complete optional feature declarations and independently tested import
+  boundaries across slide, training and export APIs.
+- [x] Reproduce issue 68's old PyTorch pin failure and validate current locked
+  source and range-based wheel/source installs on Linux Python 3.12 (PR 92).
+- [ ] Verify the published release resolves the reported installation path before
+  closing issue 68; other platforms and optional integrations remain open.
 - [ ] Record immutable checkpoint revisions or checksums, encoder configuration,
   class mapping, normalization, image identity, and model output settings.
 - [ ] Capture representative dense predictions, reconstructed instance masks,
@@ -126,12 +134,16 @@ Completion requires a clean installation and a reproducible inference baseline.
 
 - [ ] Update development tooling separately from runtime packages. Keep Poetry
   until the dedicated uv migration below; do not maintain competing lockfiles.
-- [ ] Upgrade PyTorch and timm, the NumPy and numerical/image stack, and the
-  geospatial stack in separate batches. Update manifest and lockfile together.
+- [x] Upgrade HTTP/cache security dependencies and Pillow independently with
+  compatibility evidence (PRs 93/94).
+- [ ] Upgrade the geometry/serialization group with round-trip compatibility tests.
+- [ ] Upgrade PyTorch/timm and the broader numerical stack after the reproducible
+  prediction baseline. Update manifest and lockfile together.
 - [ ] Verify checkpoint loading, predictions, masks, metrics, and training after
   each batch. Test Numba with JIT enabled as well as the ordinary disabled-JIT suite.
 - [ ] Decide the supported Python floor from package wheel availability and tests.
-  Python 3.11 is the proposed minimum; validate 3.12 and newer versions before
+  Python 3.12 is tested; a 3.11 minimum is only a proposal. Validate newer
+  versions before
   advertising support. Update metadata, workflows, Ruff target, README, and lockfile
   together, and document the last release supporting Python 3.10.
 - [ ] Evaluate optional WSI dependencies separately; removing mandatory packages
@@ -229,33 +241,27 @@ instance/type masks on that image, but StarDist dense outputs exceeded their
 original tolerance. This is a partial local CPU record, not a representative
 baseline or a completed public download/checkpoint-loading compatibility check.
 
-The refreshed GitHub snapshot has 49 open alerts: 27 high, 19 medium, and 3 low,
-across 16 normalized package names in `poetry.lock` (GitHub lists Pillow with two
-capitalizations). [The review record](maintenance-review.md) preserves the initial
-priority groups and reachable paths. No alerts have been dismissed or runtime
-dependencies upgraded during this maintenance work; refresh advisory details
-before selecting each upgrade.
+Security counts are dated snapshots, not live completion criteria. HTTP/cache
+and Pillow updates remediate the recorded affected version ranges; remaining
+advisories still require applicability triage and updates. No alerts were dismissed.
 
-The direct-import inventory and clean WSI import failure are confirmed, but
-required dependency declarations, optional boundaries, representative inference
-coverage, and installation issue 68 remain incomplete. Tooling/type checking,
-newer Python CI, support-floor changes, and uv remain planned work rather than
-features already available in this repository.
+Direct declarations, dataset import repairs and Linux Python 3.12 coverage are
+complete. Representative inference, full WSI execution, other optional packages,
+newer Python versions, tooling/type checking, and uv remain incomplete.
 
 Merged PR 90 makes Pillow, Hugging Face Hub, safetensors,
 pandas, Shapely, and NetworkX explicit runtime requirements. Bounds include the
 locked versions and the versions already exercised in isolated range-based
 installation checks. Poetry 2.2.1 refreshes lockfile format/metadata while retaining
 all 116 package versions and artifact hashes. The installed-package smoke check
-now imports the concrete predictor module. Optional dataset/training imports
-remain a separate unresolved boundary; the broad dependency-inventory checkbox
+now imports the concrete predictor module. The dataset import repair is merged in PR 91; broader optional feature coverage
+remains incomplete; the broad dependency-inventory checkbox
 stays open until those APIs and declarations are complete.
 
 Issue 68's original Linux/Python 3.12 failure was reproduced at resolution time:
 `torch==2.1.1` has no CPython 3.12 wheel. Current metadata no longer pins that
-version. This establishes the original cause, not current Python 3.12 installation
-or runtime compatibility. Validate current wheel/source installs on 3.12 before
-closing the issue or advertising a newer tested Python matrix.
+version. PR 92 subsequently validated current Linux Python 3.12 source and wheel/source
+installs. Published release verification is still required before closing the issue.
 
 The dataset import follow-up keeps ordinary training dataset exports, checks
 optional imports inside constructors,
@@ -271,7 +277,7 @@ The now-accessible `WsiSegmenter.segment()` still uses a nonexistent
 `BaseModelInst.post_process`. Repair those concrete API mismatches with a small
 CPU segmentation regression during the inference-baseline work before claiming
 full WSI segmentation coverage. Slide-backend and training dependency extras,
-current Python 3.12 installation, and representative checkpoint tests remain open.
+other-platform installation and representative checkpoint tests remain open.
 
 
 ## Python 3.12 installation validation
@@ -283,7 +289,7 @@ in issue 68. The historical `torch==2.1.1` requirement cannot resolve on CPython
 3.12; the current manifest has no such exact pin. This patch changes neither
 runtime dependencies nor the lockfile nor the Python minimum.
 
-Hosted validation must pass the new source and distribution jobs. It does not
+All 12 hosted checks passed for PR 92, including the new source/install jobs. It does not
 validate every optional package, GPU, platform, or Python version above 3.12.
 Issue 68 should remain open until the relevant fixes are available in a published
 release and the maintainer decides whether its original report is resolved.
@@ -292,7 +298,7 @@ release and the maintainer decides whether its original report is resolved.
 ## Download and cache security batch
 
 After merged PRs 91 and 92, the source and clean wheel/source installation matrix
-covers Python 3.10, 3.11, and 3.12 on Linux. The next security patch raises
+covers Python 3.10, 3.11, and 3.12 on Linux. Merged PR 93 raises
 Requests to at least 2.33.0, urllib3 to 2.8.0, IDNA to 3.15, and filelock to 3.20.3.
 Explicit transitive security floors prevent published installs from accepting
 older affected versions even when another package has already installed them.
@@ -307,10 +313,25 @@ compatibility, not exploitation of every advisory or broad prediction parity.
 
 ## Pillow security batch
 
-Raise the published Pillow minimum and lockfile to 12.3.0, remediating 18
+Merged PR 94 raises the published Pillow minimum and lockfile to 12.3.0,
+remediating 18
 recorded advisory ranges without changing other locked packages.
 [The validation record](validation/pillow-upgrade.json) captures 46 identical
 preprocessing/codec/annotation arrays and unchanged dense predictions and masks
 for two immutable checkpoints on the recorded image. Representative inference
-and the StarDist ONNX gap remain open. Validate the full hosted matrix before
-merge, then audit PyArrow/geospatial serialization as a separate batch.
+and the StarDist ONNX gap remain open. All 12 hosted checks passed.
+PyArrow/geospatial serialization is the next grouped batch.
+
+
+## Deferred structure and validation records
+
+[The module-boundary draft](module-boundaries-draft.md) proposes one-way imports
+and feature isolation. It is deferred structural work, not a prerequisite refactor
+bundled into dependency upgrades. The GPU proposal is preserved on
+`docs/gpu-postprocessing-proposal` and remains deferred after maintenance.
+
+Retain the existing ONNX/Pillow JSON records until checkpoint identities,
+preprocessing and expected behavior have maintained baseline fixtures. Then
+consolidate reusable data and remove one-off reports from docs, preserving
+historical evidence in PR descriptions and Git history. Add no more one-off
+upgrade JSON reports; keep validation in tests and the relevant PR descriptions.
