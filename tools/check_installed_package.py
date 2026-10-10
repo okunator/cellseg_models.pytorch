@@ -4,11 +4,15 @@ import importlib
 import sys
 from importlib.metadata import version
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
+import geopandas as gpd
 import torch
+from shapely.geometry import box
 
 import cellseg_models_pytorch
 from cellseg_models_pytorch.models.cellpose.cellpose_unet import cellpose_nuclei
+from cellseg_models_pytorch.utils import FileHandler
 
 
 def main() -> None:
@@ -35,6 +39,31 @@ def main() -> None:
         "wsi",
     ):
         importlib.import_module(f"cellseg_models_pytorch.{module}")
+
+    geometry = gpd.GeoDataFrame(
+        {"uid": [101], "class_name": ["nucleus"]},
+        geometry=[box(10, 20, 14, 25)],
+        crs="EPSG:4326",
+    )
+    readers = {
+        "parquet": gpd.read_parquet,
+        "feather": gpd.read_feather,
+        "geojson": gpd.read_file,
+    }
+    with TemporaryDirectory() as directory:
+        for suffix, reader in readers.items():
+            path = Path(directory) / f"instances.{suffix}"
+            FileHandler.gdf_to_file(geometry, path)
+            result = reader(path)
+            if (
+                result["uid"].tolist() != [101]
+                or result["class_name"].tolist() != ["nucleus"]
+                or result.crs != geometry.crs
+                or not result.geometry.iloc[0].equals(geometry.geometry.iloc[0])
+            ):
+                raise RuntimeError(
+                    f"Installed {suffix} geometry round trip changed data"
+                )
 
     torch.manual_seed(0)
     torch.set_num_threads(2)

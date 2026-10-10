@@ -10,6 +10,9 @@
 
 ## Fixes
 
+- Update the geometry/export dependency group, including PyArrow and GeoPandas
+  security minimums, with serialization and pixel-coordinate regression coverage.
+
 - Require Pillow 12.3.0 or newer within the 12.x series for image decoding,
   drawing, font, and related security fixes.
 
