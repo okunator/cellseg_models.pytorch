@@ -242,7 +242,7 @@ coverage, and installation issue 68 remain incomplete. Tooling/type checking,
 newer Python CI, support-floor changes, and uv remain planned work rather than
 features already available in this repository.
 
-The next dependency-declaration patch makes Pillow, Hugging Face Hub, safetensors,
+Merged PR 90 makes Pillow, Hugging Face Hub, safetensors,
 pandas, Shapely, and NetworkX explicit runtime requirements. Bounds include the
 locked versions and the versions already exercised in isolated range-based
 installation checks. Poetry 2.2.1 refreshes lockfile format/metadata while retaining
@@ -256,6 +256,22 @@ Issue 68's original Linux/Python 3.12 failure was reproduced at resolution time:
 version. This establishes the original cause, not current Python 3.12 installation
 or runtime compatibility. Validate current wheel/source installs on 3.12 before
 closing the issue or advertising a newer tested Python matrix.
+
+The dataset import follow-up keeps ordinary training dataset exports, checks
+optional imports inside constructors,
+removes the unused Albumentations dependency from WSI inference transforms,
+and corrects the segmenter's transform keyword. A subprocess regression blocks
+Albumentations, PyTables, and Matplotlib while checking public imports, tile
+sampling, coordinates, custom transforms, construction, and training dependency
+errors. Installed-package checks now cover the dataset and WSI segmenter modules.
+This does not complete end-to-end WSI validation or training-extra compatibility.
+
+The now-accessible `WsiSegmenter.segment()` still uses a nonexistent
+`self.inferer.device` and passes obsolete `dst`/`maptype` arguments to
+`BaseModelInst.post_process`. Repair those concrete API mismatches with a small
+CPU segmentation regression during the inference-baseline work before claiming
+full WSI segmentation coverage. Slide-backend and training dependency extras,
+current Python 3.12 installation, and representative checkpoint tests remain open.
 
 
 ## Python 3.12 installation validation

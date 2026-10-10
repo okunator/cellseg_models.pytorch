@@ -1,25 +1,18 @@
-from typing import Dict, Tuple
+from __future__ import annotations
+
+from importlib import import_module
+from typing import TYPE_CHECKING, Dict, Tuple
 
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from cellseg_models_pytorch.transforms.albu_transforms import ApplyEach
 from cellseg_models_pytorch.utils import FileHandler, to_tensor
 
-try:
+if TYPE_CHECKING:
     import albumentations as A
 
-    has_albu = True
-except ModuleNotFoundError:
-    has_albu = False
-
-try:
-    import tables as tb
-
-    has_tb = True
-except ModuleNotFoundError:
-    has_tb = False
+    from cellseg_models_pytorch.transforms.albu_transforms import ApplyEach
 
 __all__ = ["TrainDatasetH5"]
 
@@ -49,17 +42,25 @@ class TrainDatasetH5(Dataset):
             ModuleNotFoundError: If albumentations or tables is not installed.
             ModuleNotFoundError: If tables is not installed.
         """
-        if not has_albu:
+        try:
+            import_module("albumentations")
+        except ModuleNotFoundError as error:
+            if error.name != "albumentations":
+                raise
             raise ModuleNotFoundError(
                 "The albumentations lib is needed for TrainDatasetH5. "
                 "Install with `pip install albumentations`"
-            )
+            ) from error
 
-        if not has_tb:
+        try:
+            tb = import_module("tables")
+        except ModuleNotFoundError as error:
+            if error.name != "tables":
+                raise
             raise ModuleNotFoundError(
                 "The tables lib is needed for TrainDatasetH5. "
                 "Install with `pip install tables`"
-            )
+            ) from error
 
         self.path = path
         self.img_key = img_key

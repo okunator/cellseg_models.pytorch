@@ -29,6 +29,8 @@ def main() -> None:
         "metrics",
         "losses",
         "inference.predictor",
+        "inference.wsi_segmenter",
+        "torch_datasets",
         "utils",
         "wsi",
     ):

@@ -30,6 +30,8 @@ The following two sections are the Ponytail development instructions.
 
 Read the task and the code it touches. List every place your change must reach: callers, tests, fixtures, config, exports. Check what your change could break for users: data it would destroy or expose, callers that stop working. That is scope. Extra features are not.
 
+Fix the root cause in the layer that owns the behavior. Avoid hot fixes and creative workarounds that bypass existing interfaces or hide broken contracts. If a proper fix requires a broader change, make its scope explicit rather than adding a workaround.
+
 ## The smallest complete change
 
 Take the first option that fully works:
