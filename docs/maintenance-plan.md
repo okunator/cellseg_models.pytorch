@@ -271,3 +271,12 @@ The now-accessible `WsiSegmenter.segment()` still uses a nonexistent
 CPU segmentation regression during the inference-baseline work before claiming
 full WSI segmentation coverage. Slide-backend and training dependency extras,
 current Python 3.12 installation, and representative checkpoint tests remain open.
+
+
+## Deferred work after maintenance
+
+Revisit [the draft GPU postprocessing proposal](gpu-postprocessing-draft.md) once
+maintenance and the prediction baseline are complete. It covers transfer
+boundaries, PostProcessor responsibilities, GPU concurrency, model-specific
+feasibility, and correctness/performance criteria. It does not authorize a GPU
+migration or expand the current maintenance implementation scope.
