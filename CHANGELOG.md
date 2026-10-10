@@ -10,6 +10,9 @@
 
 ## Fixes
 
+- Raise Requests, urllib3, IDNA, and filelock security minimums for downloads
+  and checkpoint caching, and update their locked versions.
+
 - Allow inference dataset and WSI segmenter imports without optional training
   dependencies. WSI datasets accept callable transforms without Albumentations,
   and the segmenter forwards its normalization using the correct keyword.

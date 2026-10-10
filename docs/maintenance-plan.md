@@ -287,3 +287,19 @@ Hosted validation must pass the new source and distribution jobs. It does not
 validate every optional package, GPU, platform, or Python version above 3.12.
 Issue 68 should remain open until the relevant fixes are available in a published
 release and the maintainer decides whether its original report is resolved.
+
+
+## Download and cache security batch
+
+After merged PRs 91 and 92, the source and clean wheel/source installation matrix
+covers Python 3.10, 3.11, and 3.12 on Linux. The next security patch raises
+Requests to at least 2.33.0, urllib3 to 2.8.0, IDNA to 3.15, and filelock to 3.20.3.
+Explicit transitive security floors prevent published installs from accepting
+older affected versions even when another package has already installed them.
+Only these four locked versions change; the model and numerical stack is retained.
+
+[The review record](maintenance-review.md) lists affected advisory IDs and their
+preconditions. Hermetic localhost tests cover chunked streaming, gzip decoding,
+and redirects. Separate checks cover lock exclusion/release, Unicode hostname
+encoding, and immutable checkpoint cache digests. These checks establish basic
+compatibility, not exploitation of every advisory or broad prediction parity.
