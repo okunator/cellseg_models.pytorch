@@ -109,7 +109,7 @@ fixes at I/O boundaries can be handled as small independently validated batches.
 
 An AST inventory of library imports, excluding tests and legacy modules, confirms
 that Pillow, Hugging Face Hub, safetensors, pandas, Shapely, and NetworkX are used
-directly. The follow-up declaration patch adds them as explicit runtime
+directly. Merged PR 90 adds them as explicit runtime
 requirements while retaining locked versions and artifact hashes. This closes
 that metadata gap; optional dataset/training boundaries remain open.
 
@@ -127,3 +127,20 @@ and caller before declaring extras or making modules lazy. In particular,
 `torch_datasets/__init__.py` eagerly imports the training datasets, so importing
 `WSIDatasetInfer` also reaches training dependencies. These are separate packaging
 fixes, not ONNX regressions, and are not resolved by the merged ONNX corrections.
+
+
+## Dataset import follow-up
+
+The inference import failure is caused by eager training dataset imports in
+`torch_datasets/__init__.py`, an Albumentations-specific annotation in the WSI
+dataset, and a constructor dependency check even when no transform is supplied.
+The follow-up keeps ordinary exports, postpones annotation-only imports, and
+checks optional
+dependencies when training datasets are constructed,
+and accepts the existing callable transform contract without importing
+Albumentations. `WsiSegmenter` now passes `transforms`, matching the dataset API.
+
+Import and sampling coverage is distinct from full slide execution. The existing
+`segment()` method references `self.inferer`, which its constructor never defines,
+and uses `dst`/`maptype` keywords absent from `BaseModelInst.post_process`.
+These confirmed execution gaps remain for a separate inference regression/fix.

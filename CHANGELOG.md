@@ -10,6 +10,10 @@
 
 ## Fixes
 
+- Allow inference dataset and WSI segmenter imports without optional training
+  dependencies. WSI datasets accept callable transforms without Albumentations,
+  and the segmenter forwards its normalization using the correct keyword.
+
 - Declare Pillow, Hugging Face Hub, safetensors, pandas, Shapely, and NetworkX
   as direct runtime requirements instead of relying on transitive dependencies.
 
