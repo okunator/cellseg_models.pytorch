@@ -134,7 +134,9 @@ fixes, not ONNX regressions, and are not resolved by the merged ONNX corrections
 The inference import failure is caused by eager training dataset imports in
 `torch_datasets/__init__.py`, an Albumentations-specific annotation in the WSI
 dataset, and a constructor dependency check even when no transform is supplied.
-The follow-up defers the two training exports, keeps their dependency errors,
+The follow-up keeps ordinary exports, postpones annotation-only imports, and
+checks optional
+dependencies when training datasets are constructed,
 and accepts the existing callable transform contract without importing
 Albumentations. `WsiSegmenter` now passes `transforms`, matching the dataset API.
 

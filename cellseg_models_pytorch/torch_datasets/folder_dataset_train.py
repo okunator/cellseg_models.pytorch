@@ -1,20 +1,19 @@
+from __future__ import annotations
+
+from importlib import import_module
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import TYPE_CHECKING, Dict, Tuple
 
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from cellseg_models_pytorch.transforms.albu_transforms import ApplyEach
 from cellseg_models_pytorch.utils import FileHandler, to_tensor
 
-try:
+if TYPE_CHECKING:
     import albumentations as A
 
-    has_albu = True
-except ModuleNotFoundError:
-    has_albu = False
-
+    from cellseg_models_pytorch.transforms.albu_transforms import ApplyEach
 
 __all__ = ["TrainDatasetFolder"]
 
@@ -54,11 +53,15 @@ class TrainDatasetFolder(Dataset):
             ValueError: If 'image' key is not present in input_keys.
             ValueError: If 'inst' key is not present in input_keys.
         """
-        if not has_albu:
+        try:
+            import_module("albumentations")
+        except ModuleNotFoundError as error:
+            if error.name != "albumentations":
+                raise
             raise ModuleNotFoundError(
-                "The albumentations lib is needed for TrainDatasetH5. "
+                "The albumentations lib is needed for TrainDatasetFolder. "
                 "Install with `pip install albumentations`"
-            )
+            ) from error
 
         if not all(k in ALLOWED_KEYS for k in mask_keys):
             raise ValueError(

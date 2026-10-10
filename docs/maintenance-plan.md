@@ -256,7 +256,8 @@ version. This establishes the original cause, not current Python 3.12 installati
 or runtime compatibility. Validate current wheel/source installs on 3.12 before
 closing the issue or advertising a newer tested Python matrix.
 
-The dataset import follow-up defers training dataset exports until requested,
+The dataset import follow-up keeps ordinary training dataset exports, checks
+optional imports inside constructors,
 removes the unused Albumentations dependency from WSI inference transforms,
 and corrects the segmenter's transform keyword. A subprocess regression blocks
 Albumentations, PyTables, and Matplotlib while checking public imports, tile

@@ -17,12 +17,15 @@ import pytest
 from types import SimpleNamespace
 
 import cellseg_models_pytorch.torch_datasets as datasets
-from cellseg_models_pytorch.torch_datasets import FolderDatasetInfer, WSIDatasetInfer
+from cellseg_models_pytorch.torch_datasets import (
+    FolderDatasetInfer, WSIDatasetInfer, TrainDatasetFolder, TrainDatasetH5
+)
 from cellseg_models_pytorch.inference.wsi_segmenter import WsiSegmenter
 
 assert callable(FolderDatasetInfer)
-assert "cellseg_models_pytorch.torch_datasets.folder_dataset_train" not in sys.modules
-assert "cellseg_models_pytorch.torch_datasets.hdf5_dataset_train" not in sys.modules
+assert datasets.TrainDatasetFolder is TrainDatasetFolder
+assert datasets.TrainDatasetH5 is TrainDatasetH5
+assert "cellseg_models_pytorch.transforms.albu_transforms" not in sys.modules
 image = np.arange(18, dtype=np.uint8).reshape(2, 3, 3)
 coordinates = [(5, 7, 3, 2)]
 calls = []
@@ -45,12 +48,38 @@ np.testing.assert_array_equal(segmenter.dataset[0]["image"], normalize(image=ima
 
 with pytest.raises(AttributeError, match="UnknownDataset"):
     datasets.UnknownDataset
-for name in ("TrainDatasetFolder", "TrainDatasetH5"):
-    with pytest.raises(ModuleNotFoundError, match="albumentations"):
-        getattr(datasets, name)
+with pytest.raises(ModuleNotFoundError, match="albumentations.*TrainDatasetFolder"):
+    TrainDatasetFolder("unused", "unused", ("inst",), None, None)
+with pytest.raises(ModuleNotFoundError, match="albumentations.*TrainDatasetH5"):
+    TrainDatasetH5("unused", "image", ("inst",), ("inst",), None, None)
+
+from types import ModuleType
+sys.modules["albumentations"] = ModuleType("albumentations")
+with pytest.raises(ModuleNotFoundError, match="tables.*TrainDatasetH5"):
+    TrainDatasetH5("unused", "image", ("inst",), ("inst",), None, None)
+with pytest.raises(ValueError, match="Invalid keys"):
+    TrainDatasetFolder("unused", "unused", ("invalid",), None, None)
 """,
         ],
         capture_output=True,
         text=True,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_training_dependency_error_is_not_hidden(monkeypatch) -> None:
+    import pytest
+
+    from cellseg_models_pytorch.torch_datasets import folder_dataset_train
+
+    failure = ModuleNotFoundError("broken Albumentations dependency", name="qudida")
+
+    def fail_import(name):
+        raise failure
+
+    monkeypatch.setattr(folder_dataset_train, "import_module", fail_import)
+    with pytest.raises(ModuleNotFoundError) as error:
+        folder_dataset_train.TrainDatasetFolder(
+            "unused", "unused", ("inst",), None, None
+        )
+    assert error.value is failure
