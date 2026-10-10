@@ -10,6 +10,9 @@
 
 ## Fixes
 
+- Require Pillow 12.3.0 or newer within the 12.x series for image decoding,
+  drawing, font, and related security fixes.
+
 - Raise Requests, urllib3, IDNA, and filelock security minimums for downloads
   and checkpoint caching, and update their locked versions.
 

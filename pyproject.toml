@@ -35,7 +35,7 @@ pyarrow = "^16.1.0"
 rasterio = "^1.4.3"
 libpysal = "^4.12.1"
 mpire = {extras = ["dill"], version = "^2.10.2"}
-pillow = ">=11.3,<13"
+pillow = ">=12.3.0,<13"
 huggingface-hub = ">=0.34.4,<3"
 safetensors = ">=0.6.2,<1"
 pandas = ">=2.3.1,<4"

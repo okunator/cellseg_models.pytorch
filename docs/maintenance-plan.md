@@ -303,3 +303,14 @@ preconditions. Hermetic localhost tests cover chunked streaming, gzip decoding,
 and redirects. Separate checks cover lock exclusion/release, Unicode hostname
 encoding, and immutable checkpoint cache digests. These checks establish basic
 compatibility, not exploitation of every advisory or broad prediction parity.
+
+
+## Pillow security batch
+
+Raise the published Pillow minimum and lockfile to 12.3.0, remediating 18
+recorded advisory ranges without changing other locked packages.
+[The validation record](validation/pillow-upgrade.json) captures 46 identical
+preprocessing/codec/annotation arrays and unchanged dense predictions and masks
+for two immutable checkpoints on the recorded image. Representative inference
+and the StarDist ONNX gap remain open. Validate the full hosted matrix before
+merge, then audit PyArrow/geospatial serialization as a separate batch.

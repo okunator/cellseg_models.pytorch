@@ -1,0 +1,92 @@
+{
+  "date": "2026-10-10",
+  "before_pillow": "11.3.0",
+  "after_versions": {
+    "numpy": "1.26.4",
+    "pillow": "12.3.0",
+    "timm": "1.0.19",
+    "torch": "2.7.1"
+  },
+  "platform": "macOS arm64, Python 3.11, CPU float32, two PyTorch threads",
+  "images": [
+    {
+      "path": "cellseg_models_pytorch/utils/tests/data/HE.png",
+      "sha256": "677d0b8828afc0ee2c6bc911945c2425baa32b68a6648bbc546b31706e37dd1e"
+    },
+    {
+      "path": "cellseg_models_pytorch/utils/tests/data/imgs/patch1.png",
+      "sha256": "cfa0e7a196ec01d074f46050b60c93be5e753e5f998c30f9f781e717242eb7b2"
+    },
+    {
+      "path": "cellseg_models_pytorch/utils/tests/data/imgs/patch2.png",
+      "sha256": "0f4d291f8d54649646213974f38e0d9aec355efb4eb7dca3bca6c84d464bba46"
+    },
+    {
+      "path": "cellseg_models_pytorch/utils/tests/data/imgs/patch3.png",
+      "sha256": "e211217a6a8c9cdf117485829d9534fd9f6466a5b8a6188687a322fa7a281041"
+    },
+    {
+      "path": "cellseg_models_pytorch/inference/tests/data/test1.png",
+      "sha256": "83179849e2df8b683a9100301ab76ee4a3ed6ab59892b073b53f34430756edd6"
+    },
+    {
+      "path": "cellseg_models_pytorch/inference/tests/data/test2.png",
+      "sha256": "4adfc48e47db4a606e533b395c048d4c714ef91ea3703439866cccbd083205b2"
+    }
+  ],
+  "array_comparisons": {
+    "count": 46,
+    "values_identical": true,
+    "dtypes_identical": true,
+    "operations": [
+      "RGB decoding",
+      "bilinear resize to 256x256 and 127x93",
+      "minmax_normalize",
+      "autocontrast",
+      "rectangle annotation with alpha 0.5",
+      "RGB/RGBA/L/uint16 PNG and TIFF decoding",
+      "RGB JPEG decoding from pre-upgrade quality-85 fixture"
+    ]
+  },
+  "prediction_comparisons": {
+    "baseline_metadata": "onnx-baseline.json",
+    "image_size": [
+      256,
+      256
+    ],
+    "backend": "PyTorch CPU, not ONNX Runtime",
+    "cellpose": {
+      "dense_identical": true,
+      "instance_mask_identical": true,
+      "type_mask_identical": true,
+      "instances": 96
+    },
+    "stardist": {
+      "dense_identical": true,
+      "instance_mask_identical": true,
+      "type_mask_identical": true,
+      "instances": 79
+    }
+  },
+  "advisory_ids": [
+    "GHSA-45hq-cxwh-f6vc",
+    "GHSA-4x4j-2g7c-83w6",
+    "GHSA-5x94-69rx-g8h2",
+    "GHSA-5xmw-vc9v-4wf2",
+    "GHSA-62p4-gmf7-7g93",
+    "GHSA-6r8x-57c9-28j4",
+    "GHSA-8v84-f9pq-wr9x",
+    "GHSA-9hw9-ch79-4vh6",
+    "GHSA-cfh3-3jmp-rvhc",
+    "GHSA-fj7v-r99m-22gq",
+    "GHSA-jjj6-mw9f-p565",
+    "GHSA-phj9-mv4w-65pm",
+    "GHSA-pwv6-vv43-88gr",
+    "GHSA-r73j-pqj5-w3x7",
+    "GHSA-vjc4-5qp5-m44j",
+    "GHSA-whj4-6x5x-4v2j",
+    "GHSA-wjx4-4jcj-g98j",
+    "GHSA-xj96-63gp-2gmr"
+  ],
+  "scope": "Six PNG images, synthetic codec fixtures, one image per immutable checkpoint. Not representative dataset or accelerator validation. Prior StarDist ONNX gap remains open."
+}
