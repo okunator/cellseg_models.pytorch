@@ -60,9 +60,10 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 - Add accurate annotations to new or changed public APIs. Prefer `list[T]`,
   `dict[K, V]`, and `X | None` where they work on the supported Python versions.
   Avoid unrelated annotation sweeps.
-- Type checking is being introduced gradually. Mypy is currently an old dev
-  dependency without a configured CI gate. Establish an explicit checked scope
-  before treating a broad mypy run as a required passing check.
+- Type checking is being introduced gradually. Mypy checks only
+  `tools/check_release_metadata.py` in strict mode, targeting Python 3.10.
+  `poetry run mypy` is the configured CI gate; library typing is not covered yet.
+  Expand the checked scope explicitly before requiring broader runs.
 - Preserve existing tensor, array, dictionary, and dataclass contracts. Do not
   add wrappers, conversions, or `cast()` calls just to silence a checker.
 - Narrow optional values and validate external inputs. Keep `Any` at genuinely
@@ -150,11 +151,13 @@ Use [CONTRIBUTING.md](CONTRIBUTING.md) for setup and
 | Install commit and push hooks | `poetry run pre-commit install --hook-type pre-commit --hook-type pre-push` |
 | Build distributions | `poetry build` |
 
-The Ruff hooks are pinned in `.pre-commit-config.yaml`; Ruff is not yet a project
-dev dependency. Use the configured hooks on touched files. Modernizing Ruff,
-its configuration, and the competing older format/lint tools is planned work.
-The future mypy command and checked modules must be documented when its gate lands.
-Do not bypass hooks to hide a failure; repair it or report the actual blocker.
+Ruff 0.17.0 is the development linter/formatter and matches the pre-commit hook
+revision. Black, isort, and Flake8 are no longer parallel toolchains. Preserve the
+current lint rule scope unless a separate cleanup establishes broader coverage.
+CI checks Ruff on `tools/` and strict mypy on the release-version guard; this is
+not a passing whole-library lint or typing claim. Use `poetry run ruff check tools`,
+`poetry run ruff format --check tools`, and `poetry run mypy` locally. Never bypass
+hooks or hide failures with broad ignores.
 
 ## Documentation and delivery
 

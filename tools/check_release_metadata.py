@@ -15,6 +15,8 @@ def check_versions(root: Path, tag: str = "") -> str:
     """Require matching manifest, module, and optional release tag versions."""
     manifest = tomllib.loads((root / "pyproject.toml").read_text())
     version = manifest["tool"]["poetry"]["version"]
+    if not isinstance(version, str):
+        raise ValueError("Manifest version must be a string")
     module = ast.parse((root / "cellseg_models_pytorch/__init__.py").read_text())
     module_version = None
     for statement in module.body:

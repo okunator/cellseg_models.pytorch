@@ -43,26 +43,24 @@ shapely = ">=2.1.1,<3"
 networkx = ">=3.4.2,<4"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.2.0"
-pytest-cov = "^3.0.0"
-pytest-xdist = "^2.5.0"
-flake8 = "^4.0.1"
-flake8-docstrings = "^1.6.0"
-flake8-bugbear = "^22.1.11"
-pyproject-flake8 = "^4.0.1"
-pre-commit = "^2.17.0"
-matplotlib = "^3.5.1"
-mypy = "^0.931"
-isort = "^5.10.1"
-black = "^22.3.0"
-scriv = { extras = ["toml"], version = "^0.16.0" }
+pytest = ">=9.1.1,<10"
+pytest-cov = ">=7.1.0,<8"
+pytest-xdist = ">=3.8.0,<4"
+pre-commit = ">=4.6.2,<5"
+virtualenv = ">=21.7.13,<22"
+matplotlib = ">=3.10.9,<3.11"
+fonttools = ">=4.60.2,<5"
+mypy = ">=2.4.0,<3"
+ruff = "==0.17.0"
+tomli = ">=2.2.1,<3"
+scriv = { extras = ["toml"], version = ">=1.8.0,<2" }
 
 [tool.scriv]
 format = "md"
 version = "literal: cellseg_models_pytorch/__init__.py: __version__"
 
 [tool.pytest.ini_options]
-minversion = "6.0"
+minversion = "9.1.1"
 addopts = "-ra -v"
 markers = ["cuda (deselect with '-m \"nocuda\"')"]
 
@@ -85,61 +83,6 @@ exclude_lines = [
 ]
 
 [tool.ruff]
-select = [
-    "A",     # flake8-builtins
-    "B",     # flake8-bugbear
-    "D",     # pydocstyle, need to enable for docstrings check.
-    "E",     # pycodestyle - Error
-    "F",     # pyflakes
-    "G",     # flake8-logging-format
-    "I",     # Isort
-    "N",     # pep8-naming
-    "S",     # flake8-bandit
-    "W",     # pycodestyle - Warning
-    "Q",     # flake8-quotes
-    "C4",    # flake8-comprehensions
-    "FA",    # flake8-future-annotations
-    "EM",    # flake8-errmsg
-    "PD",    # pandas-vet
-    "PL",    # Pylint
-    "PT",    # flake8-pytest-style
-    "TD",    # flake8-todos
-    "UP",    # pyupgrade
-    "C90",   # mccabe
-    "T10",   # flake8-debugger
-    "T20",   # flake8-print
-    "ANN",   # flake8-annotations
-    "ARG",   # flake8-unused-arguments
-    "BLE",   # flake8-blind-except
-    "COM",   # flake8-commas
-    "DTZ",   # flake8-datetimez
-    "ERA",   # eradicate
-    "FBT",   # flake8-boolean-trap
-    "FIX",   # flake8-fixme
-    "FLY",   # flynt
-    "ICN",   # flake8-import-conventions
-    "INP",   # flake8-no-pep420
-    "INT",   # flake8-gettext
-    "ISC",   # flake8-implicit-str-concat
-    "NPY",   # NumPy-specific rules
-    "PGH",   # pygrep-hooks
-    "PIE",   # flake8-pie
-    "PTH",   # flake8-use-pathlib
-    "PYI",   # flake8-pyi
-    "RET",   # flake8-return
-    "RSE",   # flake8-raise
-    "RUF",   # Ruff-specific rules
-    "SLF",   # flake8-self
-    "SIM",   # flake8-simplify
-    "TID",   # flake8-tidy-imports
-    # "TCH",   # flake8-type-checking
-    "TRY",   # tryceratops
-    "YTT",   # flake8-2020
-    "PERF",  # Perflint
-    "SLOT",  # flake8-slots
-    "ASYNC", # flake8-async
-]
-
 include = ["*.py", "*.pyi", "**/pyproject.toml", "*.ipynb"]
 extend-include = ["*.ipynb"]
 # Exclude a variety of commonly ignored directories.
@@ -186,14 +129,13 @@ indent-width = 4
 # Assume Python 3.10
 target-version = "py310"
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 # Use Google-style docstrings.
 convention = "google"
 
 [tool.ruff.lint]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
 select = ["E4", "E7", "E9", "F"]
-ignore = ["E203", "D103", "D104", "E501"]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
@@ -228,3 +170,8 @@ docstring-code-format = true
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+python_version = "3.10"
+files = ["tools/check_release_metadata.py"]
+strict = true

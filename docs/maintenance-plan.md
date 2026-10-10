@@ -42,7 +42,7 @@ category; run them separately from ordinary tests.
    feature inventory and test real slide/training backends; issue 68 still needs
    the relevant fixes available in a published release.
 3. Continue grouped dependency updates: HTTP/cache and Pillow are complete
-   (93/94); geometry/serialization is next. Refresh advisory triage per batch.
+   (93/94); geometry/serialization is complete (96). Developer tooling is next. Refresh advisory triage per batch.
    Record affected paths and resolved advisory IDs; update manifest/lock together
    where needed. These focused fixes can precede the broader numerical baseline,
    with image-decoding/checkpoint checks appropriate to each changed dependency.
@@ -132,11 +132,12 @@ Completion requires a clean installation and a reproducible inference baseline.
 
 ## Dependency upgrades and support policy
 
-- [ ] Update development tooling separately from runtime packages. Keep Poetry
-  until the dedicated uv migration below; do not maintain competing lockfiles.
+- [x] Update developer tools independently, with Ruff as the single formatter/
+  linter and a narrow strict release-tool gate. Poetry remains authoritative.
 - [x] Upgrade HTTP/cache security dependencies and Pillow independently with
   compatibility evidence (PRs 93/94).
-- [ ] Upgrade the geometry/serialization group with round-trip compatibility tests.
+- [x] Upgrade geometry/serialization with round-trip, cross-version, coordinate,
+  and JIT-enabled geometry checks (PR 96).
 - [ ] Upgrade PyTorch/timm and the broader numerical stack after the reproducible
   prediction baseline. Update manifest and lockfile together.
 - [ ] Verify checkpoint loading, predictions, masks, metrics, and training after
@@ -156,11 +157,11 @@ Completion requires a clean installation and a reproducible inference baseline.
 - [x] Add a shared `AGENTS.md`, Claude pointer, contributor guide, PR template,
   and compact commit/review skills. Preserve the Ponytail instructions and adapt
   reusable Python and ML guidance to this repository's actual layout and devices.
-- [ ] Upgrade mypy and align Ruff, hooks, configuration, and development commands
-  in a separate tooling change. Inventory annotation errors and third-party stubs.
-- [ ] Establish one explicit, useful module scope with passing type checks in CI;
-  start with tractable numerical helpers or output contracts selected by the audit.
-  Increase coverage gradually, preventing new errors in the checked scope.
+- [x] Upgrade mypy and align Ruff, hooks, configuration, and developer commands.
+- [x] Establish a first strict CI scope for the release-version guard. This checks
+  developer tooling, not the segmentation library.
+- [ ] Inventory library annotation errors/stubs and add a tractable numerical
+  helper or output-contract scope, then increase coverage gradually.
 - [ ] Correct optional tensor fields, model/output types, NumPy array dtypes, and
   public parameter/return types without changing runtime representations or APIs.
   Keep shapes, ranges, and device requirements documented and tested at boundaries.
@@ -335,3 +336,19 @@ preprocessing and expected behavior have maintained baseline fixtures. Then
 consolidate reusable data and remove one-off reports from docs, preserving
 historical evidence in PR descriptions and Git history. Add no more one-off
 upgrade JSON reports; keep validation in tests and the relevant PR descriptions.
+
+
+## Developer toolchain batch
+
+Update pytest/cov/xdist, pre-commit/virtualenv, mypy, Ruff, Matplotlib/fontTools,
+and scriv in the development group. Remove unused Black/isort/Flake8 toolchains
+and their dependencies. Runtime package versions and artifact hashes stay intact.
+FontTools selects a compatible version by Python version while retaining 3.10.
+
+Ruff keeps the effective E4/E7/E9/F rule scope; remove the overridden top-level
+rule list and use current nested configuration. Hooks and the project pin share
+Ruff 0.17.0. Strict mypy initially checks only the release-version guard; its
+manifest version validation now explicitly requires a string, with a regression.
+A developer-only CI job runs these checks without installing the model stack.
+Library annotation inventory, numerical type coverage, and full-repo lint cleanup
+remain separate work. No general ignore policy or manufactured casts are added.
