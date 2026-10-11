@@ -215,8 +215,14 @@ class PostProcessor:
         nuc_smooth_func: Callable = gaussian_smooth,
         cyto_smooth_func: Callable = gaussian_smooth,
         tissue_smooth_func: Callable = None,
-    ) -> Dict[str, List[np.ndarray]]:
-        """Post-process the masks in parallel using async."""
+    ) -> dict[str, list[tuple[np.ndarray, np.ndarray] | np.ndarray | None] | None]:
+        """Post-process the masks in parallel using async.
+
+        Returns:
+            Resolved results for each head, or None when that head is absent.
+            Instance results contain instance and class masks; tissue results
+            contain semantic masks. Saved outputs have None results per tile.
+        """
         # set up input args for
         nuc_inst_maps, nuc_aux_maps, nuc_type_maps = self._prepare_inst_maps(
             soft_masks["nuc"]
@@ -302,8 +308,12 @@ class PostProcessor:
 
             pool.stop_and_join()
 
-        nuc_results = [async_result.get() for async_result in nuc_results]
-        tissue_results = [async_result.get() for async_result in tissue_results]
+        if nuc_results is not None:
+            nuc_results = [async_result.get() for async_result in nuc_results]
+        if cyto_results is not None:
+            cyto_results = [async_result.get() for async_result in cyto_results]
+        if tissue_results is not None:
+            tissue_results = [async_result.get() for async_result in tissue_results]
 
         return {"nuc": nuc_results, "cyto": cyto_results, "tissue": tissue_results}
 

@@ -140,10 +140,12 @@ dependencies when training datasets are constructed,
 and accepts the existing callable transform contract without importing
 Albumentations. `WsiSegmenter` now passes `transforms`, matching the dataset API.
 
-Import and sampling coverage is distinct from full slide execution. The existing
-`segment()` method references `self.inferer`, which its constructor never defines,
-and uses `dst`/`maptype` keywords absent from `BaseModelInst.post_process`.
-These confirmed execution gaps remain for a separate inference regression/fix.
+Import and sampling coverage is distinct from full slide execution. The
+inference-baseline patch now repairs the undefined device and obsolete
+post-processing keywords in `segment()`, with deterministic CPU tile execution
+and serial/batched output comparisons. It also resolves optional async head
+results. Full-slide merging, real slide backends, pretrained checkpoint parity,
+and accelerator execution remain unverified.
 
 
 ## Download and cache security update 2026 10 10
