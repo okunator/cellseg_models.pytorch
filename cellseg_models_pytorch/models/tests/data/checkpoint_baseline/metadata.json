@@ -24,7 +24,8 @@
   "reference_versions": {
     "torch": "2.7.1",
     "numpy": "1.26.4",
-    "timm": "1.0.19"
+    "timm": "1.0.19",
+    "pillow": "11.3.0"
   },
   "models": {
     "cellpose": {
@@ -47,5 +48,6 @@
       "instances": 79,
       "reference_sha256": "1be6ddd9295b7bd02eb6ed5f860eeeec9a92b473287616dac809b570bb8c54c5"
     }
-  }
+  },
+  "reference_platform": "macOS arm64, Python 3.11"
 }

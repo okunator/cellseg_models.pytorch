@@ -246,7 +246,10 @@ instance/type masks on that image, but StarDist dense outputs exceeded their
 original tolerance. The preserved PyTorch arrays now have pinned metadata, an offline integrity
 check, and an explicit CPU checkpoint integration job. This is one image and two
 models, not a representative baseline or registered-name loading validation.
-The separate ONNX tolerance failure remains unresolved.
+The separate ONNX tolerance failure remains unresolved. The first Linux
+checkpoint gate also found two StarDist class logits outside the preserved
+macOS reference bounds; this baseline patch remains draft pending investigation.
+Do not advance numerical upgrades or treat this as a completed passing gate.
 
 Security counts are dated snapshots, not live completion criteria. HTTP/cache
 and Pillow updates remediate the recorded affected version ranges; remaining

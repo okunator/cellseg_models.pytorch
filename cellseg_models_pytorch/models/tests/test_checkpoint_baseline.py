@@ -50,7 +50,9 @@ def test_checkpoint_baseline_fixture_identity() -> None:
 
 @pytest.mark.optional
 @pytest.mark.parametrize("family", ["cellpose", "stardist"])
-def test_pretrained_cpu_checkpoint_baseline(family: str) -> None:
+def test_pretrained_cpu_checkpoint_baseline(
+    family: str, subtests: pytest.Subtests
+) -> None:
     """Compare pinned public weights against preserved dense arrays and masks."""
     record = METADATA["models"][family]
     checkpoint = record["checkpoint"]
@@ -88,14 +90,18 @@ def test_pretrained_cpu_checkpoint_baseline(family: str) -> None:
         instances, classes = model.post_process(model.predict(tensor))["nuc"][0]
         with np.load(DATA / f"{family}.npz", allow_pickle=False) as expected:
             for index, actual in enumerate(dense):
-                np.testing.assert_allclose(
-                    actual.numpy(),
-                    expected[f"dense_{index}"],
-                    atol=METADATA["dense_atol"],
-                    rtol=METADATA["dense_rtol"],
-                )
-            np.testing.assert_array_equal(instances, expected["instance_mask"])
-            np.testing.assert_array_equal(classes, expected["type_mask"])
-        assert len(np.unique(instances)) - 1 == record["instances"]
+                with subtests.test(output=f"dense_{index}"):
+                    np.testing.assert_allclose(
+                        actual.numpy(),
+                        expected[f"dense_{index}"],
+                        atol=METADATA["dense_atol"],
+                        rtol=METADATA["dense_rtol"],
+                    )
+            with subtests.test(output="instance_mask"):
+                np.testing.assert_array_equal(instances, expected["instance_mask"])
+            with subtests.test(output="type_mask"):
+                np.testing.assert_array_equal(classes, expected["type_mask"])
+            with subtests.test(output="instance_count"):
+                assert len(np.unique(instances)) - 1 == record["instances"]
     finally:
         torch.set_num_threads(previous_threads)

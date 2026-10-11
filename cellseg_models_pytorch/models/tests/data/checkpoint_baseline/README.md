@@ -1,7 +1,8 @@
 # CPU checkpoint baseline
 
 These fixtures preserve the CellPose and StarDist PyTorch arrays recorded on
-2026-10-09, before the maintenance dependency upgrades. They are compressed
+2026-10-09 on macOS arm64 / Python 3.11, before the maintenance dependency
+upgrades. They are compressed
 copies of those arrays, not predictions regenerated to make an upgrade pass.
 `metadata.json` pins the public Hugging Face checkpoint revisions and SHA-256
 checksums, the repository image, preprocessing, reference files, and model settings.
@@ -52,3 +53,10 @@ This is one recorded image and two checkpoints, not a representative dataset,
 a quality benchmark, or GPU/AMP validation. Registered model-name loading,
 additional images/model families, and the StarDist ONNX tolerance gap remain
 separate work.
+
+The first Linux x86-64 run of this preserved baseline passed CellPose but found
+two StarDist class logits outside the dense bounds (maximum absolute difference
+2.193451e-5). Keep this visible while investigating numerical backend differences;
+the gate is not ready for numerical upgrades. Subtests report every dense map,
+mask, and count even when another comparison fails. No reference or tolerance
+has been changed in response to this failure.
