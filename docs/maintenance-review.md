@@ -55,8 +55,8 @@ ML Dtypes 0.6.0 requires NumPy 2. No project dependencies or lockfile were chang
 - Configured hooks and dependency compatibility checks passed.
 
 Immutable checkpoint revisions, SHA-256 digests, image identity, preprocessing,
-and measured output differences are recorded in
-[the baseline metadata](validation/onnx-baseline.json). Both real models were
+and preserved PyTorch predictions are recorded in
+[the maintained checkpoint fixtures](../cellseg_models_pytorch/models/tests/data/checkpoint_baseline/README.md). Both real models were
 loaded from public safetensors checkpoints at those revisions. The input was
 `utils/tests/data/HE.png`, converted to RGB, resized with Pillow bilinear sampling
 to 256 × 256, and normalized with the existing per-image min-max helper.
@@ -178,7 +178,7 @@ after merge and dependency analysis; no alerts were manually dismissed.
 
 Raise Pillow from 11.3.0 to 12.3.0 in the published minimum and lockfile. All 18
 recorded advisory IDs are outside their affected ranges at the new version.
-[The validation record](validation/pillow-upgrade.json) lists IDs, image hashes,
+[The historical validation record](https://github.com/okunator/cellseg_models.pytorch/blob/e3b2ab54b99d3ed6b5e786caa9c3ace4aa5bfd98/docs/validation/pillow-upgrade.json) lists IDs, image hashes,
 operations, and prediction results. Other locked versions and artifact hashes
 are unchanged; the Python floor stays 3.10.
 

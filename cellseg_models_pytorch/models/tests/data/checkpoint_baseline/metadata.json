@@ -1,0 +1,51 @@
+{
+  "image": "cellseg_models_pytorch/utils/tests/data/HE.png",
+  "image_sha256": "677d0b8828afc0ee2c6bc911945c2425baa32b68a6648bbc546b31706e37dd1e",
+  "size": [
+    256,
+    256
+  ],
+  "preprocessing": "RGB, PIL bilinear resize, per-image minmax_normalize",
+  "device": "cpu",
+  "dtype": "float32",
+  "threads": 2,
+  "encoder": "efficientnet_b5",
+  "class_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "dense_atol": 1e-05,
+  "dense_rtol": 0.0001,
+  "reference_versions": {
+    "torch": "2.7.1",
+    "numpy": "1.26.4",
+    "timm": "1.0.19"
+  },
+  "models": {
+    "cellpose": {
+      "checkpoint": {
+        "repo_id": "csmp-hub/cellpose-histo-hgsc-nuc-v1",
+        "revision": "88c7ffd3a9106d1673c3dd6e6a9e42476e8320d2",
+        "filename": "cellpose_hgsc_v1_efficientnet_b5.safetensors",
+        "sha256": "d6e29abb0b1c60668961f1bf074e609091583cae8340f1360e6ccfcb1cf17bb4"
+      },
+      "instances": 96,
+      "reference_sha256": "aff4d282c57e417a3f37368491e3f88428d079ee4f83ca4175865f2d6be9c3f3"
+    },
+    "stardist": {
+      "checkpoint": {
+        "repo_id": "csmp-hub/stardist-histo-hgsc-nuc-v1",
+        "revision": "7e5521b389b0a7c68f7eb53491e843fa5fe08620",
+        "filename": "stardist_hgsc_v1_efficientnet_b5.safetensors",
+        "sha256": "94f5fa68a68cacf366bf0e219cc3494a36c4eb58295bf273778ed00702c7b1b1"
+      },
+      "instances": 79,
+      "reference_sha256": "1be6ddd9295b7bd02eb6ed5f860eeeec9a92b473287616dac809b570bb8c54c5"
+    }
+  }
+}

@@ -174,3 +174,42 @@ jobs:
           poetry run ruff format --check tools
           poetry run mypy
           poetry run python -m unittest discover -s tools/tests -v
+
+  checkpoint_baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: poetry.lock
+      - name: Install locked baseline
+        run: |
+          python -m pip install "poetry==$POETRY_VERSION"
+          poetry sync --no-interaction --all-extras
+      - name: Compare immutable CPU checkpoint predictions
+        env:
+          NUMBA_DISABLE_JIT: "1"
+          OMP_NUM_THREADS: "2"
+        run: |
+          poetry run pytest --optional cellseg_models_pytorch/models/tests/test_checkpoint_baseline.py --junitxml=checkpoint-results.xml
+          poetry run python - <<'PY'
+          import xml.etree.ElementTree as ET
+          cases = ET.parse("checkpoint-results.xml").findall(".//testcase")
+          executed = [case for case in cases if case.find("skipped") is None]
+          assert {case.attrib["name"] for case in executed} == {
+              "test_pretrained_cpu_checkpoint_baseline[cellpose]",
+              "test_pretrained_cpu_checkpoint_baseline[stardist]",
+          }
+          PY
+      - name: Preserve checkpoint reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: checkpoint-reports
+          path: checkpoint-results.xml
+          if-no-files-found: warn

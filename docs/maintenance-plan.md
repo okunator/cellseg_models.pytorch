@@ -6,11 +6,14 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-Status reconciled on 2026-10-10 against main at `edfc92c`, version `0.1.30`.
+Status reconciled on 2026-10-11 against main at `e3b2ab5`, version `0.1.30`.
 PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
 exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
 runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
 PRs 93/94 update the HTTP/cache stack and Pillow. PR 86 is superseded and closed.
+PR 96 updates geometry/serialization, PR 97 modernizes developer tooling and
+adds the first strict typing gate, and PR 98 repairs CPU WSI tile execution.
+All 13 hosted checks passed for PRs 97/98.
 The old ONNX review checkout is historical; its corrections are merged.
 
 The completed upgrade PRs passed all 12 hosted checks on Python 3.10/3.11/3.12,
@@ -42,7 +45,7 @@ category; run them separately from ordinary tests.
    feature inventory and test real slide/training backends; issue 68 still needs
    the relevant fixes available in a published release.
 3. Continue grouped dependency updates: HTTP/cache and Pillow are complete
-   (93/94); geometry/serialization is complete (96). Developer tooling is next. Refresh advisory triage per batch.
+   (93/94); geometry/serialization is complete (96). Developer tooling is complete (97). Refresh advisory triage per batch.
    Record affected paths and resolved advisory IDs; update manifest/lock together
    where needed. These focused fixes can precede the broader numerical baseline,
    with image-decoding/checkpoint checks appropriate to each changed dependency.
@@ -51,9 +54,8 @@ category; run them separately from ordinary tests.
    reconstructed masks and counts. Add representative images/models and investigate
    the existing StarDist ONNX tolerance failure without relaxing it for a green CI.
    A new scientific tolerance requires an independently justified validation change.
-5. Modernize development tooling and introduce one explicit passing typing scope.
-   These can proceed independently of the numerical baseline; keep them separate
-   from runtime upgrades and the uv migration.
+5. Developer tooling and the strict release-tool typing scope are complete (97).
+   Expand library typing separately from runtime upgrades and the uv migration.
 6. Upgrade model, numerical/image, and geospatial dependencies in separate batches
    once their baseline checks exist. Add newer Python CI coverage after dependency
    wheel/compatibility checks; change the Python floor only in an explicit support
@@ -102,11 +104,13 @@ checks that cannot be reproduced locally.
   source and range-based wheel/source installs on Linux Python 3.12 (PR 92).
 - [ ] Verify the published release resolves the reported installation path before
   closing issue 68; other platforms and optional integrations remain open.
-- [ ] Record immutable checkpoint revisions or checksums, encoder configuration,
-  class mapping, normalization, image identity, and model output settings.
+- [x] Record immutable checkpoint revisions/checksums, encoder, numeric class IDs,
+  normalization, image identity, and output settings for the initial two models.
+  Broader model coverage and verified semantic class names remain open.
 - [ ] Capture representative dense predictions, reconstructed instance masks,
   and instance counts. Define tolerances before comparing dependency changes.
-- [ ] Exercise real public checkpoint loading as well as local state dictionaries.
+- [x] Exercise pinned public checkpoint downloads and safetensors loading for the
+  initial CellPose/StarDist fixtures. Registered-name loading remains open.
 - [ ] Restore current image inference tests and a small representative subset of
   the large decoder matrix. Define a feasible separate slow and GPU test schedule.
 
@@ -235,12 +239,14 @@ and in the merged-main run linked above. Half/double tests cover sample
 construction; accelerator and end-to-end reduced-precision runtime support
 remain unverified.
 
-[The baseline metadata](validation/onnx-baseline.json) records two immutable
+[The maintained baseline fixtures](../cellseg_models_pytorch/models/tests/data/checkpoint_baseline/README.md) records two immutable
 checkpoint revisions/digests, one image digest, preprocessing, package versions,
 instance counts, and measured ONNX differences. Both models produced identical
 instance/type masks on that image, but StarDist dense outputs exceeded their
-original tolerance. This is a partial local CPU record, not a representative
-baseline or a completed public download/checkpoint-loading compatibility check.
+original tolerance. The preserved PyTorch arrays now have pinned metadata, an offline integrity
+check, and an explicit CPU checkpoint integration job. This is one image and two
+models, not a representative baseline or registered-name loading validation.
+The separate ONNX tolerance failure remains unresolved.
 
 Security counts are dated snapshots, not live completion criteria. HTTP/cache
 and Pillow updates remediate the recorded affected version ranges; remaining
@@ -248,7 +254,8 @@ advisories still require applicability triage and updates. No alerts were dismis
 
 Direct declarations, dataset import repairs and Linux Python 3.12 coverage are
 complete. Representative inference, full WSI execution, other optional packages,
-newer Python versions, tooling/type checking, and uv remain incomplete.
+newer Python versions, library typing, and uv remain incomplete. Developer
+tooling and the strict release-tool typing scope are complete (97).
 
 Merged PR 90 makes Pillow, Hugging Face Hub, safetensors,
 pandas, Shapely, and NetworkX explicit runtime requirements. Bounds include the
@@ -322,11 +329,11 @@ compatibility, not exploitation of every advisory or broad prediction parity.
 Merged PR 94 raises the published Pillow minimum and lockfile to 12.3.0,
 remediating 18
 recorded advisory ranges without changing other locked packages.
-[The validation record](validation/pillow-upgrade.json) captures 46 identical
+[The historical validation record](https://github.com/okunator/cellseg_models.pytorch/blob/e3b2ab54b99d3ed6b5e786caa9c3ace4aa5bfd98/docs/validation/pillow-upgrade.json) captures 46 identical
 preprocessing/codec/annotation arrays and unchanged dense predictions and masks
 for two immutable checkpoints on the recorded image. Representative inference
 and the StarDist ONNX gap remain open. All 12 hosted checks passed.
-PyArrow/geospatial serialization is the next grouped batch.
+The PyArrow/geospatial batch subsequently passed in PR 96.
 
 
 ## Deferred structure and validation records
@@ -336,18 +343,19 @@ and feature isolation. It is deferred structural work, not a prerequisite refact
 bundled into dependency upgrades. The GPU proposal is preserved on
 `docs/gpu-postprocessing-proposal` and remains deferred after maintenance.
 
-Retain the existing ONNX/Pillow JSON records until checkpoint identities,
-preprocessing and expected behavior have maintained baseline fixtures. Then
-consolidate reusable data and remove one-off reports from docs, preserving
-historical evidence in PR descriptions and Git history. Add no more one-off
-upgrade JSON reports; keep validation in tests and the relevant PR descriptions.
+The initial checkpoint identities, preprocessing, and preserved expected arrays
+now live in maintained test fixtures. The one-off ONNX/Pillow JSON reports have
+been removed from docs; historical evidence remains in the PRs and Git history,
+and the unresolved ONNX differences remain in the review record. Add no new
+one-off upgrade JSON reports. This consolidation does not complete representative
+dataset, full-slide, accelerator, or registered-name loading coverage.
 
 
 ## Developer toolchain batch
 
-Update pytest/cov/xdist, pre-commit/virtualenv, mypy, Ruff, Matplotlib/fontTools,
-and scriv in the development group. Remove unused Black/isort/Flake8 toolchains
-and their dependencies. Runtime package versions and artifact hashes stay intact.
+Merged PR 97 updates pytest/cov/xdist, pre-commit/virtualenv, mypy, Ruff,
+Matplotlib/fontTools, and scriv in the development group. It removes unused
+Black/isort/Flake8 toolchains and their dependencies. Runtime package versions and artifact hashes stay intact.
 FontTools selects a compatible version by Python version while retaining 3.10.
 
 Ruff keeps the effective E4/E7/E9/F rule scope; remove the overridden top-level
