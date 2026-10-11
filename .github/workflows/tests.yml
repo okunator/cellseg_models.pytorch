@@ -151,3 +151,26 @@ jobs:
           name: onnx-reports-${{ matrix.torch-version }}
           path: onnx-results.xml
           if-no-files-found: warn
+
+  developer_checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: poetry.lock
+      - name: Install locked developer tools
+        run: |
+          python -m pip install "poetry==$POETRY_VERSION"
+          poetry sync --no-interaction --only dev --no-root
+      - name: Check release tooling
+        run: |
+          poetry run ruff check tools
+          poetry run ruff format --check tools
+          poetry run mypy
+          poetry run python -m unittest discover -s tools/tests -v

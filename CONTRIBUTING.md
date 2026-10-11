@@ -44,9 +44,12 @@ For numerical changes, compare values and final masks, not only tensor shapes.
 For performance changes, include hardware, precision, workload, memory, and
 measurement details. Keep data/checkpoint licenses and attribution intact.
 
-Mypy is present but has no CI gate yet. The rollout will check explicit modules
-and grow coverage gradually; do not suppress the whole codebase to claim it is
-typed. Annotate new and changed APIs accurately and document tensor contracts.
+Ruff 0.17.0 is the single linter/formatter and matches the hook revision. CI checks
+`tools/` with Ruff and runs strict mypy on `tools/check_release_metadata.py`,
+targeting Python 3.10. Run `poetry run ruff check tools`,
+`poetry run ruff format --check tools`, and `poetry run mypy`. Library typing is
+not gated yet; expand its scope gradually without broad suppressions or casts.
+Annotate changed public APIs accurately and document tensor contracts.
 
 ## Pull requests and releases
 

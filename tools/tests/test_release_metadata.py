@@ -29,6 +29,12 @@ class ReleaseMetadataTests(unittest.TestCase):
                     release_metadata.check_versions(self.root, tag), "0.1.30"
                 )
 
+    def test_rejects_non_string_version(self):
+        (self.root / "pyproject.toml").write_text('[tool.poetry]\nversion = 30\n')
+        self.module.write_text('__version__ = 30\n')
+        with self.assertRaisesRegex(ValueError, "Manifest version must be a string"):
+            release_metadata.check_versions(self.root)
+
     def test_rejects_mismatched_module_version(self):
         self.module.write_text('__version__ = "0.1.29"\n')
         with self.assertRaisesRegex(ValueError, "Manifest version"):
