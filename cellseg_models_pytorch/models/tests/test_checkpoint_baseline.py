@@ -98,7 +98,21 @@ def test_pretrained_cpu_checkpoint_baseline(
                         rtol=METADATA["dense_rtol"],
                     )
             with subtests.test(output="instance_mask"):
-                np.testing.assert_array_equal(instances, expected["instance_mask"])
+                reference = expected["instance_mask"]
+                pairs = np.unique(
+                    np.stack((instances.ravel(), reference.ravel()), axis=1), axis=0
+                )
+                foreground_changes = np.count_nonzero(
+                    (instances > 0) != (reference > 0)
+                )
+                same_partition = foreground_changes == 0 and len(pairs) == len(
+                    np.unique(instances)
+                ) == len(np.unique(reference))
+                np.testing.assert_array_equal(
+                    instances,
+                    reference,
+                    err_msg=f"foreground changes={foreground_changes}, identical object partitions={same_partition}",
+                )
             with subtests.test(output="type_mask"):
                 np.testing.assert_array_equal(classes, expected["type_mask"])
             with subtests.test(output="instance_count"):

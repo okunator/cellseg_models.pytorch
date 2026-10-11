@@ -60,3 +60,9 @@ two StarDist class logits outside the dense bounds (maximum absolute difference
 the gate is not ready for numerical upgrades. Subtests report every dense map,
 mask, and count even when another comparison fails. No reference or tolerance
 has been changed in response to this failure.
+
+A second Linux runner also found four CellPose class logits outside the bounds
+and 1,305 changed instance-label pixels, while class masks and instance counts
+matched. StarDist's mask matched, with three dense-logit outliers. Runner-dependent
+float32 variation and CellPose label numbering versus boundary changes require
+further investigation; these failures remain enforced.
