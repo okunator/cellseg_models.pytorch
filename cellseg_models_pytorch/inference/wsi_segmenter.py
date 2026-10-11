@@ -1,7 +1,8 @@
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, List, Tuple
 
 import geopandas as gpd
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -20,14 +21,15 @@ class WsiSegmenter:
         reader: SlideReader,
         model: BaseModelInst,
         level: int,
-        coordinates: List[Tuple[int, int, int, int]],
+        coordinates: list[tuple[int, int, int, int]],
         batch_size: int = 8,
-        normalization: Callable = None,
+        normalization: Callable[..., dict[str, np.ndarray]] | None = None,
     ) -> None:
         """Class for segmenting WSIs.
 
         Args:
             reader: The `SlideReader` object for reading the WSIs.
+            model: An instance segmentation model configured for inference.
             level: The level of the WSI to segment.
             coordinates:
                 The bounding box coordinates from `reader.get_tile_coordinates()`.
@@ -47,37 +49,51 @@ class WsiSegmenter:
         )
         self._has_processed = False
 
-    def segment(self, save_dir: str, maptype: str = "amap") -> None:
+    def segment(self, save_dir: str | Path, maptype: str = "amap") -> None:
         """Segment the WSIs and save the instances as parquet files to `save_dir`.
 
         Args:
             save_dir: The directory to save the instances.
-            maptype:
-                The type of map to use for post-processing. Can be either 'amap','imap',
-                'uimap', or 'map'.
+            maptype: Legacy output selector. Only ``amap`` (GeoParquet) is supported.
+
+        Raises:
+            ValueError: The requested map type is unsupported or tile paths collide.
+            FileExistsError: A tile output already exists.
+
+        Note:
+            Uint8 RGB tiles are scaled to [0, 1]. Callable transforms return HWC
+            values that are passed as float32 BCHW tensors on the model device.
+            Failed runs retain any completed tile files and are not marked complete.
         """
+        self._has_processed = False
+        if maptype != "amap":
+            raise ValueError("Only maptype='amap' (GeoParquet) is supported")
         save_dir = Path(save_dir)
+        save_dir.mkdir(parents=True, exist_ok=True)
 
         with tqdm(self.dataloader, unit="batch") as loader:
             with torch.no_grad():
                 for data in loader:
+                    coords = [tuple(map(int, coord)) for coord in data["coords"]]
+                    names = data["name"]
+                    save_paths = [
+                        save_dir / f"{name}_x{x}-y{y}_w{width}-h{height}.parquet"
+                        for name, (x, y, width, height) in zip(names, coords)
+                    ]
+                    if len(set(save_paths)) != len(save_paths):
+                        raise ValueError(
+                            "Tile coordinates produce duplicate output paths"
+                        )
+                    for path in save_paths:
+                        if path.exists():
+                            raise FileExistsError(f"Tile output already exists: {path}")
                     im = (
                         data["image"]
-                        .to(self.inferer.device)
                         .permute(0, 3, 1, 2)
-                        .float()
+                        .to(device=self.model.device, dtype=torch.float32)
                     )
-                    coords = data["coords"]
-                    names = data["name"]
-
-                    # set args
-                    save_paths = [
-                        (save_dir / f"{n}_x{c[0]}-y{c[1]}_w{c[2]}-h{c[3]}").with_suffix(
-                            ".parquet"
-                        )
-                        for n, c in zip(names, coords)
-                    ]
-                    coords = [tuple(map(int, coord)) for coord in coords]
+                    if data["image"].dtype == torch.uint8:
+                        im = im / 255
 
                     # predict
                     probs = self.model.predict(im)
@@ -85,9 +101,8 @@ class WsiSegmenter:
                     # post-process
                     self.model.post_process(
                         probs,
-                        dst=save_paths,
+                        save_paths_nuc=save_paths,
                         coords=coords,
-                        maptype=maptype,
                     )
 
         self._has_processed = True

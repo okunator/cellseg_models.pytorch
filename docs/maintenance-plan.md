@@ -273,12 +273,17 @@ sampling, coordinates, custom transforms, construction, and training dependency
 errors. Installed-package checks now cover the dataset and WSI segmenter modules.
 This does not complete end-to-end WSI validation or training-extra compatibility.
 
-The now-accessible `WsiSegmenter.segment()` still uses a nonexistent
-`self.inferer.device` and passes obsolete `dst`/`maptype` arguments to
-`BaseModelInst.post_process`. Repair those concrete API mismatches with a small
-CPU segmentation regression during the inference-baseline work before claiming
-full WSI segmentation coverage. Slide-backend and training dependency extras,
-other-platform installation and representative checkpoint tests remain open.
+The inference-baseline patch repairs `WsiSegmenter.segment()` device and output
+arguments, aligns uint8 preprocessing with direct prediction, and preserves tile
+coordinates in dotted slide filenames. It refuses overwrites and colliding paths,
+and failed runs remain incomplete. Shared async post-processing resolves all
+present heads and preserves None for absent heads. Twelve deterministic CPU
+regressions exercise a small synthetic model through the real predictor,
+post-processor, and GeoParquet writer, including batched and serial parity.
+
+These establish execution contracts, not a pretrained checkpoint baseline.
+Full-slide merging, slide-backend and training extras, representative checkpoint
+fixtures, accelerator behavior, and other-platform installation remain open.
 
 
 ## Python 3.12 installation validation

@@ -10,6 +10,10 @@
 
 ## Fixes
 
+- Repair WSI tile inference device, preprocessing, and output arguments. Preserve
+  dotted slide names and reject existing or colliding tile outputs. Resolve async
+  post-processing results for optional cytoplasm and tissue heads.
+
 - Update the geometry/export dependency group, including PyArrow and GeoPandas
   security minimums, with serialization and pixel-coordinate regression coverage.
 
