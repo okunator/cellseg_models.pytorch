@@ -101,6 +101,46 @@ out = model.post_process(prob)
 ```
 
 
+## Training
+
+For a minimal training loop using the current model, dataset and loss APIs, see
+[examples/train_cellpose.py](examples/train_cellpose.py). It trains binary nuclei
+classification and CellPose flows from scratch; it does not predict nuclei types
+or reproduce a published training recipe. The older PanNuke notebooks still need
+API updates; use this script as the training entry point.
+
+From the repository checkout, install the library and optional folder-training
+dependency (validated with Albumentations 2.0.8):
+
+```sh
+pip install -e . 'albumentations>=2.0.8,<3'
+```
+
+Prepare two folders containing only corresponding files in the same sorted
+order, for example `images/patch001.png` and `labels/patch001.mat`. Images must
+be RGB uint8 patches of one size, with height/width multiples of 32 and at least
+64. Each MATLAB file must contain an integer `(H, W)` array named `inst`: zero
+is background and each nucleus has its own positive ID. Split patients/slides
+before extracting patches. The script scales images to `[0, 1]`, generates flow
+targets from instances and trains on float32 BCHW tensors. Flow targets have
+shape `(B, 2, H, W)`, with Y then X channels; classification targets are integer
+`(B, H, W)` background/nucleus classes. The model's `output["nuc"].type_map`
+contains two-channel logits and `.aux_map` contains continuous flow predictions.
+
+```sh
+python examples/train_cellpose.py --images /path/to/train/images \
+  --labels /path/to/train/labels --checkpoint /path/to/new-checkpoint.pt --epochs 1
+```
+
+CPU is the default. Pass `--device cuda` for a configured GPU; this path has not
+been validated by the CPU example check. The output file must not already exist.
+It contains model settings/weights, optimizer, epoch and Torch RNG state; load
+with `torch.load(path, map_location="cpu", weights_only=True)`. Import
+`cellpose_nuclei` from `cellseg_models_pytorch.models.cellpose.cellpose_unet`,
+instantiate it with `**state["model_kwargs"]`, then load `state["model"]`.
+This small example has no validation loop, scheduler, mixed precision or resume
+command; add those deliberately for a full experiment.
+
 ## References
 
 - [1] S. Graham, Q. D. Vu, S. E. A. Raza, A. Azam, Y-W. Tsang, J. T. Kwak and N. Rajpoot. "HoVer-Net: Simultaneous Segmentation and Classification of Nuclei in Multi-Tissue Histology Images." Medical Image Analysis, Sept. 2019.
