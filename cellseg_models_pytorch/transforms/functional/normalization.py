@@ -54,22 +54,34 @@ def percentile_normalize(
 
 
 def percentile_normalize99(
-    img: np.ndarray, amin: float = None, amax: float = None, copy: bool = False
+    img: np.ndarray,
+    amin: float | None = None,
+    amax: float | None = None,
+    copy: bool = False,
 ) -> np.ndarray:
-    """Channelwise 1-99 percentile normalization. Optional clamping.
+    """Normalize each channel using its 1st and 99th spatial percentiles.
+
+    A zero percentile span maps to zero before optional clipping. Without
+    clipping, values outside the percentile interval can fall outside [0, 1].
 
     Args:
-        img: Input image to be normalized. Shape (H, W, C)|(H, W).
+        img: Input image with HW or HWC axes, reduced over H and W.
+        amin: Optional lower bound for the normalized output.
+        amax: Optional upper bound for the normalized output.
         copy: If True, normalize the copy of the input.
             Defaults to False.
 
     Returns:
-        np.ndarray:
-            Normalized image. Same shape as input. dtype: float32.
+        Normalized float32 image with the original shape. Constant channels
+        are zero unless clipping moves zero to a requested bound.
 
     Raises:
-        ValueError:
-            If input image does not have shape (H, W) or (H, W, C).
+        ValueError: If the image does not have HW or HWC axes, or amin > amax.
+
+    Examples:
+        >>> percentile_normalize99(np.array([[0, 1], [2, 3]]), 0, 1).round(2)
+        array([[0.  , 0.33],
+               [0.67, 1.  ]], dtype=float32)
     """
     axis = (0, 1)
 
@@ -77,6 +89,9 @@ def percentile_normalize99(
         raise ValueError(
             f"Input img needs to have shape (H, W, C)|(H, W). Got: {img.shape}"
         )
+
+    if amin is not None and amax is not None and amin > amax:
+        raise ValueError("amin must be less than or equal to amax")
 
     if copy:
         im = img.copy()
@@ -87,7 +102,9 @@ def percentile_normalize99(
     percentile99 = np.percentile(im, q=99, axis=axis)
     num = im - percentile1
     denom = percentile99 - percentile1
-    im = np.divide(num, denom, where=denom != 0)
+    im = np.divide(num, denom, out=np.zeros_like(num), where=denom != 0)
+    if amin is not None or amax is not None:
+        np.clip(im, amin, amax, out=im)
 
     return im.astype(np.float32)
 

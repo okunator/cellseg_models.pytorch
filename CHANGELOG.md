@@ -9,6 +9,13 @@
 
 ## Fixes
 
+- Honor `percentile_normalize99` clipping bounds and initialize zero-percentile
+  spans to zero before clipping. Reject reversed bounds and preserve float32
+  output and channel axes. Enhanced HoVer-Net/DCAN processing and flow
+  visualization now apply their requested clipping; this may change those outputs.
+  DRFNS handles distance-map tails and saturates byte arithmetic safely under
+  strict NumPy error settings.
+
 - Adopt NumPy 2 (2.2.6 or newer below 2.6), Numba 0.68, and newer compatible
   SciPy, scikit-image, scikit-learn, and OpenCV 4 releases. Python 3.10 retains
   its compatible dependency versions; newer Python versions use newer wheels.
