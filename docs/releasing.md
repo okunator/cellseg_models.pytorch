@@ -33,9 +33,11 @@ Workflow syntax checks and ordinary CI cannot verify the PyPI-side configuration
    including real checkpoint and optional/device checks affected by the release.
 2. Update `[project].version` in `pyproject.toml` and
    `cellseg_models_pytorch/__init__.py` together, with release notes and any
-   migration instructions. Run `uv run --locked python tools/check_release_metadata.py`.
-3. Run the ordinary source suite, build both distributions with `uv build`, and verify clean
-   wheel/source installation outside the checkout. Review required hosted checks.
+   migration instructions. Run `uv lock` and include the updated lockfile in the
+   release commit, then run `uv run --locked python tools/check_release_metadata.py`.
+3. Run the ordinary source suite, build both distributions with `uv build`, and
+   verify clean wheel/source installation outside the checkout. Review required
+   hosted checks.
 4. Use the release candidate process for dependency or compatibility changes.
    A prerelease must have its own matching prerelease package version and tag.
 5. Tag the reviewed commit with the package version, optionally prefixed by `v`.
