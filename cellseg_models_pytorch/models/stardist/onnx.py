@@ -19,7 +19,7 @@ class StarDistONNXWrapper(nn.Module):
     def forward(
         self, x: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Return binary probability, ray-distance, and type maps."""
+        """Return BCHW foreground scores, ray distances, and class logits."""
         nuc = self.model(x)["nuc"]
         if nuc.binary_map is None:
             raise RuntimeError("StarDist export requires a nuclei binary output head.")

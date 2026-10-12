@@ -61,14 +61,22 @@ loaded from public safetensors checkpoints at those revisions. The input was
 `utils/tests/data/HE.png`, converted to RGB, resized with Pillow bilinear sampling
 to 256 × 256, and normalized with the existing per-image min-max helper.
 
-CellPose's original integration assertions pass, with 96 reconstructed instances
-and pixel-identical instance/type masks. StarDist reconstructs 79 instances with
-pixel-identical instance/type masks, but its original dense assertion fails:
-9 of 458,752 values exceed `atol=1e-5, rtol=1e-4`, with maximum absolute error
-`4.72e-5`. A follow-up diagnostic using two runtime threads measured 7 outlying
-type logits; disabling graph optimization measured 11. This is a remaining
-numerical validation gap, not evidence of an incorrect final segmentation on
-this image. No tolerance has been loosened.
+The original StarDist type-logit bound (`atol=1e-5, rtol=1e-4`) failed at
+9 of 458,752 values on HE.png, despite identical instance/class masks. Native
+PyTorch float32 versus float64 checks over six existing images independently
+found a required type-logit absolute allowance of 1.358e-4 on patch1.png. This
+exceeds the old bound before any export; foreground and ray outputs remain
+inside their original bounds.
+
+The pretrained StarDist comparison adopts the existing CellPose raw class-head
+budget (`atol=2e-4, rtol=1e-4`), keeps the original physical-output bounds, and
+adds strict shape/dtype and per-pixel class-decision checks. Rejection tests catch
+raw-output shifts even when winning classes are unchanged. The pinned HE.png
+checks pass on PyTorch 2.7.1 and 2.14.1 with exact instance/type masks (96 CellPose,
+79 StarDist objects). The six-image diagnostic also found identical object
+partitions and class decisions. These are scoped compatibility checks, not a
+representative accuracy benchmark or GPU claim. Exporter settings and weights
+are unchanged; calibration details remain in the PR instead of a new report.
 
 Main now has an explicit hosted ONNX job that installs compatible
 optional packages, tests PyTorch 2.7.1 and 2.14.1, and fails if either runtime
