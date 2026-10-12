@@ -69,38 +69,6 @@ installing this library.
 | [[7, 8](#References)] Pannuke | https://arxiv.org/abs/2003.10778 , https://link.springer.com/chapter/10.1007/978-3-030-23937-4_2 |
 
 
-## Quick Start 💻
-
-**Initialize a pre-trained model and run inference**
-```
-pip install cellseg-models-pytorch
-pip install albumentations
-```
-
-```python
-from albumentations import Resize, Compose
-from cellseg_models_pytorch.models.cellpose import CellPose
-from cellseg_models_pytorch.utils import FileHandler
-from cellseg_models_pytorch.transforms.albu_transforms import MinMaxNormalization
-
-# intialize nuclei segmentation model trained on HGSC data
-# see models in https://huggingface.co/csmp-hub
-model = CellPose.from_pretrained(weights="hgsc_v1_efficientnet_b5")
-
-model.set_inference_mode()
-
-# Resize to multiple of 32 of your own choosing
-transform = Compose([Resize(1024, 1024), MinMaxNormalization()])
-
-im = FileHandler.read_img(IMG_PATH)
-im = transform(image=im)["image"]
-
-prob = model.predict(im)
-out = model.post_process(prob)
-# out = {"nuc": [(nuc instances (H, W), nuc types (H, W))], "cyto": None, "tissue": None}
-```
-
-
 ## References
 
 - [1] S. Graham, Q. D. Vu, S. E. A. Raza, A. Azam, Y-W. Tsang, J. T. Kwak and N. Rajpoot. "HoVer-Net: Simultaneous Segmentation and Classification of Nuclei in Multi-Tissue Histology Images." Medical Image Analysis, Sept. 2019.

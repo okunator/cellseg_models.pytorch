@@ -6,7 +6,7 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-Status reconciled on 2026-10-12 against main at `d7cf141`, version `0.1.30`.
+Status reconciled on 2026-10-12 against main at `27d06a6`, version `0.1.30`.
 PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
 exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
 runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
@@ -20,9 +20,11 @@ PR 101 calibrates pretrained StarDist ONNX classifier precision independently of
 the exporter and requires exact dense class decisions and final masks.
 PR 102 updates PyTorch/timm and their security floors, with six-image CPU
 comparisons and corrected torchvision/Python metadata. All 13 hosted checks
-passed for PRs 97/98/99/100/101/102/103/104/105. PR 103 completes the
+passed for PRs 97/98/99/100/101/102/103/104/105/106. PR 103 completes the
 numerical/image batch with compiled-kernel coverage and NumPy 2 regressions.
 PR 104 fixes shared percentile clipping/zero spans and DRFNS byte saturation.
+PR 106 fixes low-IoU instance assignment, FP/FN axes and sparse IDs, with
+independent metric validation and public regressions.
 PR 105 updates locked HTML/highlighting transitives and removes unnecessary
 runtime floors; downloader/cache protections remain. The old ONNX review checkout
 is historical; its corrections are merged.
@@ -72,7 +74,9 @@ category; run them separately from ordinary tests.
    broader dataset and accelerator validation remain release work.
 5. Developer tooling and the strict release-tool typing scope are complete (97).
    Expand library typing separately from runtime upgrades and the uv migration.
-6. Resolve metric-matching issue 73, then the remaining concrete correctness issues.
+6. Metric-matching issue 73 is resolved on main (106). Retire the legacy
+   notebooks, then continue the optional dependency/import audit and remaining
+   correctness work. User guides and examples move to the docs-pages phase.
    The shared percentile normalizer and DRFNS fixes are merged (104). Model,
    numerical/image, and geometry batches are merged (102/103/96).
    Add newer Python CI coverage after dependency wheel/compatibility checks;
@@ -80,9 +84,9 @@ category; run them separately from ordinary tests.
    policy patch. The Python floor remains 3.10. Python 3.12 source and clean
    distribution checks are already merged; newer versions require validation.
 7. Migrate Poetry to uv after dependency audit and baseline validation, then
-   complete release-candidate checks. Update user documentation and address
-   installation/correctness issues alongside each relevant batch rather than
-   waiting for uv. Keep trusted publisher authentication pending until an
+   complete release-candidate checks. Keep API docstrings and release notes with
+   functional changes; build user documentation pages and examples in their own
+   later phase. Keep trusted publisher authentication pending until an
    authorized publication verifies it.
 
 Do not wait for merges to perform independent read-only audits. Keep each code,
@@ -218,24 +222,29 @@ without bundling runtime upgrades, a source-layout move, or a build-backend rewr
 
 ## Issues and documentation
 
-Prioritize installation issue 68 and metric-matching issue 73, then the working
-training example requested in issue 76, model/backbone guidance in issue 74, and
-in-memory inference guidance in issue 69. Add reproducing tests for correctness
-fixes before changing behavior. Treat 3D support and expanded model architectures
-as separate feature work.
+Installation issue 68 still needs a published-release check; metric issue 73 is
+fixed on main. Continue concrete correctness and dependency/import work during
+maintenance. Training/fine-tuning examples (76), model/backbone guidance (74),
+in-memory inference guidance (69) and the quick start belong to the later
+user-documentation pages phase. Treat 3D support and expanded architectures as
+separate feature work.
 
 - [x] Fix `percentile_normalize99` clipping/zero spans and DRFNS byte saturation
   with value, input-preservation and strict caller regressions (PR 104). Hosted
   source, compiled-kernel and clean-package checks pass. Clipping can intentionally
   change enhanced post-processing outputs, as documented in the release notes.
-- [ ] Merge the issue 73 correction: unique low-IoU matches, correct FP/FN axes,
-  sparse instance IDs and explicit precision semantics. Prepared regressions keep
-  default-threshold values and AJI matching policy unchanged.
-- [ ] Make the quick start executable on CPU with an explicit image path, device,
-  checkpoint, normalization, and interpretation of outputs. Document GPU use.
-- [ ] Provide a runnable training script and update notebooks to the same API.
-- [ ] Document supported backbones, checkpoints, extras, ONNX limitations, and
-  compatibility changes. Smoke-test examples in CI.
+- [x] Merge the issue 73 correction (PR 106): unique low-IoU matches, correct
+  FP/FN axes, sparse IDs and explicit precision semantics. All 13 hosted checks
+  pass; default-threshold values and AJI matching policy remain unchanged.
+  The issue comment is drafted for maintainer review; release availability remains
+  pending publication.
+- [ ] Merge retirement of the legacy example notebooks. Drop the proposed
+  standalone training script/test from this maintenance batch; Git history
+  preserves both for reference without retaining archived copies in the repo.
+- [ ] Build documentation pages after the maintenance work, with a verified CPU
+  quick start, training and fine-tuning examples, model/checkpoint/backbone and
+  optional-dependency guidance. Validate examples when introduced and decide
+  the smallest appropriate CI coverage then; add no speculative jobs now.
 - [ ] Review issue 78 without silently changing preprocessing or dependency
   licensing. Prefer the project's existing normalization helper where suitable.
 - [x] Add contributor instructions and repeatable release steps.
