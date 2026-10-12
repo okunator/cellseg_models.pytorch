@@ -54,22 +54,6 @@ jobs:
           HF_HUB_OFFLINE: "1"
         run: poetry run pytest --cov cellseg_models_pytorch/ --cov-report xml --junitxml=test-results.xml
 
-      - name: Temporary CPU checkpoint diagnostic
-        if: matrix.python-version == '3.11'
-        env:
-          NUMBA_DISABLE_JIT: "1"
-          OMP_NUM_THREADS: "2"
-        run: poetry run python tools/checkpoint_diagnostic.py "$RUNNER_TEMP/checkpoint-diagnostic"
-
-      - name: Preserve temporary CPU diagnostic
-        if: matrix.python-version == '3.11'
-        uses: actions/upload-artifact@v7
-        with:
-          name: temporary-cpu-diagnostic
-          path: ${{ runner.temp }}/checkpoint-diagnostic
-          retention-days: 1
-          if-no-files-found: error
-
       - name: Check geospatial helpers with Numba JIT enabled
         env:
           NUMBA_DISABLE_JIT: "0"
