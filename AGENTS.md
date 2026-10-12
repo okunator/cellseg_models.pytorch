@@ -20,7 +20,7 @@ future work; it does not make planned tools or features available today.
 | `cellseg_models_pytorch/**/tests/`, `conftest.py` | Library tests and shared fixtures |
 | `tests/`, `tests/fixtures/` | Repository-only checkpoint comparisons and reference data |
 | `tools/`, `tools/tests/` | Build and release checks and their tests |
-| `examples/`, `docs/`, `.github/` | User examples, maintenance guidance, CI |
+| `docs/`, `.github/` | Maintenance guidance and CI; user examples are deferred |
 
 Keep this layout. A migration to `src/`, a new training framework, or a new output
 representation is a separate change, not incidental cleanup.

@@ -74,8 +74,9 @@ category; run them separately from ordinary tests.
    broader dataset and accelerator validation remain release work.
 5. Developer tooling and the strict release-tool typing scope are complete (97).
    Expand library typing separately from runtime upgrades and the uv migration.
-6. Metric-matching issue 73 is resolved on main (106). Provide the current-API
-   training example for issue 76, then remaining correctness/documentation work.
+6. Metric-matching issue 73 is resolved on main (106). Retire the legacy
+   notebooks, then continue the optional dependency/import audit and remaining
+   correctness work. User guides and examples move to the docs-pages phase.
    The shared percentile normalizer and DRFNS fixes are merged (104). Model,
    numerical/image, and geometry batches are merged (102/103/96).
    Add newer Python CI coverage after dependency wheel/compatibility checks;
@@ -83,9 +84,9 @@ category; run them separately from ordinary tests.
    policy patch. The Python floor remains 3.10. Python 3.12 source and clean
    distribution checks are already merged; newer versions require validation.
 7. Migrate Poetry to uv after dependency audit and baseline validation, then
-   complete release-candidate checks. Update user documentation and address
-   installation/correctness issues alongside each relevant batch rather than
-   waiting for uv. Keep trusted publisher authentication pending until an
+   complete release-candidate checks. Keep API docstrings and release notes with
+   functional changes; build user documentation pages and examples in their own
+   later phase. Keep trusted publisher authentication pending until an
    authorized publication verifies it.
 
 Do not wait for merges to perform independent read-only audits. Keep each code,
@@ -221,11 +222,12 @@ without bundling runtime upgrades, a source-layout move, or a build-backend rewr
 
 ## Issues and documentation
 
-Prioritize installation issue 68 and metric-matching issue 73, then the working
-training example requested in issue 76, model/backbone guidance in issue 74, and
-in-memory inference guidance in issue 69. Add reproducing tests for correctness
-fixes before changing behavior. Treat 3D support and expanded model architectures
-as separate feature work.
+Installation issue 68 still needs a published-release check; metric issue 73 is
+fixed on main. Continue concrete correctness and dependency/import work during
+maintenance. Training/fine-tuning examples (76), model/backbone guidance (74),
+in-memory inference guidance (69) and the quick start belong to the later
+user-documentation pages phase. Treat 3D support and expanded architectures as
+separate feature work.
 
 - [x] Fix `percentile_normalize99` clipping/zero spans and DRFNS byte saturation
   with value, input-preservation and strict caller regressions (PR 104). Hosted
@@ -236,15 +238,13 @@ as separate feature work.
   pass; default-threshold values and AJI matching policy remain unchanged.
   The issue comment is drafted for maintainer review; release availability remains
   pending publication.
-- [ ] Make the quick start executable on CPU with an explicit image path, device,
-  checkpoint, normalization, and interpretation of outputs. Document GPU use.
-- [ ] Merge the minimal current-API folder-training script for issue 76. Validate
-  the actual optional dataset/flow/loss path and checkpoint on CPU; retain its
-  small optional regression without adding a CI job.
-- [ ] Update the older notebooks to the current API; the standalone training
-  example does not validate their PanNuke loaders or external training frameworks.
-- [ ] Document supported backbones, checkpoints, extras, ONNX limitations, and
-  compatibility changes. Smoke-test examples in CI.
+- [ ] Merge retirement of the legacy example notebooks. Drop the proposed
+  standalone training script/test from this maintenance batch; Git history
+  preserves both for reference without retaining archived copies in the repo.
+- [ ] Build documentation pages after the maintenance work, with a verified CPU
+  quick start, training and fine-tuning examples, model/checkpoint/backbone and
+  optional-dependency guidance. Validate examples when introduced and decide
+  the smallest appropriate CI coverage then; add no speculative jobs now.
 - [ ] Review issue 78 without silently changing preprocessing or dependency
   licensing. Prefer the project's existing normalization helper where suitable.
 - [x] Add contributor instructions and repeatable release steps.
