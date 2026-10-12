@@ -18,7 +18,7 @@ class ReleaseMetadataTests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
         (self.root / "cellseg_models_pytorch").mkdir()
-        (self.root / "pyproject.toml").write_text('[tool.poetry]\nversion = "0.1.30"\n')
+        (self.root / "pyproject.toml").write_text('[project]\nversion = "0.1.30"\n')
         self.module = self.root / "cellseg_models_pytorch/__init__.py"
         self.module.write_text('__version__ = "0.1.30"\n')
 
@@ -30,7 +30,7 @@ class ReleaseMetadataTests(unittest.TestCase):
                 )
 
     def test_rejects_non_string_version(self):
-        (self.root / "pyproject.toml").write_text('[tool.poetry]\nversion = 30\n')
+        (self.root / "pyproject.toml").write_text('[project]\nversion = 30\n')
         self.module.write_text('__version__ = 30\n')
         with self.assertRaisesRegex(ValueError, "Manifest version must be a string"):
             release_metadata.check_versions(self.root)

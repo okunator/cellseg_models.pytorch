@@ -63,7 +63,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
   Avoid unrelated annotation sweeps.
 - Type checking is being introduced gradually. Mypy checks only
   `tools/check_release_metadata.py` in strict mode, targeting Python 3.10.
-  `poetry run mypy` is the configured CI gate; library typing is not covered yet.
+  `uv run --locked mypy` is the configured CI gate; library typing is not covered yet.
   Expand the checked scope explicitly before requiring broader runs.
 - Preserve existing tensor, array, dictionary, and dataclass contracts. Do not
   add wrappers, conversions, or `cast()` calls just to silence a checker.
@@ -128,7 +128,8 @@ Real checkpoint, optional-package, slow, and GPU tests belong in explicit checks
 `--slow`, `--optional`, and `--cuda` each select only their marked category and
 otherwise skip it. Run categories separately. Do not assume `--all-extras`
 installs undeclared optional packages or that a skipped integration test validated
-anything. Check collection, skips, and execution when adding a CI gate.
+anything. After explicitly installing optional packages, use `uv run --no-sync`
+for those checks so automatic synchronization does not remove them. Check collection, skips, and execution when adding a CI gate.
 
 Run the narrowest meaningful checks, then the required CI checks. Avoid unrelated
 formatting or repeated full suites without a new reason. Report the exact scope,
@@ -136,28 +137,29 @@ results, and any unverified device, version, or optional path.
 
 ## Current development commands
 
-Poetry 2.2.1 and `poetry.lock` remain authoritative until the planned uv migration
-lands. Do not create a second project lockfile or silently switch tools mid-task.
+uv 0.11.4 and `uv.lock` are authoritative. The required uv version is declared
+in `pyproject.toml`; use locked synchronization and keep one project lockfile.
+The build backend remains poetry-core 2.2.1; Poetry CLI is not needed.
 Use [CONTRIBUTING.md](CONTRIBUTING.md) for setup and
 [the release guide](docs/releasing.md) before changing publication.
 
 | Task | Command from repository root |
 | --- | --- |
-| Synchronize development environment | `poetry sync --all-extras` |
-| Targeted test | `poetry run pytest path/to/test_file.py -x` |
-| Ordinary offline suite | `HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 poetry run pytest` |
-| Coverage | `HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 poetry run pytest --cov=cellseg_models_pytorch --cov-report=xml` |
-| Release guard tests | `poetry run python -m unittest discover -s tools/tests -v` |
-| Hooks for changed files | `poetry run pre-commit run --files <changed-files>` |
-| Install commit and push hooks | `poetry run pre-commit install --hook-type pre-commit --hook-type pre-push` |
-| Build distributions | `poetry build` |
+| Synchronize development environment | `uv sync --locked --all-extras` |
+| Targeted test | `uv run --locked pytest path/to/test_file.py -x` |
+| Ordinary offline suite | `HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked pytest` |
+| Coverage | `HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked pytest --cov=cellseg_models_pytorch --cov-report=xml` |
+| Release guard tests | `uv run --locked python -m unittest discover -s tools/tests -v` |
+| Hooks for changed files | `uv run --locked pre-commit run --files <changed-files>` |
+| Install commit and push hooks | `uv run --locked pre-commit install --hook-type pre-commit --hook-type pre-push` |
+| Build distributions | `uv build` |
 
 Ruff 0.17.0 is the development linter/formatter and matches the pre-commit hook
 revision. Black, isort, and Flake8 are no longer parallel toolchains. Preserve the
 current lint rule scope unless a separate cleanup establishes broader coverage.
 CI checks Ruff on `tools/` and strict mypy on the release-version guard; this is
-not a passing whole-library lint or typing claim. Use `poetry run ruff check tools`,
-`poetry run ruff format --check tools`, and `poetry run mypy` locally. Never bypass
+not a passing whole-library lint or typing claim. Use `uv run --locked ruff check tools`,
+`uv run --locked ruff format --check tools`, and `uv run --locked mypy` locally. Never bypass
 hooks or hide failures with broad ignores.
 
 ## Documentation and delivery
