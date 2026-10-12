@@ -54,11 +54,15 @@ jobs:
           HF_HUB_OFFLINE: "1"
         run: poetry run pytest --cov cellseg_models_pytorch/ --cov-report xml --junitxml=test-results.xml
 
-      - name: Check geospatial helpers with Numba JIT enabled
+      - name: Check numerical helpers with Numba JIT enabled
         env:
           NUMBA_DISABLE_JIT: "0"
+          NUMBA_NUM_THREADS: "2"
           HF_HUB_OFFLINE: "1"
-        run: poetry run pytest cellseg_models_pytorch/utils/tests/test_geospatial_io.py
+        run: >-
+          poetry run pytest cellseg_models_pytorch/utils/tests/test_geospatial_io.py
+          cellseg_models_pytorch/transforms/tests/test_inst_transforms.py
+          cellseg_models_pytorch/postproc/tests/test_postproc.py
 
       - name: Preserve test reports
         if: always()

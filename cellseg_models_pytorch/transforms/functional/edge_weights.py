@@ -60,7 +60,7 @@ def gen_weight_maps(
     near1_dst = np.amin(stacked_inst_bgd_dst, axis=2)
     near2_dst = np.expand_dims(near1_dst, axis=2)
     near2_dst = stacked_inst_bgd_dst - near2_dst
-    near2_dst[near2_dst == 0] = np.PINF  # very large
+    near2_dst[near2_dst == 0] = np.inf
     near2_dst = np.amin(near2_dst, axis=2)
     near2_dst[inst_map > 0] = 0  # the instances
     near2_dst = near2_dst + near1_dst
