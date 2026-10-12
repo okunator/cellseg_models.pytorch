@@ -9,6 +9,10 @@
 
 ## Fixes
 
+- Adopt NumPy 2 (2.2.6 or newer below 2.6), Numba 0.68, and newer compatible
+  SciPy, scikit-image, scikit-learn, and OpenCV 4 releases. Python 3.10 retains
+  its compatible dependency versions; newer Python versions use newer wheels.
+
 - Preserve boundary-weight generation and uint8 posterization with NumPy 2 by
   replacing its removed infinity alias and using an unsigned eight-bit mask.
 

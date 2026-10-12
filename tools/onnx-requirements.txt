@@ -1,5 +1,5 @@
 # Explicit export-test packages; ordinary inference does not require these.
-# ml-dtypes 0.6 requires NumPy 2, outside the current locked baseline.
+# Keep these export-test pins independent of numerical dependency updates.
 onnx==1.23.2
 onnxscript==0.7.2
 onnxruntime==1.31.0
