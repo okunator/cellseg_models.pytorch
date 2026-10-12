@@ -52,10 +52,11 @@ For performance changes, include hardware, precision, workload, memory, and
 measurement details. Keep data/checkpoint licenses and attribution intact.
 
 Ruff 0.17.0 is the single linter/formatter and matches the hook revision. CI checks
-`tools/` with Ruff and runs strict mypy on `tools/check_release_metadata.py`,
+`tools/` with Ruff and runs strict mypy on `tools/check_release_metadata.py` and
+`cellseg_models_pytorch/utils/convolve.py`,
 targeting Python 3.10. Run `uv run --locked ruff check tools`,
-`uv run --locked ruff format --check tools`, and `uv run --locked mypy`. Library typing is
-not gated yet; expand its scope gradually without broad suppressions or casts.
+`uv run --locked ruff format --check tools`, and `uv run --locked mypy`. Other library
+modules remain outside this gate; expand it gradually without broad suppressions or casts.
 Annotate changed public APIs accurately and document tensor contracts.
 
 ## Pull requests and releases

@@ -39,6 +39,10 @@ jobs:
       - name: Install dependencies and current package
         run: uv sync --locked --all-extras
 
+      - name: Check strict library typing
+        if: matrix.python-version == '3.11'
+        run: uv run --no-sync mypy cellseg_models_pytorch/utils/convolve.py
+
       - name: Run tests
         env:
           NUMBA_DISABLE_JIT: "1"
@@ -162,5 +166,5 @@ jobs:
         run: |
           uv run --no-sync ruff check tools
           uv run --no-sync ruff format --check tools
-          uv run --no-sync mypy
+          uv run --no-sync mypy tools/check_release_metadata.py
           uv run --no-sync python -m unittest discover -s tools/tests -v
