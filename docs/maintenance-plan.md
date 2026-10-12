@@ -6,14 +6,16 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-Status reconciled on 2026-10-11 against main at `e3b2ab5`, version `0.1.30`.
+Status reconciled on 2026-10-12 against main at `a99828d`, version `0.1.30`.
 PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
 exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
 runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
 PRs 93/94 update the HTTP/cache stack and Pillow. PR 86 is superseded and closed.
 PR 96 updates geometry/serialization, PR 97 modernizes developer tooling and
 adds the first strict typing gate, and PR 98 repairs CPU WSI tile execution.
-All 13 hosted checks passed for PRs 97/98.
+PR 99 preserves repo-only checkpoint references and removes the one-off docs
+reports. Checkpoint comparisons remain manual, with numerical policy unresolved.
+All 13 hosted checks passed for PRs 97/98/99.
 The old ONNX review checkout is historical; its corrections are merged.
 
 The completed upgrade PRs passed all 12 hosted checks on Python 3.10/3.11/3.12,
@@ -223,6 +225,33 @@ as separate feature work.
 - [ ] Keep each maintenance batch independently revertible. Preserve the previous
   release and baseline artifacts; fix or revert regressions before advancing.
 
+
+## Cleanup after maintenance work
+
+Review temporary material after each completed batch and before the maintenance
+release candidate. Record its purpose and removal trigger in the relevant plan
+item or PR; use this plan rather than creating another inventory document.
+
+- Remove completed investigation notes, diagnostics, duplicate reports, and
+  obsolete phase plans once their remaining facts have reached user/contributor
+  guidance or a maintained regression. PRs and Git history retain past evidence.
+- Keep fixtures only while a maintained check consumes them. Remove superseded
+  data with its obsolete check, and keep reference data outside distributions.
+- Review CI duration, downloads, matrix versions, and artifact storage. Retire
+  temporary jobs and redundant checks; use manual upgrade/release runs for costly
+  investigations without a continuing per-PR purpose. Preserve distinct supported
+  source, installed-package, export, and release contracts.
+- Revisit deferred design drafts when adopted or cancelled. Consolidate the
+  maintenance plan/review history at the end, retaining actionable open work and
+  current compatibility guidance instead of a permanent progress diary.
+
+Release cleanup checks:
+
+- [ ] Remove resolved maintenance notes and unused diagnostic scripts/fixtures.
+- [ ] Inspect wheel/source contents and sizes for accidental test/report payloads.
+- [ ] Review CI timings and retire obsolete jobs, matrix entries, and reports.
+- [ ] Check remaining documentation links and unresolved tasks after consolidation.
+
 ## Progress and remaining evidence
 
 CI/publication guidance, agent instructions, and Google-style library docstrings
@@ -251,8 +280,9 @@ checkpoint comparisons manually for numerical upgrades and releases; they are
 exploratory until the CPU comparison policy is reviewed. Linux runs exposed
 small dense-logit differences and sometimes changed CellPose instance labels
 against the preserved macOS reference. No arrays or thresholds were changed.
-This scoped fixture PR can proceed independently of that investigation; do not
-treat it as a completed prediction gate or advance numerical upgrades yet.
+PR 99 is merged independently of that investigation. Do not treat these
+exploratory comparisons as a completed prediction gate or advance numerical
+upgrades yet.
 The repo-level fixtures and integration test are excluded from distributions
 by living outside the runtime package. This covers one image and two models,
 not a representative dataset, registered-name loading, or accelerator validation.
