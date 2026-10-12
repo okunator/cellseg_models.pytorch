@@ -6,7 +6,7 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-Status reconciled on 2026-10-12 against main at `6e97f5a`, version `0.1.30`.
+Status reconciled on 2026-10-12 against main at `1c696ca`, version `0.1.30`.
 PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
 exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
 runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
@@ -20,8 +20,9 @@ PR 101 calibrates pretrained StarDist ONNX classifier precision independently of
 the exporter and requires exact dense class decisions and final masks.
 PR 102 updates PyTorch/timm and their security floors, with six-image CPU
 comparisons and corrected torchvision/Python metadata. All 13 hosted checks
-passed for PRs 97/98/99/100/101/102/103. PR 103 completes the
+passed for PRs 97/98/99/100/101/102/103/104. PR 103 completes the
 numerical/image batch with compiled-kernel coverage and NumPy 2 regressions.
+PR 104 fixes shared percentile clipping/zero spans and DRFNS byte saturation.
 The old ONNX review checkout is historical; its corrections are merged.
 
 The completed upgrade PRs passed all 12 hosted checks on Python 3.10/3.11/3.12,
@@ -69,8 +70,8 @@ category; run them separately from ordinary tests.
    broader dataset and accelerator validation remain release work.
 5. Developer tooling and the strict release-tool typing scope are complete (97).
    Expand library typing separately from runtime upgrades and the uv migration.
-6. Repair the shared percentile normalizer's clipping and zero-span contracts,
-   then finish remaining security triage and concrete correctness issues. Model,
+6. Finish the HTML/highlighting security batch, then concrete correctness issues.
+   The shared percentile normalizer and DRFNS fixes are merged (104). Model,
    numerical/image, and geometry batches are merged (102/103/96).
    Add newer Python CI coverage after dependency wheel/compatibility checks;
    change the Python floor only in an explicit support
@@ -107,9 +108,11 @@ checks that cannot be reproduced locally.
 
 ## Dependency audit and prediction baseline
 
-- [ ] Triage the repository's dependency security advisories and prioritize fixes
-  affecting reachable code paths. Include resolved advisories in each upgrade's
-  validation record.
+- [x] Triage the currently open dependency advisories by reachable paths. The
+  HTML/highlighting batch raises patched floors for the final five open alerts;
+  required hosted checks and GitHub rescanning after merge remain its gate.
+  Refresh the audit before the release candidate; this is not a blanket security
+  certification or proof against future advisories.
 - [x] Declare the six audited direct runtime imports explicitly (PR 90).
 - [x] Repair optional training dataset imports and WSI visualization imports
   without dynamic package export workarounds (PRs 89/91).
@@ -219,11 +222,10 @@ in-memory inference guidance in issue 69. Add reproducing tests for correctness
 fixes before changing behavior. Treat 3D support and expanded model architectures
 as separate feature work.
 
-- [x] Implement shared `percentile_normalize99` clipping and zero-span handling
-  with value, axis, input-preservation and caller regressions. Zero percentile
-  spans map to zero before clipping; reversed bounds raise ValueError. Fix DRFNS
-  byte saturation under strict arithmetic checks. Hosted validation is the merge
-  gate. Clipping can intentionally change enhanced post-processing outputs.
+- [x] Fix `percentile_normalize99` clipping/zero spans and DRFNS byte saturation
+  with value, input-preservation and strict caller regressions (PR 104). Hosted
+  source, compiled-kernel and clean-package checks pass. Clipping can intentionally
+  change enhanced post-processing outputs, as documented in the release notes.
 - [ ] Make the quick start executable on CPU with an explicit image path, device,
   checkpoint, normalization, and interpretation of outputs. Document GPU use.
 - [ ] Provide a runnable training script and update notebooks to the same API.
@@ -302,10 +304,9 @@ PR 103 compares six images, two pinned models, three annotation masks, training
 targets, metrics, tissue masks and small reconstruction fixtures before/after
 numerical updates, separately with Numba enabled and disabled. Keep those
 batch results in the PR; future changes repeat only the affected checks.
-The current normalizer fix must retain unclipped nonzero-span results, validate
-requested clipping/zero spans, reproduce the DRFNS range/overflow failures, and
-repeat maintained checkpoints and source/installed-package checks. Existing
-reference arrays and tolerances are not rewritten for this behavior fix.
+PR 104 preserves sampled unclipped results and the maintained checkpoint
+comparisons while fixing requested clipping/zero spans and DRFNS failures.
+Keep its direct regressions; the validation record lives in the PR.
 The repo-level fixtures and integration test are excluded from distributions
 by living outside the runtime package. This covers one image and two models,
 not a representative dataset, registered-name loading, or accelerator validation.
@@ -322,9 +323,17 @@ Completed model and numerical investigations are retained in
 [PR 103](https://github.com/okunator/cellseg_models.pytorch/pull/103), with their
 temporary references retired after use. OpenCV 4 and Python 3.10 remain supported;
 OpenCV 5 and newer Python coverage require separate compatibility checks.
-No additional CI job or diagnostic payload is needed for the normalizer fix.
-The remaining open advisory groups are HTML parsing/highlighting (soupsieve and
-Pygments); triage and update them independently before the release candidate.
+Current HTML/highlighting batch: require Soup Sieve >=2.9.2,<3 (lock 2.10) and
+Pygments >=2.20.0,<3 (lock 2.21.0), both existing runtime transitives. Libpysal
+uses BeautifulSoup find/find_all/text for example metadata; Mpire uses a fixed
+Python traceback lexer. The untrusted-selector and ADL lexer attack paths are
+not called by this library. The five currently open advisory ranges are
+GHSA-j934-xhv5-fg8f, GHSA-gjv8-xp57-g29c, GHSA-2wc2-fm75-p42x,
+GHSA-836r-79rf-4m37 and GHSA-5239-wwwm-4pmq. Validate the actual offline HTML
+and worker-error integrations, bounded selector/lexer inputs, unchanged unrelated
+lock records, source tests and installed-package metadata. Add no CI job or
+permanent diagnostic; the temporary probe retires after this batch. Confirm
+GitHub closes these alerts after merge before declaring this audit complete.
 
 ## Deferred structure and validation records
 
