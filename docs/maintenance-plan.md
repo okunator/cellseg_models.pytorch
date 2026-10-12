@@ -6,7 +6,7 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-Status reconciled on 2026-10-12 against main at `17766d4`, version `0.1.30`.
+Status reconciled on 2026-10-12 against main at `a6d9c6d`, version `0.1.30`.
 PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
 exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
 runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
@@ -20,11 +20,12 @@ PR 101 calibrates pretrained StarDist ONNX classifier precision independently of
 the exporter and requires exact dense class decisions and final masks.
 PR 102 updates PyTorch/timm and their security floors, with six-image CPU
 comparisons and corrected torchvision/Python metadata. All 13 hosted checks
-passed for PRs 97/98/99/100/101/102/103/104/105/106/107/108. PR 103 completes the
+passed for PRs 97/98/99/100/101/102/103/104/105/106/107/108/109. PR 103 completes the
 numerical/image batch with compiled-kernel coverage and NumPy 2 regressions.
 PR 104 fixes shared percentile clipping/zero spans and DRFNS byte saturation.
 PR 106 fixes low-IoU instance assignment, FP/FN axes and sparse IDs, with
 independent metric validation and public regressions.
+PR 109 repairs HDF5 sample counts and auxiliary target association.
 PR 107 retires legacy notebooks; PR 108 preserves the README quick start.
 Replacement documentation and examples are deferred to the docs-pages phase.
 PR 105 updates locked HTML/highlighting transitives and removes unnecessary
@@ -76,17 +77,19 @@ category; run them separately from ordinary tests.
    broader dataset and accelerator validation remain release work.
 5. Developer tooling and the strict release-tool typing scope are complete (97).
    Expand library typing separately from runtime upgrades and the uv migration.
-6. Metric-matching issue 73 is resolved on main (106), and legacy notebooks
-   are retired (107/108). Continue the optional dependency/import audit and remaining
-   correctness work. User guides and examples move to the docs-pages phase.
+6. Metric-matching issue 73 is resolved on main (106), legacy notebooks are
+   retired (107/108), and real HDF5 dataset repairs are merged (109). The bounded
+   dependency inventory is complete for this migration; further optional/backend
+   repairs are separate follow-ups rather than an open-ended prerequisite to uv.
+   User guides and examples move to the docs-pages phase.
    The shared percentile normalizer and DRFNS fixes are merged (104). Model,
    numerical/image, and geometry batches are merged (102/103/96).
    Add newer Python CI coverage after dependency wheel/compatibility checks;
    change the Python floor only in an explicit support
    policy patch. The Python floor remains 3.10. Python 3.12 source and clean
    distribution checks are already merged; newer versions require validation.
-7. Migrate Poetry to uv after dependency audit and baseline validation, then
-   complete release-candidate checks. Keep API docstrings and release notes with
+7. Complete the independently reviewable uv migration, then add a small library
+   typing scope and perform cleanup/release-candidate checks. Keep API docstrings and release notes with
    functional changes; build user documentation pages and examples in their own
    later phase. Keep trusted publisher authentication pending until an
    authorized publication verifies it.
@@ -164,7 +167,8 @@ Completion requires a clean installation and a reproducible inference baseline.
 ## Dependency upgrades and support policy
 
 - [x] Update developer tools independently, with Ruff as the single formatter/
-  linter and a narrow strict release-tool gate. Poetry remains authoritative.
+  linter and a narrow strict release-tool gate (97). The current uv migration
+  supersedes its Poetry workflow while preserving the same tool versions.
 - [x] Upgrade HTTP/cache security dependencies and Pillow independently with
   compatibility evidence (PRs 93/94).
 - [x] Upgrade geometry/serialization with round-trip, cross-version, coordinate,
@@ -207,20 +211,28 @@ Completion requires a clean installation and a reproducible inference baseline.
 
 ## Poetry to uv migration
 
-Migrate after the dependency audit and a verified baseline, in a dedicated PR
-without bundling runtime upgrades, a source-layout move, or a build-backend rewrite.
+The migration is prepared after the bounded dependency audit and sampled baseline
+checks, in a dedicated PR. Standard project metadata, uv 0.11.4 and `uv.lock`
+replace the Poetry CLI workflow. The build backend remains poetry-core 2.2.1,
+now explicitly pinned. All 128 active Poetry package/version records are retained;
+only one unreachable lock entry is retired and an equivalent CUDA toolkit version
+is normalized. Further dependency upgrades remain separate.
 
-- [ ] Convert remaining metadata/dependencies to standard `[project]` fields and
+Completion requires the existing hosted gates and installed-artifact checks;
+no new CI job or speculative extra is introduced.
+
+- [x] Convert remaining metadata/dependencies to standard `[project]` fields and
   development dependency groups (name/Python bounds are already standard);
   preserve package identity, extras, Python bounds, URLs, and wheel contents.
-- [ ] Generate `uv.lock`, inspect dependency differences, and verify the supported
-  CPU/platform matrix. Make PyTorch index choices explicit where needed.
-- [ ] Replace Poetry commands in CI, release checks, hooks, contributor and agent
+- [x] Generate `uv.lock` preserving active resolved versions. Keep PyPI as the
+  project source and the two CPU PyTorch overrides explicit in the existing ONNX
+  jobs. Supported Python/Linux CI verification remains the migration gate.
+- [x] Replace Poetry commands in CI, release checks, hooks, contributor and agent
   guidance together. Teach the version guard to read the new metadata location.
 - [ ] Verify clean wheel/source installation, public/checkpoint behavior, and the
   prediction baseline. Keep the current build backend unless changing it is needed.
-- [ ] Remove `poetry.lock` and obsolete tooling only when uv is the single verified
-  project workflow; use locked synchronization in CI and documented local setup.
+- [x] Remove `poetry.lock` and obsolete tooling now that uv is the single locally
+  verified project workflow; use locked synchronization in CI and documented local setup.
 
 ## Issues and documentation
 
@@ -243,7 +255,7 @@ separate feature work.
 - [x] Retire the legacy example notebooks (107) and preserve the README (108).
   The proposed training example is deferred; Git history preserves it without
   an archived copy in the repo.
-- [ ] Merge HDF5 training dataset repairs found by the real optional-backend
+- [x] Merge HDF5 training dataset repairs (109) found by the real optional-backend
   audit: configured-image sample counts, aligned selected arrays and correct
   auxiliary target ordering across instance keys/transforms. Validate real
   Array/CArray/EArray files; keep dependency declarations separate.
