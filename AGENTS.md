@@ -18,6 +18,7 @@ future work; it does not make planned tools or features available today.
 | `cellseg_models_pytorch/torch_datasets/`, `transforms/` | Data loading and preprocessing |
 | `cellseg_models_pytorch/losses/`, `metrics/` | Training objectives and evaluation |
 | `cellseg_models_pytorch/**/tests/`, `conftest.py` | Library tests and shared fixtures |
+| `tests/`, `tests/fixtures/` | Repository-only checkpoint comparisons and reference data |
 | `tools/`, `tools/tests/` | Build and release checks and their tests |
 | `examples/`, `docs/`, `.github/` | User examples, maintenance guidance, CI |
 
