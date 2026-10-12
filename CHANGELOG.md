@@ -9,6 +9,10 @@
 
 ## Fixes
 
+- Derive HDF5 training dataset length from the configured image array and reject
+  mismatched image/mask sample counts. Preserve the correct auxiliary target for
+  each instance key when using multiple instance masks or transforms.
+
 - Match instances one-to-one for panoptic quality and object precision below
   0.5 IoU, maximizing valid pairs and then summed IoU. Preserve strict threshold
   comparison and the historical `average_precision` formula, TP / (TP + FP).

@@ -6,7 +6,7 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-Status reconciled on 2026-10-12 against main at `27d06a6`, version `0.1.30`.
+Status reconciled on 2026-10-12 against main at `17766d4`, version `0.1.30`.
 PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
 exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
 runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
@@ -20,11 +20,13 @@ PR 101 calibrates pretrained StarDist ONNX classifier precision independently of
 the exporter and requires exact dense class decisions and final masks.
 PR 102 updates PyTorch/timm and their security floors, with six-image CPU
 comparisons and corrected torchvision/Python metadata. All 13 hosted checks
-passed for PRs 97/98/99/100/101/102/103/104/105/106. PR 103 completes the
+passed for PRs 97/98/99/100/101/102/103/104/105/106/107/108. PR 103 completes the
 numerical/image batch with compiled-kernel coverage and NumPy 2 regressions.
 PR 104 fixes shared percentile clipping/zero spans and DRFNS byte saturation.
 PR 106 fixes low-IoU instance assignment, FP/FN axes and sparse IDs, with
 independent metric validation and public regressions.
+PR 107 retires legacy notebooks; PR 108 preserves the README quick start.
+Replacement documentation and examples are deferred to the docs-pages phase.
 PR 105 updates locked HTML/highlighting transitives and removes unnecessary
 runtime floors; downloader/cache protections remain. The old ONNX review checkout
 is historical; its corrections are merged.
@@ -74,8 +76,8 @@ category; run them separately from ordinary tests.
    broader dataset and accelerator validation remain release work.
 5. Developer tooling and the strict release-tool typing scope are complete (97).
    Expand library typing separately from runtime upgrades and the uv migration.
-6. Metric-matching issue 73 is resolved on main (106). Retire the legacy
-   notebooks, then continue the optional dependency/import audit and remaining
+6. Metric-matching issue 73 is resolved on main (106), and legacy notebooks
+   are retired (107/108). Continue the optional dependency/import audit and remaining
    correctness work. User guides and examples move to the docs-pages phase.
    The shared percentile normalizer and DRFNS fixes are merged (104). Model,
    numerical/image, and geometry batches are merged (102/103/96).
@@ -115,8 +117,8 @@ checks that cannot be reproduced locally.
 ## Dependency audit and prediction baseline
 
 - [x] Triage the currently open dependency advisories by reachable paths.
-  PR 105 is merged with all 13 hosted checks passing. Pygments is rescanned and
-  closed; four Soup Sieve alerts still await rescanning of the patched lock.
+  PR 105 is merged with all 13 hosted checks passing. GitHub rescanning closes
+  the remaining alerts; no open dependency alerts were reported on 2026-10-12.
   Refresh the audit before the release candidate; this is not a blanket security
   certification or proof against future advisories.
 - [x] Declare the six audited direct runtime imports explicitly (PR 90).
@@ -238,9 +240,13 @@ separate feature work.
   pass; default-threshold values and AJI matching policy remain unchanged.
   The issue comment is drafted for maintainer review; release availability remains
   pending publication.
-- [ ] Merge retirement of the legacy example notebooks. Drop the proposed
-  standalone training script/test from this maintenance batch; Git history
-  preserves both for reference without retaining archived copies in the repo.
+- [x] Retire the legacy example notebooks (107) and preserve the README (108).
+  The proposed training example is deferred; Git history preserves it without
+  an archived copy in the repo.
+- [ ] Merge HDF5 training dataset repairs found by the real optional-backend
+  audit: configured-image sample counts, aligned selected arrays and correct
+  auxiliary target ordering across instance keys/transforms. Validate real
+  Array/CArray/EArray files; keep dependency declarations separate.
 - [ ] Build documentation pages after the maintenance work, with a verified CPU
   quick start, training and fine-tuning examples, model/checkpoint/backbone and
   optional-dependency guidance. Validate examples when introduced and decide
@@ -354,8 +360,8 @@ need separate compatibility checks before further parent upgrades.
 
 Batch validation is recorded in [PR 105](https://github.com/okunator/cellseg_models.pytorch/pull/105).
 Its temporary probes remain outside the repository and retire after the batch.
-Confirm the remaining Soup Sieve alerts close after rescanning before declaring
-this audit complete.
+GitHub rescanning reports no remaining open alerts on 2026-10-12. Refresh
+the audit before the release candidate.
 
 ## Deferred structure and validation records
 
