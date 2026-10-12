@@ -6,7 +6,7 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-Status reconciled on 2026-10-12 against main at `a6d9c6d`, version `0.1.30`.
+Status reconciled on 2026-10-12 against main at `c870c5e`, version `0.1.30`.
 PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
 exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
 runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
@@ -26,6 +26,7 @@ PR 104 fixes shared percentile clipping/zero spans and DRFNS byte saturation.
 PR 106 fixes low-IoU instance assignment, FP/FN axes and sparse IDs, with
 independent metric validation and public regressions.
 PR 109 repairs HDF5 sample counts and auxiliary target association.
+PR 110 completes the uv migration with all 13 hosted checks passing.
 PR 107 retires legacy notebooks; PR 108 preserves the README quick start.
 Replacement documentation and examples are deferred to the docs-pages phase.
 PR 105 updates locked HTML/highlighting transitives and removes unnecessary
@@ -88,8 +89,8 @@ category; run them separately from ordinary tests.
    change the Python floor only in an explicit support
    policy patch. The Python floor remains 3.10. Python 3.12 source and clean
    distribution checks are already merged; newer versions require validation.
-7. Complete the independently reviewable uv migration, then add a small library
-   typing scope and perform cleanup/release-candidate checks. Keep API docstrings and release notes with
+7. The uv migration is merged (110). Add a small library typing scope, then
+   perform cleanup/release-candidate checks. Keep API docstrings and release notes with
    functional changes; build user documentation pages and examples in their own
    later phase. Keep trusted publisher authentication pending until an
    authorized publication verifies it.
@@ -199,8 +200,13 @@ Completion requires a clean installation and a reproducible inference baseline.
 - [x] Upgrade mypy and align Ruff, hooks, configuration, and developer commands.
 - [x] Establish a first strict CI scope for the release-version guard. This checks
   developer tooling, not the segmentation library.
-- [ ] Inventory library annotation errors/stubs and add a tractable numerical
-  helper or output-contract scope, then increase coverage gradually.
+- [ ] Add the first strict library scope: `utils/convolve.py`, shared by inference,
+  SSIM and spatially weighted losses. The initial inventory finds five annotation
+  errors: padding accepts a sequence, and device/dtype defaults are optional.
+  Correct annotations without changing numerical behavior; verify kernel values,
+  padding, channel isolation and gradients. Reuse the existing Python 3.11 source
+  job; leave the developer-only environment free of runtime dependencies.
+  Broader annotation/stub inventory remains incremental follow-up work.
 - [ ] Correct optional tensor fields, model/output types, NumPy array dtypes, and
   public parameter/return types without changing runtime representations or APIs.
   Keep shapes, ranges, and device requirements documented and tested at boundaries.
@@ -211,8 +217,8 @@ Completion requires a clean installation and a reproducible inference baseline.
 
 ## Poetry to uv migration
 
-The migration is prepared after the bounded dependency audit and sampled baseline
-checks, in a dedicated PR. Standard project metadata, uv 0.11.4 and `uv.lock`
+The migration is merged in PR 110 after the bounded dependency audit and sampled
+baseline checks. Standard project metadata, uv 0.11.4 and `uv.lock`
 replace the Poetry CLI workflow. The build backend remains poetry-core 2.2.1,
 now explicitly pinned. All 128 active Poetry package/version records are retained;
 only one unreachable lock entry is retired and an equivalent CUDA toolkit version
@@ -229,8 +235,10 @@ no new CI job or speculative extra is introduced.
   jobs. Supported Python/Linux CI verification remains the migration gate.
 - [x] Replace Poetry commands in CI, release checks, hooks, contributor and agent
   guidance together. Teach the version guard to read the new metadata location.
-- [ ] Verify clean wheel/source installation, public/checkpoint behavior, and the
-  prediction baseline. Keep the current build backend unless changing it is needed.
+- [x] Verify clean wheel/source installation, public/checkpoint behavior, and the
+  sampled prediction baseline (110). All 13 hosted gates pass; local ordinary
+  tests, compiled helpers and the two pinned checkpoint comparisons pass.
+  Keep the current build backend unless changing it is needed.
 - [x] Remove `poetry.lock` and obsolete tooling now that uv is the single locally
   verified project workflow; use locked synchronization in CI and documented local setup.
 

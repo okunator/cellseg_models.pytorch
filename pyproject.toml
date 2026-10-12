@@ -177,5 +177,5 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
 python_version = "3.10"
-files = ["tools/check_release_metadata.py"]
+files = ["tools/check_release_metadata.py", "cellseg_models_pytorch/utils/convolve.py"]
 strict = true

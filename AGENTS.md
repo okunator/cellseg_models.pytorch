@@ -61,9 +61,11 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 - Add accurate annotations to new or changed public APIs. Prefer `list[T]`,
   `dict[K, V]`, and `X | None` where they work on the supported Python versions.
   Avoid unrelated annotation sweeps.
-- Type checking is being introduced gradually. Mypy checks only
-  `tools/check_release_metadata.py` in strict mode, targeting Python 3.10.
-  `uv run --locked mypy` is the configured CI gate; library typing is not covered yet.
+- Type checking is being introduced gradually. Mypy checks
+  `tools/check_release_metadata.py` and
+  `cellseg_models_pytorch/utils/convolve.py` in strict mode, targeting Python 3.10.
+  `uv run --locked mypy` runs both scopes; CI checks the library helper in the
+  existing Python 3.11 source job and the release guard in the developer-only job.
   Expand the checked scope explicitly before requiring broader runs.
 - Preserve existing tensor, array, dictionary, and dataclass contracts. Do not
   add wrappers, conversions, or `cast()` calls just to silence a checker.
@@ -157,8 +159,8 @@ Use [CONTRIBUTING.md](CONTRIBUTING.md) for setup and
 Ruff 0.17.0 is the development linter/formatter and matches the pre-commit hook
 revision. Black, isort, and Flake8 are no longer parallel toolchains. Preserve the
 current lint rule scope unless a separate cleanup establishes broader coverage.
-CI checks Ruff on `tools/` and strict mypy on the release-version guard; this is
-not a passing whole-library lint or typing claim. Use `uv run --locked ruff check tools`,
+CI checks Ruff on `tools/` and strict mypy on the release-version guard and
+convolution helper; this is not a passing whole-library lint or typing claim. Use `uv run --locked ruff check tools`,
 `uv run --locked ruff format --check tools`, and `uv run --locked mypy` locally. Never bypass
 hooks or hide failures with broad ignores.
 

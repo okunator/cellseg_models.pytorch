@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 import torch
 import torch.nn.functional as F
 
@@ -5,7 +7,7 @@ __all__ = ["filter2D", "gaussian", "gaussian_kernel2d"]
 
 
 # https://github.com/kornia/kornia/blob/main/kornia/filters/filter.py#L32
-def _compute_padding(kernel_size: list[int]) -> list[int]:
+def _compute_padding(kernel_size: Sequence[int]) -> list[int]:
     """Compute padding tuple."""
     if len(kernel_size) < 2:
         raise AssertionError(kernel_size)
@@ -30,11 +32,12 @@ def filter2D(input_tensor: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
     """Convolves a given kernel on input tensor without losing dimensional shape.
 
     Args:
-        input_tensor: Input image/tensor.
-        kernel: Convolution kernel/window.
+        input_tensor: Floating BCHW image tensor.
+        kernel: Kernel of shape (C, 1, KH, KW), on the input device and dtype.
 
     Returns:
-        The convolved tensor of same shape as the input.
+        The convolved BCHW tensor, preserving shape, dtype and device.
+        Replicate padding includes asymmetric padding for even kernels.
     """
     (_, channel, _, _) = input_tensor.size()
 
@@ -48,8 +51,8 @@ def filter2D(input_tensor: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
 def gaussian(
     window_size: int,
     sigma: float,
-    device: torch.device = None,
-    dtype: torch.dtype = None,
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
 ) -> torch.Tensor:
     """Create a gaussian 1D tensor.
 
@@ -60,7 +63,8 @@ def gaussian(
         dtype: Data type for the tensor.
 
     Returns:
-        A gaussian 1D tensor. Shape: (window_size, ).
+        A normalized tensor of shape (window_size,), on the requested device.
+        Defaults to float32 and PyTorch's default device.
     """
     if dtype is None:
         dtype = torch.float32
@@ -78,22 +82,27 @@ def gaussian_kernel2d(
     window_size: int,
     sigma: float,
     n_channels: int = 1,
-    device: torch.device = None,
-    dtype: torch.dtype = None,
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
 ) -> torch.Tensor:
-    """Create 2D window_size**2 sized kernel a gaussial kernel.
+    """Create a normalized square Gaussian kernel for depthwise convolution.
 
     Args:
         window_size: Number of rows and columns for the output tensor.
         sigma: Std of the gaussian distribution.
-        n_channel (int):
-            Number of channels in the image that will be convolved with
-            this kernel.
+        n_channels: Number of channels in the image to convolve.
         device: Device for the kernel.
         dtype: Data type for the kernel.
 
     Returns:
-        A tensor of shape (1, 1, window_size, window_size)
+        A tensor of shape (n_channels, 1, window_size, window_size),
+        with each channel summing to one. Defaults to float32 and PyTorch's
+        default device.
+
+    Examples:
+        >>> kernel = gaussian_kernel2d(3, 1.0, n_channels=2)
+        >>> kernel.shape
+        torch.Size([2, 1, 3, 3])
     """
     kernel_x = gaussian(window_size, sigma, device=device, dtype=dtype)
     kernel_y = gaussian(window_size, sigma, device=device, dtype=dtype)
