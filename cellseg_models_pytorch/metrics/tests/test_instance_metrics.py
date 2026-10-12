@@ -254,3 +254,36 @@ def test_matching_excludes_iou_equal_to_threshold():
     from cellseg_models_pytorch.metrics.functional import _match_instances
 
     np.testing.assert_array_equal(_match_instances(np.array([[0.5]]), 0.5), [[False]])
+
+
+@pytest.mark.parametrize("transpose", [False, True])
+def test_public_metrics_prioritize_pair_count_over_total_iou(transpose):
+    true = np.repeat([7, 21], [125, 25])[None, :]
+    pred = np.repeat([42, 3, 42], [100, 25, 25])[None, :]
+    if transpose:
+        true, pred = pred, true
+
+    # One pair has IoU 2/3; the two alternative pairs each have IoU 1/5.
+    low = panoptic_quality(true, pred, thresh=0.1)
+    high = panoptic_quality(true, pred, thresh=0.5)
+    assert low == pytest.approx({"dq": 1.0, "sq": 1 / 5, "pq": 1 / 5})
+    assert high == pytest.approx({"dq": 1 / 2, "sq": 2 / 3, "pq": 1 / 3})
+    assert average_precision(true, pred, thresh=0.1) == pytest.approx(1.0)
+    assert average_precision(true, pred, thresh=0.5) == pytest.approx(1 / 2)
+
+
+@pytest.mark.parametrize("transpose", [False, True])
+def test_sparse_ids_with_missed_and_extra_instances(transpose):
+    true = np.array([[0, 7, 7, 21, 21, 50, 50, 0]])
+    pred = np.array([[0, 42, 42, 3, 3, 0, 0, 99]])
+    if transpose:
+        true, pred = pred, true
+
+    # Four matched pixels, two missed pixels and one extra pixel give AJI 4/7.
+    assert aggregated_jaccard_index(true, pred) == pytest.approx(4 / 7)
+    assert panoptic_quality(true, pred) == pytest.approx(
+        {"dq": 2 / 3, "sq": 1.0, "pq": 2 / 3}
+    )
+    assert average_precision(true, pred) == pytest.approx(2 / 3)
+    iou = pairwise_pixel_stats(true, pred, metric_func=iou_score)[0]
+    assert pairwise_object_stats(iou > 0.5) == (2, 1, 1)

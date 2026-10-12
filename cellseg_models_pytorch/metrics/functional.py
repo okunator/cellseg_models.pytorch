@@ -166,7 +166,9 @@ def panoptic_quality(
     """Compute panoptic quality with one-to-one instance matching.
 
     Below 0.5 IoU, maximize the number of qualifying pairs, then their summed
-    IoU. At or above 0.5, qualifying pairs are already unique.
+    IoU. Lowering the threshold can increase detection quality while decreasing
+    panoptic quality because pair count takes priority over summed IoU.
+    At or above 0.5, qualifying pairs are already unique.
 
     Args:
         true: Integer instance mask (H, W), with zero as background.
