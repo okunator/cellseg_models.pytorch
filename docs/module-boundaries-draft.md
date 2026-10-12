@@ -19,8 +19,8 @@ imports of unrelated optional features rather than promising complete isolation.
 | Orchestration | Connect readers, models, reconstruction and exports | May depend on the selected features; no lower-level module imports orchestration |
 | Developer tools | Lint, types, tests, docs and builds | Separate development upgrades |
 
-These are upgrade/review groups, not new Poetry groups or published extras yet.
-Poetry development groups control developer installs; runtime extras must be
+These are upgrade/review groups, not new dependency groups or published extras yet.
+Development dependency groups control developer installs; runtime extras must be
 backed by real import boundaries and missing-dependency behavior.
 
 ## Current couplings to audit

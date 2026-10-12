@@ -8,18 +8,20 @@ small fixes can go directly to a pull request.
 
 CI targets Python 3.10, 3.11, and 3.12 on Linux for source tests and clean wheel
 and source-distribution installation checks. The minimum remains Python 3.10.
-Use a Python version in this matrix and Poetry 2.2.1. From the repository
+Use a Python version in this matrix and uv 0.11.4 (pinned in `pyproject.toml`). From the repository
 root, install the locked development dependencies and hooks:
 
 ```sh
-poetry sync --all-extras
-poetry run pre-commit install --hook-type pre-commit --hook-type pre-push
+python -m pip install uv==0.11.4
+uv sync --locked --all-extras
+uv run --locked pre-commit install --hook-type pre-commit --hook-type pre-push
 ```
 
 The package is currently at `cellseg_models_pytorch/`, with tests beside their
 modules. See [AGENTS.md](AGENTS.md) for the layout and development conventions,
-and [the maintenance plan](docs/maintenance-plan.md) for upcoming typing and uv
-work. Poetry remains the project manager until that migration lands.
+and [the maintenance plan](docs/maintenance-plan.md) for upcoming typing work.
+`uv.lock` is the single project lockfile; poetry-core remains the build backend.
+Use `uv lock` after intentional dependency edits, then `uv sync --locked`.
 
 ## Changes and checks
 
@@ -32,14 +34,17 @@ Use small, seeded tests without downloading pretrained weights. Run a targeted
 test first, then the ordinary suite when relevant:
 
 ```sh
-poetry run pytest path/to/test_file.py -x
-HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 poetry run pytest
-poetry run pre-commit run --files path/to/changed_file.py
+uv run --locked pytest path/to/test_file.py -x
+HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked pytest
+uv run --locked pre-commit run --files path/to/changed_file.py
 ```
 
 The `--slow`, `--optional`, and `--cuda` flags select separate test categories.
 Describe which category and device you tested, and list any relevant skips.
-Optional integrations require their packages to be installed explicitly. The
+Optional integrations require their packages to be installed explicitly. Run
+those checks with `uv run --no-sync pytest --optional <test-path>` after installing
+the needed packages into the project environment with `uv pip install`; ordinary
+locked synchronization removes undeclared packages. The
 [pinned CPU checkpoint baseline](tests/fixtures/checkpoint_baseline/README.md)
 has separate offline integrity and explicit public-download checks.
 For numerical changes, compare values and final masks, not only tensor shapes.
@@ -48,8 +53,8 @@ measurement details. Keep data/checkpoint licenses and attribution intact.
 
 Ruff 0.17.0 is the single linter/formatter and matches the hook revision. CI checks
 `tools/` with Ruff and runs strict mypy on `tools/check_release_metadata.py`,
-targeting Python 3.10. Run `poetry run ruff check tools`,
-`poetry run ruff format --check tools`, and `poetry run mypy`. Library typing is
+targeting Python 3.10. Run `uv run --locked ruff check tools`,
+`uv run --locked ruff format --check tools`, and `uv run --locked mypy`. Library typing is
 not gated yet; expand its scope gradually without broad suppressions or casts.
 Annotate changed public APIs accurately and document tensor contracts.
 

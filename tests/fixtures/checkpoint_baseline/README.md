@@ -31,7 +31,7 @@ relax the separate ONNX parity tests.
 Run the offline fixture integrity check with:
 
 ```sh
-HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 poetry run pytest tests/test_checkpoint_baseline.py
+HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --no-sync pytest tests/test_checkpoint_baseline.py
 ```
 
 For numerical upgrades and releases, run the checkpoint comparison manually.
@@ -43,7 +43,7 @@ fixtures are not shipped in wheels or source distributions.
 Run the explicit checkpoint integration check with:
 
 ```sh
-NUMBA_DISABLE_JIT=1 poetry run pytest --optional tests/test_checkpoint_baseline.py
+NUMBA_DISABLE_JIT=1 uv run --no-sync pytest --optional tests/test_checkpoint_baseline.py
 ```
 
 This downloads only the pinned safetensors files into the Hugging Face cache.
