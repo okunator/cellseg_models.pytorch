@@ -6,7 +6,7 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-Status reconciled on 2026-10-12 against main at `bd69d4e`, version `0.1.30`.
+Status reconciled on 2026-10-12 against main at `327526b`, version `0.1.30`.
 PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
 exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
 runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
@@ -18,7 +18,9 @@ reports. PR 100 establishes the sampled CPU inference comparison policy and
 cleanup triggers, and retires temporary diagnostics. Comparisons remain manual.
 PR 101 calibrates pretrained StarDist ONNX classifier precision independently of
 the exporter and requires exact dense class decisions and final masks.
-All 13 hosted checks passed for PRs 97/98/99/100/101.
+PR 102 updates PyTorch/timm and their security floors, with six-image CPU
+comparisons and corrected torchvision/Python metadata. All 13 hosted checks
+passed for PRs 97/98/99/100/101/102.
 The old ONNX review checkout is historical; its corrections are merged.
 
 The completed upgrade PRs passed all 12 hosted checks on Python 3.10/3.11/3.12,
@@ -26,8 +28,9 @@ including source suites, build, six clean installs and two ONNX jobs. See
 [Python 3.12 validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38041808171),
 [HTTP validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38044641492),
 and [Pillow validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38045922826).
-The Python minimum remains 3.10. The model dependency batch is now in progress;
-the numerical stack remains unchanged. No maintenance release is published.
+The model batch is merged. The Python minimum remains 3.10, with 3.14.1
+excluded by torchvision. The numerical/image batch is now in progress. No
+maintenance release is published.
 
 The original contributor PRs passed ordinary tests but skipped runtime comparisons
 without optional ONNX packages. They were merged before the corrective patch;
@@ -52,7 +55,8 @@ category; run them separately from ordinary tests.
    feature inventory and test real slide/training backends; issue 68 still needs
    the relevant fixes available in a published release.
 3. Continue grouped dependency updates: HTTP/cache and Pillow are complete
-   (93/94); geometry/serialization is complete (96). Developer tooling is complete (97). Refresh advisory triage per batch.
+   (93/94); geometry/serialization (96), developer tooling (97), and the model
+   stack (102) are complete. Refresh advisory triage per batch.
    Record affected paths and resolved advisory IDs; update manifest/lock together
    where needed. These focused fixes can precede the broader numerical baseline,
    with image-decoding/checkpoint checks appropriate to each changed dependency.
@@ -64,8 +68,9 @@ category; run them separately from ordinary tests.
    broader dataset and accelerator validation remain release work.
 5. Developer tooling and the strict release-tool typing scope are complete (97).
    Expand library typing separately from runtime upgrades and the uv migration.
-6. Upgrade model and numerical/image dependencies in separate batches once their
-   baseline checks exist; the geometry/serialization batch is complete (96).
+6. Complete the numerical/image batch with old/new preprocessing, target, metric,
+   and reconstruction comparisons in both Numba modes. Model and geometry batches
+   are merged (102/96).
    Add newer Python CI coverage after dependency wheel/compatibility checks;
    change the Python floor only in an explicit support
    policy patch. The Python floor remains 3.10. Python 3.12 source and clean
@@ -152,11 +157,12 @@ Completion requires a clean installation and a reproducible inference baseline.
   compatibility evidence (PRs 93/94).
 - [x] Upgrade geometry/serialization with round-trip, cross-version, coordinate,
   and JIT-enabled geometry checks (PR 96).
-- [x] Validate the current PyTorch/timm batch locally with six-image comparisons,
-  source, minimum-version, ONNX, and installed-package checks described below.
-  Hosted Linux validation remains the PR merge gate; GPU checks remain release work.
-- [ ] Upgrade the broader numerical stack with its own affected-path baseline.
-  Update manifest and lockfile together.
+- [x] Upgrade PyTorch/timm with six-image CPU comparisons, minimum/current ONNX,
+  and source/clean-package validation on Python 3.10/3.11/3.12 (PR 102).
+  GPU/AMP and driver verification remain release work.
+- [x] Implement the numerical/image update with affected-path CPU references,
+  NumPy compatibility regressions, and matching manifest/lock changes. Hosted
+  Python 3.10/3.11/3.12 validation remains its merge gate.
 - [ ] Verify checkpoint loading, predictions, masks, metrics, and training after
   each batch. Test Numba with JIT enabled as well as the ordinary disabled-JIT suite.
 - [ ] Decide the supported Python floor from package wheel availability and tests.
@@ -192,8 +198,9 @@ Completion requires a clean installation and a reproducible inference baseline.
 Migrate after the dependency audit and a verified baseline, in a dedicated PR
 without bundling runtime upgrades, a source-layout move, or a build-backend rewrite.
 
-- [ ] Convert metadata to standard `[project]` fields and development dependency
-  groups; preserve package identity, extras, Python bounds, URLs, and wheel contents.
+- [ ] Convert remaining metadata/dependencies to standard `[project]` fields and
+  development dependency groups (name/Python bounds are already standard);
+  preserve package identity, extras, Python bounds, URLs, and wheel contents.
 - [ ] Generate `uv.lock`, inspect dependency differences, and verify the supported
   CPU/platform matrix. Make PyTorch index choices explicit where needed.
 - [ ] Replace Poetry commands in CI, release checks, hooks, contributor and agent
@@ -211,6 +218,10 @@ in-memory inference guidance in issue 69. Add reproducing tests for correctness
 fixes before changing behavior. Treat 3D support and expanded model architectures
 as separate feature work.
 
+- [ ] Repair shared `percentile_normalize99` clipping and constant-channel handling
+  with direct regressions. Its ignored `amin`/`amax` arguments cause existing DRFNS
+  range failures; division without an initialized output leaves zero-range values
+  undefined. Keep this behavior fix separate from dependency updates.
 - [ ] Make the quick start executable on CPU with an explicit image path, device,
   checkpoint, normalization, and interpretation of outputs. Document GPU use.
 - [ ] Provide a runnable training script and update notebooks to the same API.
@@ -285,13 +296,13 @@ heads using their existing bounds, and exact instance partitions/background with
 positive-ID bijections. No production inference, reference arrays, or thresholds
 change in the CPU baseline. Broader image/model coverage remains open; sampled
 raw pretrained ONNX parity now uses the separately calibrated class-head budget.
-For the model dependency batch, compare the old and proposed environments on
-both pinned checkpoints and six existing images, with unchanged dense bounds,
-exact dense class decisions, object partitions, and final type maps. Also run
-the frozen fixture comparisons, source suite, CPU forward/backward checks, and
-ONNX tests at the supported minimum/current versions. Keep numerical dependency
-upgrades separate until their affected post-processing and metric checks exist.
-This batch-specific evidence does not complete broader dataset/GPU validation.
+For the numerical/image batch, preserve before-upgrade references for six images,
+both pinned models, three annotation masks, training targets, metrics, tissue
+masks, and small reconstruction fixtures. Compare Numba enabled/disabled paths
+separately. Keep dense bounds, exact class decisions and object partitions;
+record the affected floating-array bounds before updating versions. Repeat the
+frozen checkpoint comparisons and source/installed-package/export checks. This
+batch-specific evidence does not complete broader dataset/GPU validation.
 The repo-level fixtures and integration test are excluded from distributions
 by living outside the runtime package. This covers one image and two models,
 not a representative dataset, registered-name loading, or accelerator validation.
@@ -303,26 +314,18 @@ counts are dated snapshots; remaining alerts require applicability triage.
 Completed batch validation is recorded in the relevant PRs and
 [the review record](maintenance-review.md), rather than repeated in this plan.
 
-Current model batch: raise the PyTorch security floor to 2.13.0 and lock
-2.14.1/torchvision 0.29.1 with timm 1.0.30. Raise fsspec's floor to 2026.6.0
-and lock 2026.9.0; require setuptools 83.0.0 or newer and lock 84.0.0. This addresses
-GHSA-rrmf-rvhw-rf47, GHSA-qfhq-4f3w-5fph,
-GHSA-vgrw-7cvw-pwgx, GHSA-887c-mr87-cxwp, GHSA-27vj-qcqg-25rc, and
-GHSA-h35f-9h28-mq5c. The library scripts its fixed Swish/Mish functions with
-torch.jit.script; it does not call the affected LSTM, sequence-unpacking,
-CTC-loss, or fsspec reference-filesystem APIs. The setuptools manifest issue
-does not affect our Poetry build.
-Update the existing ONNX minimum job to 2.13.0/torchvision 0.28.0. The
-torchvision range is constrained to 0.28/0.29; Python 3.14.1 is excluded to
-match upstream metadata and prevent a resolver fallback to unavailable old wheels.
-The tested Python matrix and minimum stay 3.10/3.11/3.12 and 3.10 respectively.
-The package name and Python requirement use standard `[project]` metadata so
-Poetry preserves the patch exclusion in distributions; the version and
-dependencies remain in Poetry, with the same build backend (minimum core 2.2.1).
-PyTorch's new Linux CUDA dependencies require separate driver/device verification before
-release; CPU evidence does not validate CUDA/AMP. Temporary six-image reference
-arrays and the probe stay outside the repository and retire after this batch;
-the PR retains the results, with no additional CI job or distribution payload.
+Current numerical batch: adopt NumPy 2 with Numba 0.68/llvmlite 0.50 and update
+SciPy, scikit-image, scikit-learn, OpenCV 4, and their image/compiler transitives.
+Keep Python 3.10: its compatible NumPy/SciPy/scikit-image/scikit-learn versions
+remain selected separately from the newer 3.11/3.12 versions. Keep OpenCV 5 out
+of this batch because it changes resampling semantics. Preserve model/geometry
+and unrelated package records. Extend the existing JIT step to small training
+transform and reconstruction tests; add no CI job or checkpoint download.
+Temporary references/probes remain outside the repository and retire after this
+batch; PRs retain results. The completed model batch's investigation and security
+triage live in [PR 102](https://github.com/okunator/cellseg_models.pytorch/pull/102).
+The remaining open advisory groups are HTML parsing/highlighting (soupsieve and
+Pygments); triage and update them independently before the release candidate.
 
 ## Deferred structure and validation records
 
