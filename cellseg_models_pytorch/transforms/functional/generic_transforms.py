@@ -120,9 +120,23 @@ def solarize(image: np.ndarray, magnitude: int, **kwargs) -> np.ndarray:
     return cv2.LUT(image, np.array(lut, dtype=np.uint8))
 
 
-def posterize(image: np.ndarray, magnitude: int, **kwargs) -> np.ndarray:
-    """Posterize the image by the given magnitude."""
-    return (image & -int(2 ** (8 - int(round(magnitude))))).astype(np.uint8)
+def posterize(image: np.ndarray, magnitude: int, **kwargs: object) -> np.ndarray:
+    """Keep the given number of high bits in a uint8 image.
+
+    Args:
+        image: uint8 image with HW or HWC axes.
+        magnitude: Number of retained bits, from 0 to 8.
+        **kwargs: Unused augmentation arguments.
+
+    Returns:
+        A uint8 image with the original shape and low bits cleared.
+
+    Examples:
+        >>> posterize(np.array([[31, 255]], dtype=np.uint8), 4).tolist()
+        [[16, 240]]
+    """
+    mask = -int(2 ** (8 - int(round(magnitude)))) & 255
+    return (image & mask).astype(np.uint8)
 
 
 def autocontrast(image: np.ndarray, **kwargs) -> np.ndarray:
@@ -187,9 +201,9 @@ def tone_shift(image, magnitude_0: float, magnitude_1: float, **kwargs) -> np.nd
     """Apply tone shift to the image."""
     t = np.linspace(0.0, 1.0, 256)
     evaluate_bez = np.vectorize(
-        lambda t: 3 * (1 - t) ** 2 * t * magnitude_0
-        + 3 * (1 - t) * t**2 * magnitude_1
-        + t**3
+        lambda t: (
+            3 * (1 - t) ** 2 * t * magnitude_0 + 3 * (1 - t) * t**2 * magnitude_1 + t**3
+        )
     )
     remapping = np.rint(evaluate_bez(t) * 255).astype(np.uint8)
     return cv2.LUT(image, lut=remapping)

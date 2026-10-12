@@ -13,6 +13,20 @@ from cellseg_models_pytorch.transforms.functional import (
 )
 
 
+def test_weight_map_two_objects() -> None:
+    labels = np.array([[1, 0, 2], [1, 0, 2]], dtype=np.int32)
+
+    actual = gen_weight_maps(labels, sigma=1, w0=1)
+
+    assert actual.dtype == np.float64
+    np.testing.assert_allclose(
+        actual,
+        [[0, 0.1353352832366127, 0], [0, 0.1353352832366127, 0]],
+        rtol=1e-12,
+        atol=0,
+    )
+
+
 @pytest.mark.parametrize(
     "transform",
     [gen_hv_maps, gen_flow_maps, gen_omni_flow_maps],
