@@ -9,6 +9,13 @@
 
 ## Fixes
 
+- Match instances one-to-one for panoptic quality and object precision below
+  0.5 IoU, maximizing valid pairs and then summed IoU. Preserve strict threshold
+  comparison and the historical `average_precision` formula, TP / (TP + FP).
+  Reject nonfinite/out-of-range thresholds, correct swapped FP/FN object counts,
+  and support sparse instance IDs or masks without background pixels. AJI keeps
+  its existing matching policy.
+
 - Update the development lock's existing Soup Sieve and Pygments transitives to
   2.10 and 2.21.0 for selector parsing and ADL lexer fixes. Their versions remain
   governed by their parent packages in published installations.

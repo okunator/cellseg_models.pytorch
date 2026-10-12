@@ -1,6 +1,7 @@
-from typing import Callable, Dict, List, Tuple, Union
+from typing import Callable
 
 import numpy as np
+from scipy.optimize import linear_sum_assignment
 
 from .binary_metrics import get_stats, iou_score
 
@@ -23,31 +24,33 @@ __all__ = [
 def pairwise_pixel_stats(
     true: np.ndarray,
     pred: np.ndarray,
-    num_classes: int = None,
-    metric_func: Callable = None,
-) -> Union[List[np.ndarray], None]:
+    num_classes: int | None = None,
+    metric_func: Callable[[np.ndarray, np.ndarray, np.ndarray], float] | None = None,
+) -> list[np.ndarray]:
     """Compute the # of TP, FP, FN pixels for each object in a labelled/semantic mask.
 
     Optionally a binary metric can be computed instead of the satistics.
     Atleast 2x faster than computing with `np.histogram2d`.
 
     Args:
-        true: Ground truth (semantic or labelled mask). Shape (H, W).
-        pred: Predicted (semantic or labelled mask). Shape (H, W).
+        true: Ground truth integer semantic or instance mask. Shape (H, W).
+        pred: Predicted integer semantic or instance mask. Shape (H, W).
+            In instance mode, zero is background and IDs need not be contiguous.
         num_classes:
             Number of classes in the dataset. If None, stats are computed for instances.
             If not None stats are computed for classes i.e. semantic segmentation masks.
         metric_func: A binary metric function. e.g. `iou_score` or `dice`.
 
     Returns:
-        List[np.ndarray, ...] or None:
-            A List of 2D arrays (i, j) where i corresponds to a ground
+        A list of 2D arrays (i, j) where i corresponds to a ground
             truth label and j corresponds to a predicted label. Each value
             of the matrix is the computed statistic or metric at pos (i, j).
-            By default. returns the tp, fp, and fn matrices.
+            By default, returns the tp, fp, and fn matrices. Returns an empty
+            list if either instance mask has no foreground labels.
 
             If stats computed for instances:
                 Shape: (n_labels_gt, n_labels_pred). Dtype. float64.
+                Rows and columns follow sorted nonzero IDs in true and pred.
             If stats computed for classes:
                 Shape: (num_classes, num_classes). Dtype. float64.
     """
@@ -55,8 +58,11 @@ def pairwise_pixel_stats(
         true_labels = list(range(num_classes))
         pred_labels = list(range(num_classes))
     else:
-        true_labels = list(np.unique(true))[1:]
-        pred_labels = list(np.unique(pred))[1:]
+        true_labels = list(np.unique(true[true != 0]))
+        pred_labels = list(np.unique(pred[pred != 0]))
+
+    true_indices = {label: ix for ix, label in enumerate(true_labels)}
+    pred_indices = {label: ix for ix, label in enumerate(pred_labels)}
 
     true_objects = {}
     for t in true_labels:
@@ -86,7 +92,6 @@ def pairwise_pixel_stats(
         overlap = pred[true_obj > 0]
         overlap_label = np.unique(overlap)
         for pred_label in overlap_label:
-
             # ignore bg and empty preds in instance mode
             if pred_label == 0 and num_classes is None:
                 continue
@@ -94,12 +99,8 @@ def pairwise_pixel_stats(
             pred_obj = pred_objects[pred_label]
             tp, fp, fn = get_stats(true_obj, pred_obj)
 
-            if num_classes is None:
-                ix = true_label - 1
-                jx = pred_label - 1
-            else:
-                ix = true_label
-                jx = pred_label
+            ix = true_indices[true_label]
+            jx = pred_indices[pred_label]
 
             # compute a metric or add stats
             if metric_func is not None:
@@ -114,8 +115,11 @@ def pairwise_pixel_stats(
 
 def pairwise_object_stats(
     matches: np.ndarray, sum_reduce: bool = True
-) -> Union[Tuple[int, int, int], Tuple[List[bool]]]:
-    """Compute the TP, FP, FN objects from a boolean contigency table.
+) -> tuple[int, int, int] | tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Count matched ground truth, unmatched predictions and unmatched ground truth.
+
+    Supply one-to-one matches when counting true-positive pairs. This helper
+    counts matched rows; it does not solve ambiguous assignments.
 
     Args:
         matches: A pairwise boolean matrix where True values at pos (i, j)
@@ -127,48 +131,73 @@ def pairwise_object_stats(
             Defaults to True.
 
     Returns:
-        Tuple[int, int, int]:
-            The number of TP objects, FP objects, and FN objects in
-            a labelled mask.
+        TP, FP and FN counts, or boolean masks when sum_reduce is False.
+        TP/FN masks index ground truth rows; FP masks index prediction columns.
     """
-    true_hits = matches.sum(axis=0)
-    pred_hits = matches.sum(axis=1)
+    true_hits = matches.any(axis=1)
+    pred_hits = matches.any(axis=0)
 
-    tp_objects = pred_hits >= 1  # indices of correctly predicted objects
-    fp_objects = pred_hits == 0  # indices of missed objects in prediciton
-    fn_objects = true_hits == 0  # indices of extra objects in prediction
+    tp_objects = true_hits
+    fp_objects = ~pred_hits
+    fn_objects = ~true_hits
 
     if sum_reduce:
-        tp_objects = tp_objects.sum()
-        fp_objects = fp_objects.sum()
-        fn_objects = fn_objects.sum()
+        return int(tp_objects.sum()), int(fp_objects.sum()), int(fn_objects.sum())
 
     return tp_objects, fp_objects, fn_objects
 
 
+def _match_instances(iou: np.ndarray, thresh: float) -> np.ndarray:
+    """Maximize valid pair count, then summed IoU, with unique row/column matches."""
+    matches = iou > thresh
+    if thresh < 0.5:
+        # One additional valid pair must outweigh every possible IoU tie-break.
+        weights = matches * (1 + iou / (min(iou.shape) + 1))
+        rows, cols = linear_sum_assignment(weights, maximize=True)
+        assigned = np.zeros_like(matches)
+        assigned[rows, cols] = matches[rows, cols]
+        return assigned
+    return matches
+
+
 def panoptic_quality(
     true: np.ndarray, pred: np.ndarray, thresh: float = 0.5, eps: float = 1e-8
-) -> Dict[str, float]:
-    """Compute the panoptic quality of a lebelled mask.
+) -> dict[str, float]:
+    """Compute panoptic quality with one-to-one instance matching.
+
+    Below 0.5 IoU, maximize the number of qualifying pairs, then their summed
+    IoU. Lowering the threshold can increase detection quality while decreasing
+    panoptic quality because pair count takes priority over summed IoU.
+    At or above 0.5, qualifying pairs are already unique.
 
     Args:
-        true: Ground truth (labelled mask). Shape (H, W).
-        pred: Predicted (labelled mask). Shape (H, W).
-        thresh: Threshold for the iou to include the prediction as TP
-            Defaults to 0.5.
+        true: Integer instance mask (H, W), with zero as background.
+        pred: Integer instance mask (H, W), with zero as background.
+            Instance IDs need not be contiguous or match the ground truth IDs.
+        thresh: IoU must be strictly greater than this value in [0, 1].
         eps: Epsilon to avoid zero div errors.
             Defaults to 1e-8.
 
     Returns:
         Dictionary containing the detection quality (dq), segmentation
         quality (sq) and panoptic quality (pq) values.
+
+    Raises:
+        ValueError: If thresh is outside [0, 1] or not finite.
+
+    Examples:
+        >>> mask = np.array([[0, 1, 1]])
+        >>> round(panoptic_quality(mask, mask)["pq"], 6)
+        1.0
     """
+    if not 0 <= thresh <= 1:
+        raise ValueError("thresh must be finite and between 0 and 1")
     iou = pairwise_pixel_stats(true, pred, metric_func=iou_score)
     res = {"pq": 0.0, "sq": 0.0, "dq": 0.0}
 
     if iou:
         iou = iou[0]
-        matches = iou > thresh
+        matches = _match_instances(iou, thresh)
         tp_objects, fp_objects, fn_objects = pairwise_object_stats(matches)
 
         dq = tp_objects / (tp_objects + 0.5 * fp_objects + 0.5 * fn_objects + eps)
@@ -185,25 +214,38 @@ def panoptic_quality(
 def average_precision(
     true: np.ndarray, pred: np.ndarray, thresh: float = 0.5, eps: float = 1e-8
 ) -> float:
-    """Compute the average precision of a labelled mask.
+    """Compute object precision, TP / (TP + FP), at one IoU threshold.
+
+    Despite the historical name, this is not area under a precision-recall
+    curve. Match instances uniquely, maximizing qualifying pair count then IoU.
 
     Args:
-        true: Ground truth (labelled mask). Shape (H, W).
-        pred: Predicted (labelled mask). Shape (H, W).
-        thresh: Threshold for the iou to include the prediction as TP
-            Defaults to 0.5.
+        true: Integer instance mask (H, W), with zero as background.
+        pred: Integer instance mask (H, W), with zero as background.
+            Instance IDs need not be contiguous or match the ground truth IDs.
+        thresh: IoU must be strictly greater than this value in [0, 1].
         eps: Epsilon to avoid zero div errors.
             Defaults to 1e-8.
 
     Returns:
         The computed precision.
+
+    Raises:
+        ValueError: If thresh is outside [0, 1] or not finite.
+
+    Examples:
+        >>> mask = np.array([[0, 1, 1]])
+        >>> round(average_precision(mask, mask), 6)
+        1.0
     """
-    iou = pairwise_pixel_stats(pred, true, metric_func=iou_score)
+    if not 0 <= thresh <= 1:
+        raise ValueError("thresh must be finite and between 0 and 1")
+    iou = pairwise_pixel_stats(true, pred, metric_func=iou_score)
     ap = 0.0
 
     if iou:
         iou = iou[0]
-        matches = iou > thresh
+        matches = _match_instances(iou, thresh)
         tp_objects, fp_objects, _ = pairwise_object_stats(matches)
 
         ap = tp_objects / (tp_objects + fp_objects + eps)
@@ -268,8 +310,8 @@ def aggregated_jaccard_index(
 
         # Get the num of pixels from the missed objects
         _, fp_objects, fn_objects = pairwise_object_stats(matches, sum_reduce=False)
-        unpaired_true_labels = np.nonzero(fp_objects)[0] + 1
-        unpaired_pred_labels = np.nonzero(fn_objects)[0] + 1
+        unpaired_true_labels = np.unique(true[true != 0])[fn_objects]
+        unpaired_pred_labels = np.unique(pred[pred != 0])[fp_objects]
 
         for true_id in unpaired_true_labels:
             union += (true == true_id).sum()
