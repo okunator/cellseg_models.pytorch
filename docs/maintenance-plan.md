@@ -6,7 +6,7 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-Status reconciled on 2026-10-12 against main at `d7cf141`, version `0.1.30`.
+Status reconciled on 2026-10-12 against main at `27d06a6`, version `0.1.30`.
 PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
 exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
 runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
@@ -20,9 +20,11 @@ PR 101 calibrates pretrained StarDist ONNX classifier precision independently of
 the exporter and requires exact dense class decisions and final masks.
 PR 102 updates PyTorch/timm and their security floors, with six-image CPU
 comparisons and corrected torchvision/Python metadata. All 13 hosted checks
-passed for PRs 97/98/99/100/101/102/103/104/105. PR 103 completes the
+passed for PRs 97/98/99/100/101/102/103/104/105/106. PR 103 completes the
 numerical/image batch with compiled-kernel coverage and NumPy 2 regressions.
 PR 104 fixes shared percentile clipping/zero spans and DRFNS byte saturation.
+PR 106 fixes low-IoU instance assignment, FP/FN axes and sparse IDs, with
+independent metric validation and public regressions.
 PR 105 updates locked HTML/highlighting transitives and removes unnecessary
 runtime floors; downloader/cache protections remain. The old ONNX review checkout
 is historical; its corrections are merged.
@@ -72,7 +74,8 @@ category; run them separately from ordinary tests.
    broader dataset and accelerator validation remain release work.
 5. Developer tooling and the strict release-tool typing scope are complete (97).
    Expand library typing separately from runtime upgrades and the uv migration.
-6. Resolve metric-matching issue 73, then the remaining concrete correctness issues.
+6. Metric-matching issue 73 is resolved on main (106). Provide the current-API
+   training example for issue 76, then remaining correctness/documentation work.
    The shared percentile normalizer and DRFNS fixes are merged (104). Model,
    numerical/image, and geometry batches are merged (102/103/96).
    Add newer Python CI coverage after dependency wheel/compatibility checks;
@@ -228,12 +231,18 @@ as separate feature work.
   with value, input-preservation and strict caller regressions (PR 104). Hosted
   source, compiled-kernel and clean-package checks pass. Clipping can intentionally
   change enhanced post-processing outputs, as documented in the release notes.
-- [ ] Merge the issue 73 correction: unique low-IoU matches, correct FP/FN axes,
-  sparse instance IDs and explicit precision semantics. Prepared regressions keep
-  default-threshold values and AJI matching policy unchanged.
+- [x] Merge the issue 73 correction (PR 106): unique low-IoU matches, correct
+  FP/FN axes, sparse IDs and explicit precision semantics. All 13 hosted checks
+  pass; default-threshold values and AJI matching policy remain unchanged.
+  The issue comment is drafted for maintainer review; release availability remains
+  pending publication.
 - [ ] Make the quick start executable on CPU with an explicit image path, device,
   checkpoint, normalization, and interpretation of outputs. Document GPU use.
-- [ ] Provide a runnable training script and update notebooks to the same API.
+- [ ] Merge the minimal current-API folder-training script for issue 76. Validate
+  the actual optional dataset/flow/loss path and checkpoint on CPU; retain its
+  small optional regression without adding a CI job.
+- [ ] Update the older notebooks to the current API; the standalone training
+  example does not validate their PanNuke loaders or external training frameworks.
 - [ ] Document supported backbones, checkpoints, extras, ONNX limitations, and
   compatibility changes. Smoke-test examples in CI.
 - [ ] Review issue 78 without silently changing preprocessing or dependency
