@@ -106,6 +106,18 @@ def test_postproc_drfns(inst_map):
     )
 
 
+def test_postproc_drfns_preserves_two_object_regions():
+    labels = np.zeros((64, 64), dtype=np.int32)
+    labels[8:25, 7:24] = 1
+    labels[35:54, 32:53] = 2
+
+    with np.errstate(over="raise", divide="raise", invalid="raise"):
+        actual = post_proc_drfns(labels, gen_dist_maps(labels))
+
+    assert actual.dtype == np.int32
+    np.testing.assert_array_equal(actual, labels)
+
+
 def test_postproc_dcan(inst_map):
     cont = gen_contour_maps(inst_map)
     rebuild = post_proc_dcan(inst_map, cont)

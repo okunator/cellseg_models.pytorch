@@ -6,7 +6,7 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-Status reconciled on 2026-10-12 against main at `327526b`, version `0.1.30`.
+Status reconciled on 2026-10-12 against main at `6e97f5a`, version `0.1.30`.
 PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
 exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
 runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
@@ -20,7 +20,8 @@ PR 101 calibrates pretrained StarDist ONNX classifier precision independently of
 the exporter and requires exact dense class decisions and final masks.
 PR 102 updates PyTorch/timm and their security floors, with six-image CPU
 comparisons and corrected torchvision/Python metadata. All 13 hosted checks
-passed for PRs 97/98/99/100/101/102.
+passed for PRs 97/98/99/100/101/102/103. PR 103 completes the
+numerical/image batch with compiled-kernel coverage and NumPy 2 regressions.
 The old ONNX review checkout is historical; its corrections are merged.
 
 The completed upgrade PRs passed all 12 hosted checks on Python 3.10/3.11/3.12,
@@ -29,7 +30,7 @@ including source suites, build, six clean installs and two ONNX jobs. See
 [HTTP validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38044641492),
 and [Pillow validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38045922826).
 The model batch is merged. The Python minimum remains 3.10, with 3.14.1
-excluded by torchvision. The numerical/image batch is now in progress. No
+excluded by torchvision. The numerical/image batch is merged. No
 maintenance release is published.
 
 The original contributor PRs passed ordinary tests but skipped runtime comparisons
@@ -56,7 +57,7 @@ category; run them separately from ordinary tests.
    the relevant fixes available in a published release.
 3. Continue grouped dependency updates: HTTP/cache and Pillow are complete
    (93/94); geometry/serialization (96), developer tooling (97), and the model
-   stack (102) are complete. Refresh advisory triage per batch.
+   stack (102) and numerical/image stack (103) are complete. Refresh advisory triage per batch.
    Record affected paths and resolved advisory IDs; update manifest/lock together
    where needed. These focused fixes can precede the broader numerical baseline,
    with image-decoding/checkpoint checks appropriate to each changed dependency.
@@ -68,9 +69,9 @@ category; run them separately from ordinary tests.
    broader dataset and accelerator validation remain release work.
 5. Developer tooling and the strict release-tool typing scope are complete (97).
    Expand library typing separately from runtime upgrades and the uv migration.
-6. Complete the numerical/image batch with old/new preprocessing, target, metric,
-   and reconstruction comparisons in both Numba modes. Model and geometry batches
-   are merged (102/96).
+6. Repair the shared percentile normalizer's clipping and zero-span contracts,
+   then finish remaining security triage and concrete correctness issues. Model,
+   numerical/image, and geometry batches are merged (102/103/96).
    Add newer Python CI coverage after dependency wheel/compatibility checks;
    change the Python floor only in an explicit support
    policy patch. The Python floor remains 3.10. Python 3.12 source and clean
@@ -160,9 +161,9 @@ Completion requires a clean installation and a reproducible inference baseline.
 - [x] Upgrade PyTorch/timm with six-image CPU comparisons, minimum/current ONNX,
   and source/clean-package validation on Python 3.10/3.11/3.12 (PR 102).
   GPU/AMP and driver verification remain release work.
-- [x] Implement the numerical/image update with affected-path CPU references,
-  NumPy compatibility regressions, and matching manifest/lock changes. Hosted
-  Python 3.10/3.11/3.12 validation remains its merge gate.
+- [x] Upgrade the numerical/image stack with affected-path CPU comparisons,
+  NumPy compatibility regressions and JIT coverage; Python 3.10/3.11/3.12 source
+  and clean-package checks pass (PR 103).
 - [ ] Verify checkpoint loading, predictions, masks, metrics, and training after
   each batch. Test Numba with JIT enabled as well as the ordinary disabled-JIT suite.
 - [ ] Decide the supported Python floor from package wheel availability and tests.
@@ -218,10 +219,11 @@ in-memory inference guidance in issue 69. Add reproducing tests for correctness
 fixes before changing behavior. Treat 3D support and expanded model architectures
 as separate feature work.
 
-- [ ] Repair shared `percentile_normalize99` clipping and constant-channel handling
-  with direct regressions. Its ignored `amin`/`amax` arguments cause existing DRFNS
-  range failures; division without an initialized output leaves zero-range values
-  undefined. Keep this behavior fix separate from dependency updates.
+- [x] Implement shared `percentile_normalize99` clipping and zero-span handling
+  with value, axis, input-preservation and caller regressions. Zero percentile
+  spans map to zero before clipping; reversed bounds raise ValueError. Fix DRFNS
+  byte saturation under strict arithmetic checks. Hosted validation is the merge
+  gate. Clipping can intentionally change enhanced post-processing outputs.
 - [ ] Make the quick start executable on CPU with an explicit image path, device,
   checkpoint, normalization, and interpretation of outputs. Document GPU use.
 - [ ] Provide a runnable training script and update notebooks to the same API.
@@ -296,13 +298,14 @@ heads using their existing bounds, and exact instance partitions/background with
 positive-ID bijections. No production inference, reference arrays, or thresholds
 change in the CPU baseline. Broader image/model coverage remains open; sampled
 raw pretrained ONNX parity now uses the separately calibrated class-head budget.
-For the numerical/image batch, preserve before-upgrade references for six images,
-both pinned models, three annotation masks, training targets, metrics, tissue
-masks, and small reconstruction fixtures. Compare Numba enabled/disabled paths
-separately. Keep dense bounds, exact class decisions and object partitions;
-record the affected floating-array bounds before updating versions. Repeat the
-frozen checkpoint comparisons and source/installed-package/export checks. This
-batch-specific evidence does not complete broader dataset/GPU validation.
+PR 103 compares six images, two pinned models, three annotation masks, training
+targets, metrics, tissue masks and small reconstruction fixtures before/after
+numerical updates, separately with Numba enabled and disabled. Keep those
+batch results in the PR; future changes repeat only the affected checks.
+The current normalizer fix must retain unclipped nonzero-span results, validate
+requested clipping/zero spans, reproduce the DRFNS range/overflow failures, and
+repeat maintained checkpoints and source/installed-package checks. Existing
+reference arrays and tolerances are not rewritten for this behavior fix.
 The repo-level fixtures and integration test are excluded from distributions
 by living outside the runtime package. This covers one image and two models,
 not a representative dataset, registered-name loading, or accelerator validation.
@@ -314,16 +317,12 @@ counts are dated snapshots; remaining alerts require applicability triage.
 Completed batch validation is recorded in the relevant PRs and
 [the review record](maintenance-review.md), rather than repeated in this plan.
 
-Current numerical batch: adopt NumPy 2 with Numba 0.68/llvmlite 0.50 and update
-SciPy, scikit-image, scikit-learn, OpenCV 4, and their image/compiler transitives.
-Keep Python 3.10: its compatible NumPy/SciPy/scikit-image/scikit-learn versions
-remain selected separately from the newer 3.11/3.12 versions. Keep OpenCV 5 out
-of this batch because it changes resampling semantics. Preserve model/geometry
-and unrelated package records. Extend the existing JIT step to small training
-transform and reconstruction tests; add no CI job or checkpoint download.
-Temporary references/probes remain outside the repository and retire after this
-batch; PRs retain results. The completed model batch's investigation and security
-triage live in [PR 102](https://github.com/okunator/cellseg_models.pytorch/pull/102).
+Completed model and numerical investigations are retained in
+[PR 102](https://github.com/okunator/cellseg_models.pytorch/pull/102) and
+[PR 103](https://github.com/okunator/cellseg_models.pytorch/pull/103), with their
+temporary references retired after use. OpenCV 4 and Python 3.10 remain supported;
+OpenCV 5 and newer Python coverage require separate compatibility checks.
+No additional CI job or diagnostic payload is needed for the normalizer fix.
 The remaining open advisory groups are HTML parsing/highlighting (soupsieve and
 Pygments); triage and update them independently before the release candidate.
 

@@ -42,7 +42,7 @@ def h_minima_reconstruction(inv_dist_map: np.ndarray, lamb: int = 7) -> np.ndarr
     """Perform a H minimma reconstruction via an erosion method.
 
     Args:
-        inv_dist_map: Inverse distance map. Shape: (H, W).
+        inv_dist_map: Inverse uint8 distance map. Shape: (H, W).
         lamb: Intensity shift value lambda.
             Defaults to 7.
 
@@ -51,8 +51,8 @@ def h_minima_reconstruction(inv_dist_map: np.ndarray, lamb: int = 7) -> np.ndarr
         Shape: (H, W).
     """
 
-    def making_top_mask(x: np.ndarray, lamb: int = lamb) -> int:
-        return min(255, x + lamb)
+    def making_top_mask(x: np.uint8 | int, lamb: int = lamb) -> int:
+        return min(255, int(x) + lamb)
 
     # vectorize for performance
     find_minima = np.vectorize(making_top_mask)
