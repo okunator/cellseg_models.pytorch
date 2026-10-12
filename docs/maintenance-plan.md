@@ -6,7 +6,7 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-Status reconciled on 2026-10-12 against main at `1c696ca`, version `0.1.30`.
+Status reconciled on 2026-10-12 against main at `d7cf141`, version `0.1.30`.
 PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
 exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
 runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
@@ -20,10 +20,12 @@ PR 101 calibrates pretrained StarDist ONNX classifier precision independently of
 the exporter and requires exact dense class decisions and final masks.
 PR 102 updates PyTorch/timm and their security floors, with six-image CPU
 comparisons and corrected torchvision/Python metadata. All 13 hosted checks
-passed for PRs 97/98/99/100/101/102/103/104. PR 103 completes the
+passed for PRs 97/98/99/100/101/102/103/104/105. PR 103 completes the
 numerical/image batch with compiled-kernel coverage and NumPy 2 regressions.
 PR 104 fixes shared percentile clipping/zero spans and DRFNS byte saturation.
-The old ONNX review checkout is historical; its corrections are merged.
+PR 105 updates locked HTML/highlighting transitives and removes unnecessary
+runtime floors; downloader/cache protections remain. The old ONNX review checkout
+is historical; its corrections are merged.
 
 The completed upgrade PRs passed all 12 hosted checks on Python 3.10/3.11/3.12,
 including source suites, build, six clean installs and two ONNX jobs. See
@@ -70,7 +72,7 @@ category; run them separately from ordinary tests.
    broader dataset and accelerator validation remain release work.
 5. Developer tooling and the strict release-tool typing scope are complete (97).
    Expand library typing separately from runtime upgrades and the uv migration.
-6. Finish the HTML/highlighting security batch, then concrete correctness issues.
+6. Resolve metric-matching issue 73, then the remaining concrete correctness issues.
    The shared percentile normalizer and DRFNS fixes are merged (104). Model,
    numerical/image, and geometry batches are merged (102/103/96).
    Add newer Python CI coverage after dependency wheel/compatibility checks;
@@ -108,9 +110,9 @@ checks that cannot be reproduced locally.
 
 ## Dependency audit and prediction baseline
 
-- [x] Triage the currently open dependency advisories by reachable paths. The
-  HTML/highlighting batch updates the locked transitives for the final five alerts;
-  required hosted checks and GitHub rescanning after merge remain its gate.
+- [x] Triage the currently open dependency advisories by reachable paths.
+  PR 105 is merged with all 13 hosted checks passing. Pygments is rescanned and
+  closed; four Soup Sieve alerts still await rescanning of the patched lock.
   Refresh the audit before the release candidate; this is not a blanket security
   certification or proof against future advisories.
 - [x] Declare the six audited direct runtime imports explicitly (PR 90).
@@ -226,6 +228,9 @@ as separate feature work.
   with value, input-preservation and strict caller regressions (PR 104). Hosted
   source, compiled-kernel and clean-package checks pass. Clipping can intentionally
   change enhanced post-processing outputs, as documented in the release notes.
+- [ ] Merge the issue 73 correction: unique low-IoU matches, correct FP/FN axes,
+  sparse instance IDs and explicit precision semantics. Prepared regressions keep
+  default-threshold values and AJI matching policy unchanged.
 - [ ] Make the quick start executable on CPU with an explicit image path, device,
   checkpoint, normalization, and interpretation of outputs. Document GPU use.
 - [ ] Provide a runnable training script and update notebooks to the same API.
@@ -323,9 +328,9 @@ Completed model and numerical investigations are retained in
 [PR 103](https://github.com/okunator/cellseg_models.pytorch/pull/103), with their
 temporary references retired after use. OpenCV 4 and Python 3.10 remain supported;
 OpenCV 5 and newer Python coverage require separate compatibility checks.
-Current HTML/highlighting batch: lock Soup Sieve 2.10 and Pygments 2.21.0.
-Remove their runtime declarations and the earlier fsspec/setuptools advisory
-floors, retaining patched lock versions. Their vulnerable selector, ADL lexer,
+PR 105 locks Soup Sieve 2.10 and Pygments 2.21.0 and removes their runtime
+declarations and the earlier fsspec/setuptools advisory floors, retaining patched
+lock versions. Their vulnerable selector, ADL lexer,
 reference-template and setuptools build paths are not used by this library.
 Published installations follow parent requirements; they do not consume this lock.
 
@@ -338,10 +343,10 @@ those paths. Current Requests, PyTorch and Mpire releases do not tighten the
 relevant minimums. Hub's transport migration and libpysal's newer Python minimum
 need separate compatibility checks before further parent upgrades.
 
-Validate offline HTML/worker-error integrations, unchanged unrelated lock records,
-source tests and installed metadata. Add no CI job or permanent diagnostic; the
-temporary probe retires after this batch. Confirm GitHub closes the five Soup Sieve
-and Pygments alerts after merge before declaring this audit complete.
+Batch validation is recorded in [PR 105](https://github.com/okunator/cellseg_models.pytorch/pull/105).
+Its temporary probes remain outside the repository and retire after the batch.
+Confirm the remaining Soup Sieve alerts close after rescanning before declaring
+this audit complete.
 
 ## Deferred structure and validation records
 
