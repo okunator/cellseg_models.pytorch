@@ -109,7 +109,7 @@ checks that cannot be reproduced locally.
 ## Dependency audit and prediction baseline
 
 - [x] Triage the currently open dependency advisories by reachable paths. The
-  HTML/highlighting batch raises patched floors for the final five open alerts;
+  HTML/highlighting batch updates the locked transitives for the final five alerts;
   required hosted checks and GitHub rescanning after merge remain its gate.
   Refresh the audit before the release candidate; this is not a blanket security
   certification or proof against future advisories.
@@ -323,17 +323,25 @@ Completed model and numerical investigations are retained in
 [PR 103](https://github.com/okunator/cellseg_models.pytorch/pull/103), with their
 temporary references retired after use. OpenCV 4 and Python 3.10 remain supported;
 OpenCV 5 and newer Python coverage require separate compatibility checks.
-Current HTML/highlighting batch: require Soup Sieve >=2.9.2,<3 (lock 2.10) and
-Pygments >=2.20.0,<3 (lock 2.21.0), both existing runtime transitives. Libpysal
-uses BeautifulSoup find/find_all/text for example metadata; Mpire uses a fixed
-Python traceback lexer. The untrusted-selector and ADL lexer attack paths are
-not called by this library. The five currently open advisory ranges are
-GHSA-j934-xhv5-fg8f, GHSA-gjv8-xp57-g29c, GHSA-2wc2-fm75-p42x,
-GHSA-836r-79rf-4m37 and GHSA-5239-wwwm-4pmq. Validate the actual offline HTML
-and worker-error integrations, bounded selector/lexer inputs, unchanged unrelated
-lock records, source tests and installed-package metadata. Add no CI job or
-permanent diagnostic; the temporary probe retires after this batch. Confirm
-GitHub closes these alerts after merge before declaring this audit complete.
+Current HTML/highlighting batch: lock Soup Sieve 2.10 and Pygments 2.21.0.
+Remove their runtime declarations and the earlier fsspec/setuptools advisory
+floors, retaining patched lock versions. Their vulnerable selector, ADL lexer,
+reference-template and setuptools build paths are not used by this library.
+Published installations follow parent requirements; they do not consume this lock.
+
+Prefer updating the dependency that owns a transitive requirement. Retain a
+transitive security floor only for a reachable vulnerable path that the parent's
+minimum does not protect. Requests still permits older urllib3/IDNA on downloader
+traffic, and PyTorch/Hub permit older filelock on checkpoint caching, including
+Hub's soft-lock fallback. Keep these three floors until parent minimums protect
+those paths. Current Requests, PyTorch and Mpire releases do not tighten the
+relevant minimums. Hub's transport migration and libpysal's newer Python minimum
+need separate compatibility checks before further parent upgrades.
+
+Validate offline HTML/worker-error integrations, unchanged unrelated lock records,
+source tests and installed metadata. Add no CI job or permanent diagnostic; the
+temporary probe retires after this batch. Confirm GitHub closes the five Soup Sieve
+and Pygments alerts after merge before declaring this audit complete.
 
 ## Deferred structure and validation records
 

@@ -9,9 +9,12 @@
 
 ## Fixes
 
-- Require patched Soup Sieve 2.9.2 or newer within 2.x and Pygments 2.20.0 or
-  newer within 2.x for selector parsing and ADL lexer security fixes. These are
-  existing libpysal/Mpire dependencies; Python 3.10 remains supported.
+- Update the development lock's existing Soup Sieve and Pygments transitives to
+  2.10 and 2.21.0 for selector parsing and ADL lexer fixes. Their versions remain
+  governed by their parent packages in published installations.
+- Remove fsspec/setuptools runtime minimums added solely for advisories outside
+  the library's used paths; retain their patched lock versions. Keep the HTTP,
+  hostname and cache-lock minimums required by reachable download/cache paths.
 
 - Honor `percentile_normalize99` clipping bounds and initialize zero-percentile
   spans to zero before clipping. Reject reversed bounds and preserve float32
@@ -29,8 +32,8 @@
 
 - Require PyTorch 2.13 or newer for upstream security fixes, update the locked
   PyTorch/torchvision pair to 2.14.1/0.29.1, and require timm 1.0.30 or newer.
-  Require fsspec 2026.6.0 and setuptools 83.0.0 or newer for their security
-  fixes. Python 3.10 remains supported.
+  Update locked fsspec and setuptools for their security fixes. Python 3.10
+  remains supported.
   Constrain torchvision to compatible modern releases and exclude Python 3.14.1,
   matching torchvision's upstream Python restriction.
 
