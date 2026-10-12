@@ -152,8 +152,9 @@ Completion requires a clean installation and a reproducible inference baseline.
   compatibility evidence (PRs 93/94).
 - [x] Upgrade geometry/serialization with round-trip, cross-version, coordinate,
   and JIT-enabled geometry checks (PR 96).
-- [ ] Finish the current PyTorch/timm batch with the six-image comparisons,
+- [x] Validate the current PyTorch/timm batch locally with six-image comparisons,
   source, minimum-version, ONNX, and installed-package checks described below.
+  Hosted Linux validation remains the PR merge gate; GPU checks remain release work.
 - [ ] Upgrade the broader numerical stack with its own affected-path baseline.
   Update manifest and lockfile together.
 - [ ] Verify checkpoint loading, predictions, masks, metrics, and training after
@@ -315,6 +316,9 @@ Update the existing ONNX minimum job to 2.13.0/torchvision 0.28.0. The
 torchvision range is constrained to 0.28/0.29; Python 3.14.1 is excluded to
 match upstream metadata and prevent a resolver fallback to unavailable old wheels.
 The tested Python matrix and minimum stay 3.10/3.11/3.12 and 3.10 respectively.
+The package name and Python requirement use standard `[project]` metadata so
+Poetry preserves the patch exclusion in distributions; the version and
+dependencies remain in Poetry, with the same build backend (minimum core 2.2.1).
 PyTorch's new Linux CUDA dependencies require separate driver/device verification before
 release; CPU evidence does not validate CUDA/AMP. Temporary six-image reference
 arrays and the probe stay outside the repository and retire after this batch;
