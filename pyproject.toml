@@ -171,6 +171,10 @@ docstring-code-format = true
 "__init__.py" = ["E402"]
 "**/{tests,docs,tools}/*" = ["E402"]
 
+[tool.poetry]
+# Build-backend file selection only; project metadata and installs use uv.
+exclude = ["cellseg_models_pytorch/**/tests"]
+
 [build-system]
 requires = ["poetry-core==2.2.1"]
 build-backend = "poetry.core.masonry.api"
