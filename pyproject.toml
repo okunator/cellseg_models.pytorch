@@ -15,11 +15,12 @@ keywords = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.10,<4.0,!=3.14.1"
 numpy = "^1.24"
 timm = ">=1.0.30,<2"
 numba = "^0.60.0"
 torch = ">=2.13.0,<3.0.0"
+torchvision = ">=0.28.0,<0.30"
 scipy = "^1.14"
 scikit-image = "^0.25"
 opencv-python = "^4.8"

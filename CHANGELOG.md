@@ -14,6 +14,8 @@
   Require fsspec 2026.6.0 and setuptools 83.0.0 or newer for their security
   fixes. Python 3.10 remains supported; NumPy and the numerical stack are
   unchanged in this batch.
+  Constrain torchvision to compatible modern releases and exclude Python 3.14.1,
+  matching torchvision's upstream Python restriction.
 
 - Repair WSI tile inference device, preprocessing, and output arguments. Preserve
   dotted slide names and reject existing or colliding tile outputs. Resolve async

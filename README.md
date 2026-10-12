@@ -45,6 +45,8 @@ pip install cellseg-models-pytorch
 The upcoming maintenance release requires Python 3.10 or newer, PyTorch 2.13 or
 newer, and timm 1.0.30 or newer. These dependency minimums include upstream
 security fixes; the currently published release retains its own requirements.
+Python 3.14.1 is excluded by the required torchvision releases. The tested
+Python versions remain 3.10, 3.11, and 3.12.
 For GPU use, install a PyTorch build compatible with your GPU and driver using
 [PyTorch's installation guide](https://pytorch.org/get-started/locally/) before
 installing this library.

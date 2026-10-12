@@ -311,8 +311,11 @@ GHSA-h35f-9h28-mq5c. The library scripts its fixed Swish/Mish functions with
 torch.jit.script; it does not call the affected LSTM, sequence-unpacking,
 CTC-loss, or fsspec reference-filesystem APIs. The setuptools manifest issue
 does not affect our Poetry build.
-Update the existing ONNX minimum job to 2.13.0/torchvision 0.28.0. PyTorch's
-new Linux CUDA dependencies require separate driver/device verification before
+Update the existing ONNX minimum job to 2.13.0/torchvision 0.28.0. The
+torchvision range is constrained to 0.28/0.29; Python 3.14.1 is excluded to
+match upstream metadata and prevent a resolver fallback to unavailable old wheels.
+The tested Python matrix and minimum stay 3.10/3.11/3.12 and 3.10 respectively.
+PyTorch's new Linux CUDA dependencies require separate driver/device verification before
 release; CPU evidence does not validate CUDA/AMP. Temporary six-image reference
 arrays and the probe stay outside the repository and retire after this batch;
 the PR retains the results, with no additional CI job or distribution payload.
