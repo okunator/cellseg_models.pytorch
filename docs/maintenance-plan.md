@@ -6,7 +6,7 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-Status reconciled on 2026-10-12 against main at `a99828d`, version `0.1.30`.
+Status reconciled on 2026-10-12 against main at `a439335`, version `0.1.30`.
 PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
 exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
 runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
@@ -14,8 +14,9 @@ PRs 93/94 update the HTTP/cache stack and Pillow. PR 86 is superseded and closed
 PR 96 updates geometry/serialization, PR 97 modernizes developer tooling and
 adds the first strict typing gate, and PR 98 repairs CPU WSI tile execution.
 PR 99 preserves repo-only checkpoint references and removes the one-off docs
-reports. Checkpoint comparisons remain manual, with numerical policy unresolved.
-All 13 hosted checks passed for PRs 97/98/99.
+reports. PR 100 establishes the sampled CPU inference comparison policy and
+cleanup triggers, and retires temporary diagnostics. Comparisons remain manual.
+All 13 hosted checks passed for PRs 97/98/99/100.
 The old ONNX review checkout is historical; its corrections are merged.
 
 The completed upgrade PRs passed all 12 hosted checks on Python 3.10/3.11/3.12,
@@ -30,8 +31,10 @@ The original contributor PRs passed ordinary tests but skipped runtime compariso
 without optional ONNX packages. They were merged before the corrective patch;
 PR 87 supplied the batching/state/dtype fixes and explicit runtime checks. This
 sequence deviated from the original merge gate and is now corrected on main.
-Pretrained StarDist dense parity and representative prediction coverage remain
-open; passing synthetic-model checks does not resolve those gaps.
+The pretrained ONNX patch calibrates StarDist class-logit precision separately
+from physical outputs and requires exact dense class decisions and final masks.
+Representative prediction coverage remains open; passing these sampled checks
+does not establish dataset accuracy or accelerator compatibility.
 
 Of the ordinary suite's skipped cases, 5,184 belong to a deliberately gated
 decoder matrix. `--slow`, `--optional`, and `--cuda` each select only their own
@@ -127,8 +130,9 @@ Completion requires a clean installation and a reproducible inference baseline.
 - [x] Test batches of size one and greater than one, output names, fixed spatial
   dimensions, missing dependencies, export failure, model dtype, and restoration
   of model training state, including mixed child-module states.
-- [ ] Repeat pretrained-image comparisons using the recorded checkpoint and image.
-  Document that ONNX covers dense prediction; reconstruction remains in Python.
+- [x] Repeat CPU pretrained-image comparisons with the recorded checkpoint/image
+  on PyTorch 2.7.1 and 2.14.1. ONNX covers dense prediction; reconstruction remains
+  in Python. Broader images/devices remain separately scoped.
 - [x] Check the declared minimum export PyTorch version and a current supported
   version. Keep export dependencies optional for ordinary PyTorch inference.
 - [x] Merge the separate contributions and validate their combined corrected
@@ -258,8 +262,12 @@ Release cleanup checks:
 record two immutable checkpoint revisions/digests, one image digest, preprocessing,
 reference versions, preserved PyTorch arrays, and instance counts. Measured ONNX
 differences remain in [the historical review](maintenance-review.md); they are
-not part of these PyTorch fixtures. Both ONNX models produced identical masks
-on the recorded image, but StarDist dense outputs exceeded their original bounds.
+not part of these PyTorch fixtures. Native float32/float64 calibration over six
+existing images found StarDist class-logit error requiring an absolute allowance
+above 1.35e-4 at rtol=1e-4, independently of ONNX. The pretrained StarDist test
+uses the existing CellPose class-logit budget (atol=2e-4); foreground/ray bounds
+stay at 1e-5. Raw values, shapes, dtypes, dense class decisions, and final masks
+remain checked. The pinned real-image checks pass on both exporter versions.
 
 Ordinary CI runs only the offline fixture integrity check. Run the optional
 checkpoint comparisons manually for numerical upgrades and releases; they are
@@ -268,7 +276,8 @@ confirmed identical object partitions and class maps across the sampled CPU
 backends. Compare class probabilities using the existing bounds, raw physical
 heads using their existing bounds, and exact instance partitions/background with
 positive-ID bijections. No production inference, reference arrays, or thresholds
-change. Broader image/model coverage and raw pretrained ONNX parity remain open.
+change in the CPU baseline. Broader image/model coverage remains open; sampled
+raw pretrained ONNX parity now uses the separately calibrated class-head budget.
 PR 99 is merged independently of that investigation. Do not treat these
 exploratory comparisons as a completed prediction gate or advance numerical
 upgrades yet.

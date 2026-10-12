@@ -169,6 +169,58 @@ def test_stardist_onnxruntime_matches_pytorch(
             session.run(None, {"image": np.zeros((2, 3, 64, 64), dtype=np.float32)})
 
 
+def _assert_pretrained_stardist_dense_parity(
+    expected: list[np.ndarray], actual: list[np.ndarray]
+) -> None:
+    # Native float32/float64 calibration exceeds 1e-5 for this trained class head.
+    tolerances = {"binary_map": 1e-5, "ray_map": 1e-5, "type_map": 2e-4}
+    assert len(expected) == len(actual) == len(tolerances)
+    for name, reference, current in zip(tolerances, expected, actual):
+        assert current.shape == reference.shape
+        assert current.dtype == reference.dtype
+        np.testing.assert_allclose(current, reference, rtol=1e-4, atol=tolerances[name])
+    np.testing.assert_array_equal(actual[-1].argmax(1), expected[-1].argmax(1))
+
+
+@pytest.mark.parametrize("head", [0, 1, 2])
+def test_pretrained_stardist_comparison_rejects_raw_output_changes(head: int) -> None:
+    expected = [
+        np.zeros((1, channels, 2, 2), dtype=np.float32) for channels in (1, 32, 7)
+    ]
+    actual = [array.copy() for array in expected]
+    actual[head] += 1e-3
+    np.testing.assert_array_equal(actual[-1].argmax(1), expected[-1].argmax(1))
+    with pytest.raises(AssertionError):
+        _assert_pretrained_stardist_dense_parity(expected, actual)
+
+
+def test_pretrained_stardist_comparison_rejects_class_change_inside_raw_budget() -> (
+    None
+):
+    expected = [
+        np.zeros((1, channels, 2, 2), dtype=np.float32) for channels in (1, 32, 7)
+    ]
+    actual = [array.copy() for array in expected]
+    actual[-1][:, 1] = 1e-5
+    with pytest.raises(AssertionError):
+        _assert_pretrained_stardist_dense_parity(expected, actual)
+
+
+@pytest.mark.parametrize("wrong_shape", [False, True])
+def test_pretrained_stardist_comparison_rejects_output_contract_changes(
+    wrong_shape: bool,
+) -> None:
+    expected = [
+        np.zeros((1, channels, 2, 2), dtype=np.float32) for channels in (1, 32, 7)
+    ]
+    actual = [array.copy() for array in expected]
+    actual[2] = (
+        actual[2].reshape(7, 2, 2) if wrong_shape else actual[2].astype(np.float64)
+    )
+    with pytest.raises(AssertionError):
+        _assert_pretrained_stardist_dense_parity(expected, actual)
+
+
 def test_pretrained_stardist_real_image_onnx_parity(tmp_path: Path) -> None:
     """Validate dense and postprocessed parity with a real checkpoint/image.
 
@@ -207,8 +259,7 @@ def test_pretrained_stardist_real_image_onnx_parity(tmp_path: Path) -> None:
         expected = [tensor.cpu().numpy() for tensor in wrapper(x)]
     actual = session.run(None, {"image": x.numpy()})
 
-    for expected_tensor, actual_tensor in zip(expected, actual):
-        np.testing.assert_allclose(actual_tensor, expected_tensor, rtol=1e-4, atol=1e-5)
+    _assert_pretrained_stardist_dense_parity(expected, actual)
 
     expected_post = model.post_processor.postproc_serial(_to_soft_output(expected))[
         "nuc"
