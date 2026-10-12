@@ -21,7 +21,11 @@ StarDist outputs are raw foreground scores, 32 radial-distance channels, and
 class logits. Foreground scores are unconstrained head outputs, not calibrated
 probabilities. Masks preserve instance IDs and background 0. Expected instance counts
 are 96 and 79, respectively. Dense comparison uses `atol=1e-5, rtol=1e-4`;
-instance and class masks must match exactly. These bounds do not replace or
+Flow, ray, and foreground outputs are compared in their raw units. Class-head
+probabilities are evaluated along the class axis in float64 with the same bounds.
+Class masks and instance dtype, background, object pixels, and counts must match
+exactly; a bijection of positive instance IDs is allowed. Predictions and stored
+reference IDs are not rewritten. These bounds do not replace or
 relax the separate ONNX parity tests.
 
 Run the offline fixture integrity check with:
@@ -31,8 +35,8 @@ HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 poetry run pytest tests/test_checkpoint_bas
 ```
 
 For numerical upgrades and releases, run the checkpoint comparison manually.
-It is exploratory until the CPU numerical and instance-ID policy is reviewed;
-it is not a passing upgrade gate. There is no recurring checkpoint-download CI
+This checks one image and two checkpoints; it does not establish representative
+dataset coverage. There is no recurring checkpoint-download CI
 job. The offline integrity check remains in ordinary CI. These repo-level test
 fixtures are not shipped in wheels or source distributions.
 
@@ -61,15 +65,17 @@ a quality benchmark, or GPU/AMP validation. Registered model-name loading,
 additional images/model families, and the StarDist ONNX tolerance gap remain
 separate work.
 
-The first Linux x86-64 run of this preserved baseline passed CellPose but found
-two StarDist class logits outside the dense bounds (maximum absolute difference
-2.193451e-5). Keep this visible while investigating numerical backend differences;
-the gate is not ready for numerical upgrades. Subtests report every dense map,
-mask, and count even when another comparison fails. No reference or tolerance
-has been changed in response to this failure.
+The CPU comparison policy follows the inference contract: class logits pass
+through softmax before classification, and instance numbers identify objects
+within an independently inferred image. A common logit offset leaves class
+probabilities unchanged, but changed confidence must still fail. Split, merged,
+moved, or missing objects must fail even when counts or classes match. Unit tests
+exercise these distinctions. [SciPy's softmax definition](https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.softmax.html)
+describes the class-probability transformation.
 
-A second Linux runner also found four CellPose class logits outside the bounds
-and 1,305 changed instance-label pixels, while class masks and instance counts
-matched. StarDist's mask matched, with three dense-logit outliers. Runner-dependent
-float32 variation and CellPose label numbering versus boundary changes require
-further investigation; these failures remain enforced.
+A one-off Linux/macOS investigation found identical object partitions and class
+maps for default/native float32 and float64 runs. Raw class logits showed backend
+rounding differences, while probabilities met the existing bounds. The CPU policy
+does not alter production inference, checkpoint/reference files, or the separate
+ONNX raw-output assertions. Numerical backend equivalence is limited to the
+recorded inputs; GPU/AMP and broader datasets remain unverified.

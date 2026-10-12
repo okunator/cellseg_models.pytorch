@@ -6,14 +6,16 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-Status reconciled on 2026-10-11 against main at `e3b2ab5`, version `0.1.30`.
+Status reconciled on 2026-10-12 against main at `a99828d`, version `0.1.30`.
 PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
 exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
 runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
 PRs 93/94 update the HTTP/cache stack and Pillow. PR 86 is superseded and closed.
 PR 96 updates geometry/serialization, PR 97 modernizes developer tooling and
 adds the first strict typing gate, and PR 98 repairs CPU WSI tile execution.
-All 13 hosted checks passed for PRs 97/98.
+PR 99 preserves repo-only checkpoint references and removes the one-off docs
+reports. Checkpoint comparisons remain manual, with numerical policy unresolved.
+All 13 hosted checks passed for PRs 97/98/99.
 The old ONNX review checkout is historical; its corrections are merged.
 
 The completed upgrade PRs passed all 12 hosted checks on Python 3.10/3.11/3.12,
@@ -223,21 +225,34 @@ as separate feature work.
 - [ ] Keep each maintenance batch independently revertible. Preserve the previous
   release and baseline artifacts; fix or revert regressions before advancing.
 
-## Progress and remaining evidence
 
-CI/publication guidance, agent instructions, and Google-style library docstrings
-are implemented through PRs 84, 85, and 87. All nine merged-main checks passed;
-no package has been published as part of this maintenance work.
+## Cleanup after maintenance work
 
-The corrective ONNX branch passed 32 local exporter tests with zero skips on
-Python 3.11 / PyTorch 2.7.1. Its locked ordinary suite passed 2,041 tests with
-5,191 skips: 5,184 gated decoder cases, one CUDA case, four optional runtime
-comparisons exercised separately, and two pretrained-image cases. Configured
-hooks and workflow lint passed. Both Linux exporter versions passed in
-[PR validation run 37964614158](https://github.com/okunator/cellseg_models.pytorch/actions/runs/37964614158)
-and in the merged-main run linked above. Half/double tests cover sample
-construction; accelerator and end-to-end reduced-precision runtime support
-remain unverified.
+Review temporary material after each completed batch and before the maintenance
+release candidate. Record its purpose and removal trigger in the relevant plan
+item or PR; use this plan rather than creating another inventory document.
+
+- Remove completed investigation notes, diagnostics, duplicate reports, and
+  obsolete phase plans once their remaining facts have reached user/contributor
+  guidance or a maintained regression. PRs and Git history retain past evidence.
+- Keep fixtures only while a maintained check consumes them. Remove superseded
+  data with its obsolete check, and keep reference data outside distributions.
+- Review CI duration, downloads, matrix versions, and artifact storage. Retire
+  temporary jobs and redundant checks; use manual upgrade/release runs for costly
+  investigations without a continuing per-PR purpose. Preserve distinct supported
+  source, installed-package, export, and release contracts.
+- Revisit deferred design drafts when adopted or cancelled. Consolidate the
+  maintenance plan/review history at the end, retaining actionable open work and
+  current compatibility guidance instead of a permanent progress diary.
+
+Release cleanup checks:
+
+- [ ] Remove resolved maintenance notes and unused diagnostic scripts/fixtures.
+- [ ] Inspect wheel/source contents and sizes for accidental test/report payloads.
+- [ ] Review CI timings and retire obsolete jobs, matrix entries, and reports.
+- [ ] Check remaining documentation links and unresolved tasks after consolidation.
+
+## Remaining baseline evidence
 
 [The maintained baseline fixtures](../tests/fixtures/checkpoint_baseline/README.md)
 record two immutable checkpoint revisions/digests, one image digest, preprocessing,
@@ -248,102 +263,25 @@ on the recorded image, but StarDist dense outputs exceeded their original bounds
 
 Ordinary CI runs only the offline fixture integrity check. Run the optional
 checkpoint comparisons manually for numerical upgrades and releases; they are
-exploratory until the CPU comparison policy is reviewed. Linux runs exposed
-small dense-logit differences and sometimes changed CellPose instance labels
-against the preserved macOS reference. No arrays or thresholds were changed.
-This scoped fixture PR can proceed independently of that investigation; do not
-treat it as a completed prediction gate or advance numerical upgrades yet.
+scoped to the recorded image and checkpoints. A one-off Linux/macOS investigation
+confirmed identical object partitions and class maps across the sampled CPU
+backends. Compare class probabilities using the existing bounds, raw physical
+heads using their existing bounds, and exact instance partitions/background with
+positive-ID bijections. No production inference, reference arrays, or thresholds
+change. Broader image/model coverage and raw pretrained ONNX parity remain open.
+PR 99 is merged independently of that investigation. Do not treat these
+exploratory comparisons as a completed prediction gate or advance numerical
+upgrades yet.
 The repo-level fixtures and integration test are excluded from distributions
 by living outside the runtime package. This covers one image and two models,
 not a representative dataset, registered-name loading, or accelerator validation.
 
-Security counts are dated snapshots, not live completion criteria. HTTP/cache
-and Pillow updates remediate the recorded affected version ranges; remaining
-advisories still require applicability triage and updates. No alerts were dismissed.
-
-Direct declarations, dataset import repairs and Linux Python 3.12 coverage are
-complete. Representative inference, full WSI execution, other optional packages,
-newer Python versions, library typing, and uv remain incomplete. Developer
-tooling and the strict release-tool typing scope are complete (97).
-
-Merged PR 90 makes Pillow, Hugging Face Hub, safetensors,
-pandas, Shapely, and NetworkX explicit runtime requirements. Bounds include the
-locked versions and the versions already exercised in isolated range-based
-installation checks. Poetry 2.2.1 refreshes lockfile format/metadata while retaining
-all 116 package versions and artifact hashes. The installed-package smoke check
-now imports the concrete predictor module. The dataset import repair is merged in PR 91; broader optional feature coverage
-remains incomplete; the broad dependency-inventory checkbox
-stays open until those APIs and declarations are complete.
-
-Issue 68's original Linux/Python 3.12 failure was reproduced at resolution time:
-`torch==2.1.1` has no CPython 3.12 wheel. Current metadata no longer pins that
-version. PR 92 subsequently validated current Linux Python 3.12 source and wheel/source
-installs. Published release verification is still required before closing the issue.
-
-The dataset import follow-up keeps ordinary training dataset exports, checks
-optional imports inside constructors,
-removes the unused Albumentations dependency from WSI inference transforms,
-and corrects the segmenter's transform keyword. A subprocess regression blocks
-Albumentations, PyTables, and Matplotlib while checking public imports, tile
-sampling, coordinates, custom transforms, construction, and training dependency
-errors. Installed-package checks now cover the dataset and WSI segmenter modules.
-This does not complete end-to-end WSI validation or training-extra compatibility.
-
-The inference-baseline patch repairs `WsiSegmenter.segment()` device and output
-arguments, aligns uint8 preprocessing with direct prediction, and preserves tile
-coordinates in dotted slide filenames. It refuses overwrites and colliding paths,
-and failed runs remain incomplete. Shared async post-processing resolves all
-present heads and preserves None for absent heads. Twelve deterministic CPU
-regressions exercise a small synthetic model through the real predictor,
-post-processor, and GeoParquet writer, including batched and serial parity.
-
-These establish execution contracts, not a pretrained checkpoint baseline.
-Full-slide merging, slide-backend and training extras, representative checkpoint
-fixtures, accelerator behavior, and other-platform installation remain open.
-
-
-## Python 3.12 installation validation
-
-The Python 3.12 CI patch extends both the locked source matrix and the clean
-wheel/source install matrix, preserving Python 3.10 and 3.11 checks. It exercises
-current repository artifacts on Linux, covering the environment family reported
-in issue 68. The historical `torch==2.1.1` requirement cannot resolve on CPython
-3.12; the current manifest has no such exact pin. This patch changes neither
-runtime dependencies nor the lockfile nor the Python minimum.
-
-All 12 hosted checks passed for PR 92, including the new source/install jobs. It does not
-validate every optional package, GPU, platform, or Python version above 3.12.
-Issue 68 should remain open until the relevant fixes are available in a published
-release and the maintainer decides whether its original report is resolved.
-
-
-## Download and cache security batch
-
-After merged PRs 91 and 92, the source and clean wheel/source installation matrix
-covers Python 3.10, 3.11, and 3.12 on Linux. Merged PR 93 raises
-Requests to at least 2.33.0, urllib3 to 2.8.0, IDNA to 3.15, and filelock to 3.20.3.
-Explicit transitive security floors prevent published installs from accepting
-older affected versions even when another package has already installed them.
-Only these four locked versions change; the model and numerical stack is retained.
-
-[The review record](maintenance-review.md) lists affected advisory IDs and their
-preconditions. Hermetic localhost tests cover chunked streaming, gzip decoding,
-and redirects. Separate checks cover lock exclusion/release, Unicode hostname
-encoding, and immutable checkpoint cache digests. These checks establish basic
-compatibility, not exploitation of every advisory or broad prediction parity.
-
-
-## Pillow security batch
-
-Merged PR 94 raises the published Pillow minimum and lockfile to 12.3.0,
-remediating 18
-recorded advisory ranges without changing other locked packages.
-[The historical validation record](https://github.com/okunator/cellseg_models.pytorch/blob/e3b2ab54b99d3ed6b5e786caa9c3ace4aa5bfd98/docs/validation/pillow-upgrade.json) captures 46 identical
-preprocessing/codec/annotation arrays and unchanged dense predictions and masks
-for two immutable checkpoints on the recorded image. Representative inference
-and the StarDist ONNX gap remain open. All 12 hosted checks passed.
-The PyArrow/geospatial batch subsequently passed in PR 96.
-
+The ordinary suite and installed-package checks do not establish GPU/AMP,
+representative-image, full-slide, training-extra, or newer-Python coverage.
+Issue 68 still needs verification against a published release. Security advisory
+counts are dated snapshots; remaining alerts require applicability triage.
+Completed batch validation is recorded in the relevant PRs and
+[the review record](maintenance-review.md), rather than repeated in this plan.
 
 ## Deferred structure and validation records
 
@@ -351,26 +289,3 @@ The PyArrow/geospatial batch subsequently passed in PR 96.
 and feature isolation. It is deferred structural work, not a prerequisite refactor
 bundled into dependency upgrades. The GPU proposal is preserved on
 `docs/gpu-postprocessing-proposal` and remains deferred after maintenance.
-
-The initial checkpoint identities, preprocessing, and preserved expected arrays
-now live in maintained test fixtures. The one-off ONNX/Pillow JSON reports have
-been removed from docs; historical evidence remains in the PRs and Git history,
-and the unresolved ONNX differences remain in the review record. Add no new
-one-off upgrade JSON reports. This consolidation does not complete representative
-dataset, full-slide, accelerator, or registered-name loading coverage.
-
-
-## Developer toolchain batch
-
-Merged PR 97 updates pytest/cov/xdist, pre-commit/virtualenv, mypy, Ruff,
-Matplotlib/fontTools, and scriv in the development group. It removes unused
-Black/isort/Flake8 toolchains and their dependencies. Runtime package versions and artifact hashes stay intact.
-FontTools selects a compatible version by Python version while retaining 3.10.
-
-Ruff keeps the effective E4/E7/E9/F rule scope; remove the overridden top-level
-rule list and use current nested configuration. Hooks and the project pin share
-Ruff 0.17.0. Strict mypy initially checks only the release-version guard; its
-manifest version validation now explicitly requires a string, with a regression.
-A developer-only CI job runs these checks without installing the model stack.
-Library annotation inventory, numerical type coverage, and full-repo lint cleanup
-remain separate work. No general ignore policy or manufactured casts are added.

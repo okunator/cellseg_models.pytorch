@@ -180,6 +180,10 @@ The optional repository skills are
 named workflows; reading guidance does not authorize a merge, release, data
 deletion, long compute run, or external message. Follow the user's existing scope.
 
+For temporary maintenance documents, diagnostics, fixtures, and CI checks, record
+their purpose and removal trigger in the plan or PR. Retire them when superseded;
+review CI cost and distribution contents after each maintenance batch.
+
 Keep runtime upgrades, typing rollout, and the uv migration independently
 reviewable. Validate built wheels and source distributions outside the checkout.
 Publication must use the verified artifacts and PyPI trusted publishing once the
