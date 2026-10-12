@@ -56,7 +56,7 @@ ML Dtypes 0.6.0 requires NumPy 2. No project dependencies or lockfile were chang
 
 Immutable checkpoint revisions, SHA-256 digests, image identity, preprocessing,
 and preserved PyTorch predictions are recorded in
-[the maintained checkpoint fixtures](../cellseg_models_pytorch/models/tests/data/checkpoint_baseline/README.md). Both real models were
+[the maintained checkpoint fixtures](../tests/fixtures/checkpoint_baseline/README.md). Both real models were
 loaded from public safetensors checkpoints at those revisions. The input was
 `utils/tests/data/HE.png`, converted to RGB, resized with Pillow bilinear sampling
 to 256 × 256, and normalized with the existing per-image min-max helper.

@@ -11,7 +11,8 @@ The input is the existing `utils/tests/data/HE.png`, converted to RGB, resized
 with PIL bilinear interpolation to 256 × 256, and min-max normalized per image.
 Inference uses a CPU float32 BCHW tensor, evaluation mode, no AMP, and two
 PyTorch threads. Both checkpoints use EfficientNet-B5 and seven class channels;
-class IDs are preserved as integers 0–6, with background 0. The fixture does not
+class IDs are preserved as integers 0–6. Background pixels have class 0;
+a reconstructed instance can also receive class 0. The fixture does not
 assign unverified semantic names to those IDs.
 
 Each NPZ contains dense float32 BCHW outputs, an int32 HW instance-label mask,
@@ -26,13 +27,19 @@ relax the separate ONNX parity tests.
 Run the offline fixture integrity check with:
 
 ```sh
-HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 poetry run pytest cellseg_models_pytorch/models/tests/test_checkpoint_baseline.py
+HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 poetry run pytest tests/test_checkpoint_baseline.py
 ```
+
+For numerical upgrades and releases, run the checkpoint comparison manually.
+It is exploratory until the CPU numerical and instance-ID policy is reviewed;
+it is not a passing upgrade gate. There is no recurring checkpoint-download CI
+job. The offline integrity check remains in ordinary CI. These repo-level test
+fixtures are not shipped in wheels or source distributions.
 
 Run the explicit checkpoint integration check with:
 
 ```sh
-NUMBA_DISABLE_JIT=1 poetry run pytest --optional cellseg_models_pytorch/models/tests/test_checkpoint_baseline.py
+NUMBA_DISABLE_JIT=1 poetry run pytest --optional tests/test_checkpoint_baseline.py
 ```
 
 This downloads only the pinned safetensors files into the Hugging Face cache.

@@ -40,7 +40,7 @@ poetry run pre-commit run --files path/to/changed_file.py
 The `--slow`, `--optional`, and `--cuda` flags select separate test categories.
 Describe which category and device you tested, and list any relevant skips.
 Optional integrations require their packages to be installed explicitly. The
-[pinned CPU checkpoint baseline](cellseg_models_pytorch/models/tests/data/checkpoint_baseline/README.md)
+[pinned CPU checkpoint baseline](tests/fixtures/checkpoint_baseline/README.md)
 has separate offline integrity and explicit public-download checks.
 For numerical changes, compare values and final masks, not only tensor shapes.
 For performance changes, include hardware, precision, workload, memory, and

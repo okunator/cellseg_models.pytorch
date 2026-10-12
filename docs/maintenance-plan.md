@@ -239,17 +239,23 @@ and in the merged-main run linked above. Half/double tests cover sample
 construction; accelerator and end-to-end reduced-precision runtime support
 remain unverified.
 
-[The maintained baseline fixtures](../cellseg_models_pytorch/models/tests/data/checkpoint_baseline/README.md) records two immutable
-checkpoint revisions/digests, one image digest, preprocessing, package versions,
-instance counts, and measured ONNX differences. Both models produced identical
-instance/type masks on that image, but StarDist dense outputs exceeded their
-original tolerance. The preserved PyTorch arrays now have pinned metadata, an offline integrity
-check, and an explicit CPU checkpoint integration job. This is one image and two
-models, not a representative baseline or registered-name loading validation.
-The separate ONNX tolerance failure remains unresolved. The first Linux
-checkpoint gate also found two StarDist class logits outside the preserved
-macOS reference bounds; this baseline patch remains draft pending investigation.
-Do not advance numerical upgrades or treat this as a completed passing gate.
+[The maintained baseline fixtures](../tests/fixtures/checkpoint_baseline/README.md)
+record two immutable checkpoint revisions/digests, one image digest, preprocessing,
+reference versions, preserved PyTorch arrays, and instance counts. Measured ONNX
+differences remain in [the historical review](maintenance-review.md); they are
+not part of these PyTorch fixtures. Both ONNX models produced identical masks
+on the recorded image, but StarDist dense outputs exceeded their original bounds.
+
+Ordinary CI runs only the offline fixture integrity check. Run the optional
+checkpoint comparisons manually for numerical upgrades and releases; they are
+exploratory until the CPU comparison policy is reviewed. Linux runs exposed
+small dense-logit differences and sometimes changed CellPose instance labels
+against the preserved macOS reference. No arrays or thresholds were changed.
+This scoped fixture PR can proceed independently of that investigation; do not
+treat it as a completed prediction gate or advance numerical upgrades yet.
+The repo-level fixtures and integration test are excluded from distributions
+by living outside the runtime package. This covers one image and two models,
+not a representative dataset, registered-name loading, or accelerator validation.
 
 Security counts are dated snapshots, not live completion criteria. HTTP/cache
 and Pillow updates remediate the recorded affected version ranges; remaining

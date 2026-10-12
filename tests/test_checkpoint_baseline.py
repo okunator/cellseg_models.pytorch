@@ -16,8 +16,8 @@ from cellseg_models_pytorch.models.cellpose import CellPose
 from cellseg_models_pytorch.models.stardist import StarDist
 from cellseg_models_pytorch.transforms.functional.normalization import minmax_normalize
 
-DATA = Path(__file__).parent / "data" / "checkpoint_baseline"
-ROOT = Path(__file__).resolve().parents[3]
+DATA = Path(__file__).parent / "fixtures" / "checkpoint_baseline"
+ROOT = Path(__file__).resolve().parents[1]
 METADATA = json.loads((DATA / "metadata.json").read_text())
 MODELS = {"cellpose": CellPose, "stardist": StarDist}
 
