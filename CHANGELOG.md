@@ -4,11 +4,18 @@
 
 - Add CellPose and StarDist dense-network ONNX export (contributed by
   Ajinkya Kulkarni). Instance reconstruction remains in Python. Export requires
-  PyTorch 2.7 or newer and optional ONNX packages; ordinary inference requirements
-  are unchanged. Dynamic batches retain fixed spatial dimensions, and export
+  optional ONNX packages. Dynamic batches retain fixed spatial dimensions, and export
   preserves model dtype and individual module training modes.
 
 ## Fixes
+
+- Require PyTorch 2.13 or newer for upstream security fixes, update the locked
+  PyTorch/torchvision pair to 2.14.1/0.29.1, and require timm 1.0.30 or newer.
+  Require fsspec 2026.6.0 and setuptools 83.0.0 or newer for their security
+  fixes. Python 3.10 remains supported; NumPy and the numerical stack are
+  unchanged in this batch.
+  Constrain torchvision to compatible modern releases and exclude Python 3.14.1,
+  matching torchvision's upstream Python restriction.
 
 - Repair WSI tile inference device, preprocessing, and output arguments. Preserve
   dotted slide names and reject existing or colliding tile outputs. Resolve async

@@ -1,5 +1,18 @@
-[tool.poetry]
+[project]
 name = "cellseg_models_pytorch"
+dynamic = [
+    "version",
+    "description",
+    "readme",
+    "license",
+    "authors",
+    "keywords",
+    "urls",
+    "dependencies",
+]
+requires-python = ">=3.10,<4.0,!=3.14.1"
+
+[tool.poetry]
 version = "0.1.30"
 description = "Python library for 2D cell/nuclei instance segmentation models written with PyTorch."
 authors = ["Okunator <oskari.lehtonen@helsinki.fi>"]
@@ -15,21 +28,23 @@ keywords = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.10"
 numpy = "^1.24"
-timm = "^1.0.7"
+timm = ">=1.0.30,<2"
 numba = "^0.60.0"
-torch = ">=2.0.0,<3.0.0"
+torch = ">=2.13.0,<3.0.0"
+torchvision = ">=0.28.0,<0.30"
 scipy = "^1.14"
 scikit-image = "^0.25"
 opencv-python = "^4.8"
 tqdm = "^4.64.0"
 scikit-learn = "^1.3.0"
 requests = ">=2.33.0,<3"
-# Security floors for HTTP and checkpoint-cache dependencies.
+# Security floors for HTTP, checkpoint-cache, and PyTorch dependencies.
 urllib3 = ">=2.8.0,<3"
 idna = ">=3.15,<4"
 filelock = ">=3.20.3,<4"
+fsspec = ">=2026.6.0"
+setuptools = ">=83.0.0"
 geopandas = ">=1.1.2,<2"
 pyarrow = ">=23.0.1,<24"
 rasterio = "^1.4.3"
@@ -168,7 +183,7 @@ docstring-code-format = true
 "**/{tests,docs,tools}/*" = ["E402"]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.2.1"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]

@@ -6,7 +6,7 @@ users retain working APIs, checkpoints, and segmentation results.
 
 ## Current baseline
 
-Status reconciled on 2026-10-12 against main at `a439335`, version `0.1.30`.
+Status reconciled on 2026-10-12 against main at `bd69d4e`, version `0.1.30`.
 PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
 exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
 runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
@@ -16,7 +16,9 @@ adds the first strict typing gate, and PR 98 repairs CPU WSI tile execution.
 PR 99 preserves repo-only checkpoint references and removes the one-off docs
 reports. PR 100 establishes the sampled CPU inference comparison policy and
 cleanup triggers, and retires temporary diagnostics. Comparisons remain manual.
-All 13 hosted checks passed for PRs 97/98/99/100.
+PR 101 calibrates pretrained StarDist ONNX classifier precision independently of
+the exporter and requires exact dense class decisions and final masks.
+All 13 hosted checks passed for PRs 97/98/99/100/101.
 The old ONNX review checkout is historical; its corrections are merged.
 
 The completed upgrade PRs passed all 12 hosted checks on Python 3.10/3.11/3.12,
@@ -24,8 +26,8 @@ including source suites, build, six clean installs and two ONNX jobs. See
 [Python 3.12 validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38041808171),
 [HTTP validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38044641492),
 and [Pillow validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38045922826).
-The Python minimum remains 3.10. Model/numerical locked versions are retained;
-ONNX export requires PyTorch 2.7 or newer. No maintenance release is published.
+The Python minimum remains 3.10. The model dependency batch is now in progress;
+the numerical stack remains unchanged. No maintenance release is published.
 
 The original contributor PRs passed ordinary tests but skipped runtime comparisons
 without optional ONNX packages. They were merged before the corrective patch;
@@ -56,16 +58,18 @@ category; run them separately from ordinary tests.
    with image-decoding/checkpoint checks appropriate to each changed dependency.
 4. Complete the reproducible prediction baseline: immutable checkpoint/image
    identities, encoder/class/output settings, preprocessing, dense outputs,
-   reconstructed masks and counts. Add representative images/models and investigate
-   the existing StarDist ONNX tolerance failure without relaxing it for a green CI.
-   A new scientific tolerance requires an independently justified validation change.
+   reconstructed masks and counts. PR 101 resolves the sampled StarDist ONNX
+   comparison using independent native precision calibration. For each incoming
+   batch, establish the affected image/model checks before comparing versions;
+   broader dataset and accelerator validation remain release work.
 5. Developer tooling and the strict release-tool typing scope are complete (97).
    Expand library typing separately from runtime upgrades and the uv migration.
-6. Upgrade model, numerical/image, and geospatial dependencies in separate batches
-   once their baseline checks exist. Add newer Python CI coverage after dependency
-   wheel/compatibility checks; change the Python floor only in an explicit support
-   policy patch. The Python floor remains 3.10. A separate CI patch adds Python 3.12 source
-   and clean distribution checks; newer versions still require validation.
+6. Upgrade model and numerical/image dependencies in separate batches once their
+   baseline checks exist; the geometry/serialization batch is complete (96).
+   Add newer Python CI coverage after dependency wheel/compatibility checks;
+   change the Python floor only in an explicit support
+   policy patch. The Python floor remains 3.10. Python 3.12 source and clean
+   distribution checks are already merged; newer versions require validation.
 7. Migrate Poetry to uv after dependency audit and baseline validation, then
    complete release-candidate checks. Update user documentation and address
    installation/correctness issues alongside each relevant batch rather than
@@ -148,8 +152,11 @@ Completion requires a clean installation and a reproducible inference baseline.
   compatibility evidence (PRs 93/94).
 - [x] Upgrade geometry/serialization with round-trip, cross-version, coordinate,
   and JIT-enabled geometry checks (PR 96).
-- [ ] Upgrade PyTorch/timm and the broader numerical stack after the reproducible
-  prediction baseline. Update manifest and lockfile together.
+- [x] Validate the current PyTorch/timm batch locally with six-image comparisons,
+  source, minimum-version, ONNX, and installed-package checks described below.
+  Hosted Linux validation remains the PR merge gate; GPU checks remain release work.
+- [ ] Upgrade the broader numerical stack with its own affected-path baseline.
+  Update manifest and lockfile together.
 - [ ] Verify checkpoint loading, predictions, masks, metrics, and training after
   each batch. Test Numba with JIT enabled as well as the ordinary disabled-JIT suite.
 - [ ] Decide the supported Python floor from package wheel availability and tests.
@@ -278,9 +285,13 @@ heads using their existing bounds, and exact instance partitions/background with
 positive-ID bijections. No production inference, reference arrays, or thresholds
 change in the CPU baseline. Broader image/model coverage remains open; sampled
 raw pretrained ONNX parity now uses the separately calibrated class-head budget.
-PR 99 is merged independently of that investigation. Do not treat these
-exploratory comparisons as a completed prediction gate or advance numerical
-upgrades yet.
+For the model dependency batch, compare the old and proposed environments on
+both pinned checkpoints and six existing images, with unchanged dense bounds,
+exact dense class decisions, object partitions, and final type maps. Also run
+the frozen fixture comparisons, source suite, CPU forward/backward checks, and
+ONNX tests at the supported minimum/current versions. Keep numerical dependency
+upgrades separate until their affected post-processing and metric checks exist.
+This batch-specific evidence does not complete broader dataset/GPU validation.
 The repo-level fixtures and integration test are excluded from distributions
 by living outside the runtime package. This covers one image and two models,
 not a representative dataset, registered-name loading, or accelerator validation.
@@ -291,6 +302,27 @@ Issue 68 still needs verification against a published release. Security advisory
 counts are dated snapshots; remaining alerts require applicability triage.
 Completed batch validation is recorded in the relevant PRs and
 [the review record](maintenance-review.md), rather than repeated in this plan.
+
+Current model batch: raise the PyTorch security floor to 2.13.0 and lock
+2.14.1/torchvision 0.29.1 with timm 1.0.30. Raise fsspec's floor to 2026.6.0
+and lock 2026.9.0; require setuptools 83.0.0 or newer and lock 84.0.0. This addresses
+GHSA-rrmf-rvhw-rf47, GHSA-qfhq-4f3w-5fph,
+GHSA-vgrw-7cvw-pwgx, GHSA-887c-mr87-cxwp, GHSA-27vj-qcqg-25rc, and
+GHSA-h35f-9h28-mq5c. The library scripts its fixed Swish/Mish functions with
+torch.jit.script; it does not call the affected LSTM, sequence-unpacking,
+CTC-loss, or fsspec reference-filesystem APIs. The setuptools manifest issue
+does not affect our Poetry build.
+Update the existing ONNX minimum job to 2.13.0/torchvision 0.28.0. The
+torchvision range is constrained to 0.28/0.29; Python 3.14.1 is excluded to
+match upstream metadata and prevent a resolver fallback to unavailable old wheels.
+The tested Python matrix and minimum stay 3.10/3.11/3.12 and 3.10 respectively.
+The package name and Python requirement use standard `[project]` metadata so
+Poetry preserves the patch exclusion in distributions; the version and
+dependencies remain in Poetry, with the same build backend (minimum core 2.2.1).
+PyTorch's new Linux CUDA dependencies require separate driver/device verification before
+release; CPU evidence does not validate CUDA/AMP. Temporary six-image reference
+arrays and the probe stay outside the repository and retire after this batch;
+the PR retains the results, with no additional CI job or distribution payload.
 
 ## Deferred structure and validation records
 
