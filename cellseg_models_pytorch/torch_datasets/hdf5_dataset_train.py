@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from importlib import import_module
-from typing import TYPE_CHECKING, Dict, Tuple
+from typing import TYPE_CHECKING, Tuple
 
 import numpy as np
 import torch
@@ -36,11 +36,12 @@ class TrainDatasetH5(Dataset):
                 Key for the instance data in the h5 file. This will be transformed
             mask_keys: Keys for the semantic masks in the h5 file.
             transforms: Albumentations compose object for image and mask transforms.
-            inst_transforms: ApplyEach object for instance transforms.
+            inst_transforms: ApplyEach object with as_list=True for instance transforms.
 
         Raises:
             ModuleNotFoundError: If albumentations or tables is not installed.
-            ModuleNotFoundError: If tables is not installed.
+            ValueError: If configured arrays have no sample axis or different
+                numbers of samples. Unselected metadata arrays are ignored.
         """
         try:
             import_module("albumentations")
@@ -71,15 +72,27 @@ class TrainDatasetH5(Dataset):
         self.inst_transforms = inst_transforms
 
         with tb.open_file(path, "r") as h5:
-            for array in h5.walk_nodes("/", classname="Array"):
-                self.n_items = len(array)
-                break
+            image = h5.root[img_key]
+            if not image.shape:
+                raise ValueError(f"'{img_key}' must have a sample axis")
+            self.n_items = image.shape[0]
+            for key in self.keys:
+                array = h5.root[key]
+                if not array.shape or array.shape[0] != self.n_items:
+                    raise ValueError(
+                        f"'{key}' must have {self.n_items} samples matching '{img_key}'"
+                    )
 
     def __len__(self) -> int:
         """Return the number of items in the db."""
         return self.n_items
 
-    def __getitem__(self, ix: int) -> Dict[str, np.ndarray]:
+    def __getitem__(self, ix: int) -> dict[str, torch.Tensor]:
+        """Read aligned image, integer masks and float32 auxiliary targets.
+
+        Images and auxiliary maps are CHW tensors; integer masks are HW tensors.
+        Auxiliary keys retain the format ``{instance_key}_{transform_name}``.
+        """
         data = FileHandler.read_h5(self.path, ix, keys=self.keys)
 
         # get instance transform kwargs
@@ -105,10 +118,14 @@ class TrainDatasetH5(Dataset):
         integer_masks = {
             n: masks[i].squeeze().long() for i, n in enumerate(self.mask_keys)
         }
+        aux_keys = [
+            f"{key}_{name}"
+            for name in self.inst_transforms.names
+            for key in self.inst_keys
+        ]
         inst_transformed_masks = {
-            f"{n}_{tr_n}": masks[len(integer_masks) + i].float()
-            for n in self.inst_keys
-            for i, tr_n in enumerate(self.inst_transforms.names)
+            name: masks[len(integer_masks) + i].float()
+            for i, name in enumerate(aux_keys)
         }
 
         out = {self.img_key: image.float(), **inst_transformed_masks, **integer_masks}
