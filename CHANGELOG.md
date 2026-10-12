@@ -9,6 +9,10 @@
 
 ## Fixes
 
+- Require patched Soup Sieve 2.9.2 or newer within 2.x and Pygments 2.20.0 or
+  newer within 2.x for selector parsing and ADL lexer security fixes. These are
+  existing libpysal/Mpire dependencies; Python 3.10 remains supported.
+
 - Honor `percentile_normalize99` clipping bounds and initialize zero-percentile
   spans to zero before clipping. Reject reversed bounds and preserve float32
   output and channel axes. Enhanced HoVer-Net/DCAN processing and flow
