@@ -90,7 +90,8 @@ loss reduction as segmentation accuracy or a useful trained model.
 - [x] Establish Sphinx/PyData/MyST-NB navigation, installation guidance and the
   inference notebook. A separate docs group preserves all prior locked versions.
 - [x] Add short offline training/fine-tuning notebook demonstrations: finite losses
-  and gradients, parameter updates, frozen encoder state and exact checkpoint reload.
+  and gradients, parameter updates, frozen encoder state and exact checkpoint reload
+  are validated in `tests/test_notebook_tutorials.py`, outside the rendered pages.
 - [ ] Extend training/fine-tuning to real folder/HDF5 data and pretrained checkpoints;
   validate target alignment and separate train/validation data in those examples.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
