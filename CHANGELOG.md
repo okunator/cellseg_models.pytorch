@@ -9,6 +9,9 @@
 
 ## Fixes
 
+- Exclude package-local tests and their image/HDF5 fixtures from wheels and source
+  distributions. Tests remain available in the repository checkout.
+
 - Derive HDF5 training dataset length from the configured image array and reject
   mismatched image/mask sample counts. Preserve the correct auxiliary target for
   each instance key when using multiple instance masks or transforms.

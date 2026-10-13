@@ -1,391 +1,169 @@
 # Repository maintenance plan
 
-Refresh the project in small, independently reviewable changes. Establish reliable
-CI and reproducible predictions before upgrading runtime dependencies, so existing
-users retain working APIs, checkpoints, and segmentation results.
+Modernize the library through small, independently reviewable changes while
+preserving public APIs, pretrained checkpoints and numerical results. Code and
+configuration define current behavior; this plan does not enable future features.
 
 ## Current baseline
 
-Status reconciled on 2026-10-12 against main at `c870c5e`, version `0.1.30`.
-PRs 84/85/87 provide CI, agent guidance, Google docstrings, and corrected ONNX
-exports. PRs 89/90/91 repair WSI/optional dataset imports and declare direct
-runtime requirements. PR 92 adds Python 3.12 source and clean-install checks.
-PRs 93/94 update the HTTP/cache stack and Pillow. PR 86 is superseded and closed.
-PR 96 updates geometry/serialization, PR 97 modernizes developer tooling and
-adds the first strict typing gate, and PR 98 repairs CPU WSI tile execution.
-PR 99 preserves repo-only checkpoint references and removes the one-off docs
-reports. PR 100 establishes the sampled CPU inference comparison policy and
-cleanup triggers, and retires temporary diagnostics. Comparisons remain manual.
-PR 101 calibrates pretrained StarDist ONNX classifier precision independently of
-the exporter and requires exact dense class decisions and final masks.
-PR 102 updates PyTorch/timm and their security floors, with six-image CPU
-comparisons and corrected torchvision/Python metadata. All 13 hosted checks
-passed for PRs 97/98/99/100/101/102/103/104/105/106/107/108/109. PR 103 completes the
-numerical/image batch with compiled-kernel coverage and NumPy 2 regressions.
-PR 104 fixes shared percentile clipping/zero spans and DRFNS byte saturation.
-PR 106 fixes low-IoU instance assignment, FP/FN axes and sparse IDs, with
-independent metric validation and public regressions.
-PR 109 repairs HDF5 sample counts and auxiliary target association.
-PR 110 completes the uv migration with all 13 hosted checks passing.
-PR 107 retires legacy notebooks; PR 108 preserves the README quick start.
-Replacement documentation and examples are deferred to the docs-pages phase.
-PR 105 updates locked HTML/highlighting transitives and removes unnecessary
-runtime floors; downloader/cache protections remain. The old ONNX review checkout
-is historical; its corrections are merged.
+Reconciled on 2026-10-12 against main at `b2b158e`, version `0.1.30`.
+No maintenance release has been published. Python 3.10 remains the minimum;
+source and clean wheel/source installs are tested on 3.10, 3.11 and 3.12.
+Python 3.14.1 is excluded by the torchvision requirement; newer Python versions
+are not yet validated.
 
-The completed upgrade PRs passed all 12 hosted checks on Python 3.10/3.11/3.12,
-including source suites, build, six clean installs and two ONNX jobs. See
-[Python 3.12 validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38041808171),
-[HTTP validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38044641492),
-and [Pillow validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38045922826).
-The model batch is merged. The Python minimum remains 3.10, with 3.14.1
-excluded by torchvision. The numerical/image batch is merged. No
-maintenance release is published.
+Completed work:
 
-The original contributor PRs passed ordinary tests but skipped runtime comparisons
-without optional ONNX packages. They were merged before the corrective patch;
-PR 87 supplied the batching/state/dtype fixes and explicit runtime checks. This
-sequence deviated from the original merge gate and is now corrected on main.
-The pretrained ONNX patch calibrates StarDist class-logit precision separately
-from physical outputs and requires exact dense class decisions and final masks.
-Representative prediction coverage remains open; passing these sampled checks
-does not establish dataset accuracy or accelerator compatibility.
+- Contributor ONNX exports and their batching, dtype and state-restoration fixes
+  are merged (80/81/87). Current CI exercises the minimum and current supported
+  model stacks with explicit optional packages and rejects skipped comparisons.
+- CI validates source tests, compiled numerical helpers, clean distributions and
+  release metadata. Publication uses the exact verified artifacts and PyPI OIDC.
+- Direct runtime imports and optional dataset/WSI import repairs are merged
+  (89/90/91). CPU tiled WSI execution has maintained regressions (98).
+- HTTP/cache, Pillow, geometry, model and numerical/image dependency batches are
+  merged (93/94/96/102/103). Unnecessary transitive floors were removed (105).
+- Shared normalization and DRFNS saturation, low-IoU metric assignment/FP/FN/sparse
+  IDs, and HDF5 sample counts/target alignment are fixed (104/106/109).
+- Legacy notebooks are retired; the README quick start is preserved (107/108).
+  Replacement examples and user guides are deferred to the docs-pages phase.
+- uv 0.11.4 and `uv.lock` replace Poetry CLI (110); poetry-core 2.2.1 remains the
+  build backend. Migration retained all 128 active dependency versions and verified
+  artifact contents, source tests and sampled checkpoint predictions.
+- Ruff is the single formatter/linter. Strict mypy checks the release guard and
+  shared convolution helper (97/111), with no numerical behavior changes.
+  Broader library typing and `py.typed` remain future work.
 
-Of the ordinary suite's skipped cases, 5,184 belong to a deliberately gated
-decoder matrix. `--slow`, `--optional`, and `--cuda` each select only their own
-category; run them separately from ordinary tests.
+All 13 hosted checks passed for the latest typing patch:
+[PR 111 validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38296855470).
+Completed investigations and advisory details live in their PRs and Git history,
+not a second review diary in this repository.
 
 ## Next work, in order
 
-1. Completed in PR 89: repair the clean-install WSI Matplotlib import guard,
-   add an absent-Matplotlib regression, and import WSI in wheel/source smoke
-   checks. Continue coverage of concrete inference/data APIs below.
-2. Direct declarations and dataset import repairs are merged (90/91). Python
-   3.12 source and clean-install checks pass (92). Finish the remaining optional
-   feature inventory and test real slide/training backends; issue 68 still needs
-   the relevant fixes available in a published release.
-3. Continue grouped dependency updates: HTTP/cache and Pillow are complete
-   (93/94); geometry/serialization (96), developer tooling (97), and the model
-   stack (102) and numerical/image stack (103) are complete. Refresh advisory triage per batch.
-   Record affected paths and resolved advisory IDs; update manifest/lock together
-   where needed. These focused fixes can precede the broader numerical baseline,
-   with image-decoding/checkpoint checks appropriate to each changed dependency.
-4. Complete the reproducible prediction baseline: immutable checkpoint/image
-   identities, encoder/class/output settings, preprocessing, dense outputs,
-   reconstructed masks and counts. PR 101 resolves the sampled StarDist ONNX
-   comparison using independent native precision calibration. For each incoming
-   batch, establish the affected image/model checks before comparing versions;
-   broader dataset and accelerator validation remain release work.
-5. Developer tooling and the strict release-tool typing scope are complete (97).
-   Expand library typing separately from runtime upgrades and the uv migration.
-6. Metric-matching issue 73 is resolved on main (106), legacy notebooks are
-   retired (107/108), and real HDF5 dataset repairs are merged (109). The bounded
-   dependency inventory is complete for this migration; further optional/backend
-   repairs are separate follow-ups rather than an open-ended prerequisite to uv.
-   User guides and examples move to the docs-pages phase.
-   The shared percentile normalizer and DRFNS fixes are merged (104). Model,
-   numerical/image, and geometry batches are merged (102/103/96).
-   Add newer Python CI coverage after dependency wheel/compatibility checks;
-   change the Python floor only in an explicit support
-   policy patch. The Python floor remains 3.10. Python 3.12 source and clean
-   distribution checks are already merged; newer versions require validation.
-7. The uv migration is merged (110). Add a small library typing scope, then
-   perform cleanup/release-candidate checks. Keep API docstrings and release notes with
-   functional changes; build user documentation pages and examples in their own
-   later phase. Keep trusted publisher authentication pending until an
-   authorized publication verifies it.
+1. Finish the cleanup audit below, retaining maintained regressions and actionable
+   guidance. Keep tooling, runtime, typing and structural changes independently
+   reviewable.
+2. Validate a release candidate against the affected checkpoint, optional backend,
+   numerical and training paths. Refresh dependency advisory triage. Resolve any
+   concrete failures before advancing; sampled CPU evidence does not establish
+   representative accuracy, full-slide execution or GPU/AMP compatibility.
+3. Agree on the release version and compatibility notes, then update manifest,
+   module version and lockfile together using [the release guide](releasing.md).
+   Publication and tags require maintainer authorization. Verify trusted publishing
+   on that release and install the published package before closing issue 68.
+4. Build documentation pages and verified CPU inference/training/fine-tuning
+   examples after maintenance. Revisit the deferred structure proposals separately.
 
-Do not wait for merges to perform independent read-only audits. Keep each code,
-tooling, or dependency batch independently reviewable; do not combine all phases
-into one PR.
+## Remaining validation and compatibility work
 
-## First patch for CI and publication
+- [ ] Verify published installation resolves issue 68. Python 3.12 source and
+  clean-distribution checks already pass; a published-release check is still needed.
+- [ ] Exercise representative images/model families, registered-name checkpoint
+  loading and reconstructed masks beyond the two maintained checkpoint fixtures.
+  Define tolerances before comparisons; never regenerate references to hide errors.
+- [ ] Restore current image-inference coverage and select a small useful subset
+  of the 5,184 gated decoder cases. Define a feasible separate slow/GPU schedule.
+- [ ] Verify supported GPU/AMP, precision and driver paths with available authorized
+  hardware. CPU checks and export sample construction do not validate these paths.
+- [ ] Validate real slide backends/full-slide merging and affected training paths.
+  HDF5 target/count repairs are checked with real PyTables/Albumentations files;
+  broader optional-backend support is not established by skipped tests.
+- [ ] Complete optional dependency declarations and independently tested import
+  boundaries for slide, training and export features. Do not remove mandatory
+  packages until every supported feature install preserves its API and errors.
+- [ ] Check dependency wheels and execution before adding newer Python CI versions
+  or changing the minimum. Update metadata, workflow, Ruff target, README and lock
+  together in an explicit support-policy patch; retain Python 3.10 for now.
+- [ ] Expand library annotations/stub coverage incrementally without blanket
+  suppressions, casts or altered runtime representations. Package `py.typed` only
+  after the supported surface and downstream distribution checks are ready.
+- [ ] Review issue 78 without silently changing preprocessing or licensing.
+- [ ] Retire the five superseded Dependabot PRs (23/48/50/52/57) and configure
+  future grouped weekly dependency/Actions updates in a separate policy patch.
+  Their proposed versions are older than the merged upgrades.
 
-- [x] Verify the locked environment on the existing Python 3.10 and 3.11 matrix.
-- [x] Update Actions and pin Poetry. Always synchronize dependencies and install
-  the current package; cache downloads rather than installed environments.
-- [x] Preserve test and coverage reports, check that coverage was generated, and
-  make coverage upload failures independent of test success. Fork PRs need no secrets.
-- [x] Run CI for documentation and example changes as well as library changes.
-- [x] Build the wheel and source distribution once, check their metadata, and
-  install each into a clean environment outside the checkout. Exercise public
-  imports and a CPU forward, backward, and optimizer step.
-- [x] Gate publication on both the source suite and distribution checks. Require
-  agreement between the tag, manifest, and module versions. Publish the exact
-  validated artifacts; manual dispatch validates without publishing.
+Run `--slow`, `--optional` and `--cuda` separately: each selects only its category.
+After installing undeclared optional packages, use `uv run --no-sync` so a sync
+cannot remove them. Check execution and skips; passing ordinary CI is not evidence
+for a skipped integration.
 
-Keep runtime requirements, lockfile, public APIs, and Python support unchanged
-in this first patch. Completion requires a passing hosted run, including the
-checks that cannot be reproduced locally.
+## Baseline and dependency policy
 
-## Dependency audit and prediction baseline
+[Maintained checkpoint fixtures](../tests/fixtures/checkpoint_baseline/README.md)
+pin two public checkpoint revisions/digests, one image, preprocessing and preserved
+PyTorch arrays. Their integrity check runs offline in ordinary CI; explicit native
+comparisons remain manual for numerical upgrades and releases. Fixtures are outside
+the runtime package and are excluded from distributions. Keep them while these
+maintained checks consume them; broader datasets and accelerators remain open.
 
-- [x] Triage the currently open dependency advisories by reachable paths.
-  PR 105 is merged with all 13 hosted checks passing. GitHub rescanning closes
-  the remaining alerts; no open dependency alerts were reported on 2026-10-12.
-  Refresh the audit before the release candidate; this is not a blanket security
-  certification or proof against future advisories.
-- [x] Declare the six audited direct runtime imports explicitly (PR 90).
-- [x] Repair optional training dataset imports and WSI visualization imports
-  without dynamic package export workarounds (PRs 89/91).
-- [ ] Complete optional feature declarations and independently tested import
-  boundaries across slide, training and export APIs.
-- [x] Reproduce issue 68's old PyTorch pin failure and validate current locked
-  source and range-based wheel/source installs on Linux Python 3.12 (PR 92).
-- [ ] Verify the published release resolves the reported installation path before
-  closing issue 68; other platforms and optional integrations remain open.
-- [x] Record immutable checkpoint revisions/checksums, encoder, numeric class IDs,
-  normalization, image identity, and output settings for the initial two models.
-  Broader model coverage and verified semantic class names remain open.
-- [ ] Capture representative dense predictions, reconstructed instance masks,
-  and instance counts. Define tolerances before comparing dependency changes.
-- [x] Exercise pinned public checkpoint downloads and safetensors loading for the
-  initial CellPose/StarDist fixtures. Registered-name loading remains open.
-- [ ] Restore current image inference tests and a small representative subset of
-  the large decoder matrix. Define a feasible separate slow and GPU test schedule.
+Native CPU comparisons check dense physical outputs and class probabilities with
+explicit tolerances, exact class masks and object partitions/background, allowing
+only a bijection of positive instance IDs. This does not change production outputs.
+ONNX checks independently compare raw heads and dense class decisions. Native
+float32/float64 calibration over six images justified the StarDist class-head
+budget of `atol=2e-4, rtol=1e-4` (101); foreground/ray bounds remain at `1e-5`.
+Both pinned HE.png models preserve instance/type masks. The calibration is resolved;
+it is not a representative accuracy benchmark or GPU claim.
 
-Completion requires a clean installation and a reproducible inference baseline.
+Prefer updating the parent dependency that owns a transitive requirement. Retain
+a direct transitive security floor only for a reachable vulnerable path that the
+parent minimum does not protect. Requests permits older urllib3/IDNA on downloader
+traffic, and PyTorch/Hub permit older filelock on checkpoint caches, including the
+soft-lock fallback. Keep these three floors until parent requirements protect those
+paths. fsspec/setuptools/Soup Sieve/Pygments vulnerable paths were not used by this
+library; their patched lock versions remain without unnecessary runtime floors.
+Published installs use parent requirements, not the project lockfile.
 
-## ONNX contribution review
+No open GitHub dependency alerts were reported on 2026-10-12 after PR 105.
+Refresh advisory ranges and applicability before the release candidate; this dated
+snapshot is not a continuing security certification. Hub's transport migration,
+libpysal's Python minimum and OpenCV 5 need separate compatibility checks.
 
-- [x] Review PRs 80 and 81 individually, preserving contributor attribution.
-  See [the review record](maintenance-review.md) for confirmed blockers and prepared fixes.
-- [x] Install ONNX, ONNX Script, and ONNX Runtime in an explicit validation job.
-  Require that export and runtime comparison tests execute rather than skip.
-- [x] Test batches of size one and greater than one, output names, fixed spatial
-  dimensions, missing dependencies, export failure, model dtype, and restoration
-  of model training state, including mixed child-module states.
-- [x] Repeat CPU pretrained-image comparisons with the recorded checkpoint/image
-  on PyTorch 2.7.1 and 2.14.1. ONNX covers dense prediction; reconstruction remains
-  in Python. Broader images/devices remain separately scoped.
-- [x] Check the declared minimum export PyTorch version and a current supported
-  version. Keep export dependencies optional for ordinary PyTorch inference.
-- [x] Merge the separate contributions and validate their combined corrected
-  behavior through PR 87 and merged-main CI. The original merge sequence deviated
-  from the planned ONNX gate, as recorded above. Shared-helper cleanup is not
-  needed to complete these fixes.
+## Cleanup and release checklist
 
-## Dependency upgrades and support policy
+Remove obsolete diagnostics and investigation notes after their facts reach a
+maintained regression, release note or contributor guide. PRs and Git history
+preserve past evidence. Review after each batch; do not add another inventory file.
 
-- [x] Update developer tools independently, with Ruff as the single formatter/
-  linter and a narrow strict release-tool gate (97). The current uv migration
-  supersedes its Poetry workflow while preserving the same tool versions.
-- [x] Upgrade HTTP/cache security dependencies and Pillow independently with
-  compatibility evidence (PRs 93/94).
-- [x] Upgrade geometry/serialization with round-trip, cross-version, coordinate,
-  and JIT-enabled geometry checks (PR 96).
-- [x] Upgrade PyTorch/timm with six-image CPU comparisons, minimum/current ONNX,
-  and source/clean-package validation on Python 3.10/3.11/3.12 (PR 102).
-  GPU/AMP and driver verification remain release work.
-- [x] Upgrade the numerical/image stack with affected-path CPU comparisons,
-  NumPy compatibility regressions and JIT coverage; Python 3.10/3.11/3.12 source
-  and clean-package checks pass (PR 103).
-- [ ] Verify checkpoint loading, predictions, masks, metrics, and training after
-  each batch. Test Numba with JIT enabled as well as the ordinary disabled-JIT suite.
-- [ ] Decide the supported Python floor from package wheel availability and tests.
-  Python 3.12 is tested; a 3.11 minimum is only a proposal. Validate newer
-  versions before
-  advertising support. Update metadata, workflows, Ruff target, README, and lockfile
-  together, and document the last release supporting Python 3.10.
-- [ ] Evaluate optional WSI dependencies separately; removing mandatory packages
-  requires lazy imports and installation tests for every supported extra.
-- [ ] Evaluate the five old Dependabot PRs and close superseded ones after their
-  replacements land. Group future weekly dependency and Actions updates.
+- [x] Consolidate this plan and remove the completed historical review record.
+  Retain the baseline policy, open issues, deferred drafts and release instructions.
+- [x] Inspect fresh wheel/source contents and sizes. Exclude 54 package-local
+  test/fixture entries through the existing build backend, retaining checkout tests.
+  The wheel shrinks from 4.04 MB to 271 KB and the source archive from 3.91 MB to
+  164 KB; retained wheel payload bytes are identical. Local installed wheel/source
+  imports, serialization and CPU training checks pass. Hosted clean-install gates
+  remain required before merge.
+- [x] Review CI timings, downloads and artifact retention. Retire a job only when
+  its contract is obsolete or covered elsewhere. Preserve distinct source,
+  installed-package, minimum/current export and release checks. Avoid recurring
+  checkpoint downloads or large investigative matrices.
+- [x] Check documentation links after consolidation and keep unresolved work explicit.
+- [ ] Build the agreed release candidate, check version/tag agreement and migration
+  notes, and install wheel/source artifacts outside the checkout. Preserve prior
+  releases/checkpoints and keep changes revertible.
+- [ ] Verify PyPI trusted publisher authentication on an authorized release; CI
+  cannot verify account configuration. The maintainer reports configuring the
+  matching publisher and `pypi` environment. Do not introduce a stored-token fallback.
+- [ ] Publish the exact validated artifacts and verify the resulting installation.
+  Metric issue 73 is fixed on main; its short issue comment is drafted for maintainer
+  review, and availability in a release remains pending.
 
-## Agent guidance and gradual typing
+Latest pre-cleanup CI takes about 3½ minutes overall: source jobs 2½–3 minutes,
+clean installs 2–3¼ minutes, ONNX jobs under 2 minutes, build 19 seconds and
+standalone developer checks 12 seconds. These jobs still exercise distinct contracts.
+The remaining tools are consumed by build/install/release gates; checkpoint fixtures
+are consumed by offline integrity and manual comparison checks.
 
-- [x] Add a shared `AGENTS.md`, Claude pointer, contributor guide, PR template,
-  and compact commit/review skills. Preserve the Ponytail instructions and adapt
-  reusable Python and ML guidance to this repository's actual layout and devices.
-- [x] Upgrade mypy and align Ruff, hooks, configuration, and developer commands.
-- [x] Establish a first strict CI scope for the release-version guard. This checks
-  developer tooling, not the segmentation library.
-- [ ] Add the first strict library scope: `utils/convolve.py`, shared by inference,
-  SSIM and spatially weighted losses. The initial inventory finds five annotation
-  errors: padding accepts a sequence, and device/dtype defaults are optional.
-  Correct annotations without changing numerical behavior; verify kernel values,
-  padding, channel isolation and gradients. Reuse the existing Python 3.11 source
-  job; leave the developer-only environment free of runtime dependencies.
-  Broader annotation/stub inventory remains incremental follow-up work.
-- [ ] Correct optional tensor fields, model/output types, NumPy array dtypes, and
-  public parameter/return types without changing runtime representations or APIs.
-  Keep shapes, ranges, and device requirements documented and tested at boundaries.
-- [ ] Avoid blanket suppressions, manufactured casts, and a project-wide strict
-  switch that cannot pass. Document narrow unavoidable third-party gaps.
-- [ ] Package and verify `py.typed` once the supported typing surface and downstream
-  consumer checks are ready. Validate type information in the built distributions.
+## Deferred work
 
-## Poetry to uv migration
-
-The migration is merged in PR 110 after the bounded dependency audit and sampled
-baseline checks. Standard project metadata, uv 0.11.4 and `uv.lock`
-replace the Poetry CLI workflow. The build backend remains poetry-core 2.2.1,
-now explicitly pinned. All 128 active Poetry package/version records are retained;
-only one unreachable lock entry is retired and an equivalent CUDA toolkit version
-is normalized. Further dependency upgrades remain separate.
-
-Completion requires the existing hosted gates and installed-artifact checks;
-no new CI job or speculative extra is introduced.
-
-- [x] Convert remaining metadata/dependencies to standard `[project]` fields and
-  development dependency groups (name/Python bounds are already standard);
-  preserve package identity, extras, Python bounds, URLs, and wheel contents.
-- [x] Generate `uv.lock` preserving active resolved versions. Keep PyPI as the
-  project source and the two CPU PyTorch overrides explicit in the existing ONNX
-  jobs. Supported Python/Linux CI verification remains the migration gate.
-- [x] Replace Poetry commands in CI, release checks, hooks, contributor and agent
-  guidance together. Teach the version guard to read the new metadata location.
-- [x] Verify clean wheel/source installation, public/checkpoint behavior, and the
-  sampled prediction baseline (110). All 13 hosted gates pass; local ordinary
-  tests, compiled helpers and the two pinned checkpoint comparisons pass.
-  Keep the current build backend unless changing it is needed.
-- [x] Remove `poetry.lock` and obsolete tooling now that uv is the single locally
-  verified project workflow; use locked synchronization in CI and documented local setup.
-
-## Issues and documentation
-
-Installation issue 68 still needs a published-release check; metric issue 73 is
-fixed on main. Continue concrete correctness and dependency/import work during
-maintenance. Training/fine-tuning examples (76), model/backbone guidance (74),
-in-memory inference guidance (69) and the quick start belong to the later
-user-documentation pages phase. Treat 3D support and expanded architectures as
-separate feature work.
-
-- [x] Fix `percentile_normalize99` clipping/zero spans and DRFNS byte saturation
-  with value, input-preservation and strict caller regressions (PR 104). Hosted
-  source, compiled-kernel and clean-package checks pass. Clipping can intentionally
-  change enhanced post-processing outputs, as documented in the release notes.
-- [x] Merge the issue 73 correction (PR 106): unique low-IoU matches, correct
-  FP/FN axes, sparse IDs and explicit precision semantics. All 13 hosted checks
-  pass; default-threshold values and AJI matching policy remain unchanged.
-  The issue comment is drafted for maintainer review; release availability remains
-  pending publication.
-- [x] Retire the legacy example notebooks (107) and preserve the README (108).
-  The proposed training example is deferred; Git history preserves it without
-  an archived copy in the repo.
-- [x] Merge HDF5 training dataset repairs (109) found by the real optional-backend
-  audit: configured-image sample counts, aligned selected arrays and correct
-  auxiliary target ordering across instance keys/transforms. Validate real
-  Array/CArray/EArray files; keep dependency declarations separate.
-- [ ] Build documentation pages after the maintenance work, with a verified CPU
-  quick start, training and fine-tuning examples, model/checkpoint/backbone and
-  optional-dependency guidance. Validate examples when introduced and decide
-  the smallest appropriate CI coverage then; add no speculative jobs now.
-- [ ] Review issue 78 without silently changing preprocessing or dependency
-  licensing. Prefer the project's existing normalization helper where suitable.
-- [x] Add contributor instructions and repeatable release steps.
-
-## Release and rollback
-
-- [ ] Produce a release candidate and install its wheel and source distribution
-  from a clean environment. Test the supported platform and Python matrix.
-- [ ] Verify version/tag agreement and write migration notes for intentional breaks.
-- [x] Prepare the publishing job for PyPI OIDC, with a `pypi` environment and
-  `id-token: write` limited to publication. Remove the stored PyPI token input.
-- [x] The maintainer reports configuring the matching PyPI trusted publisher and
-  GitHub `pypi` environment as described in [the release guide](releasing.md).
-- [ ] Verify publisher authentication on an authorized release. Repository CI
-  cannot confirm PyPI account configuration; there is no stored-token fallback.
-- [ ] Publish the validated artifacts only after required checks pass and publisher
-  configuration is ready. Workflow lint and PR tests cannot verify PyPI account setup.
-- [ ] Keep each maintenance batch independently revertible. Preserve the previous
-  release and baseline artifacts; fix or revert regressions before advancing.
-
-
-## Cleanup after maintenance work
-
-Review temporary material after each completed batch and before the maintenance
-release candidate. Record its purpose and removal trigger in the relevant plan
-item or PR; use this plan rather than creating another inventory document.
-
-- Remove completed investigation notes, diagnostics, duplicate reports, and
-  obsolete phase plans once their remaining facts have reached user/contributor
-  guidance or a maintained regression. PRs and Git history retain past evidence.
-- Keep fixtures only while a maintained check consumes them. Remove superseded
-  data with its obsolete check, and keep reference data outside distributions.
-- Review CI duration, downloads, matrix versions, and artifact storage. Retire
-  temporary jobs and redundant checks; use manual upgrade/release runs for costly
-  investigations without a continuing per-PR purpose. Preserve distinct supported
-  source, installed-package, export, and release contracts.
-- Revisit deferred design drafts when adopted or cancelled. Consolidate the
-  maintenance plan/review history at the end, retaining actionable open work and
-  current compatibility guidance instead of a permanent progress diary.
-
-Release cleanup checks:
-
-- [ ] Remove resolved maintenance notes and unused diagnostic scripts/fixtures.
-- [ ] Inspect wheel/source contents and sizes for accidental test/report payloads.
-- [ ] Review CI timings and retire obsolete jobs, matrix entries, and reports.
-- [ ] Check remaining documentation links and unresolved tasks after consolidation.
-
-## Remaining baseline evidence
-
-[The maintained baseline fixtures](../tests/fixtures/checkpoint_baseline/README.md)
-record two immutable checkpoint revisions/digests, one image digest, preprocessing,
-reference versions, preserved PyTorch arrays, and instance counts. Measured ONNX
-differences remain in [the historical review](maintenance-review.md); they are
-not part of these PyTorch fixtures. Native float32/float64 calibration over six
-existing images found StarDist class-logit error requiring an absolute allowance
-above 1.35e-4 at rtol=1e-4, independently of ONNX. The pretrained StarDist test
-uses the existing CellPose class-logit budget (atol=2e-4); foreground/ray bounds
-stay at 1e-5. Raw values, shapes, dtypes, dense class decisions, and final masks
-remain checked. The pinned real-image checks pass on both exporter versions.
-
-Ordinary CI runs only the offline fixture integrity check. Run the optional
-checkpoint comparisons manually for numerical upgrades and releases; they are
-scoped to the recorded image and checkpoints. A one-off Linux/macOS investigation
-confirmed identical object partitions and class maps across the sampled CPU
-backends. Compare class probabilities using the existing bounds, raw physical
-heads using their existing bounds, and exact instance partitions/background with
-positive-ID bijections. No production inference, reference arrays, or thresholds
-change in the CPU baseline. Broader image/model coverage remains open; sampled
-raw pretrained ONNX parity now uses the separately calibrated class-head budget.
-PR 103 compares six images, two pinned models, three annotation masks, training
-targets, metrics, tissue masks and small reconstruction fixtures before/after
-numerical updates, separately with Numba enabled and disabled. Keep those
-batch results in the PR; future changes repeat only the affected checks.
-PR 104 preserves sampled unclipped results and the maintained checkpoint
-comparisons while fixing requested clipping/zero spans and DRFNS failures.
-Keep its direct regressions; the validation record lives in the PR.
-The repo-level fixtures and integration test are excluded from distributions
-by living outside the runtime package. This covers one image and two models,
-not a representative dataset, registered-name loading, or accelerator validation.
-
-The ordinary suite and installed-package checks do not establish GPU/AMP,
-representative-image, full-slide, training-extra, or newer-Python coverage.
-Issue 68 still needs verification against a published release. Security advisory
-counts are dated snapshots; remaining alerts require applicability triage.
-Completed batch validation is recorded in the relevant PRs and
-[the review record](maintenance-review.md), rather than repeated in this plan.
-
-Completed model and numerical investigations are retained in
-[PR 102](https://github.com/okunator/cellseg_models.pytorch/pull/102) and
-[PR 103](https://github.com/okunator/cellseg_models.pytorch/pull/103), with their
-temporary references retired after use. OpenCV 4 and Python 3.10 remain supported;
-OpenCV 5 and newer Python coverage require separate compatibility checks.
-PR 105 locks Soup Sieve 2.10 and Pygments 2.21.0 and removes their runtime
-declarations and the earlier fsspec/setuptools advisory floors, retaining patched
-lock versions. Their vulnerable selector, ADL lexer,
-reference-template and setuptools build paths are not used by this library.
-Published installations follow parent requirements; they do not consume this lock.
-
-Prefer updating the dependency that owns a transitive requirement. Retain a
-transitive security floor only for a reachable vulnerable path that the parent's
-minimum does not protect. Requests still permits older urllib3/IDNA on downloader
-traffic, and PyTorch/Hub permit older filelock on checkpoint caching, including
-Hub's soft-lock fallback. Keep these three floors until parent minimums protect
-those paths. Current Requests, PyTorch and Mpire releases do not tighten the
-relevant minimums. Hub's transport migration and libpysal's newer Python minimum
-need separate compatibility checks before further parent upgrades.
-
-Batch validation is recorded in [PR 105](https://github.com/okunator/cellseg_models.pytorch/pull/105).
-Its temporary probes remain outside the repository and retire after the batch.
-GitHub rescanning reports no remaining open alerts on 2026-10-12. Refresh
-the audit before the release candidate.
-
-## Deferred structure and validation records
+User documentation pages cover quick start, training/fine-tuning (76),
+model/checkpoint/backbone guidance (74), in-memory inference (69) and optional
+packages. Introduce working examples and the smallest useful validation then.
+Keep the README quick start. 3D support and new architectures are separate features.
 
 [The module-boundary draft](module-boundaries-draft.md) proposes one-way imports
-and feature isolation. It is deferred structural work, not a prerequisite refactor
-bundled into dependency upgrades. The GPU proposal is preserved on
-`docs/gpu-postprocessing-proposal` and remains deferred after maintenance.
+and independent feature installs. It remains deferred structural work, not a
+prerequisite bundled into dependency upgrades. The GPU post-processing proposal
+is preserved on `docs/gpu-postprocessing-proposal` for work after maintenance.
+Retire or consolidate deferred drafts when adopted or cancelled.

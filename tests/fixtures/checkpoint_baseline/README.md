@@ -61,9 +61,10 @@ regressions; investigate differences and review any scientifically justified
 baseline change separately.
 
 This is one recorded image and two checkpoints, not a representative dataset,
-a quality benchmark, or GPU/AMP validation. Registered model-name loading,
-additional images/model families, and the StarDist ONNX tolerance gap remain
-separate work.
+a quality benchmark, or GPU/AMP validation. Registered model-name loading
+and additional images/model families remain separate work. The StarDist ONNX
+class-head calibration was resolved in [PR 101](https://github.com/okunator/cellseg_models.pytorch/pull/101);
+its separate raw-head tolerances do not replace these native baseline bounds.
 
 The CPU comparison policy follows the inference contract: class logits pass
 through softmax before classification, and instance numbers identify objects
