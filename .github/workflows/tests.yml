@@ -43,6 +43,16 @@ jobs:
         if: matrix.python-version == '3.11'
         run: uv run --no-sync mypy cellseg_models_pytorch/utils/convolve.py
 
+      - name: Build docs and execute offline notebooks
+        if: matrix.python-version == '3.11'
+        env:
+          NUMBA_DISABLE_JIT: "1"
+          HF_HUB_OFFLINE: "1"
+          OMP_NUM_THREADS: "2"
+        run: |
+          uv sync --locked --group docs
+          uv run --no-sync sphinx-build -W --keep-going -b html -D nb_execution_mode=force docs "$RUNNER_TEMP/docs-html"
+
       - name: Run tests
         env:
           NUMBA_DISABLE_JIT: "1"

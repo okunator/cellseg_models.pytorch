@@ -6,7 +6,8 @@ configuration define current behavior; this plan does not enable future features
 
 ## Current baseline
 
-Reconciled on 2026-10-12 against main at `b2b158e`, version `0.1.30`.
+Reconciled on 2026-10-13 against main at `4d5af51`, version `0.1.30`.
+The maintainer chose validation only: keep the version unchanged; no tags or publication.
 No maintenance release has been published. Python 3.10 remains the minimum;
 source and clean wheel/source installs are tested on 3.10, 3.11 and 3.12.
 Python 3.14.1 is excluded by the torchvision requirement; newer Python versions
@@ -26,7 +27,7 @@ Completed work:
 - Shared normalization and DRFNS saturation, low-IoU metric assignment/FP/FN/sparse
   IDs, and HDF5 sample counts/target alignment are fixed (104/106/109).
 - Legacy notebooks are retired; the README quick start is preserved (107/108).
-  Replacement examples and user guides are deferred to the docs-pages phase.
+  Replacement examples and user guides are the next phase below.
 - uv 0.11.4 and `uv.lock` replace Poetry CLI (110); poetry-core 2.2.1 remains the
   build backend. Migration retained all 128 active dependency versions and verified
   artifact contents, source tests and sampled checkpoint predictions.
@@ -34,26 +35,73 @@ Completed work:
   shared convolution helper (97/111), with no numerical behavior changes.
   Broader library typing and `py.typed` remain future work.
 
-All 13 hosted checks passed for the latest typing patch:
-[PR 111 validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38296855470).
+Cleanup is merged (112). All 13 checks passed on merged main:
+[main validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38381936618).
+The final CPU pass checked both pinned checkpoints from source and an installed
+wheel, 15 optional HDF5 cases, 37 compiled numerical cases and four sampled decoder
+forward/backward cases. No open dependency alerts were reported on 2026-10-13.
+This is validation of current main, not a versioned release candidate.
 Completed investigations and advisory details live in their PRs and Git history,
 not a second review diary in this repository.
 
-## Next work, in order
+## Next work: documentation
 
-1. Finish the cleanup audit below, retaining maintained regressions and actionable
-   guidance. Keep tooling, runtime, typing and structural changes independently
-   reviewable.
-2. Validate a release candidate against the affected checkpoint, optional backend,
-   numerical and training paths. Refresh dependency advisory triage. Resolve any
-   concrete failures before advancing; sampled CPU evidence does not establish
-   representative accuracy, full-slide execution or GPU/AMP compatibility.
-3. Agree on the release version and compatibility notes, then update manifest,
-   module version and lockfile together using [the release guide](releasing.md).
-   Publication and tags require maintainer authorization. Verify trusted publishing
-   on that release and install the published package before closing issue 68.
-4. Build documentation pages and verified CPU inference/training/fine-tuning
-   examples after maintenance. Revisit the deferred structure proposals separately.
+No confirmed maintenance defect blocks documentation. Build and validate the
+examples against current main; distinguish its unreleased requirements from PyPI.
+Fix concrete failures in the paths being documented, without reopening deferred
+refactors. Keep the README quick start and link it to the fuller guide.
+
+### Small docs-pages plan
+
+| Page | Content |
+| --- | --- |
+| Start here | Installation, tested Python/device support, CPU quick start, current main versus published release |
+| Inference | RGB HWC images versus BCHW batches, checkpoint loading, exact normalization, prediction and instance/type masks; tiled inference and output saving |
+| Models and checkpoints | Implemented architectures versus original papers, encoder choices, available weights, class IDs and checkpoint compatibility; do not invent semantic class names |
+| Data and training | Folder/HDF5 layout, instance/type labels, aligned augmentation, model-specific targets, losses and a plain PyTorch training/validation loop |
+| Fine-tuning | Load existing weights, preserve preprocessing and class mapping, freeze/unfreeze parameters, select learning rates and save/reload results |
+| Optional workflows | Explicit requirements and tested limits for WSI backends, ONNX export and GPU/AMP; avoid unsupported performance/accuracy claims |
+| API reference | Focused public entry points with Google-style docstrings and tensor contracts; link existing contributor/release guidance |
+
+### Three runnable examples
+
+Use maintained Jupyter notebooks under `docs/tutorials/`, rendered directly as
+pages with Sphinx, MyST-NB and the PyData theme; do not duplicate their code in scripts. Begin with CellPose; add another model only
+when its distinct target/output contract needs an example.
+
+1. **Inference:** one RGB image and a local or explicitly downloaded checkpoint,
+   explicit CPU/device selection and checkpoint preprocessing, then save instance
+   and type masks. Explain the returned head keys, shapes, dtypes and background.
+2. **Training:** a small folder dataset using the existing dataset/target/loss APIs,
+   an offline encoder, seeded plain PyTorch train/validation steps and meaningful
+   loss/gradient checks. Document HDF5 as an alternative without duplicating the loop.
+3. **Fine-tuning:** reuse the training data/loop, load pretrained parameters with
+   the same encoder and class mapping, demonstrate freezing and subsequent
+   unfreezing, and verify changed trainable parameters plus save/reload. Resume
+   state includes optimizer, epoch and RNG state; include scheduler/scaler if used.
+
+All examples document input layout, optional packages, output paths and commands.
+Use synthetic tiny data for offline checks; real data/checkpoints are explicit,
+with attribution and patient/slide-independent splits. Do not present synthetic
+loss reduction as segmentation accuracy or a useful trained model.
+
+### Delivery and validation
+
+- [x] Establish Sphinx/PyData/MyST-NB navigation, installation guidance and the
+  inference notebook. A separate docs group preserves all prior locked versions.
+- [x] Add short offline training/fine-tuning notebook demonstrations: finite losses
+  and gradients, parameter updates, frozen encoder state and exact checkpoint reload.
+- [ ] Extend training/fine-tuning to real folder/HDF5 data and pretrained checkpoints;
+  validate target alignment and separate train/validation data in those examples.
+- [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
+  reference. Keep the current normalization helper; issue 78's replacement/license
+  proposal does not justify a silent preprocessing or dependency change.
+- [x] Build with warnings treated as errors and execute all three offline notebooks.
+  Reuse the Python 3.11 source job, with no new job or recurring weight downloads.
+  Keep real-checkpoint, GPU and full-slide runs explicit, with skips/limits reported.
+
+After adoption, remove this temporary docs checklist; the pages and examples become
+the maintained guidance. Release validation below stays separate from docs delivery.
 
 ## Remaining validation and compatibility work
 
@@ -78,7 +126,8 @@ not a second review diary in this repository.
 - [ ] Expand library annotations/stub coverage incrementally without blanket
   suppressions, casts or altered runtime representations. Package `py.typed` only
   after the supported surface and downstream distribution checks are ready.
-- [ ] Review issue 78 without silently changing preprocessing or licensing.
+- [ ] Address issue 78 when updating the inference guide; retain existing
+  preprocessing and licensing unless an explicit, validated change is agreed.
 - [ ] Retire the five superseded Dependabot PRs (23/48/50/52/57) and configure
   future grouped weekly dependency/Actions updates in a separate policy patch.
   Their proposed versions are older than the merged upgrades.
@@ -115,7 +164,7 @@ paths. fsspec/setuptools/Soup Sieve/Pygments vulnerable paths were not used by t
 library; their patched lock versions remain without unnecessary runtime floors.
 Published installs use parent requirements, not the project lockfile.
 
-No open GitHub dependency alerts were reported on 2026-10-12 after PR 105.
+No open GitHub dependency alerts were reported on 2026-10-13 after PR 105.
 Refresh advisory ranges and applicability before the release candidate; this dated
 snapshot is not a continuing security certification. Hub's transport migration,
 libpysal's Python minimum and OpenCV 5 need separate compatibility checks.
@@ -132,8 +181,8 @@ preserve past evidence. Review after each batch; do not add another inventory fi
   test/fixture entries through the existing build backend, retaining checkout tests.
   The wheel shrinks from 4.04 MB to 271 KB and the source archive from 3.91 MB to
   164 KB; retained wheel payload bytes are identical. Local installed wheel/source
-  imports, serialization and CPU training checks pass. Hosted clean-install gates
-  remain required before merge.
+  imports, serialization and CPU training checks pass. All six hosted clean-install
+  gates also passed on merged main.
 - [x] Review CI timings, downloads and artifact retention. Retire a job only when
   its contract is obsolete or covered elsewhere. Preserve distinct source,
   installed-package, minimum/current export and release checks. Avoid recurring
@@ -157,10 +206,8 @@ are consumed by offline integrity and manual comparison checks.
 
 ## Deferred work
 
-User documentation pages cover quick start, training/fine-tuning (76),
-model/checkpoint/backbone guidance (74), in-memory inference (69) and optional
-packages. Introduce working examples and the smallest useful validation then.
-Keep the README quick start. 3D support and new architectures are separate features.
+The active docs phase above covers issues 69/74/76 and the quick start.
+3D support and new architectures remain separate feature work.
 
 [The module-boundary draft](module-boundaries-draft.md) proposes one-way imports
 and independent feature installs. It remains deferred structural work, not a

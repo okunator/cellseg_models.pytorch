@@ -70,3 +70,10 @@ CI checks the source suite and clean installations of both built distributions.
 Manual publication-workflow runs only validate. Release publication waits for
 these checks and uploads the verified artifacts through PyPI trusted publishing.
 Maintainers should follow [the release guide](docs/releasing.md).
+
+## Documentation
+
+Use Sphinx with PyData and MyST-NB; notebooks in `docs/tutorials/` are the example
+page sources. See [the docs build instructions](docs/installation.md#notebooks-and-pages).
+Keep committed notebooks free of outputs and validate their short offline CPU cells.
+Docs tools live in the separate `docs` dependency group.

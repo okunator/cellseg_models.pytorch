@@ -20,7 +20,7 @@ future work; it does not make planned tools or features available today.
 | `cellseg_models_pytorch/**/tests/`, `conftest.py` | Library tests and shared fixtures |
 | `tests/`, `tests/fixtures/` | Repository-only checkpoint comparisons and reference data |
 | `tools/`, `tools/tests/` | Build and release checks and their tests |
-| `docs/`, `.github/` | Maintenance guidance and CI; user examples are deferred |
+| `docs/`, `docs/tutorials/`, `.github/` | Sphinx/PyData pages, notebook examples, maintenance guidance and CI |
 
 Keep this layout. A migration to `src/`, a new training framework, or a new output
 representation is a separate change, not incidental cleanup.
@@ -155,6 +155,7 @@ Use [CONTRIBUTING.md](CONTRIBUTING.md) for setup and
 | Hooks for changed files | `uv run --locked pre-commit run --files <changed-files>` |
 | Install commit and push hooks | `uv run --locked pre-commit install --hook-type pre-commit --hook-type pre-push` |
 | Build distributions | `uv build` |
+| Build docs | `uv run --locked --group docs sphinx-build -W --keep-going -b html docs docs/_build/html` |
 
 Ruff 0.17.0 is the development linter/formatter and matches the pre-commit hook
 revision. Black, isort, and Flake8 are no longer parallel toolchains. Preserve the
