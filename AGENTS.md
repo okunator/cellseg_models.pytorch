@@ -174,6 +174,31 @@ Preserve existing docstring content when converting style. Keep unrelated
 documentation rewrites out of functional changes.
 Use generic example paths and no machine-specific identifiers or patient data.
 
+### Documentation code and notebooks
+
+- Apply the Ponytail, Python and PyTorch rules to example code and notebook cells
+  as well as library code. Review every code block before presenting it to users.
+- Teach one complete workflow with clear names, explicit imports grouped at the
+  beginning, normal formatting and short cells organized by purpose. Explain
+  shapes, preprocessing and decisions in prose rather than adding diagnostic code.
+  Extract a helper only when it removes real repetition without hiding the lesson.
+- Show the actual task: inference uses meaningful model outputs; fine-tuning loads
+  pretrained weights. Synthetic data or random weights are appropriate for a
+  clearly labelled demonstration or test, not a substitute for the promised workflow.
+- Keep assertions minimal in rendered examples. Include a concise assertion only
+  when it teaches an essential contract. Put parameter snapshots, gradient checks,
+  numerical comparisons and other regression checks in maintained tests outside
+  the tutorial pages; do not turn a tutorial into a test suite.
+- Preserve necessary input validation, error handling and protection against data
+  loss. Use explicit exceptions at external-input boundaries, not assertions.
+- Use existing public APIs and idiomatic PyTorch loops. Avoid fallback branches,
+  private implementation access, configuration machinery and wrappers added just
+  to make an example execute. Fix a broken public contract at its owning layer.
+- Notebooks under `docs/tutorials/` are the source for Sphinx pages. Keep setup and
+  dependencies reproducible, outputs relevant to the lesson, and committed cells
+  free of execution outputs. Execute examples separately to validate them; successful
+  execution alone does not establish numerical correctness or model quality.
+
 Keep commits thematic and use Conventional Commits. Leave unrelated user edits
 untouched and preserve contributor attribution. Do not rewrite shared history.
 Update `CHANGELOG.md` for release-relevant public changes without inventing a
