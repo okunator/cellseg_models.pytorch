@@ -174,6 +174,25 @@ Preserve existing docstring content when converting style. Keep unrelated
 documentation rewrites out of functional changes.
 Use generic example paths and no machine-specific identifiers or patient data.
 
+### User-facing documentation writing
+
+- Write for a first-time user who knows basic Python but has no segmentation
+  background. Start with what the task achieves, what input they need and the
+  result they will get; introduce concepts as the workflow needs them.
+- Use short, direct sentences and familiar words. Define essential terms on first
+  use with a concrete example: an instance label identifies one object; a class
+  label describes its category. Explain abbreviations before using them.
+- Keep each page focused on one task and a clear sequence of steps. Explain why
+  a choice matters to the user. Put detailed tensor contracts, architecture internals
+  and advanced options in the relevant reference section rather than the introduction.
+- Show how to recognize the expected result and what to do next. Use a small useful
+  image, output or example when it clarifies the task; avoid diagnostic dumps.
+- Describe supported behavior accurately, with essential prerequisites and relevant
+  limitations stated once where they matter. Keep maintenance history, CI details
+  and developer instructions in contributor guidance, not user tutorials.
+- Review prose alongside code: remove repetition, unnecessary technical explanation
+  and jargon that does not help the reader complete the task.
+
 ### Documentation code and notebooks
 
 - Apply the Ponytail, Python and PyTorch rules to example code and notebook cells
