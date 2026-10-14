@@ -98,6 +98,9 @@ loss reduction as segmentation accuracy or a useful trained model.
   bytes, patient-separated splits, aligned crops, nuclei-instance/cell-type targets
   only, and a plain training/validation loop. The data-preparation tool is maintained
   while the notebook uses it; raw data stays outside Git and distributions.
+  Use one headless OpenCV provider for runtime and Albumentations. The existing
+  installed-package gate rejects overlapping providers; runtime/docs sync round
+  trips and both pinned CPU checkpoint predictions are verified.
 - [ ] Extend fine-tuning to real data/pretrained checkpoints and document HDF5;
   validate target alignment and separate train/validation data in those examples.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API

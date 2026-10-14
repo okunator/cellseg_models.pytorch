@@ -9,6 +9,9 @@
 
 ## Fixes
 
+- Use headless OpenCV for image processing, avoiding overlapping `cv2` files
+  when Albumentations is installed and training dependencies are later removed.
+
 - Exclude package-local tests and their image/HDF5 fixtures from wheels and source
   distributions. Tests remain available in the repository checkout.
 

@@ -93,6 +93,10 @@ review its saved outputs. Offline tests use temporary folder fixtures to validat
 the same training code, without downloading data. They require Albumentations
 from the docs group; environments without it report the training cases as skipped.
 
+Use one OpenCV provider: `opencv-python-headless`. If an existing environment
+had both OpenCV packages, repair their overlapping files once with
+`uv sync --locked --group docs --reinstall-package opencv-python-headless`.
+
 Open `docs/_build/html/index.html` to read the site. Build outputs stay out of Git.
 Open notebooks under `docs/tutorials/` in your Jupyter client with a kernel from
 the synchronized environment. They are the source for the corresponding pages.

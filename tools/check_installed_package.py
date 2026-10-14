@@ -2,7 +2,7 @@
 
 import importlib
 import sys
-from importlib.metadata import version
+from importlib.metadata import packages_distributions, version
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -22,6 +22,9 @@ def main() -> None:
         raise RuntimeError(f"Expected an installed package, got {installed_path}")
     if version("cellseg_models_pytorch") != cellseg_models_pytorch.__version__:
         raise RuntimeError("Installed metadata and module versions disagree")
+    providers = packages_distributions().get("cv2", [])
+    if len(providers) != 1:
+        raise RuntimeError(f"Expected one OpenCV provider, got {providers}")
 
     for module in (
         "models.cellpose",
