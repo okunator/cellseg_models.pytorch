@@ -59,8 +59,8 @@ class DiceLoss(WeightedBaseLoss):
             **kwargs: Arguments for the selected target smoothing method.
 
         Returns:
-            Scalar differentiable loss on the logits' device; float32 for half-precision
-            inputs, otherwise the logits' dtype.
+            Scalar differentiable loss on the logits' device. Half-precision logits
+            use float32 overlap accumulation.
 
         Raises:
             ValueError: Shapes disagree or enabled edge weighting has no map.
@@ -84,7 +84,6 @@ class DiceLoss(WeightedBaseLoss):
             if mask.shape != target.shape:
                 raise ValueError("Dice mask must have the target's BHW shape.")
             pixel_weights = pixel_weights * mask
-        present = (target_one_hot * pixel_weights.unsqueeze(1)).sum((2, 3)) > 0
 
         if self.edge_weight is not None:
             if target_weight is None or target_weight.shape != target.shape:
@@ -92,6 +91,7 @@ class DiceLoss(WeightedBaseLoss):
                     "Dice edge weighting requires a BHW target_weight map."
                 )
             pixel_weights = self.apply_edge_weights(pixel_weights, target_weight)
+        present = (target_one_hot * pixel_weights.unsqueeze(1)).sum((2, 3)) > 0
 
         if self.apply_svls:
             target_one_hot = self.apply_svls_to_target(

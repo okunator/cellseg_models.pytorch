@@ -150,3 +150,14 @@ def test_empty_low_precision_mask_with_regularization(dtype):
     assert loss.item() == 0
     loss.backward()
     assert torch.count_nonzero(logits.grad) == 0
+
+
+def test_zero_edge_weights_exclude_overlap_without_nan():
+    logits = torch.zeros((1, 2, 2, 2), requires_grad=True)
+    target = torch.zeros((1, 2, 2), dtype=torch.long)
+    loss = DiceLoss(edge_weight=0)(
+        logits, target, target_weight=torch.ones_like(target)
+    )
+    assert loss.item() == 0
+    loss.backward()
+    assert torch.count_nonzero(logits.grad) == 0
