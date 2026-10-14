@@ -81,23 +81,26 @@ uv sync --locked --group docs
 uv run --locked --group docs sphinx-build -W --keep-going -b html docs docs/_build/html
 ```
 
-To validate the short offline notebooks during the build:
+Validate notebook code with offline fixtures separately from the site build:
 
 ```sh
-HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked --group docs sphinx-build -W --keep-going -b html -D nb_execution_mode=force docs docs/_build/executed
+HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked --group docs pytest tests/test_notebook_tutorials.py
 ```
 
-The real-data training and pretrained inference notebooks are excluded from forced
-offline builds. Execute inference explicitly with the pinned checkpoint using
+All three notebooks use real data or weights and are excluded from forced offline
+builds. Execute them explicitly and review saved outputs; CI renders those outputs
+without downloading data or checkpoints. Check pretrained inference using
 `uv run --no-sync pytest --optional tests/test_notebook_tutorials.py`.
 The separate checkpoint baseline tests retain their original 256-pixel inputs and
 numerical references; do not replace them with tutorial predictions.
-Prepare the training notebook's PanopTILs subset as described on the page, then execute it explicitly and
-review its saved outputs. Offline tests use temporary folder fixtures to validate
-the same training code, without downloading data. They require Albumentations
-from the docs group; environments without it report the training cases as skipped.
-Offline inference tests substitute only checkpoint loading; they validate preprocessing
-and plotting, not pretrained model quality.
+Prepare the training notebook's PanopTILs subset once and reuse it for fine-tuning.
+Offline training/fine-tuning tests use temporary folder fixtures; fine-tuning and
+inference tests substitute checkpoint loading. They validate class-head adaptation,
+preprocessing, training, freezing, checkpoint reload and plotting, not model quality.
+Training/fine-tuning checks require Albumentations from the docs group; environments
+without it report those cases as skipped. Run the existing `--cuda` category separately
+to check device state restoration. Fine-tuning writes a new checkpoint and refuses
+to overwrite one; choose another filename before repeating a real notebook run.
 
 Use one OpenCV provider: `opencv-python-headless`. If an existing environment
 had both OpenCV packages, repair their overlapping files once with

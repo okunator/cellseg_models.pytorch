@@ -79,7 +79,7 @@ when its distinct target/output contract needs an example.
    an offline encoder, seeded plain PyTorch train/validation steps and meaningful
    loss/gradient checks. Document HDF5 as an alternative without duplicating the loop.
 3. **Fine-tuning:** reuse the training data/loop, load pretrained parameters with
-   the same encoder and class mapping, demonstrate freezing and subsequent
+   the same encoder, adapt the class output when label meanings differ, demonstrate freezing and subsequent
    unfreezing, and verify changed trainable parameters plus save/reload. Resume
    state includes optimizer, epoch and RNG state; include scheduler/scaler if used.
 
@@ -104,8 +104,13 @@ loss reduction as segmentation accuracy or a useful trained model.
   Use one headless OpenCV provider for runtime and Albumentations. The existing
   installed-package gate rejects overlapping providers; runtime/docs sync round
   trips and both pinned CPU checkpoint predictions are verified.
-- [ ] Extend fine-tuning to real data/pretrained checkpoints and document HDF5;
-  validate target alignment and separate train/validation data in those examples.
+- [x] Fine-tune real pretrained HGSC weights on the prepared PanopTILs subset.
+  Reinitialize the class output layer for the different taxonomy; retain pretrained
+  encoder/decoder/flow weights. Check frozen weights and BatchNorm state, unfrozen
+  updates, held-out predictions, safe file creation and exact model/optimizer/RNG
+  reload in maintained tests. Retain reviewed DGX outputs; generated checkpoints
+  stay outside Git while they support this validation.
+- [ ] Document the HDF5 alternative without duplicating the training loop.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
   reference. Keep the current normalization helper; issue 78's replacement/license
   proposal does not justify a silent preprocessing or dependency change.
@@ -113,8 +118,8 @@ loss reduction as segmentation accuracy or a useful trained model.
   pretrained HGSC checkpoint at 1024 × 1024. Validate the actual CPU workflow and
   checkpoint identity; run GPU inference explicitly and retain its figure. Preserve
   the separate 256-pixel checkpoint regression inputs and references unchanged.
-- [x] Build with warnings treated as errors; execute the offline fine-tuning demonstration
-  in CI and real-data training/pretrained inference explicitly outside offline CI.
+- [x] Build with warnings treated as errors and render reviewed notebook outputs
+  in CI. Execute all real-data/checkpoint notebooks explicitly outside offline CI.
   All three notebooks also execute on the DGX Spark CUDA GPU; reviewed cell
   outputs are retained without machine-specific paths. CPU checks stay in ordinary
   CI; CUDA notebook regressions use the existing `--cuda` category manually.

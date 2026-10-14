@@ -75,6 +75,7 @@ instance/
 # Sphinx documentation
 docs/_build/
 /data/panoptils/
+/docs/tutorials/finetuned-panoptils.pt
 
 # PyBuilder
 target/

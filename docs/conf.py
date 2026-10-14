@@ -17,7 +17,11 @@ exclude_patterns = [
 ]
 nb_execution_mode = "off"
 # Real-data/checkpoint notebooks are executed explicitly, outside offline CI.
-nb_execution_excludepatterns = ["tutorials/training.ipynb", "tutorials/inference.ipynb"]
+nb_execution_excludepatterns = [
+    "tutorials/training.ipynb",
+    "tutorials/inference.ipynb",
+    "tutorials/finetuning.ipynb",
+]
 nb_execution_raise_on_error = True
 nb_execution_timeout = 120
 napoleon_google_docstring = True

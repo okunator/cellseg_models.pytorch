@@ -3,7 +3,6 @@
 import hashlib
 import json
 import os
-import re
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -25,24 +24,6 @@ def _code_cells(name: str) -> list[str]:
         for cell in notebook["cells"]
         if cell["cell_type"] == "code"
     ]
-
-
-def _check_targets(namespace):
-    instances = namespace["instances"]
-    assert set(np.unique(instances)) == {0, 1, 2}
-    expected_classes = torch.from_numpy((instances > 0).astype(np.int64))
-    classes = namespace["class_targets"]
-    torch.testing.assert_close(classes, expected_classes.expand(2, -1, -1))
-    assert classes.dtype == torch.int64
-
-    flows = namespace["flow_targets"]
-    assert flows.shape == (2, 2, 64, 64) and torch.isfinite(flows).all()
-    assert flows.dtype == torch.float32
-    assert not flows[:, :, instances == 0].any()
-    # On the axes of a round object, flows point toward its centre.
-    samples = flows[:, :, [20, 28, 24, 24], [24, 24, 20, 28]]
-    expected_flows = torch.tensor([[1.0, -1.0, 0.0, 0.0], [0.0, 0.0, 1.0, -1.0]])
-    torch.testing.assert_close(samples, expected_flows.expand(2, -1, -1))
 
 
 @pytest.fixture(autouse=True)
@@ -194,10 +175,8 @@ def test_inference_plot_distinguishes_class_zero_from_background():
     _check_plot(namespace, ["Image", "Predicted instances", "Predicted classes"])
 
 
-@pytest.mark.parametrize(
-    "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
-)
-def test_training_notebook_updates_parameters(execution_device, tmp_path, monkeypatch):
+@pytest.fixture
+def prepared_panoptils(tmp_path, monkeypatch):
     pytest.importorskip("albumentations")
     rows, cols = np.mgrid[:64, :64]
     instances = np.zeros((64, 64), dtype=np.int32)
@@ -230,10 +209,29 @@ def test_training_notebook_updates_parameters(execution_device, tmp_path, monkey
                     "sem": np.full_like(instances, 9),
                 },
             )
+    (root / "manifest.json").write_text(
+        json.dumps(
+            {
+                "dataset": "offline fixture",
+                "samples": [
+                    {"split": "train", "patient": "training"},
+                    {"split": "validation", "patient": "heldout"},
+                ],
+            }
+        )
+    )
     notebook_directory = tmp_path / "docs/tutorials"
     notebook_directory.mkdir(parents=True)
     monkeypatch.chdir(notebook_directory)
 
+    return instances, classes, image
+
+
+@pytest.mark.parametrize(
+    "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
+)
+def test_training_notebook_updates_parameters(execution_device, prepared_panoptils):
+    instances, classes, image = prepared_panoptils
     *setup, training_loop, visualization = _code_cells("training")
     namespace = {}
     for source in setup:
@@ -308,7 +306,27 @@ def test_training_notebook_updates_parameters(execution_device, tmp_path, monkey
 @pytest.mark.parametrize(
     "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
 )
-def test_finetuning_notebook_freezing_and_resume(execution_device):
+def test_finetuning_notebook_freezing_and_resume(
+    execution_device, prepared_panoptils, monkeypatch
+):
+    import huggingface_hub
+    from cellseg_models_pytorch.models.cellpose import CellPose
+
+    torch.manual_seed(19)
+    pretrained = CellPose(
+        7,
+        enc_name="resnet18",
+        enc_pretrain=False,
+        device=torch.device(execution_device),
+    )
+    pretrained_state = {
+        k: v.detach().clone() for k, v in pretrained.model.state_dict().items()
+    }
+    download = Mock(return_value="example.safetensors")
+    loader = Mock(return_value=pretrained)
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", download)
+    monkeypatch.setattr(CellPose, "from_pretrained", loader)
+
     *setup, frozen_step, unfrozen_step, resume, visualization = _code_cells(
         "finetuning"
     )
@@ -316,11 +334,35 @@ def test_finetuning_notebook_freezing_and_resume(execution_device):
     for source in setup:
         exec(source, namespace)
     assert namespace["device"].type == execution_device
-    _check_targets(namespace)
+    loader.assert_called_once_with(
+        Path("example.safetensors"), device=namespace["device"]
+    )
+    download.assert_called_once_with(
+        repo_id="csmp-hub/cellpose-histo-hgsc-nuc-v1",
+        filename="cellpose_hgsc_v1_efficientnet_b5.safetensors",
+        revision="88c7ffd3a9106d1673c3dd6e6a9e42476e8320d2",
+    )
+    model = namespace["model"]
+    assert model is pretrained.model
+    for name, value in pretrained_state.items():
+        if name == "decoder.type-nuc_type_head.head.weight":
+            assert not torch.equal(model.state_dict()[name], value)
+        else:
+            torch.testing.assert_close(model.state_dict()[name], value, rtol=0, atol=0)
+    instances, classes, image = prepared_panoptils
+    example = namespace["train_dataset"][0]
+    torch.testing.assert_close(
+        example["inst"].long(), torch.from_numpy(instances).long()
+    )
+    torch.testing.assert_close(example["type"].long(), torch.from_numpy(classes).long())
+    assert set(example) == {"image", "inst", "type", "cellpose_inst"}
+    assert len(namespace["train_dataset"]) == 3
+    assert len(namespace["validation_dataset"]) == 1
+
     encoder = namespace["encoder"]
     encoder_before = {k: v.detach().clone() for k, v in encoder.state_dict().items()}
     assert all(not p.requires_grad for p in encoder.parameters())
-    head = next(p for p in namespace["model"].parameters() if p.requires_grad)
+    head = model.decoder["type-nuc_type_head"].head.weight
     head_before = head.detach().clone()
 
     exec(frozen_step, namespace)
@@ -329,7 +371,8 @@ def test_finetuning_notebook_freezing_and_resume(execution_device):
         torch.testing.assert_close(encoder.state_dict()[name], value, rtol=0, atol=0)
     assert all(p.grad is None for p in encoder.parameters())
     assert not torch.equal(head_before, head.detach())
-    assert torch.isfinite(namespace["loss"])
+    assert head.grad is not None and torch.isfinite(head.grad).all()
+    assert np.isfinite(namespace["training_loss"])
 
     parameter = next(encoder.parameters())
     before = parameter.detach().clone()
@@ -339,17 +382,36 @@ def test_finetuning_notebook_freezing_and_resume(execution_device):
     assert not torch.equal(before, parameter.detach())
 
     exec(resume, namespace)
-    model, restored = namespace["model"], namespace["restored"]
+    restored = namespace["restored"]
     assert restored is not model
     for name, value in model.state_dict().items():
         torch.testing.assert_close(restored.state_dict()[name], value, rtol=0, atol=0)
     model.eval()
     restored.eval()
+    validation_image = (
+        namespace["validation_dataset"][0]["image"].unsqueeze(0).to(namespace["device"])
+    )
     with torch.inference_mode():
-        expected = model(namespace["images"].to(namespace["device"]))["nuc"]
-        actual = restored(namespace["images"].to(namespace["device"]))["nuc"]
+        expected = model(validation_image)["nuc"]
+        actual = restored(validation_image)["nuc"]
     torch.testing.assert_close(actual.type_map, expected.type_map, rtol=0, atol=0)
     torch.testing.assert_close(actual.aux_map, expected.aux_map, rtol=0, atol=0)
+    from cellseg_models_pytorch.transforms.functional.cellpose import gen_flow_maps
+
+    validation_classes = (
+        torch.from_numpy(np.roll(classes, 7, axis=1)).long().to(namespace["device"])
+    )
+    validation_flows = (
+        torch.from_numpy(
+            gen_flow_maps(np.roll(instances, 7, axis=1)).astype(np.float32)
+        )
+        .unsqueeze(0)
+        .to(namespace["device"])
+    )
+    expected_loss = torch.nn.functional.cross_entropy(
+        actual.type_map, validation_classes.unsqueeze(0)
+    ) + torch.nn.functional.mse_loss(actual.aux_map, validation_flows)
+    assert namespace["validation_loss"] == pytest.approx(float(expected_loss))
 
     original = namespace["optimizer"].state_dict()
     resumed = namespace["resumed_optimizer"].state_dict()
@@ -364,15 +426,32 @@ def test_finetuning_notebook_freezing_and_resume(execution_device):
             torch.cuda.get_rng_state(namespace["device"]),
             namespace["state"]["cuda_rng"],
         )
-    assert namespace["state"]["epoch"] == 1
+    assert namespace["state"]["epoch"] == 4
+    assert namespace["state"]["phase"] == "unfrozen"
+    assert namespace["state"]["class_names"] == [
+        "background",
+        "neoplastic",
+        "stromal",
+        "inflammatory",
+        "epithelial",
+        "other",
+        "unknown",
+    ]
+    assert namespace["state"]["data_manifest"]["dataset"] == "offline fixture"
+    checkpoint_bytes = namespace["saved_checkpoint"].read_bytes()
+    with pytest.raises(FileExistsError):
+        exec(resume, namespace)
+    assert namespace["saved_checkpoint"].read_bytes() == checkpoint_bytes
+
     exec(visualization, namespace)
+    np.testing.assert_array_equal(namespace["instances"], np.roll(instances, 7, axis=1))
     np.testing.assert_array_equal(
         namespace["predicted_classes"], actual.type_map.argmax(dim=1)[0].cpu().numpy()
     )
     np.testing.assert_array_equal(
         namespace["class_colors"], label2rgb(namespace["predicted_classes"], bg_label=0)
     )
-    _check_plot(namespace, ["Example image", "Target instances", "Predicted classes"])
+    _check_plot(namespace, ["Held-out image", "Target instances", "Predicted classes"])
 
 
 def _check_plot(namespace, titles):
@@ -389,22 +468,3 @@ def _check_plot(namespace, titles):
         namespace["instance_colors"], label2rgb(namespace["instances"], bg_label=0)
     )
     namespace["plt"].close(fig)
-
-
-def test_pretrained_loading_snippet(monkeypatch):
-    from cellseg_models_pytorch.models.cellpose import CellPose
-
-    notebook = json.loads((TUTORIALS / "finetuning.ipynb").read_text())
-    introduction = "".join(notebook["cells"][0]["source"])
-    match = re.search(r"```python\n(.*?)```", introduction, re.DOTALL)
-    assert match is not None
-    snippet = match.group(1)
-    loader = Mock()
-    monkeypatch.setattr(CellPose, "from_pretrained", loader)
-    namespace = {}
-    exec(snippet, namespace)
-    loader.assert_called_once_with(
-        Path("checkpoints/cellpose.safetensors"),
-        device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-    )
-    assert namespace["model"] is loader.return_value.model
