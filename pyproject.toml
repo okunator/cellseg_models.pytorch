@@ -56,6 +56,9 @@ dev = [
     "scriv[toml]>=1.8.0,<2",
 ]
 docs = [
+    "albumentations==2.0.8",
+    # Albumentations' headless build must stay on the library's supported OpenCV major.
+    "opencv-python-headless>=4.14.0,<5",
     "matplotlib>=3.10.9,<3.11",
     "myst-nb>=1,<2",
     "pydata-sphinx-theme>=0.16,<1",

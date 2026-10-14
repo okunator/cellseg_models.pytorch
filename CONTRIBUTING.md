@@ -87,6 +87,12 @@ To validate the short offline notebooks during the build:
 HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked --group docs sphinx-build -W --keep-going -b html -D nb_execution_mode=force docs docs/_build/executed
 ```
 
+The real-data training notebook is excluded from forced offline builds. Prepare
+its PanopTILs subset as described on the page, then execute it explicitly and
+review its saved outputs. Offline tests use temporary folder fixtures to validate
+the same training code, without downloading data. They require Albumentations
+from the docs group; environments without it report the training cases as skipped.
+
 Open `docs/_build/html/index.html` to read the site. Build outputs stay out of Git.
 Open notebooks under `docs/tutorials/` in your Jupyter client with a kernel from
 the synchronized environment. They are the source for the corresponding pages.

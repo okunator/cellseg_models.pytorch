@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 import torch
+from PIL import Image
+from scipy.io import savemat
 from skimage.color import label2rgb
 
 TUTORIALS = Path(__file__).resolve().parents[1] / "docs" / "tutorials"
@@ -43,6 +45,7 @@ def _check_targets(namespace):
 
 @pytest.fixture(autouse=True)
 def preserve_torch_state(monkeypatch, request):
+    monkeypatch.setenv("NO_ALBUMENTATIONS_UPDATE", "1")
     monkeypatch.setattr(plt, "show", Mock())
     run_cuda = request.node.get_closest_marker("cuda") is not None
     if run_cuda and not torch.cuda.is_available():
@@ -133,8 +136,44 @@ def test_inference_plot_distinguishes_class_zero_from_background():
 @pytest.mark.parametrize(
     "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
 )
-def test_training_notebook_updates_parameters(execution_device):
-    *setup, training_step, evaluation, visualization = _code_cells("training")
+def test_training_notebook_updates_parameters(execution_device, tmp_path, monkeypatch):
+    pytest.importorskip("albumentations")
+    rows, cols = np.mgrid[:64, :64]
+    instances = np.zeros((64, 64), dtype=np.int32)
+    instances[(rows - 24) ** 2 + (cols - 24) ** 2 < 8**2] = 11
+    instances[(rows - 44) ** 2 + (cols - 44) ** 2 < 6**2] = 22
+    classes = np.zeros_like(instances)
+    classes[instances == 11] = 3
+    classes[instances == 22] = 5
+    image = np.repeat((instances > 0)[..., None], 3, axis=2).astype(np.uint8) * 255
+    root = tmp_path / "data/panoptils"
+    for split, count in (("train", 3), ("validation", 1)):
+        (root / split / "images").mkdir(parents=True)
+        (root / split / "labels").mkdir()
+        split_image = np.roll(image, 7, axis=1) if split == "validation" else image
+        split_instances = (
+            np.roll(instances, 7, axis=1) if split == "validation" else instances
+        )
+        split_classes = (
+            np.roll(classes, 7, axis=1) if split == "validation" else classes
+        )
+        for i in range(count):
+            Image.fromarray(split_image).save(
+                root / split / "images" / f"sample_{i}.png"
+            )
+            savemat(
+                root / split / "labels" / f"sample_{i}.mat",
+                {
+                    "inst": split_instances,
+                    "type": split_classes,
+                    "sem": np.full_like(instances, 9),
+                },
+            )
+    notebook_directory = tmp_path / "docs/tutorials"
+    notebook_directory.mkdir(parents=True)
+    monkeypatch.chdir(notebook_directory)
+
+    *setup, training_loop, visualization = _code_cells("training")
     namespace = {}
     for source in setup:
         exec(source, namespace)
@@ -142,26 +181,67 @@ def test_training_notebook_updates_parameters(execution_device):
     parameter = next(model.parameters())
     before = parameter.detach().clone()
     assert namespace["device"].type == execution_device
-    _check_targets(namespace)
+    assert len(namespace["train_dataset"]) == 3
+    assert len(namespace["validation_dataset"]) == 1
+    example = namespace["train_dataset"][0]
+    assert set(example) == {"image", "inst", "type", "cellpose_inst"}
+    torch.testing.assert_close(
+        example["inst"].long(), torch.from_numpy(instances).long()
+    )
+    torch.testing.assert_close(example["type"].long(), torch.from_numpy(classes).long())
+    from cellseg_models_pytorch.transforms.functional.cellpose import gen_flow_maps
 
-    exec(training_step, namespace)
+    torch.testing.assert_close(
+        example["cellpose_inst"].float(),
+        torch.from_numpy(gen_flow_maps(instances).astype(np.float32)),
+    )
+
+    exec(training_loop, namespace)
     assert torch.isfinite(namespace["loss"])
     gradients = [p.grad for p in model.parameters() if p.grad is not None]
     assert gradients and all(torch.isfinite(g).all() for g in gradients)
     assert not torch.equal(before, parameter.detach())
-
-    exec(evaluation, namespace)
     assert not model.training
-    assert torch.isfinite(namespace["validation_loss"])
+    assert np.isfinite(namespace["training_loss"])
+    assert np.isfinite(namespace["validation_loss"])
+    validation_instances = np.roll(instances, 7, axis=1)
+    validation_classes = (
+        torch.from_numpy(np.roll(classes, 7, axis=1)).long().to(namespace["device"])
+    )
+    validation_image = (
+        torch.from_numpy(np.roll(image, 7, axis=1).transpose(2, 0, 1))
+        .float()
+        .unsqueeze(0)
+        .to(namespace["device"])
+        / 255
+    )
+    validation_flows = (
+        torch.from_numpy(gen_flow_maps(validation_instances).astype(np.float32))
+        .unsqueeze(0)
+        .to(namespace["device"])
+    )
+    with torch.inference_mode():
+        expected_output = model(validation_image)["nuc"]
+        expected_loss = torch.nn.functional.cross_entropy(
+            expected_output.type_map, validation_classes.unsqueeze(0)
+        ) + torch.nn.functional.mse_loss(expected_output.aux_map, validation_flows)
+    assert namespace["validation_loss"] == pytest.approx(float(expected_loss))
+
     exec(visualization, namespace)
+    assert namespace["example"] is not example
+    torch.testing.assert_close(
+        namespace["example"]["inst"].long(),
+        torch.from_numpy(validation_instances).long(),
+    )
+    assert namespace["output"].type_map.shape == (1, 7, 64, 64)
     np.testing.assert_array_equal(
         namespace["predicted_classes"],
-        namespace["output"].type_map.argmax(dim=1)[0].detach().cpu().numpy(),
+        namespace["output"].type_map.argmax(dim=1)[0].cpu().numpy(),
     )
     np.testing.assert_array_equal(
         namespace["class_colors"], label2rgb(namespace["predicted_classes"], bg_label=0)
     )
-    _check_plot(namespace, ["Example image", "Target instances", "Predicted classes"])
+    _check_plot(namespace, ["Held-out image", "Target instances", "Predicted classes"])
 
 
 @pytest.mark.parametrize(

@@ -91,15 +91,20 @@ loss reduction as segmentation accuracy or a useful trained model.
   inference notebook. A separate docs group preserves all prior locked versions.
   Navigation starts with installation and quick start, then groups notebooks in
   the user guide. Build instructions stay in contributor guidance.
-- [x] Add short offline training/fine-tuning notebook demonstrations: finite losses
+- [x] Maintain offline training/fine-tuning regressions: finite losses
   and gradients, parameter updates, frozen encoder state and exact checkpoint reload
   are validated in `tests/test_notebook_tutorials.py`, outside the rendered pages.
-- [ ] Extend training/fine-tuning to real folder/HDF5 data and pretrained checkpoints;
+- [x] Replace synthetic training with real PanopTILs folder data: pinned sample
+  bytes, patient-separated splits, aligned crops, nuclei-instance/cell-type targets
+  only, and a plain training/validation loop. The data-preparation tool is maintained
+  while the notebook uses it; raw data stays outside Git and distributions.
+- [ ] Extend fine-tuning to real data/pretrained checkpoints and document HDF5;
   validate target alignment and separate train/validation data in those examples.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
   reference. Keep the current normalization helper; issue 78's replacement/license
   proposal does not justify a silent preprocessing or dependency change.
-- [x] Build with warnings treated as errors and execute all three offline notebooks.
+- [x] Build with warnings treated as errors; execute the two offline demonstrations
+  in CI and the real-data training notebook explicitly outside offline CI.
   All three notebooks also execute on the DGX Spark CUDA GPU; reviewed cell
   outputs are retained without machine-specific paths. CPU checks stay in ordinary
   CI; CUDA notebook regressions use the existing `--cuda` category manually.

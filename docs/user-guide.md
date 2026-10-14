@@ -1,8 +1,8 @@
 # User guide
 
 Choose the task you want to try. Each page includes a notebook you can run.
-The current notebooks use small synthetic images to demonstrate the steps;
-they do not produce a useful trained model.
+Training uses a small real PanopTILs Refined subset. Inference and fine-tuning
+currently use labelled synthetic demonstrations; they do not produce a useful model.
 
 ```{toctree}
 :maxdepth: 1
