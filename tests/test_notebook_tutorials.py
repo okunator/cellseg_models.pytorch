@@ -484,3 +484,48 @@ def test_finetuning_notebook_freezing_and_resume(
     instances, classes, _ = prepared_panoptils
     _check_validation_loss(namespace, classes, instances)
     _check_reload_and_prediction(namespace, resume, evaluation, visualization)
+
+
+def test_evaluation_counts_foreground_without_background_and_marks_absent_classes(
+    prepared_panoptils,
+):
+    import pandas as pd
+    from cellseg_models_pytorch.metrics import panoptic_quality
+    from cellseg_models_pytorch.transforms.functional.normalization import (
+        minmax_normalize,
+    )
+    from cellseg_models_pytorch.utils import FileHandler
+
+    instance_mask = np.ones((64, 64), dtype=np.int32)
+    inference = Mock()
+    inference.post_process.return_value = {
+        "nuc": [(instance_mask, instance_mask.copy())]
+    }
+    namespace = {
+        "Path": Path,
+        "np": np,
+        "pd": pd,
+        "FileHandler": FileHandler,
+        "panoptic_quality": panoptic_quality,
+        "minmax_normalize": minmax_normalize,
+        "inference_model": inference,
+        "data_root": Path("../../data/panoptils-nuclei"),
+        "class_names": [
+            "background",
+            "neoplastic",
+            "stromal",
+            "inflammatory",
+            "epithelial",
+            "other",
+            "unknown",
+        ],
+    }
+    exec(_code_cells("training")[-2], namespace)
+    metrics = namespace["metrics"]
+    assert metrics.loc["all nuclei", "target objects"] == 2
+    assert metrics.loc["all nuclei", "predicted objects"] == 1
+    assert metrics.loc["neoplastic", "predicted objects"] == 1
+    assert metrics.loc["neoplastic", "PQ"] == 0
+    assert metrics.loc["inflammatory", "target objects"] == 2
+    assert metrics.loc["inflammatory", "PQ"] == 0
+    assert np.isnan(metrics.loc["epithelial", "PQ"])

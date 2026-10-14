@@ -28,7 +28,10 @@ def archive(tmp_path, monkeypatch):
     classes = np.where(instances == 11, 3, np.where(instances == 22, 5, 0)).astype(
         np.uint8
     )
-    image = np.repeat(classes[..., None], 3, axis=2) * 40
+    rows_grid, cols_grid = np.mgrid[:512, :512]
+    image = np.stack((classes * 40, rows_grid % 256, cols_grid % 256), axis=-1).astype(
+        np.uint8
+    )
     arrays = {"image": image, "inst": instances, "type": classes}
     rows = [
         dict(

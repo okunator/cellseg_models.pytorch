@@ -112,7 +112,10 @@ loss reduction as segmentation accuracy or a useful trained model.
   installed-package gate rejects overlapping providers; runtime/docs sync round
   trips and both pinned CPU checkpoint predictions are verified.
 - [ ] Replace short execution demonstrations with full-data training/fine-tuning
-  using the Histolytics nuclei recipe. Longer DGX runs are authorized and active.
+  using the Histolytics nuclei recipe. Longer DGX runs are authorized. Restart both models from their original
+  initialization after correcting DiceLoss spatial reduction and weighting; retain
+  historical-objective checkpoints separately for comparison. Numerical regressions
+  cover rare classes, masking, class/edge weights, gradients and device moves.
   Check held-out reconstructed instances, per-class PQ/counts and labelled figures;
   retain verified outputs only after assessing actual learned predictions.
   Reinitialize the class output layer for the different taxonomy; retain pretrained
@@ -257,3 +260,7 @@ and independent feature installs. It remains deferred structural work, not a
 prerequisite bundled into dependency upgrades. The GPU post-processing proposal
 is preserved on `docs/gpu-postprocessing-proposal` for work after maintenance.
 Retire or consolidate deferred drafts when adopted or cancelled.
+
+Confirmed follow-up: IoULoss and TverskyLoss also reduce the class axis instead
+of spatial axes. Audit their numerical contracts with independent regression
+tests before recommending those objectives; the current examples use neither.
