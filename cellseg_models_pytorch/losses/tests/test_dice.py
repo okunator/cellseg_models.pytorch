@@ -161,3 +161,15 @@ def test_zero_edge_weights_exclude_overlap_without_nan():
     assert loss.item() == 0
     loss.backward()
     assert torch.count_nonzero(logits.grad) == 0
+
+
+def test_mean_weights_present_image_class_pairs_equally():
+    probabilities = torch.tensor(
+        [
+            [[[0.8, 0.8]], [[0.2, 0.2]]],
+            [[[0.6, 0.4]], [[0.4, 0.6]]],
+        ]
+    )
+    target = torch.tensor([[[0, 0]], [[0, 1]]])
+    # Three present image/class pairs have losses 1/9, 2/5 and 2/5.
+    assert DiceLoss()(probabilities.log(), target).item() == pytest.approx(41 / 135)
