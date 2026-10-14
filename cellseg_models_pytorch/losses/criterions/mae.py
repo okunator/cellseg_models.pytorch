@@ -36,7 +36,7 @@ class MAE(WeightedBaseLoss):
             edge_weight: Weight that is added to object borders.
                 Defaults to none.
         """
-        super().__init__(apply_sd, False, False, apply_mask, False, edge_weight)
+        super().__init__(apply_sd, False, False, apply_mask, None, edge_weight)
         self.alpha = alpha
         self.eps = 1e-7
 

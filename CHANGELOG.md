@@ -9,6 +9,13 @@
 
 ## Fixes
 
+- Correct DiceLoss to compute per-image, per-class spatial overlap rather than
+  soft pixel accuracy. Average over target-present classes, including background;
+  mask overlap and volume consistently, weight class losses and add positive
+  spectral regularization. Training objectives change; existing model checkpoints
+  remain loadable. Class weights now follow loss-module device/dtype moves without
+  adding checkpoint state.
+
 - Generate training auxiliary targets after image/mask augmentation, keeping flows
   and other vector targets aligned after flips and crops in folder/HDF5 datasets.
   Apply sampled StrongAugment operations sequentially rather than discarding all

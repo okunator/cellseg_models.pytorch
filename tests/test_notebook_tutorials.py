@@ -286,12 +286,11 @@ def _check_validation_loss(namespace, classes, instances):
     one_hot = torch.nn.functional.one_hot(target.unsqueeze(0), 7).permute(0, 3, 1, 2)
     ce = -(one_hot * (probabilities + 1e-8).log()).sum(dim=1).mean()
     regularization = 0.005 * output.type_map.square().mean()
-    dice = (
-        1
-        - 2
-        * (probabilities * one_hot).sum(dim=1)
-        / (probabilities + one_hot).sum(dim=1)
-    ).mean()
+    present = one_hot.sum((2, 3)) > 0
+    per_class_dice = 1 - 2 * (probabilities * one_hot).sum((2, 3)) / (
+        probabilities + one_hot
+    ).sum((2, 3)).clamp_min(1e-8)
+    dice = per_class_dice[present].mean()
     mse = torch.nn.functional.mse_loss(output.aux_map, flows)
     assert namespace["validation_loss"] == pytest.approx(
         float(ce + regularization + dice + mse)
