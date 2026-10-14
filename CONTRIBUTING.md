@@ -127,6 +127,10 @@ Use generic example paths and no machine-specific identifiers or patient data.
   beginning, normal formatting and short cells organized by purpose. Explain
   shapes, preprocessing and decisions in prose rather than adding diagnostic code.
   Extract a helper only when it removes real repetition without hiding the lesson.
+- Separate semantic code blocks with blank lines. Add short comments that clarify
+  unfamiliar steps for first-time users. Prefer a straight-line workflow over
+  optional branches; keep control flow when device support, validation or safe
+  loading requires it. Show relevant outputs with clearly labelled plots.
 - Show the actual task: inference uses meaningful model outputs; fine-tuning loads
   pretrained weights. Synthetic data or random weights are appropriate for a
   clearly labelled demonstration or test, not a substitute for the promised workflow.

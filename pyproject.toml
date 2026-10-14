@@ -56,6 +56,7 @@ dev = [
     "scriv[toml]>=1.8.0,<2",
 ]
 docs = [
+    "matplotlib>=3.10.9,<3.11",
     "myst-nb>=1,<2",
     "pydata-sphinx-theme>=0.16,<1",
     "sphinx>=8,<9",

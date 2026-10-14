@@ -216,6 +216,7 @@ dev = [
     { name = "virtualenv" },
 ]
 docs = [
+    { name = "matplotlib" },
     { name = "myst-nb" },
     { name = "pydata-sphinx-theme", version = "0.19.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "pydata-sphinx-theme", version = "0.23.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -267,6 +268,7 @@ dev = [
     { name = "virtualenv", specifier = ">=21.7.13,<22" },
 ]
 docs = [
+    { name = "matplotlib", specifier = ">=3.10.9,<3.11" },
     { name = "myst-nb", specifier = ">=1,<2" },
     { name = "pydata-sphinx-theme", specifier = ">=0.16,<1" },
     { name = "sphinx", specifier = ">=8,<9" },

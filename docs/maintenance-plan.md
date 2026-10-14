@@ -103,6 +103,8 @@ loss reduction as segmentation accuracy or a useful trained model.
   All three notebooks also execute on the DGX Spark CUDA GPU; reviewed cell
   outputs are retained without machine-specific paths. CPU checks stay in ordinary
   CI; CUDA notebook regressions use the existing `--cuda` category manually.
+  Labelled figures show the input and masks; tests verify plotted labels, including
+  foreground class 0, outside the pages.
   Reuse the Python 3.11 source job, with no new job or recurring weight downloads.
   Keep real-checkpoint, GPU and full-slide runs explicit, with skips/limits reported.
 

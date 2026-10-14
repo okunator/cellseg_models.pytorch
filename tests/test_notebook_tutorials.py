@@ -5,9 +5,11 @@ import re
 from pathlib import Path
 from unittest.mock import Mock
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 import torch
+from skimage.color import label2rgb
 
 TUTORIALS = Path(__file__).resolve().parents[1] / "docs" / "tutorials"
 
@@ -41,6 +43,7 @@ def _check_targets(namespace):
 
 @pytest.fixture(autouse=True)
 def preserve_torch_state(monkeypatch, request):
+    monkeypatch.setattr(plt, "show", Mock())
     run_cuda = request.node.get_closest_marker("cuda") is not None
     if run_cuda and not torch.cuda.is_available():
         pytest.skip("CUDA is unavailable")
@@ -103,13 +106,35 @@ def test_inference_notebook_outputs(execution_device):
     assert instances.dtype == classes.dtype == np.int32
     assert not classes[instances == 0].any()
     assert set(np.unique(classes)) <= {0, 1, 2}
+    assert not namespace["class_colors"][instances == 0].any()
+    np.testing.assert_array_equal(
+        namespace["class_colors"][instances > 0],
+        label2rgb(classes, bg_label=-1)[instances > 0],
+    )
+    _check_plot(namespace, ["Image", "Predicted instances", "Predicted classes"])
+
+
+def test_inference_plot_distinguishes_class_zero_from_background():
+    namespace = {
+        "plt": plt,
+        "label2rgb": label2rgb,
+        "image": np.zeros((2, 2, 3)),
+        "instances": np.array([[0, 1], [2, 0]], dtype=np.int32),
+        "classes": np.array([[0, 0], [1, 0]], dtype=np.int32),
+    }
+    exec(_code_cells("inference")[2], namespace)
+    colors = namespace["class_colors"]
+    assert not colors[[0, 1], [0, 1]].any()
+    assert colors[0, 1].any()
+    assert not np.array_equal(colors[0, 1], colors[1, 0])
+    _check_plot(namespace, ["Image", "Predicted instances", "Predicted classes"])
 
 
 @pytest.mark.parametrize(
     "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
 )
 def test_training_notebook_updates_parameters(execution_device):
-    *setup, training_step, evaluation = _code_cells("training")
+    *setup, training_step, evaluation, visualization = _code_cells("training")
     namespace = {}
     for source in setup:
         exec(source, namespace)
@@ -128,13 +153,24 @@ def test_training_notebook_updates_parameters(execution_device):
     exec(evaluation, namespace)
     assert not model.training
     assert torch.isfinite(namespace["validation_loss"])
+    exec(visualization, namespace)
+    np.testing.assert_array_equal(
+        namespace["predicted_classes"],
+        namespace["output"].type_map.argmax(dim=1)[0].detach().cpu().numpy(),
+    )
+    np.testing.assert_array_equal(
+        namespace["class_colors"], label2rgb(namespace["predicted_classes"], bg_label=0)
+    )
+    _check_plot(namespace, ["Example image", "Target instances", "Predicted classes"])
 
 
 @pytest.mark.parametrize(
     "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
 )
 def test_finetuning_notebook_freezing_and_resume(execution_device):
-    *setup, frozen_step, unfrozen_step, resume = _code_cells("finetuning")
+    *setup, frozen_step, unfrozen_step, resume, visualization = _code_cells(
+        "finetuning"
+    )
     namespace = {}
     for source in setup:
         exec(source, namespace)
@@ -188,6 +224,30 @@ def test_finetuning_notebook_freezing_and_resume(execution_device):
             namespace["state"]["cuda_rng"],
         )
     assert namespace["state"]["epoch"] == 1
+    exec(visualization, namespace)
+    np.testing.assert_array_equal(
+        namespace["predicted_classes"], actual.type_map.argmax(dim=1)[0].cpu().numpy()
+    )
+    np.testing.assert_array_equal(
+        namespace["class_colors"], label2rgb(namespace["predicted_classes"], bg_label=0)
+    )
+    _check_plot(namespace, ["Example image", "Target instances", "Predicted classes"])
+
+
+def _check_plot(namespace, titles):
+    fig = namespace["fig"]
+    fig.canvas.draw()
+    namespace["plt"].show.assert_called_once()
+    assert [axis.get_title() for axis in fig.axes] == titles
+    for axis, expected in zip(
+        fig.axes,
+        (namespace["image"], namespace["instance_colors"], namespace["class_colors"]),
+    ):
+        np.testing.assert_array_equal(axis.images[0].get_array(), expected)
+    np.testing.assert_array_equal(
+        namespace["instance_colors"], label2rgb(namespace["instances"], bg_label=0)
+    )
+    namespace["plt"].close(fig)
 
 
 def test_pretrained_loading_snippet(monkeypatch):
