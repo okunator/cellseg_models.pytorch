@@ -92,34 +92,31 @@ class TrainDatasetFolder(Dataset):
             raise ValueError("The number of images and labels must be the same.")
         return len(self.img_files)
 
-    def __getitem__(self, ix: int) -> Dict[str, np.ndarray]:
+    def __getitem__(self, ix: int) -> dict[str, torch.Tensor]:
+        """Read CHW float32 images, HW labels and CHW auxiliary targets.
+
+        Auxiliary targets describe the augmented instance geometry. Label and
+        auxiliary dtypes follow the configured transforms; choose training dtypes
+        explicitly when consuming the sample.
+        """
         img = {"image": FileHandler.read_img(self.img_files[ix])}
         masks = FileHandler.read_mat(self.label_files[ix])
         masks = {k: v for k, v in masks.items() if k in self.mask_keys}
         data = {**img, **masks}
 
-        # get instance transform kwargs
-        inst_kws = {
-            k: data[k] for k in self.inst_in_keys if data.get(k, None) is not None
-        }
-
-        # apply instance transforms
-        aux = self.inst_transforms(**inst_kws)
-
-        # append integer masks and instance transformed masks
-        masks = [d[..., np.newaxis] for k, d in data.items() if k != "image"] + aux
-
-        # number of channels per non image data
-        mask_chls = [m.shape[2] for m in masks]
-
-        # concatenate all masks + inst transforms
-        masks = np.concatenate(masks, axis=-1)
-
-        tr = self.transforms(image=data["image"], masks=[masks])
+        # Augment labels first; derive vector targets from their new geometry.
+        tr = self.transforms(
+            image=data["image"], masks=[data[key] for key in self.mask_keys]
+        )
+        transformed = dict(zip(self.mask_keys, tr["masks"]))
+        aux = self.inst_transforms(
+            **{key: transformed[key] for key in self.inst_in_keys}
+        )
+        masks = [transformed[key][..., np.newaxis] for key in self.mask_keys] + aux
+        mask_chls = [mask.shape[2] for mask in masks]
 
         image = to_tensor(tr["image"])
-        masks = to_tensor(tr["masks"][0])
-        masks = torch.split(masks, mask_chls, dim=0)
+        masks = torch.split(to_tensor(np.concatenate(masks, axis=-1)), mask_chls, dim=0)
 
         integer_masks = {
             # k: masks[i].squeeze().long() for i, k in enumerate(self.mask_keys)

@@ -9,6 +9,11 @@
 
 ## Fixes
 
+- Generate training auxiliary targets after image/mask augmentation, keeping flows
+  and other vector targets aligned after flips and crops in folder/HDF5 datasets.
+  Apply sampled StrongAugment operations sequentially rather than discarding all
+  but the last operation.
+
 - Use headless OpenCV for image processing, avoiding overlapping `cv2` files
   when Albumentations is installed and training dependencies are later removed.
 

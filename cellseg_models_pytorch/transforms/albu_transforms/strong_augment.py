@@ -147,6 +147,7 @@ class AlbuStrongAugment(BaseCompose):
                 t = self.transforms[i]
                 name = t.op_name
                 data = t(image=image, masks=masks, force_apply=True)
+                image = data["image"]
                 self.last_operations[name] = t.params
 
         return {k: d for k, d in data.items() if k in ("image", "masks")}
