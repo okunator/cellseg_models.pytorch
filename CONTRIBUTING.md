@@ -73,7 +73,59 @@ Maintainers should follow [the release guide](docs/releasing.md).
 
 ## Documentation
 
-Use Sphinx with PyData and MyST-NB; notebooks in `docs/tutorials/` are the example
-page sources. See [the docs build instructions](docs/installation.md#notebooks-and-pages).
-Keep committed notebooks free of outputs and validate their short offline CPU cells.
-Docs tools live in the separate `docs` dependency group.
+Use Sphinx with PyData and MyST-NB. Docs tools live in the separate `docs`
+dependency group; see [the build instructions](docs/installation.md#notebooks-and-pages).
+Validate short offline CPU notebook cells as described there.
+
+### Docstrings
+
+Use Google-style docstrings for public APIs, including relevant arguments,
+output semantics, exceptions, and a working example. Describe tensor shapes and
+preprocessing; omit empty boilerplate sections and types already in signatures.
+Preserve existing docstring content when converting style. Keep unrelated
+documentation rewrites out of functional changes.
+Use generic example paths and no machine-specific identifiers or patient data.
+
+### User-facing pages
+
+- Write for a first-time user who knows basic Python but has no segmentation
+  background. Start with what the task achieves, what input they need and the
+  result they will get; introduce concepts as the workflow needs them.
+- Use short, direct sentences and familiar words. Define essential terms on first
+  use with a concrete example: an instance label identifies one object; a class
+  label describes its category. Explain abbreviations before using them.
+- Keep each page focused on one task and a clear sequence of steps. Explain why
+  a choice matters to the user. Put detailed tensor contracts, architecture internals
+  and advanced options in the relevant reference section rather than the introduction.
+- Show how to recognize the expected result and what to do next. Use a small useful
+  image, output or example when it clarifies the task; avoid diagnostic dumps.
+- Describe supported behavior accurately, with essential prerequisites and relevant
+  limitations stated once where they matter. Keep maintenance history, CI details
+  and developer instructions in contributor guidance, not user tutorials.
+- Review prose alongside code: remove repetition, unnecessary technical explanation
+  and jargon that does not help the reader complete the task.
+
+### Code and notebooks
+
+- Apply the development, Python and PyTorch rules to example code and notebook cells
+  as well as library code. Review every code block before presenting it to users.
+- Teach one complete workflow with clear names, explicit imports grouped at the
+  beginning, normal formatting and short cells organized by purpose. Explain
+  shapes, preprocessing and decisions in prose rather than adding diagnostic code.
+  Extract a helper only when it removes real repetition without hiding the lesson.
+- Show the actual task: inference uses meaningful model outputs; fine-tuning loads
+  pretrained weights. Synthetic data or random weights are appropriate for a
+  clearly labelled demonstration or test, not a substitute for the promised workflow.
+- Keep assertions minimal in rendered examples. Include a concise assertion only
+  when it teaches an essential contract. Put parameter snapshots, gradient checks,
+  numerical comparisons and other regression checks in maintained tests outside
+  the tutorial pages; do not turn a tutorial into a test suite.
+- Preserve necessary input validation, error handling and protection against data
+  loss. Use explicit exceptions at external-input boundaries, not assertions.
+- Use existing public APIs and idiomatic PyTorch loops. Avoid fallback branches,
+  private implementation access, configuration machinery and wrappers added just
+  to make an example execute. Fix a broken public contract at its owning layer.
+- Notebooks under `docs/tutorials/` are the source for Sphinx pages. Keep setup and
+  dependencies reproducible, outputs relevant to the lesson, and committed cells
+  free of execution outputs. Execute examples separately to validate them; successful
+  execution alone does not establish numerical correctness or model quality.
