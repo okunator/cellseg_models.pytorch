@@ -81,13 +81,15 @@ def test_prepares_aligned_nuclei_only_data(tmp_path, dataset_rows):
     "invalid", ["changed_bytes", "patient_overlap", "class_range", "misaligned"]
 )
 def test_rejects_invalid_data_before_writing(tmp_path, dataset_rows, invalid):
-    rows, _, _ = dataset_rows
+    rows, arrays, _ = dataset_rows
     if invalid == "changed_bytes":
-        rows[0]["inst"] = rows[0]["image"]
+        buffer = BytesIO()
+        Image.fromarray(np.zeros_like(arrays["image"])).save(buffer, format="PNG")
+        rows[0]["image"] = base64.b64encode(buffer.getvalue()).decode()
     elif invalid == "patient_overlap":
         rows[25]["slide_name"] = rows[0]["slide_name"]
     else:
-        array = np.full((260, 260), 7, dtype=np.uint8)
+        array = np.where(arrays["inst"] > 0, 7, 0).astype(np.uint8)
         if invalid == "misaligned":
             array = array[:259]
         buffer = BytesIO()
