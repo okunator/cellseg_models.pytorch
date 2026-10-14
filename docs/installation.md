@@ -18,8 +18,8 @@ release's requirements; do not assume these unreleased examples match it.
 
 For GPU execution, follow [PyTorch's installation instructions](https://pytorch.org/get-started/locally/)
 for the matching GPU/driver build first. CPU validation does not establish GPU/AMP
-compatibility. The notebooks use CPU explicitly and disable pretrained encoder
-downloads. Real pretrained inference requires an explicitly supplied local checkpoint.
+compatibility. The notebooks prefer a CUDA GPU and fall back to CPU when CUDA is unavailable.
+They disable pretrained encoder downloads. Real pretrained inference requires an explicitly supplied local checkpoint.
 
 ## Notebooks and pages
 
@@ -40,5 +40,5 @@ HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked --group docs sphinx-build -
 ```
 
 Open `docs/_build/html/index.html` to read the generated site. Build outputs stay
-out of Git. Notebook outputs are cleared in source control; execution errors fail
-validation. These checks do not train a useful model or validate a real dataset.
+out of Git. The notebooks include reviewed output from the DGX Spark run; execution errors
+fail validation. These checks do not train a useful model or validate a real dataset.

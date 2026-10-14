@@ -70,7 +70,7 @@ pages with Sphinx, MyST-NB and the PyData theme; do not duplicate their code in 
 when its distinct target/output contract needs an example.
 
 1. **Inference:** one RGB image and a local or explicitly downloaded checkpoint,
-   explicit CPU/device selection and checkpoint preprocessing, then save instance
+   explicit GPU preference with CPU fallback and checkpoint preprocessing, then save instance
    and type masks. Explain the returned head keys, shapes, dtypes and background.
 2. **Training:** a small folder dataset using the existing dataset/target/loss APIs,
    an offline encoder, seeded plain PyTorch train/validation steps and meaningful
@@ -98,6 +98,9 @@ loss reduction as segmentation accuracy or a useful trained model.
   reference. Keep the current normalization helper; issue 78's replacement/license
   proposal does not justify a silent preprocessing or dependency change.
 - [x] Build with warnings treated as errors and execute all three offline notebooks.
+  All three notebooks also execute on the DGX Spark CUDA GPU; reviewed cell
+  outputs are retained without machine-specific paths. CPU checks stay in ordinary
+  CI; CUDA notebook regressions use the existing `--cuda` category manually.
   Reuse the Python 3.11 source job, with no new job or recurring weight downloads.
   Keep real-checkpoint, GPU and full-slide runs explicit, with skips/limits reported.
 

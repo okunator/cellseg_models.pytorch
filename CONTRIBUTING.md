@@ -126,6 +126,8 @@ Use generic example paths and no machine-specific identifiers or patient data.
   private implementation access, configuration machinery and wrappers added just
   to make an example execute. Fix a broken public contract at its owning layer.
 - Notebooks under `docs/tutorials/` are the source for Sphinx pages. Keep setup and
-  dependencies reproducible, outputs relevant to the lesson, and committed cells
-  free of execution outputs. Execute examples separately to validate them; successful
+  dependencies reproducible and outputs relevant to the lesson. Retain reviewed
+  execution outputs when they demonstrate a verified run; exclude machine-specific
+  paths and warning/diagnostic clutter, and regenerate stale outputs after code edits.
+  Execute examples separately to validate them; successful
   execution alone does not establish numerical correctness or model quality.

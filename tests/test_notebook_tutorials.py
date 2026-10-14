@@ -40,23 +40,37 @@ def _check_targets(namespace):
 
 
 @pytest.fixture(autouse=True)
-def preserve_torch_state():
+def preserve_torch_state(monkeypatch, request):
+    run_cuda = request.node.get_closest_marker("cuda") is not None
+    if run_cuda and not torch.cuda.is_available():
+        pytest.skip("CUDA is unavailable")
+    if not run_cuda:
+        monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
     previous_threads = torch.get_num_threads()
     previous_rng = torch.get_rng_state()
+    previous_cuda_rng = (
+        torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+    )
     try:
         yield
     finally:
         torch.set_num_threads(previous_threads)
         torch.set_rng_state(previous_rng)
+        if previous_cuda_rng is not None:
+            torch.cuda.set_rng_state_all(previous_cuda_rng)
 
 
-def test_inference_notebook_outputs():
+@pytest.mark.parametrize(
+    "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
+)
+def test_inference_notebook_outputs(execution_device):
     namespace = {}
     for source in _code_cells("inference"):
         exec(source, namespace)
 
     for outputs in (namespace["prediction"], namespace["result"]):
         assert outputs["cyto"] is None and outputs["tissue"] is None
+    assert namespace["device"].type == execution_device
     image = namespace["image"]
     instances, classes = namespace["instances"], namespace["classes"]
     assert image.shape == (64, 64, 3)
@@ -67,7 +81,10 @@ def test_inference_notebook_outputs():
     assert set(np.unique(classes)) <= {0, 1, 2}
 
 
-def test_training_notebook_updates_parameters():
+@pytest.mark.parametrize(
+    "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
+)
+def test_training_notebook_updates_parameters(execution_device):
     *setup, training_step, evaluation = _code_cells("training")
     namespace = {}
     for source in setup:
@@ -75,6 +92,7 @@ def test_training_notebook_updates_parameters():
     model = namespace["model"]
     parameter = next(model.parameters())
     before = parameter.detach().clone()
+    assert namespace["device"].type == execution_device
     _check_targets(namespace)
 
     exec(training_step, namespace)
@@ -88,11 +106,15 @@ def test_training_notebook_updates_parameters():
     assert torch.isfinite(namespace["validation_loss"])
 
 
-def test_finetuning_notebook_freezing_and_resume():
+@pytest.mark.parametrize(
+    "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
+)
+def test_finetuning_notebook_freezing_and_resume(execution_device):
     *setup, frozen_step, unfrozen_step, resume = _code_cells("finetuning")
     namespace = {}
     for source in setup:
         exec(source, namespace)
+    assert namespace["device"].type == execution_device
     _check_targets(namespace)
     encoder = namespace["encoder"]
     encoder_before = {k: v.detach().clone() for k, v in encoder.state_dict().items()}
@@ -123,8 +145,8 @@ def test_finetuning_notebook_freezing_and_resume():
     model.eval()
     restored.eval()
     with torch.inference_mode():
-        expected = model(namespace["images"])["nuc"]
-        actual = restored(namespace["images"])["nuc"]
+        expected = model(namespace["images"].to(namespace["device"]))["nuc"]
+        actual = restored(namespace["images"].to(namespace["device"]))["nuc"]
     torch.testing.assert_close(actual.type_map, expected.type_map, rtol=0, atol=0)
     torch.testing.assert_close(actual.aux_map, expected.aux_map, rtol=0, atol=0)
 
@@ -136,6 +158,11 @@ def test_finetuning_notebook_freezing_and_resume():
         for key, value in state.items():
             torch.testing.assert_close(resumed["state"][parameter_id][key], value)
     torch.testing.assert_close(torch.get_rng_state(), namespace["state"]["torch_rng"])
+    if namespace["device"].type == "cuda":
+        torch.testing.assert_close(
+            torch.cuda.get_rng_state(namespace["device"]),
+            namespace["state"]["cuda_rng"],
+        )
     assert namespace["state"]["epoch"] == 1
 
 
@@ -152,6 +179,7 @@ def test_pretrained_loading_snippet(monkeypatch):
     namespace = {}
     exec(snippet, namespace)
     loader.assert_called_once_with(
-        Path("checkpoints/cellpose.safetensors"), device=torch.device("cpu")
+        Path("checkpoints/cellpose.safetensors"),
+        device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
     )
     assert namespace["model"] is loader.return_value.model
