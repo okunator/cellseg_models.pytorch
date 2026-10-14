@@ -25,8 +25,6 @@ future work; it does not make planned tools or features available today.
 Keep this layout. A migration to `src/`, a new training framework, or a new output
 representation is a separate change, not incidental cleanup.
 
-The following two sections are the Ponytail development instructions.
-
 ## Before you write
 
 Read the task and the code it touches. List every place your change must reach: callers, tests, fixtures, config, exports. Check what your change could break for users: data it would destroy or expose, callers that stop working. That is scope. Extra features are not.
@@ -195,7 +193,7 @@ Use generic example paths and no machine-specific identifiers or patient data.
 
 ### Documentation code and notebooks
 
-- Apply the Ponytail, Python and PyTorch rules to example code and notebook cells
+- Apply the development, Python and PyTorch rules to example code and notebook cells
   as well as library code. Review every code block before presenting it to users.
 - Teach one complete workflow with clear names, explicit imports grouped at the
   beginning, normal formatting and short cells organized by purpose. Explain
