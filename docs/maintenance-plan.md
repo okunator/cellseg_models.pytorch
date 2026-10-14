@@ -111,23 +111,22 @@ loss reduction as segmentation accuracy or a useful trained model.
   Use one headless OpenCV provider for runtime and Albumentations. The existing
   installed-package gate rejects overlapping providers; runtime/docs sync round
   trips and both pinned CPU checkpoint predictions are verified.
-- [ ] Replace short execution demonstrations with full-data training/fine-tuning
-  using the Histolytics nuclei recipe. Longer DGX runs are authorized. Restart both models from their original
-  initialization after correcting DiceLoss spatial reduction and weighting; retain
-  historical-objective checkpoints separately for comparison. Numerical regressions
-  cover rare classes, masking, class/edge weights, gradients and device moves.
-  Check held-out reconstructed instances, per-class PQ/counts and labelled figures;
-  retain verified outputs only after assessing actual learned predictions.
-  Reinitialize the class output layer for the different taxonomy; retain pretrained
-  encoder/decoder/flow weights. Check frozen weights and BatchNorm state, unfrozen
-  updates, held-out predictions, safe file creation and exact model/optimizer/RNG
-  reload in maintained tests. Retain reviewed DGX outputs; generated checkpoints
-  stay outside Git while they support this validation.
+- [x] Replace short execution demonstrations with five full-data epochs each for
+  training and pretrained fine-tuning, using the Histolytics nuclei recipe and
+  corrected spatial DiceLoss. Twenty-one numerical CPU cases and the explicit CUDA
+  loss check cover reduction, rare/absent classes, weighting, masking, smoothing
+  gradients and precision. On 16 fixed held-out regions, instance PQ is 0.643 for
+  training and 0.640 for fine-tuning; rare-class support/weakness remains visible.
+  Reviewed outputs retain actual fit logs and checkpoint-reloaded evaluation figures.
+  Fine-tuning resets only the class output, preserves pretrained features/flows and
+  checks frozen BatchNorm state, unfrozen updates, safe saves and exact reload.
+  Raw logs and resumable checkpoints stay outside Git. Preserve historical-objective
+  checkpoints for comparison until the maintainer accepts the corrected examples.
 - [ ] Document the HDF5 alternative without duplicating the training loop.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
   reference. Keep the current normalization helper; issue 78's replacement/license
   proposal does not justify a silent preprocessing or dependency change.
-- [ ] Execute inference with the learned PanopTILs checkpoint and held-out labels
+- [x] Execute inference with the learned PanopTILs checkpoint and held-out labels
   at their original 1024-pixel scale. Keep the independent public-checkpoint quick
   start and the original 256-pixel numerical regression inputs/references unchanged.
 - [x] Build with warnings treated as errors and render reviewed notebook outputs
@@ -146,6 +145,9 @@ Retire the superseded four-region execution artifacts after the full-data runs a
 verified; preserve actual checkpoint regressions and this workflow's resumable state.
 
 ## Remaining validation and compatibility work
+
+- [ ] Correct IoULoss and TverskyLoss class-axis reductions with independent
+  numerical regressions before recommending them; the current examples use neither.
 
 - [ ] Verify published installation resolves issue 68. Python 3.12 source and
   clean-distribution checks already pass; a published-release check is still needed.
@@ -260,7 +262,3 @@ and independent feature installs. It remains deferred structural work, not a
 prerequisite bundled into dependency upgrades. The GPU post-processing proposal
 is preserved on `docs/gpu-postprocessing-proposal` for work after maintenance.
 Retire or consolidate deferred drafts when adopted or cancelled.
-
-Confirmed follow-up: IoULoss and TverskyLoss also reduce the class axis instead
-of spatial axes. Audit their numerical contracts with independent regression
-tests before recommending those objectives; the current examples use neither.
