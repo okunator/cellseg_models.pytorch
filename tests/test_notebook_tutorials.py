@@ -44,13 +44,13 @@ def preserve_torch_state(monkeypatch, request):
     run_cuda = request.node.get_closest_marker("cuda") is not None
     if run_cuda and not torch.cuda.is_available():
         pytest.skip("CUDA is unavailable")
-    if not run_cuda:
-        monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
     previous_threads = torch.get_num_threads()
     previous_rng = torch.get_rng_state()
     previous_cuda_rng = (
         torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
     )
+    if not run_cuda:
+        monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
     try:
         yield
     finally:
@@ -58,6 +58,30 @@ def preserve_torch_state(monkeypatch, request):
         torch.set_rng_state(previous_rng)
         if previous_cuda_rng is not None:
             torch.cuda.set_rng_state_all(previous_cuda_rng)
+
+
+def test_cpu_fixture_restores_cuda_rng(monkeypatch):
+    original = torch.tensor([7, 11], dtype=torch.uint8)
+    cuda_rng = original.clone()
+    with monkeypatch.context() as patch:
+        patch.setattr(torch.cuda, "is_available", lambda: True)
+        patch.setattr(torch.cuda, "get_rng_state_all", lambda: [cuda_rng.clone()])
+        patch.setattr(
+            torch.cuda, "set_rng_state_all", lambda states: cuda_rng.copy_(states[0])
+        )
+        patch.setattr(torch.cuda, "manual_seed_all", lambda seed: cuda_rng.fill_(seed))
+        request = Mock()
+        request.node.get_closest_marker.return_value = None
+        fixture = preserve_torch_state.__wrapped__(patch, request)
+        next(fixture)
+        try:
+            assert not torch.cuda.is_available()
+            torch.manual_seed(0)
+            assert not torch.equal(cuda_rng, original)
+        finally:
+            with pytest.raises(StopIteration):
+                next(fixture)
+        torch.testing.assert_close(cuda_rng, original)
 
 
 @pytest.mark.parametrize(
