@@ -1,5 +1,6 @@
 """Regression checks for the code rendered in the tutorial notebooks."""
 
+import hashlib
 import json
 import os
 import re
@@ -120,13 +121,13 @@ def test_inference_notebook_outputs(execution_device, monkeypatch):
     assert namespace["device"].type == execution_device
     image = namespace["image"]
     instances, classes = namespace["instances"], namespace["classes"]
-    assert image.shape == (256, 256, 3)
+    assert image.shape == (1024, 1024, 3)
     assert image.dtype == np.float32 and np.isfinite(image).all()
     with Image.open(
         TUTORIALS.parents[1] / "cellseg_models_pytorch/utils/tests/data/HE.png"
     ) as source:
         expected_image = np.asarray(
-            source.convert("RGB").resize((256, 256), Image.Resampling.BILINEAR)
+            source.convert("RGB").resize((1024, 1024), Image.Resampling.BILINEAR)
         )
     np.testing.assert_array_equal(image, minmax_normalize(expected_image, copy=True))
     download.assert_called_once_with(
@@ -150,7 +151,7 @@ def test_inference_notebook_outputs(execution_device, monkeypatch):
 
 
 @pytest.mark.optional
-def test_pretrained_inference_notebook_matches_reference(monkeypatch):
+def test_pretrained_inference_notebook_outputs(monkeypatch):
     monkeypatch.chdir(TUTORIALS)
     if cache := os.environ.get("CELLSEG_BASELINE_CACHE"):
         import huggingface_hub
@@ -164,17 +165,17 @@ def test_pretrained_inference_notebook_matches_reference(monkeypatch):
     namespace = {}
     for source in _code_cells("inference"):
         exec(source, namespace)
-    with np.load(
-        TUTORIALS.parents[1] / "tests/fixtures/checkpoint_baseline/cellpose.npz"
-    ) as reference:
-        instances = namespace["instances"]
-        expected = reference["instance_mask"]
-        np.testing.assert_array_equal(instances == 0, expected == 0)
-        pairs = np.unique(
-            np.stack((instances.ravel(), expected.ravel()), axis=1), axis=0
-        )
-        assert len(pairs) == len(np.unique(instances)) == len(np.unique(expected)) == 97
-        np.testing.assert_array_equal(namespace["classes"], reference["type_mask"])
+    assert hashlib.sha256(namespace["checkpoint_path"].read_bytes()).hexdigest() == (
+        "d6e29abb0b1c60668961f1bf074e609091583cae8340f1360e6ccfcb1cf17bb4"
+    )
+    assert namespace["model"].model.enc_name == "efficientnet_b5"
+    assert not namespace["model"].model.training
+    instances, classes = namespace["instances"], namespace["classes"]
+    assert instances.shape == classes.shape == (1024, 1024)
+    assert instances.dtype == classes.dtype == np.int32
+    assert len(np.unique(instances)) > 2 and (instances == 0).any()
+    assert set(np.unique(classes)) <= set(range(7))
+    assert not classes[instances == 0].any()
 
 
 def test_inference_plot_distinguishes_class_zero_from_background():

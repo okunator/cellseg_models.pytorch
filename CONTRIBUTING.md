@@ -88,9 +88,10 @@ HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked --group docs sphinx-build -
 ```
 
 The real-data training and pretrained inference notebooks are excluded from forced
-offline builds. Execute inference explicitly with the pinned checkpoint and compare
-its masks with the maintained reference using
+offline builds. Execute inference explicitly with the pinned checkpoint using
 `uv run --no-sync pytest --optional tests/test_notebook_tutorials.py`.
+The separate checkpoint baseline tests retain their original 256-pixel inputs and
+numerical references; do not replace them with tutorial predictions.
 Prepare the training notebook's PanopTILs subset as described on the page, then execute it explicitly and
 review its saved outputs. Offline tests use temporary folder fixtures to validate
 the same training code, without downloading data. They require Albumentations
