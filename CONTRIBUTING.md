@@ -87,11 +87,16 @@ To validate the short offline notebooks during the build:
 HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked --group docs sphinx-build -W --keep-going -b html -D nb_execution_mode=force docs docs/_build/executed
 ```
 
-The real-data training notebook is excluded from forced offline builds. Prepare
-its PanopTILs subset as described on the page, then execute it explicitly and
+The real-data training and pretrained inference notebooks are excluded from forced
+offline builds. Execute inference explicitly with the pinned checkpoint and compare
+its masks with the maintained reference using
+`uv run --no-sync pytest --optional tests/test_notebook_tutorials.py`.
+Prepare the training notebook's PanopTILs subset as described on the page, then execute it explicitly and
 review its saved outputs. Offline tests use temporary folder fixtures to validate
 the same training code, without downloading data. They require Albumentations
 from the docs group; environments without it report the training cases as skipped.
+Offline inference tests substitute only checkpoint loading; they validate preprocessing
+and plotting, not pretrained model quality.
 
 Use one OpenCV provider: `opencv-python-headless`. If an existing environment
 had both OpenCV packages, repair their overlapping files once with

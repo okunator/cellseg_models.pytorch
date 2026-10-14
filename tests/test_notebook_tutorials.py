@@ -1,6 +1,7 @@
 """Regression checks for the code rendered in the tutorial notebooks."""
 
 import json
+import os
 import re
 from pathlib import Path
 from unittest.mock import Mock
@@ -93,7 +94,23 @@ def test_cpu_fixture_restores_cuda_rng(monkeypatch):
 @pytest.mark.parametrize(
     "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
 )
-def test_inference_notebook_outputs(execution_device):
+def test_inference_notebook_outputs(execution_device, monkeypatch):
+    import huggingface_hub
+
+    from cellseg_models_pytorch.models.cellpose import CellPose
+    from cellseg_models_pytorch.transforms.functional.normalization import (
+        minmax_normalize,
+    )
+
+    download = Mock(return_value="example.safetensors")
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", download)
+    loader = Mock(
+        side_effect=lambda path, device: CellPose(
+            7, enc_name="resnet18", enc_pretrain=False, device=device
+        )
+    )
+    monkeypatch.setattr(CellPose, "from_pretrained", loader)
+    monkeypatch.chdir(TUTORIALS)
     namespace = {}
     for source in _code_cells("inference"):
         exec(source, namespace)
@@ -103,18 +120,61 @@ def test_inference_notebook_outputs(execution_device):
     assert namespace["device"].type == execution_device
     image = namespace["image"]
     instances, classes = namespace["instances"], namespace["classes"]
-    assert image.shape == (64, 64, 3)
+    assert image.shape == (256, 256, 3)
     assert image.dtype == np.float32 and np.isfinite(image).all()
+    with Image.open(
+        TUTORIALS.parents[1] / "cellseg_models_pytorch/utils/tests/data/HE.png"
+    ) as source:
+        expected_image = np.asarray(
+            source.convert("RGB").resize((256, 256), Image.Resampling.BILINEAR)
+        )
+    np.testing.assert_array_equal(image, minmax_normalize(expected_image, copy=True))
+    download.assert_called_once_with(
+        repo_id="csmp-hub/cellpose-histo-hgsc-nuc-v1",
+        filename="cellpose_hgsc_v1_efficientnet_b5.safetensors",
+        revision="88c7ffd3a9106d1673c3dd6e6a9e42476e8320d2",
+    )
+    loader.assert_called_once_with(
+        Path("example.safetensors"), device=namespace["device"]
+    )
     assert instances.shape == classes.shape == image.shape[:2]
     assert instances.dtype == classes.dtype == np.int32
     assert not classes[instances == 0].any()
-    assert set(np.unique(classes)) <= {0, 1, 2}
+    assert set(np.unique(classes)) <= set(range(7))
     assert not namespace["class_colors"][instances == 0].any()
     np.testing.assert_array_equal(
         namespace["class_colors"][instances > 0],
         label2rgb(classes, bg_label=-1)[instances > 0],
     )
     _check_plot(namespace, ["Image", "Predicted instances", "Predicted classes"])
+
+
+@pytest.mark.optional
+def test_pretrained_inference_notebook_matches_reference(monkeypatch):
+    monkeypatch.chdir(TUTORIALS)
+    if cache := os.environ.get("CELLSEG_BASELINE_CACHE"):
+        import huggingface_hub
+
+        original_download = huggingface_hub.hf_hub_download
+        monkeypatch.setattr(
+            huggingface_hub,
+            "hf_hub_download",
+            lambda **kwargs: original_download(**kwargs, cache_dir=cache),
+        )
+    namespace = {}
+    for source in _code_cells("inference"):
+        exec(source, namespace)
+    with np.load(
+        TUTORIALS.parents[1] / "tests/fixtures/checkpoint_baseline/cellpose.npz"
+    ) as reference:
+        instances = namespace["instances"]
+        expected = reference["instance_mask"]
+        np.testing.assert_array_equal(instances == 0, expected == 0)
+        pairs = np.unique(
+            np.stack((instances.ravel(), expected.ravel()), axis=1), axis=0
+        )
+        assert len(pairs) == len(np.unique(instances)) == len(np.unique(expected)) == 97
+        np.testing.assert_array_equal(namespace["classes"], reference["type_mask"])
 
 
 def test_inference_plot_distinguishes_class_zero_from_background():

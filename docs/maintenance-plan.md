@@ -109,8 +109,11 @@ loss reduction as segmentation accuracy or a useful trained model.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
   reference. Keep the current normalization helper; issue 78's replacement/license
   proposal does not justify a silent preprocessing or dependency change.
-- [x] Build with warnings treated as errors; execute the two offline demonstrations
-  in CI and the real-data training notebook explicitly outside offline CI.
+- [x] Replace random-pixel inference with the repository tissue image and pinned
+  pretrained HGSC checkpoint. Compare the executed CPU notebook masks with the
+  maintained checkpoint reference; run GPU inference explicitly and retain its figure.
+- [x] Build with warnings treated as errors; execute the offline fine-tuning demonstration
+  in CI and real-data training/pretrained inference explicitly outside offline CI.
   All three notebooks also execute on the DGX Spark CUDA GPU; reviewed cell
   outputs are retained without machine-specific paths. CPU checks stay in ordinary
   CI; CUDA notebook regressions use the existing `--cuda` category manually.

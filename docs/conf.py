@@ -16,8 +16,8 @@ exclude_patterns = [
     "releasing.md",
 ]
 nb_execution_mode = "off"
-# The real-data training notebook is executed explicitly, outside offline CI.
-nb_execution_excludepatterns = ["tutorials/training.ipynb"]
+# Real-data/checkpoint notebooks are executed explicitly, outside offline CI.
+nb_execution_excludepatterns = ["tutorials/training.ipynb", "tutorials/inference.ipynb"]
 nb_execution_raise_on_error = True
 nb_execution_timeout = 120
 napoleon_google_docstring = True

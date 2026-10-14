@@ -1,8 +1,8 @@
 # User guide
 
 Choose the task you want to try. Each page includes a notebook you can run.
-Training uses a small real PanopTILs Refined subset. Inference and fine-tuning
-currently use labelled synthetic demonstrations; they do not produce a useful model.
+Inference uses a tissue image and pretrained weights. Training uses a small real
+PanopTILs Refined subset. Fine-tuning currently uses a labelled synthetic demonstration.
 
 ```{toctree}
 :maxdepth: 1
