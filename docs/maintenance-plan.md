@@ -61,7 +61,10 @@ refactors. Keep the README quick start and link it to the fuller guide.
 | Data and training | Folder/HDF5 layout, instance/type labels, aligned augmentation, model-specific targets, losses and a plain PyTorch training/validation loop |
 | Fine-tuning | Load existing weights, preserve preprocessing and class mapping, freeze/unfreeze parameters, select learning rates and save/reload results |
 | Optional workflows | Explicit requirements and tested limits for WSI backends, ONNX export and GPU/AMP; avoid unsupported performance/accuracy claims |
-| API reference | Focused public entry points with Google-style docstrings and tensor contracts; link existing contributor/release guidance |
+| API reference | Focused public entry points with Google-style docstrings and tensor contracts |
+
+Keep contributor and release guidance in the repository, excluded from the
+user-facing Sphinx site.
 
 ### Three runnable examples
 

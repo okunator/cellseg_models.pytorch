@@ -13,6 +13,7 @@ exclude_patterns = [
     "**/.ipynb_checkpoints",
     "maintenance-plan.md",
     "module-boundaries-draft.md",
+    "releasing.md",
 ]
 nb_execution_mode = "off"
 # The real-data training notebook is executed explicitly, outside offline CI.

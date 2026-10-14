@@ -12,6 +12,4 @@ user-guide
 ```
 
 The [repository README](https://github.com/okunator/cellseg_models.pytorch#readme)
-contains model citations. For development and publication, see the
-[contributor guide](https://github.com/okunator/cellseg_models.pytorch/blob/main/CONTRIBUTING.md)
-and [release guide](releasing.md).
+contains model citations.
