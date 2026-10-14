@@ -1,3 +1,7 @@
+---
+orphan: true
+---
+
 # Release validation and publishing
 
 The publication workflow builds distributions once, checks their metadata, tests

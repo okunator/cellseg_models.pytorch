@@ -89,6 +89,8 @@ loss reduction as segmentation accuracy or a useful trained model.
 
 - [x] Establish Sphinx/PyData/MyST-NB navigation, installation guidance and the
   inference notebook. A separate docs group preserves all prior locked versions.
+  Navigation starts with installation and quick start, then groups notebooks in
+  the user guide. Build instructions stay in contributor guidance.
 - [x] Add short offline training/fine-tuning notebook demonstrations: finite losses
   and gradients, parameter updates, frozen encoder state and exact checkpoint reload
   are validated in `tests/test_notebook_tutorials.py`, outside the rendered pages.
@@ -127,6 +129,10 @@ the maintained guidance. Release validation below stays separate from docs deliv
 - [ ] Check dependency wheels and execution before adding newer Python CI versions
   or changing the minimum. Update metadata, workflow, Ruff target, README and lock
   together in an explicit support-policy patch; retain Python 3.10 for now.
+  Aim for installation without a user-supplied upper Python cap. Metadata already
+  permits 3.13/3.14 except 3.14.1; Torch 2.14.1 and torchvision 0.29.1 provide
+  wheels for both. Validate clean installs, compiled helpers and model execution
+  on 3.13/3.14 next; retain the upstream 3.14.1 exclusion until torchvision removes it.
 - [ ] Expand library annotations/stub coverage incrementally without blanket
   suppressions, casts or altered runtime representations. Package `py.typed` only
   after the supported surface and downstream distribution checks are ready.

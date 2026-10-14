@@ -74,8 +74,22 @@ Maintainers should follow [the release guide](docs/releasing.md).
 ## Documentation
 
 Use Sphinx with PyData and MyST-NB. Docs tools live in the separate `docs`
-dependency group; see [the build instructions](docs/installation.md#notebooks-and-pages).
-Validate short offline CPU notebook cells as described there.
+dependency group. Synchronize it and build the pages without executing notebooks:
+
+```sh
+uv sync --locked --group docs
+uv run --locked --group docs sphinx-build -W --keep-going -b html docs docs/_build/html
+```
+
+To validate the short offline notebooks during the build:
+
+```sh
+HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked --group docs sphinx-build -W --keep-going -b html -D nb_execution_mode=force docs docs/_build/executed
+```
+
+Open `docs/_build/html/index.html` to read the site. Build outputs stay out of Git.
+Open notebooks under `docs/tutorials/` in your Jupyter client with a kernel from
+the synchronized environment. They are the source for the corresponding pages.
 
 ### Docstrings
 
