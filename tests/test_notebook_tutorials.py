@@ -144,7 +144,7 @@ def test_training_notebook_updates_parameters(execution_device, tmp_path, monkey
     instances[(rows - 44) ** 2 + (cols - 44) ** 2 < 6**2] = 22
     classes = np.zeros_like(instances)
     classes[instances == 11] = 3
-    classes[instances == 22] = 5
+    classes[instances == 22] = 3
     image = np.repeat((instances > 0)[..., None], 3, axis=2).astype(np.uint8) * 255
     root = tmp_path / "data/panoptils"
     for split, count in (("train", 3), ("validation", 1)):
