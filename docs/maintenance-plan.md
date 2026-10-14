@@ -46,8 +46,8 @@ not a second review diary in this repository.
 
 ## Next work: documentation
 
-No confirmed maintenance defect blocks documentation. Build and validate the
-examples against current main; distinguish its unreleased requirements from PyPI.
+Dependency maintenance is complete. Build and validate the examples against
+current main; distinguish its unreleased requirements from PyPI.
 Fix concrete failures in the paths being documented, without reopening deferred
 refactors. Keep the README quick start and link it to the fuller guide.
 
@@ -66,19 +66,23 @@ refactors. Keep the README quick start and link it to the fuller guide.
 Keep contributor and release guidance in the repository, excluded from the
 user-facing Sphinx site.
 
-### Three runnable examples
+### Data preparation and runnable examples
 
 Use maintained Jupyter notebooks under `docs/tutorials/`, rendered directly as
 pages with Sphinx, MyST-NB and the PyData theme; do not duplicate their code in scripts. Begin with CellPose; add another model only
 when its distinct target/output contract needs an example.
 
-1. **Inference:** one RGB image and a local or explicitly downloaded checkpoint,
+1. **Data preparation:** pinned full PanopTILs archive, patient-level split before
+   aligned native-scale patches, instance and cell-type labels only, and a visible
+   label/class-distribution check. Keep original held-out regions for evaluation.
+2. **Inference:** one RGB image and a local or explicitly downloaded checkpoint,
    explicit GPU preference with CPU fallback and checkpoint preprocessing, then save instance
    and type masks. Explain the returned head keys, shapes, dtypes and background.
-2. **Training:** a small folder dataset using the existing dataset/target/loss APIs,
-   an offline encoder, seeded plain PyTorch train/validation steps and meaningful
-   loss/gradient checks. Document HDF5 as an alternative without duplicating the loop.
-3. **Fine-tuning:** reuse the training data/loop, load pretrained parameters with
+3. **Training:** use the Histolytics nuclei recipe through existing public APIs:
+   pretrained image encoder, aligned augmentation, MSE flows, CE with spectral
+   decoupling plus Dice cell-type loss, AdamW and a cosine schedule. Evaluate
+   reconstructed instances and per-class quality, not just losses/dense labels.
+4. **Fine-tuning:** reuse the training data/loop, load pretrained parameters with
    the same encoder, adapt the class output when label meanings differ, demonstrate freezing and subsequent
    unfreezing, and verify changed trainable parameters plus save/reload. Resume
    state includes optimizer, epoch and RNG state; include scheduler/scaler if used.
@@ -97,14 +101,20 @@ loss reduction as segmentation accuracy or a useful trained model.
 - [x] Maintain offline training/fine-tuning regressions: finite losses
   and gradients, parameter updates, frozen encoder state and exact checkpoint reload
   are validated in `tests/test_notebook_tutorials.py`, outside the rendered pages.
-- [x] Replace synthetic training with real PanopTILs folder data: pinned sample
-  bytes, patient-separated splits, aligned crops, nuclei-instance/cell-type targets
-  only, and a plain training/validation loop. The data-preparation tool is maintained
-  while the notebook uses it; raw data stays outside Git and distributions.
+- [x] Fix augmentation defects exposed by the real recipe: generate auxiliary
+  targets after aligned image/mask transforms and compose all sampled image
+  operations. Folder regressions, 24 optional HDF5 cases and the ordinary suite pass.
+- [x] Prepare all 1,349 pinned PanopTILs regions: patient-separated splits,
+  17,536 training and 4,048 validation patches at native scale, nucleus instances
+  and cell types only. The tool and preparation notebook are maintained while the
+  workflows consume them; raw data stays outside Git and distributions.
   Use one headless OpenCV provider for runtime and Albumentations. The existing
   installed-package gate rejects overlapping providers; runtime/docs sync round
   trips and both pinned CPU checkpoint predictions are verified.
-- [x] Fine-tune real pretrained HGSC weights on the prepared PanopTILs subset.
+- [ ] Replace short execution demonstrations with full-data training/fine-tuning
+  using the Histolytics nuclei recipe. Longer DGX runs are authorized and active.
+  Check held-out reconstructed instances, per-class PQ/counts and labelled figures;
+  retain verified outputs only after assessing actual learned predictions.
   Reinitialize the class output layer for the different taxonomy; retain pretrained
   encoder/decoder/flow weights. Check frozen weights and BatchNorm state, unfrozen
   updates, held-out predictions, safe file creation and exact model/optimizer/RNG
@@ -114,13 +124,12 @@ loss reduction as segmentation accuracy or a useful trained model.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
   reference. Keep the current normalization helper; issue 78's replacement/license
   proposal does not justify a silent preprocessing or dependency change.
-- [x] Replace random-pixel inference with the repository tissue image and pinned
-  pretrained HGSC checkpoint at 1024 × 1024. Validate the actual CPU workflow and
-  checkpoint identity; run GPU inference explicitly and retain its figure. Preserve
-  the separate 256-pixel checkpoint regression inputs and references unchanged.
+- [ ] Execute inference with the learned PanopTILs checkpoint and held-out labels
+  at their original 1024-pixel scale. Keep the independent public-checkpoint quick
+  start and the original 256-pixel numerical regression inputs/references unchanged.
 - [x] Build with warnings treated as errors and render reviewed notebook outputs
   in CI. Execute all real-data/checkpoint notebooks explicitly outside offline CI.
-  All three notebooks also execute on the DGX Spark CUDA GPU; reviewed cell
+  Model notebooks execute on the DGX Spark CUDA GPU; preparation runs on CPU. Reviewed cell
   outputs are retained without machine-specific paths. CPU checks stay in ordinary
   CI; CUDA notebook regressions use the existing `--cuda` category manually.
   Labelled figures show the input and masks; tests verify plotted labels, including
@@ -130,6 +139,8 @@ loss reduction as segmentation accuracy or a useful trained model.
 
 After adoption, remove this temporary docs checklist; the pages and examples become
 the maintained guidance. Release validation below stays separate from docs delivery.
+Retire the superseded four-region execution artifacts after the full-data runs are
+verified; preserve actual checkpoint regressions and this workflow's resumable state.
 
 ## Remaining validation and compatibility work
 

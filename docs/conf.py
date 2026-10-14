@@ -18,6 +18,7 @@ exclude_patterns = [
 nb_execution_mode = "off"
 # Real-data/checkpoint notebooks are executed explicitly, outside offline CI.
 nb_execution_excludepatterns = [
+    "tutorials/prepare-data.ipynb",
     "tutorials/training.ipynb",
     "tutorials/inference.ipynb",
     "tutorials/finetuning.ipynb",

@@ -87,20 +87,27 @@ Validate notebook code with offline fixtures separately from the site build:
 HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked --group docs pytest tests/test_notebook_tutorials.py
 ```
 
-All three notebooks use real data or weights and are excluded from forced offline
+All four notebooks use real data or weights and are excluded from forced offline
 builds. Execute them explicitly and review saved outputs; CI renders those outputs
-without downloading data or checkpoints. Check pretrained inference using
-`uv run --no-sync pytest --optional tests/test_notebook_tutorials.py`.
+without downloading data or checkpoints. Execute inference after fine-tuning so
+its image, labels, weights and class taxonomy match. The quick start covers
+independent use of public pretrained checkpoints on an appropriate input.
 The separate checkpoint baseline tests retain their original 256-pixel inputs and
 numerical references; do not replace them with tutorial predictions.
-Prepare the training notebook's PanopTILs subset once and reuse it for fine-tuning.
+Run the data-preparation notebook once and reuse its patient-separated PanopTILs
+patches for training and fine-tuning. Both recipes follow the nuclei-only part of
+the Histolytics example: augmented image/mask pairs, MSE flows, CE with spectral
+decoupling plus Dice cell-type loss, AdamW and a cosine schedule. Validation uses
+no random augmentation. Evaluate reconstructed instances and per-class predictions
+on predetermined held-out regions; loss reduction alone is insufficient.
 Offline training/fine-tuning tests use temporary folder fixtures; fine-tuning and
 inference tests substitute checkpoint loading. They validate class-head adaptation,
 preprocessing, training, freezing, checkpoint reload and plotting, not model quality.
 Training/fine-tuning checks require Albumentations from the docs group; environments
 without it report those cases as skipped. Run the existing `--cuda` category separately
-to check device state restoration. Fine-tuning writes a new checkpoint and refuses
-to overwrite one; choose another filename before repeating a real notebook run.
+to check device state restoration. Epoch checkpoints include optimizer, scheduler,
+Torch/Python/NumPy random states and data split. Checkpoint directories and files
+are created exclusively; choose a new directory before repeating a real run.
 
 Use one OpenCV provider: `opencv-python-headless`. If an existing environment
 had both OpenCV packages, repair their overlapping files once with

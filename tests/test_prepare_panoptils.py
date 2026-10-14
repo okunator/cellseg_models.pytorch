@@ -1,11 +1,12 @@
-"""Offline checks for the tutorial dataset preparation boundary."""
+"""Preparation keeps patients independent and image/instance/type patches aligned."""
 
-import base64
 import hashlib
+import json
 from io import BytesIO
-from unittest.mock import Mock
 
 import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 from PIL import Image
 from scipy.io import loadmat
@@ -13,92 +14,96 @@ from scipy.io import loadmat
 from tools import prepare_panoptils as preparation
 
 
+def _png(array):
+    buffer = BytesIO()
+    Image.fromarray(array).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
 @pytest.fixture
-def dataset_rows(monkeypatch):
-    instances = np.zeros((260, 260), dtype=np.uint16)
-    instances[20:80, 30:90] = 11
-    instances[150:200, 160:210] = 22
-    classes = np.zeros_like(instances, dtype=np.uint8)
-    classes[instances == 11] = 3
-    classes[instances == 22] = 5
-    image = np.zeros((260, 260, 3), dtype=np.uint8)
-    image[..., 0] = classes * 40
-    arrays = {"image": image, "inst": instances, "type": classes}
-    encoded, hashes = {}, {}
-    for key, value in arrays.items():
-        buffer = BytesIO()
-        Image.fromarray(value).save(buffer, format="PNG")
-        encoded[key] = base64.b64encode(buffer.getvalue()).decode()
-        hashes[key] = hashlib.sha256(buffer.getvalue()).hexdigest()
-    patients = {
-        0: "TCGA-AA-0001",
-        1: "TCGA-AA-0001",
-        24: "TCGA-AA-0002",
-        25: "TCGA-AA-0003",
-    }
-    rows = {
-        offset: {
-            **encoded,
-            "slide_name": f"{patients[offset]}-DX1",
-            "sem": "not a PNG: this must never be decoded",
-        }
-        for offset in preparation.SELECTION
-    }
-    monkeypatch.setattr(
-        preparation, "PNG_SHA256", {offset: dict(hashes) for offset in rows}
+def archive(tmp_path, monkeypatch):
+    instances = np.zeros((512, 512), dtype=np.uint16)
+    instances[20:90, 30:100] = 11
+    instances[300:390, 320:400] = 22
+    classes = np.where(instances == 11, 3, np.where(instances == 22, 5, 0)).astype(
+        np.uint8
     )
-    responses = []
-    for row in rows.values():
-        response = Mock()
-        response.json.return_value = {"rows": [{"row": row}]}
-        responses.append(response)
-    getter = Mock(side_effect=responses)
-    monkeypatch.setattr(preparation.requests, "get", getter)
-    return rows, arrays, getter
+    image = np.repeat(classes[..., None], 3, axis=2) * 40
+    arrays = {"image": image, "inst": instances, "type": classes}
+    rows = [
+        dict(
+            slide_name=f"TCGA-AA-{i:04d}-DX1",
+            sem=b"unused, not PNG",
+            **{key: _png(array) for key, array in arrays.items()},
+        )
+        for i in range(5)
+    ]
+    rows.append({**rows[0], "slide_name": "TCGA-AA-0000-DX2"})
+    source = tmp_path / "source.parquet"
+    pq.write_table(pa.Table.from_pylist(rows), source)
+    monkeypatch.setattr(
+        preparation, "PARQUET_SHA256", hashlib.sha256(source.read_bytes()).hexdigest()
+    )
+    return source, rows, arrays
 
 
-def test_prepares_aligned_nuclei_only_data(tmp_path, dataset_rows):
-    _, arrays, getter = dataset_rows
-    destination = tmp_path / "panoptils"
-    preparation.prepare_panoptils(destination)
-    assert getter.call_count == 4
-    assert len(list((destination / "train/images").glob("*.png"))) == 3
-    assert len(list((destination / "validation/images").glob("*.png"))) == 1
-    image = np.asarray(Image.open(destination / "train/images/sample_0000.png"))
-    labels = loadmat(destination / "train/labels/sample_0000.mat")
-    assert {key for key in labels if not key.startswith("__")} == {"inst", "type"}
-    np.testing.assert_array_equal(image, arrays["image"][2:258, 2:258])
-    for key in ("inst", "type"):
-        np.testing.assert_array_equal(labels[key], arrays[key][2:258, 2:258])
-    assert set(np.unique(labels["inst"])) == {0, 11, 22}
-    assert set(np.unique(labels["type"])) == {0, 3, 5}
+def test_prepares_all_aligned_patches_after_patient_split(tmp_path, archive):
+    source, rows, arrays = archive
+    destination = tmp_path / "prepared"
+    preparation.prepare_panoptils(source, destination)
+    manifest = json.loads((destination / "manifest.json").read_text())
+    patients = {
+        split: {row["patient"] for row in manifest["samples"] if row["split"] == split}
+        for split in ("train", "validation")
+    }
+    assert patients["train"].isdisjoint(patients["validation"])
+    assert len(patients["train"]) == 4 and len(patients["validation"]) == 1
+    assert sum(split["patches"] for split in manifest["splits"].values()) == 24
+    for record in manifest["samples"]:
+        split = record["split"]
+        for y in (0, 256):
+            for x in (0, 256):
+                name = f"{record['file']}_y{y:04d}_x{x:04d}"
+                image = np.asarray(
+                    Image.open(destination / split / "images" / f"{name}.png")
+                )
+                masks = loadmat(destination / split / "labels" / f"{name}.mat")
+                area = np.s_[y : y + 256, x : x + 256]
+                np.testing.assert_array_equal(image, arrays["image"][area])
+                np.testing.assert_array_equal(masks["inst"], arrays["inst"][area])
+                np.testing.assert_array_equal(masks["type"], arrays["type"][area])
+                assert "sem" not in masks
+    before = (destination / "manifest.json").read_bytes()
     with pytest.raises(FileExistsError):
-        preparation.prepare_panoptils(destination)
-    assert getter.call_count == 4
+        preparation.prepare_panoptils(source, destination)
+    assert (destination / "manifest.json").read_bytes() == before
 
 
-@pytest.mark.parametrize(
-    "invalid", ["changed_bytes", "patient_overlap", "class_range", "misaligned"]
-)
-def test_rejects_invalid_data_before_writing(tmp_path, dataset_rows, invalid):
-    rows, arrays, _ = dataset_rows
-    if invalid == "changed_bytes":
-        buffer = BytesIO()
-        Image.fromarray(np.zeros_like(arrays["image"])).save(buffer, format="PNG")
-        rows[0]["image"] = base64.b64encode(buffer.getvalue()).decode()
-    elif invalid == "patient_overlap":
-        rows[25]["slide_name"] = rows[0]["slide_name"]
+@pytest.mark.parametrize("defect", ["digest", "class", "shape", "patients"])
+def test_rejects_invalid_inputs_without_publishing_partial_data(
+    tmp_path, archive, monkeypatch, defect
+):
+    source, rows, arrays = archive
+    if defect == "digest":
+        source.write_bytes(source.read_bytes() + b"changed")
     else:
-        array = np.where(arrays["inst"] > 0, 7, 0).astype(np.uint8)
-        if invalid == "misaligned":
-            array = array[:259]
-        buffer = BytesIO()
-        Image.fromarray(array).save(buffer, format="PNG")
-        rows[0]["type"] = base64.b64encode(buffer.getvalue()).decode()
-        preparation.PNG_SHA256[0]["type"] = hashlib.sha256(
-            buffer.getvalue()
-        ).hexdigest()
-    destination = tmp_path / "panoptils"
+        if defect == "class":
+            invalid = arrays["type"].copy()
+            invalid[arrays["inst"] > 0] = 7
+            rows[-1]["type"] = _png(invalid)
+        elif defect == "shape":
+            rows[-1]["inst"] = _png(arrays["inst"][:-1])
+        else:
+            for row in rows:
+                row["slide_name"] = "TCGA-AA-0000-DX1"
+        pq.write_table(pa.Table.from_pylist(rows), source)
+        monkeypatch.setattr(
+            preparation,
+            "PARQUET_SHA256",
+            hashlib.sha256(source.read_bytes()).hexdigest(),
+        )
+    destination = tmp_path / "prepared"
     with pytest.raises(ValueError):
-        preparation.prepare_panoptils(destination)
+        preparation.prepare_panoptils(source, destination)
     assert not destination.exists()
+    assert not list(tmp_path.glob(".panoptils-*"))

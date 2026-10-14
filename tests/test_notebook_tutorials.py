@@ -1,8 +1,7 @@
 """Regression checks for the code rendered in the tutorial notebooks."""
 
-import hashlib
 import json
-import os
+import random
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -33,6 +32,8 @@ def preserve_torch_state(monkeypatch, request):
     run_cuda = request.node.get_closest_marker("cuda") is not None
     if run_cuda and not torch.cuda.is_available():
         pytest.skip("CUDA is unavailable")
+    previous_numpy = np.random.get_state()
+    previous_python = random.getstate()
     previous_threads = torch.get_num_threads()
     previous_rng = torch.get_rng_state()
     previous_cuda_rng = (
@@ -43,6 +44,8 @@ def preserve_torch_state(monkeypatch, request):
     try:
         yield
     finally:
+        np.random.set_state(previous_numpy)
+        random.setstate(previous_python)
         torch.set_num_threads(previous_threads)
         torch.set_rng_state(previous_rng)
         if previous_cuda_rng is not None:
@@ -76,103 +79,111 @@ def test_cpu_fixture_restores_cuda_rng(monkeypatch):
 @pytest.mark.parametrize(
     "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
 )
-def test_inference_notebook_outputs(execution_device, monkeypatch):
-    import huggingface_hub
-
+def test_inference_notebook_outputs(execution_device, prepared_panoptils):
     from cellseg_models_pytorch.models.cellpose import CellPose
     from cellseg_models_pytorch.transforms.functional.normalization import (
         minmax_normalize,
     )
 
-    download = Mock(return_value="example.safetensors")
-    monkeypatch.setattr(huggingface_hub, "hf_hub_download", download)
-    loader = Mock(
-        side_effect=lambda path, device: CellPose(
-            7, enc_name="resnet18", enc_pretrain=False, device=device
-        )
+    pretrained = CellPose(
+        7,
+        enc_name="resnet18",
+        enc_pretrain=False,
+        device=torch.device(execution_device),
     )
-    monkeypatch.setattr(CellPose, "from_pretrained", loader)
-    monkeypatch.chdir(TUTORIALS)
+    checkpoint_dir = Path("finetuning-checkpoints")
+    checkpoint_dir.mkdir()
+    class_names = [
+        "background",
+        "neoplastic",
+        "stromal",
+        "inflammatory",
+        "epithelial",
+        "other",
+        "unknown",
+    ]
+    torch.save(
+        {
+            "model": pretrained.model.state_dict(),
+            "encoder": "resnet18",
+            "class_names": class_names,
+        },
+        checkpoint_dir / "epoch_05.pt",
+    )
     namespace = {}
     for source in _code_cells("inference"):
         exec(source, namespace)
-
+    assert namespace["device"].type == execution_device
     for outputs in (namespace["prediction"], namespace["result"]):
         assert outputs["cyto"] is None and outputs["tissue"] is None
-    assert namespace["device"].type == execution_device
-    image = namespace["image"]
+    _, _, raw_image = prepared_panoptils
+    expected_image = minmax_normalize(np.roll(raw_image, 7, axis=1), copy=True)
+    np.testing.assert_array_equal(namespace["image"], expected_image)
+    assert namespace["image"].dtype == np.float32
     instances, classes = namespace["instances"], namespace["classes"]
-    assert image.shape == (1024, 1024, 3)
-    assert image.dtype == np.float32 and np.isfinite(image).all()
-    with Image.open(
-        TUTORIALS.parents[1] / "cellseg_models_pytorch/utils/tests/data/HE.png"
-    ) as source:
-        expected_image = np.asarray(
-            source.convert("RGB").resize((1024, 1024), Image.Resampling.BILINEAR)
-        )
-    np.testing.assert_array_equal(image, minmax_normalize(expected_image, copy=True))
-    download.assert_called_once_with(
-        repo_id="csmp-hub/cellpose-histo-hgsc-nuc-v1",
-        filename="cellpose_hgsc_v1_efficientnet_b5.safetensors",
-        revision="88c7ffd3a9106d1673c3dd6e6a9e42476e8320d2",
-    )
-    loader.assert_called_once_with(
-        Path("example.safetensors"), device=namespace["device"]
-    )
-    assert instances.shape == classes.shape == image.shape[:2]
+    assert instances.shape == classes.shape == expected_image.shape[:2]
     assert instances.dtype == classes.dtype == np.int32
-    assert not classes[instances == 0].any()
     assert set(np.unique(classes)) <= set(range(7))
+    assert not classes[instances == 0].any()
     assert not namespace["class_colors"][instances == 0].any()
     np.testing.assert_array_equal(
         namespace["class_colors"][instances > 0],
-        label2rgb(classes, bg_label=-1)[instances > 0],
+        namespace["class_palette"][classes[instances > 0]],
     )
-    _check_plot(namespace, ["Image", "Predicted instances", "Predicted classes"])
-
-
-@pytest.mark.optional
-def test_pretrained_inference_notebook_outputs(monkeypatch):
-    monkeypatch.chdir(TUTORIALS)
-    if cache := os.environ.get("CELLSEG_BASELINE_CACHE"):
-        import huggingface_hub
-
-        original_download = huggingface_hub.hf_hub_download
-        monkeypatch.setattr(
-            huggingface_hub,
-            "hf_hub_download",
-            lambda **kwargs: original_download(**kwargs, cache_dir=cache),
+    for name, value in pretrained.model.state_dict().items():
+        torch.testing.assert_close(
+            namespace["model"].model.state_dict()[name], value, rtol=0, atol=0
         )
-    namespace = {}
-    for source in _code_cells("inference"):
-        exec(source, namespace)
-    assert hashlib.sha256(namespace["checkpoint_path"].read_bytes()).hexdigest() == (
-        "d6e29abb0b1c60668961f1bf074e609091583cae8340f1360e6ccfcb1cf17bb4"
+    fig = namespace["fig"]
+    fig.canvas.draw()
+    assert [axis.get_title() for axis in fig.axes] == [
+        "Held-out image",
+        "Target instances",
+        "Target cell types",
+        "Held-out image",
+        "Predicted instances",
+        "Predicted cell types",
+    ]
+    np.testing.assert_array_equal(
+        fig.axes[4].images[0].get_array(), label2rgb(instances, bg_label=0)
     )
-    assert namespace["model"].model.enc_name == "efficientnet_b5"
-    assert not namespace["model"].model.training
-    instances, classes = namespace["instances"], namespace["classes"]
-    assert instances.shape == classes.shape == (1024, 1024)
-    assert instances.dtype == classes.dtype == np.int32
-    assert len(np.unique(instances)) > 2 and (instances == 0).any()
-    assert set(np.unique(classes)) <= set(range(7))
-    assert not classes[instances == 0].any()
+    np.testing.assert_array_equal(
+        fig.axes[5].images[0].get_array(), namespace["class_colors"]
+    )
+    plt.show.assert_called_once()
+    plt.close(fig)
 
 
 def test_inference_plot_distinguishes_class_zero_from_background():
+    from matplotlib.patches import Patch
+
+    instances = np.array([[0, 1], [2, 0]], dtype=np.int32)
+    classes = np.array([[0, 0], [1, 0]], dtype=np.int32)
     namespace = {
         "plt": plt,
         "label2rgb": label2rgb,
-        "image": np.zeros((2, 2, 3)),
-        "instances": np.array([[0, 1], [2, 0]], dtype=np.int32),
-        "classes": np.array([[0, 0], [1, 0]], dtype=np.int32),
+        "np": np,
+        "Patch": Patch,
+        "raw_image": np.zeros((2, 2, 3)),
+        "instances": instances,
+        "classes": classes,
+        "labels": {"inst": instances, "type": classes},
+        "class_names": [
+            "background",
+            "neoplastic",
+            "stromal",
+            "inflammatory",
+            "epithelial",
+            "other",
+            "unknown",
+        ],
     }
     exec(_code_cells("inference")[2], namespace)
     colors = namespace["class_colors"]
     assert not colors[[0, 1], [0, 1]].any()
     assert colors[0, 1].any()
     assert not np.array_equal(colors[0, 1], colors[1, 0])
-    _check_plot(namespace, ["Image", "Predicted instances", "Predicted classes"])
+    plt.close(namespace["fig"])
 
 
 @pytest.fixture
@@ -186,7 +197,7 @@ def prepared_panoptils(tmp_path, monkeypatch):
     classes[instances == 11] = 3
     classes[instances == 22] = 3
     image = np.repeat((instances > 0)[..., None], 3, axis=2).astype(np.uint8) * 255
-    root = tmp_path / "data/panoptils"
+    root = tmp_path / "data/panoptils-nuclei"
     for split, count in (("train", 3), ("validation", 1)):
         (root / split / "images").mkdir(parents=True)
         (root / split / "labels").mkdir()
@@ -209,6 +220,18 @@ def prepared_panoptils(tmp_path, monkeypatch):
                     "sem": np.full_like(instances, 9),
                 },
             )
+    (root / "validation/regions/images").mkdir(parents=True)
+    (root / "validation/regions/labels").mkdir()
+    Image.fromarray(np.roll(image, 7, axis=1)).save(
+        root / "validation/regions/images/region.png"
+    )
+    savemat(
+        root / "validation/regions/labels/region.mat",
+        {
+            "inst": np.roll(instances, 7, axis=1),
+            "type": np.roll(classes, 7, axis=1),
+        },
+    )
     (root / "manifest.json").write_text(
         json.dumps(
             {
@@ -227,87 +250,168 @@ def prepared_panoptils(tmp_path, monkeypatch):
     return instances, classes, image
 
 
-@pytest.mark.parametrize(
-    "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
-)
-def test_training_notebook_updates_parameters(execution_device, prepared_panoptils):
-    instances, classes, image = prepared_panoptils
-    *setup, training_loop, visualization = _code_cells("training")
-    namespace = {}
-    for source in setup:
-        exec(source, namespace)
-    model = namespace["model"]
-    parameter = next(model.parameters())
-    before = parameter.detach().clone()
-    assert namespace["device"].type == execution_device
-    assert len(namespace["train_dataset"]) == 3
-    assert len(namespace["validation_dataset"]) == 1
-    example = namespace["train_dataset"][0]
-    assert set(example) == {"image", "inst", "type", "cellpose_inst"}
-    torch.testing.assert_close(
-        example["inst"].long(), torch.from_numpy(instances).long()
+@pytest.fixture
+def offline_notebook_loaders(monkeypatch):
+    from torch.utils.data import DataLoader
+
+    original = DataLoader.__init__
+    monkeypatch.setattr(
+        DataLoader,
+        "__init__",
+        lambda self, dataset, **kwargs: original(
+            self, dataset, **(kwargs | {"num_workers": 0, "batch_size": 2})
+        ),
     )
-    torch.testing.assert_close(example["type"].long(), torch.from_numpy(classes).long())
+
+
+def _check_validation_loss(namespace, classes, instances):
     from cellseg_models_pytorch.transforms.functional.cellpose import gen_flow_maps
 
-    torch.testing.assert_close(
-        example["cellpose_inst"].float(),
-        torch.from_numpy(gen_flow_maps(instances).astype(np.float32)),
+    image = (
+        namespace["validation_dataset"][0]["image"].unsqueeze(0).to(namespace["device"])
     )
-
-    exec(training_loop, namespace)
-    assert torch.isfinite(namespace["loss"])
-    gradients = [p.grad for p in model.parameters() if p.grad is not None]
-    assert gradients and all(torch.isfinite(g).all() for g in gradients)
-    assert not torch.equal(before, parameter.detach())
-    assert not model.training
-    assert np.isfinite(namespace["training_loss"])
-    assert np.isfinite(namespace["validation_loss"])
-    validation_instances = np.roll(instances, 7, axis=1)
-    validation_classes = (
+    target = (
         torch.from_numpy(np.roll(classes, 7, axis=1)).long().to(namespace["device"])
     )
-    validation_image = (
-        torch.from_numpy(np.roll(image, 7, axis=1).transpose(2, 0, 1))
-        .float()
-        .unsqueeze(0)
-        .to(namespace["device"])
-        / 255
-    )
-    validation_flows = (
-        torch.from_numpy(gen_flow_maps(validation_instances).astype(np.float32))
+    flows = (
+        torch.from_numpy(
+            gen_flow_maps(np.roll(instances, 7, axis=1)).astype(np.float32)
+        )
         .unsqueeze(0)
         .to(namespace["device"])
     )
     with torch.inference_mode():
-        expected_output = model(validation_image)["nuc"]
-        expected_loss = torch.nn.functional.cross_entropy(
-            expected_output.type_map, validation_classes.unsqueeze(0)
-        ) + torch.nn.functional.mse_loss(expected_output.aux_map, validation_flows)
-    assert namespace["validation_loss"] == pytest.approx(float(expected_loss))
+        output = namespace["model"](image)["nuc"]
+    probabilities = output.type_map.softmax(dim=1)
+    one_hot = torch.nn.functional.one_hot(target.unsqueeze(0), 7).permute(0, 3, 1, 2)
+    ce = -(one_hot * (probabilities + 1e-8).log()).sum(dim=1).mean()
+    regularization = 0.005 * output.type_map.square().mean()
+    dice = (
+        1
+        - 2
+        * (probabilities * one_hot).sum(dim=1)
+        / (probabilities + one_hot).sum(dim=1)
+    ).mean()
+    mse = torch.nn.functional.mse_loss(output.aux_map, flows)
+    assert namespace["validation_loss"] == pytest.approx(
+        float(ce + regularization + dice + mse)
+    )
 
+
+def _check_reload_and_prediction(namespace, resume, evaluation, visualization):
+    exec(resume, namespace)
+    original = namespace["model"]
+    restored = namespace["restored"]
+    for name, value in original.state_dict().items():
+        torch.testing.assert_close(restored.state_dict()[name], value, rtol=0, atol=0)
+    before = namespace["optimizer"].state_dict()
+    after = namespace["resumed_optimizer"].state_dict()
+    assert before["param_groups"] == after["param_groups"]
+    assert before["state"].keys() == after["state"].keys()
+    for key, state in before["state"].items():
+        for name, value in state.items():
+            torch.testing.assert_close(after["state"][key][name], value, rtol=0, atol=0)
+    assert (
+        namespace["scheduler"].state_dict()
+        == namespace["resumed_scheduler"].state_dict()
+    )
+    torch.testing.assert_close(torch.get_rng_state(), namespace["state"]["torch_rng"])
+    assert random.getstate() == namespace["state"]["python_rng"]
+    np.testing.assert_array_equal(
+        np.random.get_state()[1], namespace["state"]["numpy_rng"][1]
+    )
+    if namespace["device"].type == "cuda":
+        torch.testing.assert_close(
+            torch.cuda.get_rng_state(namespace["device"]),
+            namespace["state"]["cuda_rng"],
+        )
+    image = (
+        namespace["validation_dataset"][0]["image"].unsqueeze(0).to(namespace["device"])
+    )
+    with torch.inference_mode():
+        old = original(image)["nuc"]
+        new = restored(image)["nuc"]
+    torch.testing.assert_close(old.type_map, new.type_map, rtol=0, atol=0)
+    torch.testing.assert_close(old.aux_map, new.aux_map, rtol=0, atol=0)
+    saved = namespace["saved_checkpoint"].read_bytes()
+    with pytest.raises(FileExistsError):
+        namespace["save_checkpoint"](namespace["state"]["epoch"], "unfrozen")
+    assert namespace["saved_checkpoint"].read_bytes() == saved
+    exec(evaluation, namespace)
+    assert len(namespace["evaluation_paths"]) == 1
+    assert list(namespace["metrics"].index) == [
+        "all nuclei",
+        *namespace["class_names"][1:],
+    ]
+    assert np.isfinite(namespace["metrics"]["PQ"].dropna()).all()
     exec(visualization, namespace)
-    assert namespace["example"] is not example
-    torch.testing.assert_close(
-        namespace["example"]["inst"].long(),
-        torch.from_numpy(validation_instances).long(),
-    )
-    assert namespace["output"].type_map.shape == (1, 7, 64, 64)
+    fig = namespace["fig"]
+    fig.canvas.draw()
+    assert [axis.get_title() for axis in fig.axes] == [
+        "Held-out image",
+        "Target instances",
+        "Target cell types",
+        "Held-out image",
+        "Predicted instances",
+        "Predicted cell types",
+    ]
     np.testing.assert_array_equal(
-        namespace["predicted_classes"],
-        namespace["output"].type_map.argmax(dim=1)[0].cpu().numpy(),
+        fig.axes[4].images[0].get_array(),
+        label2rgb(namespace["predicted_instances"], bg_label=0),
     )
     np.testing.assert_array_equal(
-        namespace["class_colors"], label2rgb(namespace["predicted_classes"], bg_label=0)
+        fig.axes[2].images[0].get_array(),
+        namespace["class_palette"][namespace["labels"]["type"].astype(int)],
     )
-    _check_plot(namespace, ["Held-out image", "Target instances", "Predicted classes"])
+    np.testing.assert_array_equal(
+        fig.axes[5].images[0].get_array(),
+        namespace["class_palette"][namespace["predicted_classes"]],
+    )
+    plt.show.assert_called_once()
+    plt.close(fig)
+
+
+@pytest.mark.parametrize(
+    "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
+)
+def test_training_notebook_updates_parameters(
+    execution_device, prepared_panoptils, offline_notebook_loaders, monkeypatch
+):
+    from cellseg_models_pytorch.models.cellpose import CellPose
+
+    factory = Mock(
+        side_effect=lambda *args, **kwargs: CellPose(
+            7, enc_name="resnet18", enc_pretrain=False, device=kwargs["device"]
+        )
+    )
+    monkeypatch.setattr("cellseg_models_pytorch.models.cellpose.CellPose", factory)
+    *setup, loop, resume, evaluation, visualization = _code_cells("training")
+    namespace = {}
+    for source in setup:
+        exec(source, namespace)
+    assert namespace["device"].type == execution_device
+    assert factory.call_args.kwargs["enc_pretrain"] is True
+    assert isinstance(namespace["optimizer"], torch.optim.AdamW)
+    assert namespace["criterion"].weights == {"cellpose": 1.0, "type_mask": 1.0}
+    assert namespace["criterion"]["type_mask"]["loss1"].apply_sd
+    from cellseg_models_pytorch.losses import DiceLoss
+
+    assert isinstance(namespace["criterion"]["type_mask"]["loss2"], DiceLoss)
+    before = next(namespace["model"].parameters()).detach().clone()
+    namespace["num_epochs"] = 1
+    exec(loop, namespace)
+    assert not torch.equal(before, next(namespace["model"].parameters()).detach())
+    assert namespace["scheduler"].last_epoch == 1
+    instances, classes, _ = prepared_panoptils
+    _check_validation_loss(namespace, classes, instances)
+    _check_reload_and_prediction(namespace, resume, evaluation, visualization)
 
 
 @pytest.mark.parametrize(
     "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
 )
 def test_finetuning_notebook_freezing_and_resume(
-    execution_device, prepared_panoptils, monkeypatch
+    execution_device, prepared_panoptils, offline_notebook_loaders, monkeypatch
 ):
     import huggingface_hub
     from cellseg_models_pytorch.models.cellpose import CellPose
@@ -319,21 +423,25 @@ def test_finetuning_notebook_freezing_and_resume(
         enc_pretrain=False,
         device=torch.device(execution_device),
     )
-    pretrained_state = {
-        k: v.detach().clone() for k, v in pretrained.model.state_dict().items()
-    }
+    weights = {k: v.detach().clone() for k, v in pretrained.model.state_dict().items()}
     download = Mock(return_value="example.safetensors")
     loader = Mock(return_value=pretrained)
     monkeypatch.setattr(huggingface_hub, "hf_hub_download", download)
     monkeypatch.setattr(CellPose, "from_pretrained", loader)
-
-    *setup, frozen_step, unfrozen_step, resume, visualization = _code_cells(
+    # Reloading constructs a fresh network; keep that constructor small and offline too.
+    factory = Mock(
+        side_effect=lambda *args, **kwargs: CellPose(
+            7, enc_name="resnet18", enc_pretrain=False, device=kwargs["device"]
+        )
+    )
+    monkeypatch.setattr("cellseg_models_pytorch.models.cellpose.CellPose", factory)
+    factory.from_pretrained = loader
+    *setup, frozen, unfrozen, resume, evaluation, visualization = _code_cells(
         "finetuning"
     )
     namespace = {}
     for source in setup:
         exec(source, namespace)
-    assert namespace["device"].type == execution_device
     loader.assert_called_once_with(
         Path("example.safetensors"), device=namespace["device"]
     )
@@ -342,129 +450,38 @@ def test_finetuning_notebook_freezing_and_resume(
         filename="cellpose_hgsc_v1_efficientnet_b5.safetensors",
         revision="88c7ffd3a9106d1673c3dd6e6a9e42476e8320d2",
     )
-    model = namespace["model"]
+    model, encoder = namespace["model"], namespace["encoder"]
     assert model is pretrained.model
-    for name, value in pretrained_state.items():
+    for name, value in weights.items():
         if name == "decoder.type-nuc_type_head.head.weight":
             assert not torch.equal(model.state_dict()[name], value)
         else:
             torch.testing.assert_close(model.state_dict()[name], value, rtol=0, atol=0)
-    instances, classes, image = prepared_panoptils
-    example = namespace["train_dataset"][0]
-    torch.testing.assert_close(
-        example["inst"].long(), torch.from_numpy(instances).long()
-    )
-    torch.testing.assert_close(example["type"].long(), torch.from_numpy(classes).long())
-    assert set(example) == {"image", "inst", "type", "cellpose_inst"}
-    assert len(namespace["train_dataset"]) == 3
-    assert len(namespace["validation_dataset"]) == 1
-
-    encoder = namespace["encoder"]
     encoder_before = {k: v.detach().clone() for k, v in encoder.state_dict().items()}
-    assert all(not p.requires_grad for p in encoder.parameters())
     head = model.decoder["type-nuc_type_head"].head.weight
     head_before = head.detach().clone()
-
-    exec(frozen_step, namespace)
-    assert not encoder.training
+    namespace["frozen_epochs"] = 1
+    namespace["num_epochs"] = 2
+    exec(frozen, namespace)
+    assert all(p.grad is None for p in encoder.parameters())
     for name, value in encoder_before.items():
         torch.testing.assert_close(encoder.state_dict()[name], value, rtol=0, atol=0)
-    assert all(p.grad is None for p in encoder.parameters())
     assert not torch.equal(head_before, head.detach())
-    assert head.grad is not None and torch.isfinite(head.grad).all()
-    assert np.isfinite(namespace["training_loss"])
-
-    parameter = next(encoder.parameters())
-    before = parameter.detach().clone()
-    exec(unfrozen_step, namespace)
-    assert all(p.requires_grad for p in encoder.parameters())
-    assert parameter.grad is not None and torch.isfinite(parameter.grad).all()
-    assert not torch.equal(before, parameter.detach())
-
     exec(resume, namespace)
-    restored = namespace["restored"]
-    assert restored is not model
-    for name, value in model.state_dict().items():
-        torch.testing.assert_close(restored.state_dict()[name], value, rtol=0, atol=0)
-    model.eval()
-    restored.eval()
-    validation_image = (
-        namespace["validation_dataset"][0]["image"].unsqueeze(0).to(namespace["device"])
+    assert namespace["state"]["phase"] == "frozen"
+    assert all(
+        not p.requires_grad
+        for p in namespace["restored"][namespace["restored"].enc_name].parameters()
     )
-    with torch.inference_mode():
-        expected = model(validation_image)["nuc"]
-        actual = restored(validation_image)["nuc"]
-    torch.testing.assert_close(actual.type_map, expected.type_map, rtol=0, atol=0)
-    torch.testing.assert_close(actual.aux_map, expected.aux_map, rtol=0, atol=0)
-    from cellseg_models_pytorch.transforms.functional.cellpose import gen_flow_maps
-
-    validation_classes = (
-        torch.from_numpy(np.roll(classes, 7, axis=1)).long().to(namespace["device"])
+    assert (
+        namespace["optimizer"].state_dict()["param_groups"]
+        == namespace["resumed_optimizer"].state_dict()["param_groups"]
     )
-    validation_flows = (
-        torch.from_numpy(
-            gen_flow_maps(np.roll(instances, 7, axis=1)).astype(np.float32)
-        )
-        .unsqueeze(0)
-        .to(namespace["device"])
-    )
-    expected_loss = torch.nn.functional.cross_entropy(
-        actual.type_map, validation_classes.unsqueeze(0)
-    ) + torch.nn.functional.mse_loss(actual.aux_map, validation_flows)
-    assert namespace["validation_loss"] == pytest.approx(float(expected_loss))
-
-    original = namespace["optimizer"].state_dict()
-    resumed = namespace["resumed_optimizer"].state_dict()
-    assert original["param_groups"] == resumed["param_groups"]
-    assert original["state"].keys() == resumed["state"].keys()
-    for parameter_id, state in original["state"].items():
-        for key, value in state.items():
-            torch.testing.assert_close(resumed["state"][parameter_id][key], value)
-    torch.testing.assert_close(torch.get_rng_state(), namespace["state"]["torch_rng"])
-    if namespace["device"].type == "cuda":
-        torch.testing.assert_close(
-            torch.cuda.get_rng_state(namespace["device"]),
-            namespace["state"]["cuda_rng"],
-        )
-    assert namespace["state"]["epoch"] == 4
-    assert namespace["state"]["phase"] == "unfrozen"
-    assert namespace["state"]["class_names"] == [
-        "background",
-        "neoplastic",
-        "stromal",
-        "inflammatory",
-        "epithelial",
-        "other",
-        "unknown",
-    ]
-    assert namespace["state"]["data_manifest"]["dataset"] == "offline fixture"
-    checkpoint_bytes = namespace["saved_checkpoint"].read_bytes()
-    with pytest.raises(FileExistsError):
-        exec(resume, namespace)
-    assert namespace["saved_checkpoint"].read_bytes() == checkpoint_bytes
-
-    exec(visualization, namespace)
-    np.testing.assert_array_equal(namespace["instances"], np.roll(instances, 7, axis=1))
-    np.testing.assert_array_equal(
-        namespace["predicted_classes"], actual.type_map.argmax(dim=1)[0].cpu().numpy()
-    )
-    np.testing.assert_array_equal(
-        namespace["class_colors"], label2rgb(namespace["predicted_classes"], bg_label=0)
-    )
-    _check_plot(namespace, ["Held-out image", "Target instances", "Predicted classes"])
-
-
-def _check_plot(namespace, titles):
-    fig = namespace["fig"]
-    fig.canvas.draw()
-    namespace["plt"].show.assert_called_once()
-    assert [axis.get_title() for axis in fig.axes] == titles
-    for axis, expected in zip(
-        fig.axes,
-        (namespace["image"], namespace["instance_colors"], namespace["class_colors"]),
-    ):
-        np.testing.assert_array_equal(axis.images[0].get_array(), expected)
-    np.testing.assert_array_equal(
-        namespace["instance_colors"], label2rgb(namespace["instances"], bg_label=0)
-    )
-    namespace["plt"].close(fig)
+    parameter = next(encoder.parameters())
+    parameter_before = parameter.detach().clone()
+    exec(unfrozen, namespace)
+    assert not torch.equal(parameter_before, parameter.detach())
+    assert parameter.grad is not None and torch.isfinite(parameter.grad).all()
+    instances, classes, _ = prepared_panoptils
+    _check_validation_loss(namespace, classes, instances)
+    _check_reload_and_prediction(namespace, resume, evaluation, visualization)
