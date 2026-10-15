@@ -133,9 +133,10 @@ Use generic example paths and no machine-specific identifiers or patient data.
 
 ### User-facing pages
 
-- Write for a first-time user who knows basic Python but has no segmentation
-  background. Start with what the task achieves, what input they need and the
-  result they will get; introduce concepts as the workflow needs them.
+- Write for a first-time user of this library who knows Python and basic deep
+  learning but may be new to instance segmentation. Do not define batches, epochs,
+  losses or encoders. Explain library-specific behavior and segmentation contracts.
+  Start with what the task achieves, what input they need and the result they get.
 - Use short, direct sentences and familiar words. Define essential terms on first
   use with a concrete example: an instance label identifies one object; a class
   label describes its category. Explain abbreviations before using them.
