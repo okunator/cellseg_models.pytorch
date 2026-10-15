@@ -496,3 +496,39 @@ def test_evaluation_counts_foreground_without_background_and_marks_absent_classe
     assert metrics.loc["inflammatory", "target objects"] == 2
     assert metrics.loc["inflammatory", "PQ"] == 0
     assert np.isnan(metrics.loc["epithelial", "PQ"])
+
+
+def test_csmp_hub_loading_example(tmp_path, monkeypatch):
+    from safetensors.torch import save_model
+
+    from cellseg_models_pytorch.models.cellpose import CellPose
+
+    original = CellPose(
+        7, enc_name="resnet18", enc_pretrain=False, device=torch.device("cpu")
+    )
+    weights_path = tmp_path / "model.safetensors"
+    save_model(original.model, weights_path)
+    download = Mock(return_value=str(weights_path))
+    monkeypatch.setattr(
+        "cellseg_models_pytorch.models.base._base_model_inst.hf_hub_download", download
+    )
+    notebook = json.loads((TUTORIALS / "inference.ipynb").read_text())
+    section = next(
+        "".join(cell["source"])
+        for cell in notebook["cells"]
+        if "".join(cell["source"]).startswith("## Load a csmp-hub model")
+    )
+    [source] = re.findall(r"```python\n(.*?)```", section, flags=re.S)
+    namespace = {"CellPose": CellPose, "device": torch.device("cpu")}
+    exec(source, namespace)
+    download.assert_called_once_with(
+        repo_id="csmp-hub/cellpose-histo-hgsc-nuc-v1",
+        filename="cellpose_hgsc_v1_efficientnet_b5.safetensors",
+    )
+    restored = namespace["pretrained_model"]
+    assert restored.inference_mode
+    assert not restored.model.training
+    for name, value in original.model.state_dict().items():
+        torch.testing.assert_close(
+            restored.model.state_dict()[name], value, rtol=0, atol=0
+        )
