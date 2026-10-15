@@ -106,8 +106,9 @@ loss reduction as segmentation accuracy or a useful trained model.
   operations. Folder regressions, 24 optional HDF5 cases and the ordinary suite pass.
 - [x] Prepare all 1,349 pinned PanopTILs regions: patient-separated splits,
   17,536 training and 4,048 validation patches at native scale, nucleus instances
-  and cell types only. The tool and preparation notebook are maintained while the
-  workflows consume them; raw data stays outside Git and distributions.
+  and cell types only. Dataset construction lives in the preparation notebook,
+  with nucleus counts per cell type before cropping. Its offline tests execute
+  those cells directly; raw data stays outside Git and distributions.
   Use one headless OpenCV provider for runtime and Albumentations. The existing
   installed-package gate rejects overlapping providers; runtime/docs sync round
   trips and both pinned CPU checkpoint predictions are verified.
