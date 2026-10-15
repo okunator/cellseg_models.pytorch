@@ -124,6 +124,9 @@ loss reduction as segmentation accuracy or a useful trained model.
   overview and seam overlays accompany offline merge regressions; all exported
   geometries and slide-wide IDs pass the full-slide audit. The page keeps a
   tissue-edge false positive visible rather than implying whole-slide accuracy.
+  Visual review found that matching fragments can retain disconnected contours
+  and straight seam cuts despite sharing an ID. Correct stitching and add
+  topology regressions with smoothed fragments before accepting this workflow.
   Per-tile outputs and the public slide stay outside Git; retain them until the
   example is accepted, then retire redundant run artifacts.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
