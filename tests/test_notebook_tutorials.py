@@ -2,6 +2,7 @@
 
 import json
 import random
+import re
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -91,8 +92,8 @@ def test_inference_notebook_outputs(execution_device, prepared_panoptils):
         enc_pretrain=False,
         device=torch.device(execution_device),
     )
-    checkpoint_dir = Path("finetuning-checkpoints")
-    checkpoint_dir.mkdir()
+    checkpoint_dir = Path("training-checkpoints/epoch_05")
+    checkpoint_dir.mkdir(parents=True)
     class_names = [
         "background",
         "neoplastic",
@@ -102,13 +103,12 @@ def test_inference_notebook_outputs(execution_device, prepared_panoptils):
         "other",
         "unknown",
     ]
-    torch.save(
-        {
-            "model": pretrained.model.state_dict(),
-            "encoder": "resnet18",
-            "class_names": class_names,
-        },
-        checkpoint_dir / "epoch_05.pt",
+    from safetensors.torch import save_model
+
+    save_model(
+        pretrained.model,
+        checkpoint_dir / "model.safetensors",
+        metadata={"class_names": json.dumps(class_names)},
     )
     namespace = {}
     for source in _code_cells("inference"):
@@ -334,7 +334,7 @@ def _check_reload_and_prediction(namespace, resume, evaluation, visualization):
     torch.testing.assert_close(old.aux_map, new.aux_map, rtol=0, atol=0)
     saved = namespace["saved_checkpoint"].read_bytes()
     with pytest.raises(FileExistsError):
-        namespace["save_checkpoint"](namespace["state"]["epoch"], "unfrozen")
+        namespace["save_checkpoint"](namespace["state"]["epoch"])
     assert namespace["saved_checkpoint"].read_bytes() == saved
     exec(evaluation, namespace)
     assert len(namespace["evaluation_paths"]) == 1
@@ -373,8 +373,13 @@ def _check_reload_and_prediction(namespace, resume, evaluation, visualization):
 @pytest.mark.parametrize(
     "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
 )
+@pytest.mark.parametrize("freeze_encoder", [False, True])
 def test_training_notebook_updates_parameters(
-    execution_device, prepared_panoptils, offline_notebook_loaders, monkeypatch
+    execution_device,
+    freeze_encoder,
+    prepared_panoptils,
+    offline_notebook_loaders,
+    monkeypatch,
 ):
     from cellseg_models_pytorch.models.cellpose import CellPose
 
@@ -396,10 +401,43 @@ def test_training_notebook_updates_parameters(
     from cellseg_models_pytorch.losses import DiceLoss
 
     assert isinstance(namespace["criterion"]["type_mask"]["loss2"], DiceLoss)
-    before = next(namespace["model"].parameters()).detach().clone()
+    model = namespace["model"]
+    encoder = model[model.enc_name]
+    encoder_before = {
+        name: value.detach().clone() for name, value in encoder.state_dict().items()
+    }
+    if freeze_encoder:
+        notebook = json.loads((TUTORIALS / "training.ipynb").read_text())
+        section = next(
+            "".join(cell["source"])
+            for cell in notebook["cells"]
+            if "".join(cell["source"]).startswith("## Optional: freeze the encoder")
+        )
+        freeze, evaluation_mode = re.findall(
+            r"```python\n(.*?)```", section, flags=re.S
+        )
+        exec(freeze, namespace)
+        loop = loop.replace(
+            "    model.train()",
+            "    model.train()\n"
+            + "\n".join("    " + line for line in evaluation_mode.splitlines()),
+        )
+    head = model.decoder["type-nuc_type_head"].head.weight
+    before = head.detach().clone()
     namespace["num_epochs"] = 1
     exec(loop, namespace)
-    assert not torch.equal(before, next(namespace["model"].parameters()).detach())
+    assert not torch.equal(before, head.detach())
+    if freeze_encoder:
+        assert all(parameter.grad is None for parameter in encoder.parameters())
+        for name, value in encoder_before.items():
+            torch.testing.assert_close(
+                encoder.state_dict()[name], value, rtol=0, atol=0
+            )
+    else:
+        assert any(
+            not torch.equal(encoder.state_dict()[name], value)
+            for name, value in encoder_before.items()
+        )
     assert namespace["scheduler"].last_epoch == 1
     instances, classes, _ = prepared_panoptils
     _check_validation_loss(namespace, classes, instances)
@@ -413,86 +451,6 @@ def test_training_notebook_updates_parameters(
     with safe_open(weights_path, framework="pt", device="cpu") as weights:
         assert json.loads(weights.metadata()["class_names"]) == namespace["class_names"]
         assert weights.metadata()["normalization"] == "global min-max, RGB float32"
-
-
-@pytest.mark.parametrize(
-    "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
-)
-def test_finetuning_notebook_freezing_and_resume(
-    execution_device, prepared_panoptils, offline_notebook_loaders, monkeypatch
-):
-    import huggingface_hub
-    from cellseg_models_pytorch.models.cellpose import CellPose
-
-    torch.manual_seed(19)
-    pretrained = CellPose(
-        7,
-        enc_name="resnet18",
-        enc_pretrain=False,
-        device=torch.device(execution_device),
-    )
-    weights = {k: v.detach().clone() for k, v in pretrained.model.state_dict().items()}
-    download = Mock(return_value="example.safetensors")
-    loader = Mock(return_value=pretrained)
-    monkeypatch.setattr(huggingface_hub, "hf_hub_download", download)
-    monkeypatch.setattr(CellPose, "from_pretrained", loader)
-    # Reloading constructs a fresh network; keep that constructor small and offline too.
-    factory = Mock(
-        side_effect=lambda *args, **kwargs: CellPose(
-            7, enc_name="resnet18", enc_pretrain=False, device=kwargs["device"]
-        )
-    )
-    monkeypatch.setattr("cellseg_models_pytorch.models.cellpose.CellPose", factory)
-    factory.from_pretrained = loader
-    *setup, frozen, unfrozen, resume, evaluation, visualization = _code_cells(
-        "finetuning"
-    )
-    namespace = {}
-    for source in setup:
-        exec(source, namespace)
-    loader.assert_called_once_with(
-        Path("example.safetensors"), device=namespace["device"]
-    )
-    download.assert_called_once_with(
-        repo_id="csmp-hub/cellpose-histo-hgsc-nuc-v1",
-        filename="cellpose_hgsc_v1_efficientnet_b5.safetensors",
-        revision="88c7ffd3a9106d1673c3dd6e6a9e42476e8320d2",
-    )
-    model, encoder = namespace["model"], namespace["encoder"]
-    assert model is pretrained.model
-    for name, value in weights.items():
-        if name == "decoder.type-nuc_type_head.head.weight":
-            assert not torch.equal(model.state_dict()[name], value)
-        else:
-            torch.testing.assert_close(model.state_dict()[name], value, rtol=0, atol=0)
-    encoder_before = {k: v.detach().clone() for k, v in encoder.state_dict().items()}
-    head = model.decoder["type-nuc_type_head"].head.weight
-    head_before = head.detach().clone()
-    namespace["frozen_epochs"] = 1
-    namespace["num_epochs"] = 2
-    exec(frozen, namespace)
-    assert all(p.grad is None for p in encoder.parameters())
-    for name, value in encoder_before.items():
-        torch.testing.assert_close(encoder.state_dict()[name], value, rtol=0, atol=0)
-    assert not torch.equal(head_before, head.detach())
-    exec(resume, namespace)
-    assert namespace["state"]["phase"] == "frozen"
-    assert all(
-        not p.requires_grad
-        for p in namespace["restored"][namespace["restored"].enc_name].parameters()
-    )
-    assert (
-        namespace["optimizer"].state_dict()["param_groups"]
-        == namespace["resumed_optimizer"].state_dict()["param_groups"]
-    )
-    parameter = next(encoder.parameters())
-    parameter_before = parameter.detach().clone()
-    exec(unfrozen, namespace)
-    assert not torch.equal(parameter_before, parameter.detach())
-    assert parameter.grad is not None and torch.isfinite(parameter.grad).all()
-    instances, classes, _ = prepared_panoptils
-    _check_validation_loss(namespace, classes, instances)
-    _check_reload_and_prediction(namespace, resume, evaluation, visualization)
 
 
 def test_evaluation_counts_foreground_without_background_and_marks_absent_classes(

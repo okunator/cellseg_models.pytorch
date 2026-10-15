@@ -59,7 +59,6 @@ refactors. Keep the README quick start and link it to the fuller guide.
 | Inference | RGB HWC images versus BCHW batches, checkpoint loading, exact normalization, prediction and instance/type masks; tiled inference and output saving |
 | Models and checkpoints | Implemented architectures versus original papers, encoder choices, available weights, class IDs and checkpoint compatibility; do not invent semantic class names |
 | Data and training | Folder/HDF5 layout, instance/type labels, aligned augmentation, model-specific targets, losses and a plain PyTorch training/validation loop |
-| Fine-tuning | Load existing weights, preserve preprocessing and class mapping, freeze/unfreeze parameters, select learning rates and save/reload results |
 | Optional workflows | Explicit requirements and tested limits for WSI backends, ONNX export and GPU/AMP; avoid unsupported performance/accuracy claims |
 | API reference | Focused public entry points with Google-style docstrings and tensor contracts |
 
@@ -78,14 +77,11 @@ when its distinct target/output contract needs an example.
 2. **Inference:** one RGB image and a local or explicitly downloaded checkpoint,
    explicit GPU preference with CPU fallback and checkpoint preprocessing, then save instance
    and type masks. Explain the returned head keys, shapes, dtypes and background.
-3. **Training:** use the Histolytics nuclei recipe through existing public APIs:
+3. **Training:** include optional encoder freezing and use the Histolytics nuclei
+   recipe through existing public APIs:
    pretrained image encoder, aligned augmentation, MSE flows, CE with spectral
    decoupling plus Dice cell-type loss, AdamW and a cosine schedule. Evaluate
    reconstructed instances and per-class quality, not just losses/dense labels.
-4. **Fine-tuning:** reuse the training data/loop, load pretrained parameters with
-   the same encoder, adapt the class output when label meanings differ, demonstrate freezing and subsequent
-   unfreezing, and verify changed trainable parameters plus save/reload. Resume
-   state includes optimizer, epoch and RNG state; include scheduler/scaler if used.
 
 All examples document input layout, optional packages, output paths and commands.
 Use synthetic tiny data for offline checks; real data/checkpoints are explicit,
@@ -98,7 +94,7 @@ loss reduction as segmentation accuracy or a useful trained model.
   inference notebook. A separate docs group preserves all prior locked versions.
   Navigation starts with installation and quick start, then groups notebooks in
   the user guide. Build instructions stay in contributor guidance.
-- [x] Maintain offline training/fine-tuning regressions: finite losses
+- [x] Maintain offline training and optional-freezing regressions: finite losses
   and gradients, parameter updates, frozen encoder state and exact checkpoint reload
   are validated in `tests/test_notebook_tutorials.py`, outside the rendered pages.
 - [x] Fix augmentation defects exposed by the real recipe: generate auxiliary
@@ -112,17 +108,16 @@ loss reduction as segmentation accuracy or a useful trained model.
   Use one headless OpenCV provider for runtime and Albumentations. The existing
   installed-package gate rejects overlapping providers; runtime/docs sync round
   trips and both pinned CPU checkpoint predictions are verified.
-- [x] Replace short execution demonstrations with five full-data epochs each for
-  training and pretrained fine-tuning, using the Histolytics nuclei recipe and
-  corrected spatial DiceLoss. Twenty-one numerical CPU cases and the explicit CUDA
-  loss check cover reduction, rare/absent classes, weighting, masking, smoothing
-  gradients and precision. On 16 fixed held-out regions, instance PQ is 0.643 for
-  training and 0.640 for fine-tuning; rare-class support/weakness remains visible.
-  Reviewed outputs retain actual fit logs and checkpoint-reloaded evaluation figures.
-  Fine-tuning resets only the class output, preserves pretrained features/flows and
-  checks frozen BatchNorm state, unfrozen updates, safe saves and exact reload.
-  Raw logs and resumable checkpoints stay outside Git. Preserve historical-objective
-  checkpoints for comparison until the maintainer accepts the corrected examples.
+- [x] Validate five full-data training epochs with the Histolytics nuclei recipe
+  and corrected spatial DiceLoss. Twenty-one numerical CPU cases and the explicit
+  CUDA loss check cover reduction, rare/absent classes, weighting, masking,
+  smoothing, gradients and precision. On 16 held-out regions, instance PQ is 0.643;
+  rare-class support/weakness remains visible. Model weights use safetensors beside
+  separate resume state. The standalone fine-tuning notebook is retired in favor
+  of a short optional-freezing section; tests cover frozen parameters and BatchNorm
+  statistics. Inference uses the training checkpoint. Raw logs and resumable
+  checkpoints stay outside Git. Preserve historical-objective checkpoints until
+  the maintainer accepts the corrected examples.
 - [ ] Document the HDF5 alternative without duplicating the training loop.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
   reference. Keep the current normalization helper; issue 78's replacement/license

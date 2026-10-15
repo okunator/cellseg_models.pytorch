@@ -87,27 +87,26 @@ Validate notebook code with offline fixtures separately from the site build:
 HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked --group docs pytest tests/test_prepare_panoptils.py tests/test_notebook_tutorials.py
 ```
 
-All four notebooks use real data or weights and are excluded from forced offline
+All three notebooks use real data or weights and are excluded from forced offline
 builds. Execute them explicitly and review saved outputs; CI renders those outputs
-without downloading data or checkpoints. Execute inference after fine-tuning so
+without downloading data or checkpoints. Execute inference after training so
 its image, labels, weights and class taxonomy match. The quick start covers
 independent use of public pretrained checkpoints on an appropriate input.
 The separate checkpoint baseline tests retain their original 256-pixel inputs and
 numerical references; do not replace them with tutorial predictions.
 Run the data-preparation notebook once and reuse its patient-separated PanopTILs
-patches for training and fine-tuning. Both recipes follow the nuclei-only part of
+patches for training. The recipe follows the nuclei-only part of
 the Histolytics example: augmented image/mask pairs, MSE flows, CE with spectral
 decoupling plus Dice cell-type loss, AdamW and a cosine schedule. Validation uses
 no random augmentation. Evaluate reconstructed instances and per-class predictions
 on predetermined held-out regions; loss reduction alone is insufficient.
-Offline training/fine-tuning tests use temporary folder fixtures; fine-tuning and
-inference tests substitute checkpoint loading. They validate class-head adaptation,
-preprocessing, training, freezing, checkpoint reload and plotting, not model quality.
-Training/fine-tuning checks require Albumentations from the docs group; environments
+Offline training tests use temporary folder fixtures. Inference tests load local
+safetensors fixtures. They validate preprocessing, training, optional encoder
+freezing, checkpoint reload and plotting, not model quality.
+Training checks require Albumentations from the docs group; environments
 without it report those cases as skipped. Run the existing `--cuda` category separately
 to check device state restoration. Training saves safetensors model weights beside
-a separate resume checkpoint; fine-tuning still uses its combined checkpoint.
-Resume state includes optimizer, scheduler,
+a separate resume checkpoint. Resume state includes optimizer, scheduler,
 Torch/Python/NumPy random states and data split. Checkpoint directories and files
 are created exclusively; choose a new directory before repeating a real run.
 The examples save at epoch boundaries and recreate workers each epoch. Resume with
