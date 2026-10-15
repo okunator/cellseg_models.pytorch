@@ -9,6 +9,12 @@
 
 ## Fixes
 
+- Preserve nuclei during WSI boundary merging, including first/last tiles and
+  four-tile junctions. Keep pixel coordinates unlabelled by a geographic CRS and
+  reject existing merge outputs. Vector export now retains foreground nuclei
+  assigned class 0 and classes in tiles without background pixels, and repairs
+  self-intersections introduced by contour smoothing.
+
 - Correct DiceLoss to compute per-image, per-class spatial overlap rather than
   soft pixel accuracy. Average over target-present classes, including background;
   mask overlap and volume consistently, weight class losses and add positive

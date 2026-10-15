@@ -1,270 +1,131 @@
-from functools import partial
 from pathlib import Path
-from typing import List, Tuple, Union
 
 import geopandas as gpd
+import networkx as nx
 import numpy as np
 import pandas as pd
-from libpysal.cg import alpha_shape_auto
-from shapely import wkt
-from shapely.geometry import LineString, Polygon, box
-from shapely.geometry.base import BaseGeometry
-from shapely.wkt import dumps
-from tqdm import tqdm
+from shapely import from_wkt, to_wkt, union_all
+from shapely.geometry import box
 
 __all__ = ["InstMerger"]
 
 
 class InstMerger:
     def __init__(
-        self, gdf: gpd.GeoDataFrame, coordinates: List[Tuple[int, int, int, int]]
+        self, gdf: gpd.GeoDataFrame, coordinates: list[tuple[int, int, int, int]]
     ) -> None:
-        """Merge instances at the boundaries of bbox coordinates.
+        """Merge polygons reconstructed from an abutting, nonoverlapping tile grid.
 
         Args:
-            gdf: The GeoDataFrame containing the non-merged instances.
-            coordinates:
-                The bounding box coordinates from `reader.get_tile_coordinates()`.
+            gdf: Nucleus polygons in level-zero pixel coordinates, with class_name.
+            coordinates: Tile bounds in level-zero (x, y, width, height) pixels.
         """
-        # Convert xywh coordinates to bounding box polygons
-        polygons = [box(x, y, x + w, y + h) for x, y, w, h in coordinates]
-        self.grid = gpd.GeoDataFrame({"geometry": polygons})
-        self.gdf = gdf
+        self.grid = gpd.GeoDataFrame(
+            geometry=[box(x, y, x + w, y + h) for x, y, w, h in coordinates]
+        )
+        self.gdf = gdf.reset_index(drop=True)
 
     def merge(
-        self, dst: str = None, simplify_level: int = 1, precision: int = None
-    ) -> Union[gpd.GeoDataFrame, None]:
-        """Merge the instances at the image boundaries.
+        self,
+        dst: str | Path | None = None,
+        simplify_level: float = 1,
+        precision: int | None = None,
+    ) -> gpd.GeoDataFrame | None:
+        """Join neighboring tile fragments while retaining untouched nuclei.
+
+        Only polygons within two pixels of a shared tile edge can join. Connected
+        fragments become one geometry; the largest fragment supplies attributes.
+        Coordinates remain in the input pixel space, with the input CRS unchanged.
 
         Args:
-            dst: The destination directory to save the merged instances.
-                If None, the merged GeoDataFrame is returned.
-            simplify_level:
-                The level of simplification to apply to the merged instances.
-                Defaults to 1.
-            precision:
-                The precision level to apply to the merged instances. If None, no rounding
-                is applied.
+            dst: New .parquet, .geojson or .feather file; None returns the result.
+            simplify_level: Geometry simplification tolerance in pixels; zero disables it.
+            precision: Optional number of decimal places for coordinate rounding.
 
         Returns:
-            Union[gpd.GeoDataFrame, None]:
-                If `dst` is None, the merged GeoDataFrame is returned.
+            The merged GeoDataFrame when dst is None; otherwise writes the file
+            and returns None. Each row has a unique slide-wide uid.
 
         Raises:
-            ValueError:
-                If the destination format is invalid.
+            ValueError: The destination extension is unsupported.
+            FileExistsError: The destination already exists.
         """
-        if dst is not None:
-            dst = Path(dst)
-            suff = dst.suffix
-            allowed_suff = [".parquet", ".geojson", ".feather"]
-            if suff not in allowed_suff:
-                raise ValueError(f"Invalid format. Got {suff}. Allowed: {allowed_suff}")
+        path = Path(dst) if dst is not None else None
+        if path is not None:
+            if path.suffix not in {".parquet", ".geojson", ".feather"}:
+                raise ValueError(f"Unsupported output format: {path.suffix}")
+            if path.exists():
+                raise FileExistsError(path)
 
-            parent = dst.parent
-            if not parent.exists():
-                parent.mkdir(parents=True, exist_ok=True)
+        graph = nx.Graph()
+        if not self.gdf.empty and not self.grid.empty:
+            owners = np.full(len(self.gdf), -1, dtype=int)
+            matches = self.grid.sindex.query(
+                self.gdf.geometry.representative_point(), predicate="within"
+            )
+            owners[matches[0]] = matches[1]
+            neighbors = self.grid.sindex.query(self.grid.geometry, predicate="touches")
+            for left, right in zip(*neighbors):
+                if left >= right:
+                    continue
+                edge = self.grid.geometry.iloc[left].intersection(
+                    self.grid.geometry.iloc[right]
+                )
+                if edge.length == 0:
+                    continue
+                candidates = self.gdf.sindex.query(
+                    edge.buffer(2), predicate="intersects"
+                )
+                left_ids = candidates[owners[candidates] == left]
+                right_ids = candidates[owners[candidates] == right]
+                if not len(left_ids) or not len(right_ids):
+                    continue
+                # shortcut: two-pixel seam matching; use overlapping predictions for ambiguous fragments.
+                pairs = self.gdf.geometry.iloc[right_ids].sindex.query(
+                    self.gdf.geometry.iloc[left_ids], predicate="dwithin", distance=2
+                )
+                graph.add_edges_from(zip(left_ids[pairs[0]], right_ids[pairs[1]]))
 
-        merge_obj_x, non_boundary_objs = self._merge_objs_axis(
-            self.grid, self.gdf, axis="x", get_non_boundary_objs=True
-        )
-        merge_obj_y = self._merge_objs_axis(self.grid, self.gdf, axis="y")
-        merged = pd.concat([merge_obj_x, merge_obj_y, non_boundary_objs]).reset_index(
-            drop=True
-        )
-        merged.geometry = merged.geometry.simplify(simplify_level)
-        merged = _set_uid(_set_crs(merged), drop=True)
-
+        records = []
+        consumed = np.zeros(len(self.gdf), dtype=bool)
+        for component in nx.connected_components(graph):
+            indices = sorted(component)
+            fragments = self.gdf.iloc[indices]
+            record = fragments.iloc[fragments.geometry.area.to_numpy().argmax()].copy()
+            record["geometry"] = union_all(fragments.geometry.to_numpy())
+            records.append(record)
+            consumed[indices] = True
+        merged = self.gdf.loc[~consumed].copy()
+        if records:
+            merged = gpd.GeoDataFrame(
+                pd.concat(
+                    [
+                        merged,
+                        gpd.GeoDataFrame(
+                            records, geometry="geometry", crs=self.gdf.crs
+                        ),
+                    ],
+                    ignore_index=True,
+                ),
+                geometry="geometry",
+                crs=self.gdf.crs,
+            )
+        merged = merged.reset_index(drop=True)
+        if simplify_level:
+            merged.geometry = merged.geometry.simplify(simplify_level)
         if precision is not None:
-            set_prec = partial(_set_geom_precision, precision=precision)
-            merged["geometry"] = merged["geometry"].apply(set_prec)
+            merged.geometry = from_wkt(
+                to_wkt(merged.geometry.to_numpy(), rounding_precision=precision)
+            )
+        merged["uid"] = np.arange(len(merged))
+        merged = merged.set_index("uid", drop=False)
 
-        if dst is not None:
-            if suff == ".parquet":
-                merged.to_parquet(dst)
-            elif suff == ".geojson":
-                merged.to_file(dst, driver="GeoJSON")
-            elif suff == ".feather":
-                merged.to_feather(dst)
-        else:
+        if path is None:
             return merged
-
-    def _merge_boundary_objs(
-        self,
-        boundary_objs: gpd.GeoDataFrame,
-        midline_gdf: gpd.GeoDataFrame,
-        objs: gpd.GeoDataFrame,
-        apply_alpha_shape: bool = True,
-        min_size: int = 25,
-    ) -> gpd.GeoDataFrame:
-        """Merge boundary objects that intersect the midline and touch each other."""
-        boundary_objs = boundary_objs.loc[boundary_objs.is_valid]
-        boundary_objs = boundary_objs.loc[boundary_objs.area > 10]
-
-        # clip the midline at places where cells touch it
-        touch = midline_gdf.clip(boundary_objs.union_all())
-        touch = touch.explode()
-        touch = touch.loc[touch.area > 5]
-
-        # buffer the clipped midline and merge with the boundary objects
-        touch_union = self._union_to_gdf(touch.union_all(), buffer_dist=1)
-        merged = self._union_to_gdf(pd.concat([boundary_objs, touch_union]).union_all())
-
-        if apply_alpha_shape:
-            alpha_shapes = [
-                alpha_shape_auto(
-                    np.array(polygon.simplify(0.5).exterior.coords), step=2
-                )
-                for polygon in merged.geometry
-            ]
-            alpha_shape_gdf = gpd.GeoDataFrame(
-                geometry=[poly for poly in alpha_shapes if poly.is_valid]
-            )
-            merged = self._union_to_gdf(
-                pd.concat([merged, alpha_shape_gdf]).union_all()
-            )
-
-        if min_size:
-            merged = merged.loc[merged.area > min_size]
-
-        class_ids = self._get_classes(merged, objs)
-        merged["class_name"] = class_ids
-
-        return merged.reset_index(drop=True)
-
-    def _get_objs(
-        self,
-        objects: gpd.GeoDataFrame,
-        area: gpd.GeoDataFrame,
-        predicate: str,
-        **kwargs,
-    ) -> gpd.GeoDataFrame:
-        """Get the objects that intersect with the midline."""
-        inds = objects.geometry.sindex.query(
-            area.geometry, predicate=predicate, **kwargs
-        )
-        objs: gpd.GeoDataFrame = objects.iloc[np.unique(inds)[1:]]
-
-        return objs.drop_duplicates("geometry")
-
-    def _merge_objs_axis(
-        self,
-        grid: gpd.GeoDataFrame,
-        gdf: gpd.GeoDataFrame,
-        axis: str = "x",
-        midline_buffer: int = 2,
-        predicate: str = "intersects",
-        get_non_boundary_objs: bool = False,
-    ) -> None:
-        """Merge objects along the x or y axis."""
-        if axis not in ["x", "y"]:
-            raise ValueError("Axis must be either 'x' or 'y'")
-
-        start_coord_key = "minx" if axis == "x" else "miny"
-        ind = 0 if axis == "x" else 1
-
-        grid[start_coord_key] = grid.geometry.apply(lambda geom: geom.bounds[ind])
-        grid_sorted = grid.sort_values(by=start_coord_key)
-
-        # Group by the 'minx'/'miny coordinate
-        grouped = grid_sorted.groupby(start_coord_key)
-        grouped_list = list(grouped)
-
-        _, last_col = grouped_list[0]
-        merged_gdfs = []
-        midlines = []
-        non_boundary_objs = []
-
-        desc = "Merging objects (x-axis)" if axis == "x" else "Merging objects (y-axis)"
-        for start, next_col in tqdm(grouped_list[1:], desc=desc):
-            grid_union = pd.concat([last_col, next_col]).union_all()
-            objs = self._get_objs(gdf, self._union_to_gdf(grid_union), predicate)
-
-            minx, miny, maxx, maxy = next_col.total_bounds
-
-            if axis == "x":
-                midline = LineString([(start, miny), (start, maxy)]).buffer(
-                    midline_buffer
-                )
-                midline_gdf = gpd.GeoDataFrame(geometry=[midline])
-            else:
-                midline = LineString([(minx, start), (maxx, start)]).buffer(
-                    midline_buffer
-                )
-                midline_gdf = gpd.GeoDataFrame(geometry=[midline])
-
-            # get the cells hitting the midline
-            boundary_objs = self._get_objs(objs, midline_gdf, predicate)
-
-            non_boundary_objs_left = None
-            if get_non_boundary_objs:
-                non_boundary_objs_left = self._get_objs(
-                    objs, last_col.buffer(-midline_buffer), "contains"
-                )
-
-            # merge the boundary objects
-            merged_boundary_objs = self._merge_boundary_objs(
-                boundary_objs,
-                midline_gdf,
-                objs,
-                apply_alpha_shape=True,
-                min_size=25,
-            )
-
-            merged_gdfs.append(merged_boundary_objs)
-            midlines.append(midline_gdf)
-            non_boundary_objs.append(non_boundary_objs_left)
-            last_col = next_col
-
-        if get_non_boundary_objs:
-            return pd.concat(merged_gdfs), pd.concat(non_boundary_objs)
-
-        return pd.concat(merged_gdfs)
-
-    def _union_to_gdf(self, union: Polygon, buffer_dist: int = 0) -> gpd.GeoDataFrame:
-        """Convert a unionized GeoDataFrame back to a GeoDataFrame.
-
-        Note: Fills in the holes in the polygons.
-        """
-        if isinstance(union, Polygon):
-            union = gpd.GeoSeries([union.buffer(buffer_dist)])
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.suffix == ".parquet":
+            merged.to_parquet(path)
+        elif path.suffix == ".geojson":
+            merged.to_file(path, driver="GeoJSON")
         else:
-            union = gpd.GeoSeries(
-                [Polygon(poly.exterior).buffer(buffer_dist) for poly in union.geoms]
-            )
-        return gpd.GeoDataFrame(geometry=union)
-
-    def _get_classes(
-        self, merged: gpd.GeoDataFrame, non_merged: gpd.GeoDataFrame
-    ) -> None:
-        """Get the class ids for the merged objs from the non-merged objs w/ majority voting."""
-        class_names = []
-        for ix, row in merged.iterrows():
-            area = gpd.GeoDataFrame(geometry=[row.geometry])
-            objs = self._get_objs(non_merged, area, predicate="intersects")
-
-            if objs.empty:
-                continue
-
-            class_names.append(objs.loc[objs.area.idxmax()]["class_name"])
-
-        return class_names
-
-
-def _set_uid(
-    gdf: gpd.GeoDataFrame, start_ix: int = 0, id_col: str = "uid", drop: bool = False
-) -> gpd.GeoDataFrame:
-    # if id_col not in gdf.columns:
-    gdf = gdf.assign(**{id_col: range(start_ix, len(gdf) + start_ix)})
-    gdf = gdf.set_index(id_col, drop=drop)
-
-    return gdf
-
-
-def _set_crs(gdf: gpd.GeoDataFrame, crs: int = 4328) -> bool:
-    return gdf.set_crs(epsg=crs, allow_override=True)
-
-
-def _set_geom_precision(geom: BaseGeometry, precision: int = 6) -> BaseGeometry:
-    wkt_str = dumps(geom, rounding_precision=precision)
-    return wkt.loads(wkt_str)
+            merged.to_feather(path)
