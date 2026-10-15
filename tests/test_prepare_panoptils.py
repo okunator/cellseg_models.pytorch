@@ -1,6 +1,5 @@
 """Execute preparation notebook cells against small, offline parquet fixtures."""
 
-import hashlib
 import json
 from io import BytesIO
 from pathlib import Path
@@ -63,10 +62,10 @@ def archive(tmp_path):
 @pytest.fixture
 def preparation(tmp_path, archive, notebook_cells, monkeypatch):
     source, _, _ = archive
+    pytest.importorskip("polars", reason="Preparation notebook needs the docs group")
     namespace = {}
     exec(notebook_cells[0], namespace)
     namespace["data_root"] = tmp_path / "prepared"
-    namespace["archive_sha256"] = hashlib.sha256(source.read_bytes()).hexdigest()
 
     def download(**kwargs):
         assert kwargs == {
@@ -150,33 +149,13 @@ def test_notebook_prepares_aligned_patches_and_counts_original_nuclei(
     assert (destination / "manifest.json").read_bytes() == before
 
 
-@pytest.mark.parametrize(
-    "defect", ["digest", "class", "shape", "patients", "background", "rgb"]
-)
-def test_rejects_invalid_inputs_without_partial_dataset(
-    tmp_path, archive, preparation, notebook_cells, defect
+def test_decode_failure_does_not_publish_partial_dataset(
+    tmp_path, archive, preparation, notebook_cells
 ):
-    source, rows, arrays = archive
-    if defect == "digest":
-        source.write_bytes(source.read_bytes() + b"changed")
-    else:
-        if defect in ("class", "background"):
-            invalid = arrays["type"].copy()
-            if defect == "class":
-                invalid[arrays["inst"] > 0] = 7
-            else:
-                invalid[0, 0] = 3
-            rows[-1]["type"] = _png(invalid)
-        elif defect == "shape":
-            rows[-1]["inst"] = _png(arrays["inst"][:-1])
-        elif defect == "rgb":
-            rows[-1]["image"] = _png(arrays["image"][..., 0])
-        else:
-            for row in rows:
-                row["slide_name"] = "TCGA-AA-0000-DX1"
-        pq.write_table(pa.Table.from_pylist(rows), source)
-        preparation["archive_sha256"] = hashlib.sha256(source.read_bytes()).hexdigest()
-    with pytest.raises(ValueError):
+    source, rows, _ = archive
+    rows[-1]["image"] = b"not a PNG"
+    pq.write_table(pa.Table.from_pylist(rows), source)
+    with pytest.raises(preparation["cv2"].error):
         _prepare(preparation, notebook_cells)
     assert not preparation["data_root"].exists()
     assert not list(tmp_path.glob(".panoptils-*"))

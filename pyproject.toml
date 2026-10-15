@@ -59,6 +59,7 @@ docs = [
     "albumentations==2.0.8",
     "matplotlib>=3.10.9,<3.11",
     "myst-nb>=1,<2",
+    "polars>=1.44.2,<2",
     "pydata-sphinx-theme>=0.16,<1",
     "sphinx>=8,<9",
 ]

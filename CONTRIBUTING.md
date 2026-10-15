@@ -84,7 +84,7 @@ uv run --locked --group docs sphinx-build -W --keep-going -b html docs docs/_bui
 Validate notebook code with offline fixtures separately from the site build:
 
 ```sh
-HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked --group docs pytest tests/test_notebook_tutorials.py
+HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked --group docs pytest tests/test_prepare_panoptils.py tests/test_notebook_tutorials.py
 ```
 
 All four notebooks use real data or weights and are excluded from forced offline
