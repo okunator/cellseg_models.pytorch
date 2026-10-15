@@ -134,10 +134,17 @@ def test_notebook_prepares_aligned_patches_and_counts_original_nuclei(
     for source in notebook_cells[-2:]:
         exec(source, preparation)
     table = preparation["instance_counts"]
-    assert table.loc["inflammatory"].sum() == 12
-    assert table.loc["other"].sum() == 6
-    assert table.to_numpy().sum() == 18
-    assert "background" not in table.index
+    assert table["Cell type"].to_list() == [
+        "untyped (class 0)",
+        "neoplastic",
+        "stromal",
+        "inflammatory",
+        "epithelial",
+        "other",
+        "unknown",
+    ]
+    totals = table.select("train", "validation").sum_horizontal()
+    assert totals.to_list() == [0, 0, 0, 12, 0, 6, 0]
     assert len(preparation["fig"].axes) == 3
     np.testing.assert_array_equal(
         preparation["fig"].axes[0].images[0].get_array(), arrays["image"]
