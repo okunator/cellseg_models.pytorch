@@ -108,6 +108,9 @@ without it report those cases as skipped. Run the existing `--cuda` category sep
 to check device state restoration. Epoch checkpoints include optimizer, scheduler,
 Torch/Python/NumPy random states and data split. Checkpoint directories and files
 are created exclusively; choose a new directory before repeating a real run.
+The examples save at epoch boundaries and recreate workers each epoch. Resume with
+the same augmentation seed and worker count. Stateful or persistent workers and
+mid-epoch resumption require additional loader and transform state.
 
 Use one OpenCV provider: `opencv-python-headless`. If an existing environment
 had both OpenCV packages, repair their overlapping files once with

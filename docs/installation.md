@@ -22,8 +22,8 @@ uv sync --locked
 Run Python from this environment with `uv run python`.
 Continue with the [quick start](quickstart.md).
 
-These pages currently describe unreleased changes on `main`; the PyPI release
-may have different requirements and APIs. Source installations are tested on
+These examples use the source version; the PyPI release may have different
+requirements and APIs. Source installations are tested on
 Python 3.10–3.12. Python 3.14.1 is excluded by torchvision; other newer versions
 have not yet been validated here. For an NVIDIA GPU, follow
 [PyTorch's installation guidance](https://pytorch.org/get-started/locally/)

@@ -1,9 +1,13 @@
 # Quick start
 
-Turn an image into a mask that identifies each nucleus. You need an RGB image
-and a local pretrained CellPose checkpoint. This example uses the HGSC checkpoint's
-global min-max normalization; use the preprocessing specified for your weights.
-Choose an image whose width and height are multiples of 32.
+Find individual nuclei in an RGB colour image using a pretrained CellPose model.
+Download the [HGSC checkpoint](https://huggingface.co/csmp-hub/cellpose-histo-hgsc-nuc-v1)
+and set the image and checkpoint paths below to your files. Choose an image whose
+width and height are multiples of 32.
+
+This checkpoint expects global min-max normalization, which rescales the image's
+pixel values to 0–1. Use the preprocessing specified for your weights when choosing
+a different checkpoint.
 
 ```python
 from pathlib import Path
@@ -32,5 +36,5 @@ each positive number identifies one nucleus. `classes` gives each nucleus a
 category number, whose meaning depends on the checkpoint.
 
 For a runnable demonstration, output saving and larger images, continue with
-[image inference](tutorials/inference.ipynb). To use your own labelled images,
-start with [training](tutorials/training.ipynb).
+[image inference](tutorials/inference.ipynb). To train a model, start with
+[training](tutorials/training.ipynb).

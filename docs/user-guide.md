@@ -1,10 +1,11 @@
 # User guide
 
-Choose the task you want to try. Each page includes a notebook you can run.
-Prepare the PanopTILs Refined data first, then train or
-fine-tune and compare reconstructed nuclei and cell types with held-out labels.
-The inference notebook reuses the fine-tuned checkpoint and a held-out image.
-For a public pretrained checkpoint and your own image, start with the quick start.
+Use the notebooks to prepare PanopTILs Refined images, train a model or adapt
+pretrained weights, and inspect the predicted nuclei and cell types.
+
+Start with data preparation, then choose training or fine-tuning. The inference
+example uses the saved fine-tuned model. To use public pretrained weights with
+your own image, follow the [quick start](quickstart.md).
 
 ```{toctree}
 :maxdepth: 1
