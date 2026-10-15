@@ -140,6 +140,9 @@ def test_notebook_prepares_aligned_patches_and_counts_original_nuclei(
     assert table.to_numpy().sum() == 18
     assert "background" not in table.index
     assert len(preparation["fig"].axes) == 3
+    np.testing.assert_array_equal(
+        preparation["fig"].axes[0].images[0].get_array(), arrays["image"]
+    )
 
     before = (destination / "manifest.json").read_bytes()
     with pytest.raises(FileExistsError):
@@ -199,3 +202,13 @@ def test_counts_each_nucleus_once_by_nonbackground_majority(
             exec(source, preparation)
     actual = preparation["count_nuclei"](np.array(instances), np.array(classes))
     np.testing.assert_array_equal(actual, expected)
+
+
+def test_failed_image_write_does_not_publish_partial_dataset(
+    tmp_path, preparation, notebook_cells, monkeypatch
+):
+    monkeypatch.setattr(preparation["cv2"], "imwrite", lambda *args: False)
+    with pytest.raises(OSError, match="Could not write"):
+        _prepare(preparation, notebook_cells)
+    assert not preparation["data_root"].exists()
+    assert not list(tmp_path.glob(".panoptils-*"))
