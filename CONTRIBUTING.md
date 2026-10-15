@@ -105,7 +105,9 @@ inference tests substitute checkpoint loading. They validate class-head adaptati
 preprocessing, training, freezing, checkpoint reload and plotting, not model quality.
 Training/fine-tuning checks require Albumentations from the docs group; environments
 without it report those cases as skipped. Run the existing `--cuda` category separately
-to check device state restoration. Epoch checkpoints include optimizer, scheduler,
+to check device state restoration. Training saves safetensors model weights beside
+a separate resume checkpoint; fine-tuning still uses its combined checkpoint.
+Resume state includes optimizer, scheduler,
 Torch/Python/NumPy random states and data split. Checkpoint directories and files
 are created exclusively; choose a new directory before repeating a real run.
 The examples save at epoch boundaries and recreate workers each epoch. Resume with

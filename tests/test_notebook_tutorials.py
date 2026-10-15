@@ -403,7 +403,16 @@ def test_training_notebook_updates_parameters(
     assert namespace["scheduler"].last_epoch == 1
     instances, classes, _ = prepared_panoptils
     _check_validation_loss(namespace, classes, instances)
+    weights_path = namespace["saved_checkpoint"].with_name("model.safetensors")
+    saved_weights = weights_path.read_bytes()
     _check_reload_and_prediction(namespace, resume, evaluation, visualization)
+    assert "model" not in namespace["state"]
+    assert weights_path.read_bytes() == saved_weights
+    from safetensors import safe_open
+
+    with safe_open(weights_path, framework="pt", device="cpu") as weights:
+        assert json.loads(weights.metadata()["class_names"]) == namespace["class_names"]
+        assert weights.metadata()["normalization"] == "global min-max, RGB float32"
 
 
 @pytest.mark.parametrize(
