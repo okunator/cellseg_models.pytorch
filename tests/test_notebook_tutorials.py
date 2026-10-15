@@ -178,7 +178,7 @@ def test_inference_plot_distinguishes_class_zero_from_background():
             "unknown",
         ],
     }
-    exec(_code_cells("inference")[2], namespace)
+    exec(_code_cells("inference")[-2], namespace)
     colors = namespace["class_colors"]
     assert not colors[[0, 1], [0, 1]].any()
     assert colors[0, 1].any()
