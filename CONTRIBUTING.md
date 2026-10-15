@@ -84,14 +84,18 @@ uv run --locked --group docs sphinx-build -W --keep-going -b html docs docs/_bui
 Validate notebook code with offline fixtures separately from the site build:
 
 ```sh
-HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked --group docs pytest tests/test_prepare_panoptils.py tests/test_notebook_tutorials.py
+HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked --group docs pytest tests/test_prepare_panoptils.py tests/test_notebook_tutorials.py tests/test_wsi_tutorial.py
 ```
 
-All three notebooks use real data or weights and are excluded from forced offline
+All four notebooks use real data or weights and are excluded from forced offline
 builds. Execute them explicitly and review saved outputs; CI renders those outputs
 without downloading data or checkpoints. Execute inference after training so
 its image, labels, weights and class taxonomy match. The quick start covers
 independent use of public pretrained checkpoints on an appropriate input.
+The WSI notebook uses the same training checkpoint on held-out TCGA-AC-A6IW.
+Its OpenSlide dependencies live in the docs group. Offline tests substitute the
+reader and model, but run the real tiled writer and instance merger; execute the
+full-slide workflow on the DGX and inspect seam overlays separately.
 The separate checkpoint baseline tests retain their original 256-pixel inputs and
 numerical references; do not replace them with tutorial predictions.
 Run the data-preparation notebook once and reuse its patient-separated PanopTILs

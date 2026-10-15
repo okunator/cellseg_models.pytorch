@@ -119,6 +119,13 @@ loss reduction as segmentation accuracy or a useful trained model.
   checkpoints stay outside Git. Preserve historical-objective checkpoints until
   the maintainer accepts the corrected examples.
 - [ ] Document the HDF5 alternative without duplicating the training loop.
+- [x] Execute the full WSI notebook on TCGA-AC-A6IW with the PanopTILs checkpoint:
+  453 tissue tiles and 174,013 merged nuclei on DGX CUDA. Saved tissue-selection,
+  overview and seam overlays accompany offline merge regressions; all exported
+  geometries and slide-wide IDs pass the full-slide audit. The page keeps a
+  tissue-edge false positive visible rather than implying whole-slide accuracy.
+  Per-tile outputs and the public slide stay outside Git; retain them until the
+  example is accepted, then retire redundant run artifacts.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
   reference. Keep the current normalization helper; issue 78's replacement/license
   proposal does not justify a silent preprocessing or dependency change.

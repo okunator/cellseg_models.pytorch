@@ -21,6 +21,7 @@ nb_execution_excludepatterns = [
     "tutorials/prepare-data.ipynb",
     "tutorials/training.ipynb",
     "tutorials/inference.ipynb",
+    "tutorials/wsi.ipynb",
 ]
 nb_execution_raise_on_error = True
 nb_execution_timeout = 120

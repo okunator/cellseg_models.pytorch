@@ -59,6 +59,8 @@ docs = [
     "albumentations==2.0.8",
     "matplotlib>=3.10.9,<3.11",
     "myst-nb>=1,<2",
+    "openslide-bin>=4.0.1.2,<5",
+    "openslide-python>=1.4.6,<2",
     "polars>=1.44.2,<2",
     "pydata-sphinx-theme>=0.16,<1",
     "sphinx>=8,<9",
