@@ -124,6 +124,64 @@ def test_merge_filters_after_joining_fragments_and_preserves_retained_ids(
     assert actual.geometry.iloc[0].equals(unary_union(geometries[1:]))
 
 
+def test_merge_filters_after_simplification():
+    # Simplification removes the notches, raising thickness above the middle cutoff.
+    geometry = Polygon(
+        [
+            (10, 10),
+            (12, 10),
+            (12, 11),
+            (11.4, 11.5),
+            (12, 12),
+            (12, 14),
+            (10, 14),
+            (10, 13),
+            (10.6, 12.5),
+            (10, 12),
+        ]
+    )
+    source = gpd.GeoDataFrame({"class_name": [2]}, geometry=[geometry])
+    merger = InstMerger(source, [(0, 0, 40, 40)])
+    assert merger.merge(simplify_level=0, filter_level=2, pixel_size=1).empty
+
+    actual = merger.merge(simplify_level=0.7, filter_level=2, pixel_size=1)
+
+    assert actual.uid.tolist() == [0]
+    assert actual.geometry.iloc[0].equals(box(10, 10, 12, 14))
+
+
+@pytest.mark.parametrize(
+    "geometry,rounded,keep_before,keep_after",
+    [
+        (
+            box(10.049, 10.2, 11.351, 19.4),
+            box(10, 10.2, 11.4, 19.4),
+            False,
+            True,
+        ),
+        (
+            box(10.051, 10.2, 11.349, 19.7),
+            box(10.1, 10.2, 11.3, 19.7),
+            True,
+            False,
+        ),
+    ],
+)
+def test_merge_filters_after_rounding(geometry, rounded, keep_before, keep_after):
+    # Rounding crosses the area cutoff in either direction; thickness stays below it.
+    source = gpd.GeoDataFrame({"class_name": [2]}, geometry=[geometry])
+    merger = InstMerger(source, [(0, 0, 40, 40)])
+    unrounded = merger.merge(simplify_level=0, filter_level=2, pixel_size=1)
+    assert len(unrounded) == int(keep_before)
+
+    actual = merger.merge(simplify_level=0, precision=1, filter_level=2, pixel_size=1)
+
+    assert len(actual) == int(keep_after)
+    if keep_after:
+        assert actual.uid.tolist() == [0]
+        assert actual.geometry.iloc[0].equals(rounded)
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [{}, {"filter_level": 0}, {"filter_level": None}, {"filter_level": np.int64(0)}],
