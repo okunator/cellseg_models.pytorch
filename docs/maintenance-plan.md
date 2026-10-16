@@ -127,6 +127,12 @@ loss reduction as segmentation accuracy or a useful trained model.
   disconnected multipart nuclei or source-edge cuts. Full-slide geometry, ID and
   coordinate checks pass. Keep the slide, tile files and superseded runs outside
   Git until visual acceptance, then retire redundant abutting/interrupted runs.
+- [ ] Correct detection loss before accepting the WSI example. A follow-up audit
+  of the same twelve regions found 40 unrepresented raw candidate groups:
+  39 involve early ownership rejection and one survives ownership but is lost in
+  duplicate matching. Add detection-preservation regressions alongside topology
+  checks. The comparison gallery and runtime benchmarks stay outside Git; retire
+  these temporary diagnostics after the corrected examples are accepted.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
   reference. Keep the current normalization helper; issue 78's replacement/license
   proposal does not justify a silent preprocessing or dependency change.
