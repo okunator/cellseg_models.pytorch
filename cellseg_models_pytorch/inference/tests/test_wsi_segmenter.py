@@ -24,7 +24,8 @@ class DenseModel(torch.nn.Module):
     def forward(self, image):
         assert image.dtype == torch.float32
         assert image.shape[1:] == (3, 16, 16)
-        assert image.min() == 0 and image.max() == 1
+        # Binary fixtures must stay binary, including all-background tiles.
+        assert ((image == 0) | (image == 1)).all()
         foreground = image[:, :1]
         return {
             "nuc": SoftInstanceOutput(
@@ -154,3 +155,57 @@ def test_duplicate_tile_outputs_are_rejected(tmp_path, pipeline):
         segmenter.segment(tmp_path)
     assert not segmenter._has_processed
     assert not list(tmp_path.glob("*.parquet"))
+
+
+def test_overlapping_wsi_uses_source_tiles_and_preserves_complete_seam_nucleus(
+    tmp_path, pipeline
+):
+    model, reader, _, _ = pipeline
+    canvas = np.zeros((24, 24, 3), dtype=np.uint8)
+    canvas[10:18, 10:18] = 255
+
+    def read_region(coordinates, level):
+        x, y, width, height = coordinates
+        return canvas[y : y + height, x : x + width].copy()
+
+    reader.read_region = read_region
+    coordinates = [(0, 0, 16, 16), (8, 0, 16, 16), (0, 8, 16, 16), (8, 8, 16, 16)]
+    segmenter = WsiSegmenter(reader, model, 0, coordinates, batch_size=2)
+    segmenter.segment(tmp_path / "tiles")
+    segmenter.merge_instances(
+        tmp_path / "tiles", tmp_path / "nuclei.parquet", simplify_level=0
+    )
+    actual = gpd.read_parquet(tmp_path / "nuclei.parquet")
+    assert len(actual) == 1
+    geometry = actual.geometry.iloc[0]
+    assert geometry.geom_type == "Polygon" and geometry.is_valid
+    assert geometry.bounds[0] < 16 < geometry.bounds[2]
+    assert geometry.bounds[1] < 16 < geometry.bounds[3]
+    full_prediction = gpd.read_parquet(
+        tmp_path / "tiles/slide.v1_x8-y8_w16-h16.parquet"
+    )
+    assert geometry.equals(full_prediction.geometry.iloc[0])
+
+
+def test_overlap_merge_accepts_all_empty_tiles(tmp_path, pipeline):
+    model, reader, _, _ = pipeline
+    reader.read_region = lambda coordinates, level: np.zeros(
+        (16, 16, 3), dtype=np.uint8
+    )
+    segmenter = WsiSegmenter(reader, model, 0, [(0, 0, 16, 16), (8, 0, 16, 16)])
+    segmenter.segment(tmp_path / "tiles")
+    assert not list((tmp_path / "tiles").glob("*.parquet"))
+    segmenter.merge_instances(tmp_path / "tiles", tmp_path / "nuclei.parquet")
+    assert gpd.read_parquet(tmp_path / "nuclei.parquet").empty
+
+
+def test_merge_rejects_files_without_a_known_source_tile(tmp_path, pipeline):
+    model, reader, _, _ = pipeline
+    segmenter = WsiSegmenter(reader, model, 0, [(0, 0, 16, 16)])
+    segmenter.segment(tmp_path / "tiles")
+    unrelated = tmp_path / "tiles/other-slide.parquet"
+    unrelated.write_bytes(b"unrelated data")
+    with pytest.raises(ValueError, match="no source tile"):
+        segmenter.merge_instances(tmp_path / "tiles", tmp_path / "nuclei.parquet")
+    assert unrelated.read_bytes() == b"unrelated data"
+    assert not (tmp_path / "nuclei.parquet").exists()

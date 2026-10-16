@@ -3,6 +3,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -109,13 +110,21 @@ class WsiSegmenter:
 
     def merge_instances(
         self,
-        src: str,
-        dst: str,
+        src: str | Path,
+        dst: str | Path,
         clear_in_dir: bool = False,
-        simplify_level: int = 0.3,
-        precision: int = None,
+        simplify_level: float = 0.3,
+        precision: int | None = None,
     ) -> None:
-        """Merge the instances at the image boundaries.
+        """Reconcile saved nucleus predictions using their source tiles.
+
+        Overlap regions belong to the nearest tile centre; predictions from other
+        tiles are discarded there. Remaining duplicates are matched by shared
+        area. Each group retains
+        the original contour with the most distance from its tile edge, along
+        with that prediction's attributes. Abutting fragments must actually touch
+        to join; separated contours remain separate nuclei. Use overlapping tiles
+        to predict complete contours across tile edges.
 
         Args:
             src:
@@ -126,7 +135,7 @@ class WsiSegmenter:
                 Defaults to False.
             simplify_level:
                 The level of simplification to apply to the merged instances.
-                Defaults to 1.
+                Defaults to 0.3.
             precision:
                 The precision level to apply to the merged instances. If None, no rounding
                 is applied.
@@ -135,8 +144,27 @@ class WsiSegmenter:
             raise ValueError("You must segment the instances first.")
 
         in_dir = Path(src)
-        gdf = gpd.read_parquet(in_dir)
-        merger = InstMerger(gdf, self.coordinates)
+        if not in_dir.is_dir():
+            raise FileNotFoundError(in_dir)
+        frames = []
+        tile_indices = []
+        source_tiles = {
+            f"{self.dataset.reader.name}_x{x}-y{y}_w{width}-h{height}.parquet": index
+            for index, (x, y, width, height) in enumerate(self.coordinates)
+        }
+        # The vector writer omits empty tiles; identify each saved tile by its name.
+        for path in sorted(in_dir.glob("*.parquet")):
+            if path.name not in source_tiles:
+                raise ValueError(f"Prediction file has no source tile: {path.name}")
+            frame = gpd.read_parquet(path)
+            frames.append(frame)
+            tile_indices.extend([source_tiles[path.name]] * len(frame))
+        gdf = (
+            gpd.GeoDataFrame(pd.concat(frames, ignore_index=True), crs=frames[0].crs)
+            if frames
+            else gpd.GeoDataFrame(columns=["class_name", "geometry"])
+        )
+        merger = InstMerger(gdf, self.coordinates, tile_indices=tile_indices)
         merger.merge(dst, simplify_level=simplify_level, precision=precision)
 
         if clear_in_dir:
