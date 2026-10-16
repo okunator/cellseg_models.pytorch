@@ -103,3 +103,20 @@ def test_vectorization_keeps_foreground_even_without_background_class(
     assert actual.uid.to_list() == [1]
     assert actual.class_name.to_list() == [class_id]
     assert actual.geometry.area.sum() == (120 if background else 144)
+
+
+@pytest.mark.parametrize("empty", [False, True])
+def test_vectorization_records_border_contact_before_smoothing(empty):
+    instances = np.zeros((100, 100), dtype=np.int32)
+    if not empty:
+        instances[35:65, 85:] = 1
+        instances[20:30, 20:30] = 2
+
+    actual = inst2gdf(
+        instances, xoff=50, yoff=100, min_size=0, smooth_func=gaussian_smooth
+    ).sort_values("uid")
+    assert actual.is_partial.dtype == bool
+    assert actual.is_partial.tolist() == ([] if empty else [True, False])
+    if not empty:
+        # Smoothing removes geometric border contact but must not erase its origin.
+        assert actual.geometry.iloc[0].bounds[2] < 149

@@ -10,8 +10,8 @@
 ## Fixes
 
 - Reconcile overlapping WSI predictions using source-tile identity and shared
-  polygon area. Assign overlap regions to the nearest tile centre to discard
-  internal edge fragments, then retain the original contour with the most context,
+  polygon area, preserving unmatched detections. Record border contact before
+  smoothing and prefer complete original contours over partial detections,
   without fusing predictions from the same tile or filling gaps between fragments.
   Abutting fragments must actually touch to join. Preserve first/last tile nuclei,
   unique slide-wide IDs and pixel coordinates without a geographic CRS; reject

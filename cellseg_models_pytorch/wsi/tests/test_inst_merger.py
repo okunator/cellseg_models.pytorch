@@ -146,12 +146,15 @@ def test_overlap_keeps_a_complete_contour_instead_of_disconnected_fragments(axis
             (60, 60, 100, 100),
         ]
         complete = box(85, 85, 115, 115)
-    fragments = [
-        gaussian_smooth(complete.intersection(box(x, y, x + w, y + h)))
-        for x, y, w, h in coordinates
+    clipped = [
+        complete.intersection(box(x, y, x + w, y + h)) for x, y, w, h in coordinates
     ]
+    fragments = [gaussian_smooth(fragment) for fragment in clipped]
     source = gpd.GeoDataFrame(
-        {"class_name": [1] * len(fragments)},
+        {
+            "class_name": [1] * len(fragments),
+            "is_partial": [not fragment.equals(complete) for fragment in clipped],
+        },
         geometry=fragments,
     )
     actual = InstMerger(
@@ -168,7 +171,7 @@ def test_overlap_keeps_a_complete_contour_instead_of_disconnected_fragments(axis
 def test_overlap_matching_cannot_fuse_two_nuclei_from_the_same_tile():
     source = gpd.GeoDataFrame(
         {"class_name": [1, 2, 3]},
-        geometry=[box(62, 20, 96, 34), box(62, 34, 96, 48), box(66, 20, 100, 48)],
+        geometry=[box(70, 20, 90, 35), box(70, 35, 90, 50), box(70, 20, 90, 50)],
     )
     actual = InstMerger(
         source, [(0, 0, 100, 100), (60, 0, 100, 100)], tile_indices=[0, 0, 1]
@@ -181,12 +184,12 @@ def test_overlap_keeps_the_context_winners_holes_and_attributes():
     from shapely.geometry import Polygon
 
     complete = Polygon(
-        [(85, 20), (115, 20), (115, 60), (85, 60)],
-        holes=[[(95, 30), (95, 40), (105, 40), (105, 30)]],
+        [(64, 20), (99, 20), (99, 60), (64, 60)],
+        holes=[[(75, 30), (75, 40), (82, 40), (82, 30)]],
     )
     source = gpd.GeoDataFrame(
         {"class_name": [1, 3], "score": [0.2, 0.9]},
-        geometry=[complete.intersection(box(0, 0, 100, 100)), complete],
+        geometry=[box(60, 20, 97, 60), complete],
     )
     actual = InstMerger(
         source, [(0, 0, 100, 100), (60, 0, 100, 100)], tile_indices=[0, 1]
@@ -208,7 +211,7 @@ def test_overlap_requires_valid_source_tile_indices(indices):
         InstMerger(source, [(0, 0, 100, 100), (60, 0, 100, 100)], tile_indices=indices)
 
 
-def test_overlap_ownership_discards_unmatched_edge_fragments():
+def test_overlap_keeps_unmatched_edge_prediction_without_a_replacement():
     source = gpd.GeoDataFrame(
         {"class_name": [1]},
         geometry=[box(92, 30, 99.8, 60)],
@@ -216,10 +219,11 @@ def test_overlap_ownership_discards_unmatched_edge_fragments():
     actual = InstMerger(
         source, [(0, 0, 100, 100), (60, 0, 100, 100)], tile_indices=[0]
     ).merge(simplify_level=0)
-    assert actual.empty
+    assert len(actual) == 1
+    assert actual.geometry.iloc[0].equals(source.geometry.iloc[0])
 
 
-def test_overlap_ownership_keeps_unmatched_outer_edge_nuclei():
+def test_overlap_keeps_unmatched_outer_edge_nuclei():
     source = gpd.GeoDataFrame(
         {"class_name": [1]},
         geometry=[box(0, 30, 8, 60)],
@@ -231,14 +235,104 @@ def test_overlap_ownership_keeps_unmatched_outer_edge_nuclei():
     assert actual.geometry.iloc[0].equals(source.geometry.iloc[0])
 
 
-def test_overlapping_predictions_with_centroid_jitter_are_still_deduplicated():
+@pytest.mark.parametrize("indices", [[0, 1], [1, 0]])
+def test_overlapping_predictions_with_centroid_jitter_are_still_deduplicated(indices):
     source = gpd.GeoDataFrame(
         {"class_name": [1, 2]},
         geometry=[box(60, 20, 97, 60), box(64, 20, 99, 60)],
     )
     actual = InstMerger(
-        source, [(0, 0, 100, 100), (60, 0, 100, 100)], tile_indices=[0, 1]
+        source, [(0, 0, 100, 100), (60, 0, 100, 100)], tile_indices=indices
     ).merge(simplify_level=0)
     assert len(actual) == 1
     assert actual.geometry.iloc[0].equals(source.geometry.iloc[1])
     assert actual.class_name.tolist() == [2]
+
+
+def test_complete_unmatched_prediction_survives_outside_nominal_ownership():
+    source = gpd.GeoDataFrame(
+        {"class_name": [3], "score": [0.9]}, geometry=[box(82, 30, 90, 45)]
+    )
+    actual = InstMerger(
+        source, [(0, 0, 100, 100), (60, 0, 100, 100)], tile_indices=[0]
+    ).merge(simplify_level=0)
+    assert len(actual) == 1
+    assert actual.geometry.iloc[0].equals(source.geometry.iloc[0])
+    assert actual.class_name.tolist() == [3]
+    assert actual.score.tolist() == [0.9]
+
+
+def test_tiny_interior_prediction_cannot_replace_a_complete_nucleus():
+    source = gpd.GeoDataFrame(
+        {"class_name": [3, 1], "score": [0.9, 0.2]},
+        geometry=[box(60, 20, 98, 60), box(82, 30, 86, 40)],
+    )
+    actual = InstMerger(
+        source, [(0, 0, 100, 100), (60, 0, 100, 100)], tile_indices=[0, 1]
+    ).merge(simplify_level=0)
+    # Low mutual overlap does not establish that these complete detections are duplicates.
+    assert len(actual) == 2
+    complete = actual.loc[actual.class_name == 3].iloc[0]
+    assert complete.geometry.equals(source.geometry.iloc[0])
+    assert complete.geometry.area == 1520
+    assert complete.score == 0.9
+
+
+def test_rounding_may_mix_overlapping_and_abutting_tiles():
+    from cellseg_models_pytorch.wsi.tiles import get_tile_coordinates
+
+    coordinates = get_tile_coordinates((20, 200), width=100, height=10, overlap=0.05)
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 1]},
+        geometry=[box(20, 7, 30, 10), box(20, 10, 30, 13)],
+    )
+    actual = InstMerger(source, coordinates, tile_indices=[0, 2]).merge(
+        simplify_level=0
+    )
+    assert len(actual) == 1
+    assert actual.geometry.iloc[0].equals(box(20, 7, 30, 13))
+
+
+def test_mixed_grid_joins_abutting_fragments_after_overlap_deduplication():
+    coordinates = [
+        (0, 0, 100, 100),
+        (60, 0, 100, 100),
+        (0, 100, 100, 100),
+        (60, 100, 100, 100),
+    ]
+    complete = box(85, 85, 115, 115)
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 2, 3, 4]},
+        geometry=[
+            complete.intersection(box(x, y, x + w, y + h)) for x, y, w, h in coordinates
+        ],
+    )
+    actual = InstMerger(source, coordinates, tile_indices=[0, 1, 2, 3]).merge(
+        simplify_level=0
+    )
+    assert len(actual) == 1
+    assert actual.geometry.iloc[0].equals(complete)
+    assert actual.geometry.iloc[0].geom_type == "Polygon"
+    assert actual.class_name.tolist() == [2]
+
+
+@pytest.mark.parametrize("flags", [[False, None], [0, 1], ["False", "True"]])
+def test_overlap_rejects_invalid_border_flags(flags):
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 1], "is_partial": flags},
+        geometry=[box(80, 20, 90, 30)] * 2,
+    )
+    with pytest.raises(ValueError, match="is_partial"):
+        InstMerger(source, [(0, 0, 100, 100), (60, 0, 100, 100)], tile_indices=[0, 1])
+
+
+def test_complete_tiny_detection_does_not_replace_a_larger_partial_contour():
+    source = gpd.GeoDataFrame(
+        {"class_name": [3, 1], "is_partial": [True, False]},
+        geometry=[box(70, 20, 100, 60), box(82, 30, 86, 40)],
+    )
+    actual = InstMerger(
+        source, [(0, 0, 100, 100), (60, 0, 100, 100)], tile_indices=[0, 1]
+    ).merge(simplify_level=0)
+    assert len(actual) == 2
+    assert actual.geometry.iloc[0].equals(source.geometry.iloc[0])

@@ -118,13 +118,12 @@ class WsiSegmenter:
     ) -> None:
         """Reconcile saved nucleus predictions using their source tiles.
 
-        Overlap regions belong to the nearest tile centre; predictions from other
-        tiles are discarded there. Remaining duplicates are matched by shared
-        area. Each group retains
-        the original contour with the most distance from its tile edge, along
-        with that prediction's attributes. Abutting fragments must actually touch
-        to join; separated contours remain separate nuclei. Use overlapping tiles
-        to predict complete contours across tile edges.
+        Match duplicates in overlapping tile regions and retain one original
+        contour with its attributes. Prefer complete predictions; unmatched
+        detections survive. Border flags recorded before smoothing distinguish
+        partial contours from complete nuclei. Abutting fragments must actually
+        touch to join, including in grids that also have overlapping tiles.
+        Use overlapping tiles to predict complete contours across tile edges.
 
         Args:
             src:

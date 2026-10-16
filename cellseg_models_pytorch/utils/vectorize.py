@@ -131,12 +131,21 @@ def inst2gdf(
 
     Returns:
         A GeoDataFrame with uid (instance ID), class_name and geometry columns.
-        Disconnected components can share an instance ID. Coordinates have no
-        geographic CRS; offsets preserve the image convention of y increasing down.
+        The boolean is_partial column records contact with the input image border
+        before smoothing. Disconnected components can share an instance ID.
+        Coordinates have no geographic CRS; offsets preserve the image convention
+        of y increasing down.
     """
     # handle empty masks
     if inst_map.size == 0 or np.max(inst_map) == 0:
-        return gpd.GeoDataFrame(columns=["uid", "class_name", "geometry"])
+        return gpd.GeoDataFrame(
+            {
+                "uid": [],
+                "class_name": [],
+                "geometry": [],
+                "is_partial": pd.Series(dtype=bool),
+            }
+        )
 
     if type_map is None:
         type_map = inst_map > 0
@@ -165,6 +174,16 @@ def inst2gdf(
 
     # filter out small geometries
     res = res.loc[res.area > min_size].reset_index(drop=True)
+
+    # Record clipping before smoothing can pull a cut contour away from the border.
+    bounds = res.geometry.bounds
+    height, width = inst_map.shape
+    res["is_partial"] = (
+        (bounds.minx == 0)
+        | (bounds.miny == 0)
+        | (bounds.maxx == width)
+        | (bounds.maxy == height)
+    )
 
     # translate geometries if offsets are provided
     if xoff is not None or yoff is not None:

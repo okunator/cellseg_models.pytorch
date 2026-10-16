@@ -98,6 +98,7 @@ def test_wsi_notebook_writes_all_tiles_and_preserves_their_nuclei(tutorial):
     assert ns["nuclei"].uid.is_unique
     assert ns["nuclei"].geometry.is_valid.all()
     assert ns["nuclei"].crs is None
+    assert ns["nuclei"].is_partial.tolist() == [False] * 4
     assert ns["counts"]["Nuclei"].to_list() == [0, 4, 0, 0, 0, 0, 0]
     # Smoothing changes centroids, but the four complete nuclei must remain 12 pixels apart.
     for values in (ns["nuclei"].geometry.centroid.x, ns["nuclei"].geometry.centroid.y):
