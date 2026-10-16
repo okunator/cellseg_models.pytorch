@@ -2,6 +2,11 @@
 
 ## Features
 
+- Add optional vector-only nucleus filtering after WSI stitching. Filtering is
+  disabled by default; enabling it uses the middle area/thickness limits unless
+  another level is selected and requires explicit physical pixel calibration.
+  Retained contours, IDs and attributes are preserved.
+
 - Add CellPose and StarDist dense-network ONNX export (contributed by
   Ajinkya Kulkarni). Instance reconstruction remains in Python. Export requires
   optional ONNX packages. Dynamic batches retain fixed spatial dimensions, and export

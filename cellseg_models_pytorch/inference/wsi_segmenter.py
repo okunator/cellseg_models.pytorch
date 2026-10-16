@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from pathlib import Path
+from typing import Literal
 
 import geopandas as gpd
 import numpy as np
@@ -115,6 +116,10 @@ class WsiSegmenter:
         clear_in_dir: bool = False,
         simplify_level: float = 0.3,
         precision: int | None = None,
+        *,
+        filter_fragments: bool = False,
+        filter_level: Literal["conservative", "middle", "strong"] = "middle",
+        pixel_size: float | None = None,
     ) -> None:
         """Reconcile saved nucleus predictions using their source tiles.
 
@@ -140,6 +145,15 @@ class WsiSegmenter:
             precision:
                 The precision level to apply to the merged instances. If None, no rounding
                 is applied.
+            filter_fragments: Remove small, thin polygons after stitching.
+                Defaults to False. Retained contours and IDs stay unchanged.
+            filter_level: Strength when filtering is enabled. Defaults to middle:
+                area < 12 square micrometers AND thickness proxy
+                (2 * area / perimeter) < 1.2 micrometers. Other levels are
+                conservative (6, 0.8) and strong (20, 1.6). Small valid nuclei
+                can also be removed; inspect the filtered result.
+            pixel_size: Positive finite isotropic micrometers per level-zero
+                coordinate pixel, required when filtering is enabled.
         """
         if not self._has_processed:
             raise ValueError("You must segment the instances first.")
@@ -166,7 +180,14 @@ class WsiSegmenter:
             else gpd.GeoDataFrame(columns=["class_name", "geometry"])
         )
         merger = InstMerger(gdf, self.coordinates, tile_indices=tile_indices)
-        merger.merge(dst, simplify_level=simplify_level, precision=precision)
+        merger.merge(
+            dst,
+            simplify_level=simplify_level,
+            precision=precision,
+            filter_fragments=filter_fragments,
+            filter_level=filter_level,
+            pixel_size=pixel_size,
+        )
 
         if clear_in_dir:
             for f in in_dir.glob("*"):

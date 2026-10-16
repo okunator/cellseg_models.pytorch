@@ -164,15 +164,17 @@ Whole-tile reconciliation and regressions are implemented. The maintainer review
 the same twelve fields and five screenshot close-ups, covering differing partitions,
 four-view duplicates, unmatched neighbors and incomplete views.
 Contracts and thresholds live in `InstMerger` and its tests; validation is recorded
-above and in PR 113. Small source detections remain unfiltered; any additional
-rejection rule needs labelled validation, including valid small and irregular nuclei.
+above and in PR 113. Small source detections remain unfiltered by default.
+Optional polygon filtering runs after stitching with explicit pixel calibration;
+its enabled default is the middle area/thickness level. Regression tests cover
+thin stromal contours, physical limits, preserved metadata and joined fragments.
 
 The temporary fragment-filter comparison traces the reported strips to reconstructed
 per-tile masks, before polygon smoothing or stitching. Polygon area/thickness probes
 cover the same twelve seam fields, six stromal-rich WSI fields and 22 held-out
 PanopTILs regions. Stronger thresholds discard annotation-supported stromal nuclei;
-no filter default is adopted. Keep these diagnostics outside Git and retire them
-after the filtering decision and PR 113 merge.
+filtering remains opt-in. Keep these diagnostics outside Git and retire them after
+PR 113 merge, preserving the maintained regression tests.
 
 Defer probability export and model/supervision changes: the small score probe did
 not establish that mean foreground confidence distinguishes fragments, merged pairs

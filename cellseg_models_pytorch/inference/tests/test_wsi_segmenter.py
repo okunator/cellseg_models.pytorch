@@ -209,3 +209,31 @@ def test_merge_rejects_files_without_a_known_source_tile(tmp_path, pipeline):
         segmenter.merge_instances(tmp_path / "tiles", tmp_path / "nuclei.parquet")
     assert unrelated.read_bytes() == b"unrelated data"
     assert not (tmp_path / "nuclei.parquet").exists()
+
+
+@pytest.mark.parametrize(
+    "kwargs,expected_count",
+    [
+        ({}, 2),
+        ({"filter_fragments": True, "pixel_size": 0.35}, 0),
+        (
+            {
+                "filter_fragments": True,
+                "pixel_size": 0.35,
+                "filter_level": "conservative",
+            },
+            2,
+        ),
+        ({"filter_fragments": True, "pixel_size": 0.5}, 2),
+    ],
+)
+def test_wsi_optional_filter_defaults_to_middle_and_uses_pixel_size(
+    tmp_path, pipeline, kwargs, expected_count
+):
+    model, reader, _, _ = pipeline
+    segmenter = WsiSegmenter(reader, model, 0, [(0, 0, 16, 16), (16, 0, 16, 16)])
+    segmenter.segment(tmp_path / "tiles")
+    segmenter.merge_instances(tmp_path / "tiles", tmp_path / "nuclei.parquet", **kwargs)
+    actual = gpd.read_parquet(tmp_path / "nuclei.parquet")
+    assert len(actual) == expected_count
+    assert len(list((tmp_path / "tiles").glob("*.parquet"))) == 2
