@@ -132,8 +132,8 @@ loss reduction as segmentation accuracy or a useful trained model.
   tie ordering, and compare edge clearance against GEOS. On DGX Spark, median
   core merging falls from 17.21 s to 16.68 s (3.1%; one warmup, five repeats,
   one OMP/BLAS thread, float64 geometry, 0.1-pixel simplification, no I/O), with
-  peak process RSS remaining about 1.38 GiB. The 3,216-tile load/merge/export
-  check produces 739,816 instances at about 6.33 GiB before and after the fix.
+  peak process RSS remaining about 1.38 GiB. The fixed 3,216-tile load/merge/export
+  check produces 739,816 instances; memory stays about 6.33 GiB in both versions.
   Merge memory still grows with all source polygons; these CPU measurements
   exclude the model and CUDA allocations. These checks establish consistency
   and preservation, not biological accuracy.
@@ -166,6 +166,13 @@ four-view duplicates, unmatched neighbors and incomplete views.
 Contracts and thresholds live in `InstMerger` and its tests; validation is recorded
 above and in PR 113. Small source detections remain unfiltered; any additional
 rejection rule needs labelled validation, including valid small and irregular nuclei.
+
+The temporary fragment-filter comparison traces the reported strips to reconstructed
+per-tile masks, before polygon smoothing or stitching. Polygon area/thickness probes
+cover the same twelve seam fields, six stromal-rich WSI fields and 22 held-out
+PanopTILs regions. Stronger thresholds discard annotation-supported stromal nuclei;
+no filter default is adopted. Keep these diagnostics outside Git and retire them
+after the filtering decision and PR 113 merge.
 
 Defer probability export and model/supervision changes: the small score probe did
 not establish that mean foreground confidence distinguishes fragments, merged pairs
