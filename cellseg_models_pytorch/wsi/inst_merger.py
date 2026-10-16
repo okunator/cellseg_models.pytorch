@@ -39,6 +39,7 @@ class InstMerger:
             self.grid.geometry.iloc[a].intersection(self.grid.geometry.iloc[b]).area > 0
             for a, b in self.neighbors
         )
+        # A slide location alone cannot identify which overlapping tile predicted it.
         if tile_indices is None:
             if self.overlapping:
                 raise ValueError("Overlapping tiles require source tile_indices")
@@ -61,18 +62,20 @@ class InstMerger:
             self.owners = indices.astype(int)
 
         if self.overlapping and not self.gdf.empty:
-            # Assign overlap regions to the nearest tile centre, not to tile edges.
+            # Prefer tile centres, where predictions have more surrounding image context.
             points = self.gdf.geometry.centroid
             rows, tiles = self.grid.sindex.query(points, predicate="within")
             centres = self.grid.geometry.centroid
             distances = (
                 points.x.to_numpy()[rows] - centres.x.to_numpy()[tiles]
             ) ** 2 + (points.y.to_numpy()[rows] - centres.y.to_numpy()[tiles]) ** 2
+            # Break equal-distance ties by tile index for reproducible ownership.
             order = np.lexsort((tiles, distances, rows))
             ordered_rows = rows[order]
             _, first = np.unique(ordered_rows, return_index=True)
             owner = np.full(len(self.gdf), -1, dtype=int)
             owner[ordered_rows[first]] = tiles[order[first]]
+            # shortcut: ownership can drop valid detections; match objects before filtering.
             keep = self.owners == owner
             self.gdf = self.gdf.loc[keep].reset_index(drop=True)
             self.owners = self.owners[keep]
@@ -86,7 +89,8 @@ class InstMerger:
         """Join neighboring tile fragments while retaining untouched nuclei.
 
         In overlap regions, retain predictions whose centroid belongs to their
-        source tile's nearest-centre region. This discards unreliable edge context.
+        source tile's nearest-centre region. This can also discard valid detections
+        when neighboring tiles predict different centroids or miss an object.
         Then match predictions covering at least half the smaller
         polygon. Greedy one-to-one matches cannot combine two predictions from the
         same source tile. Keep the original contour furthest from its tile edge,
@@ -136,6 +140,7 @@ class InstMerger:
             shared = intersection(geometries_a, geometries_b)
             if overlap.area > 0:
                 shared_areas = np.array([geometry.area for geometry in shared])
+                # Compare with the smaller area to match partial and complete views.
                 areas = np.minimum(
                     self.gdf.geometry.iloc[a].area.to_numpy(),
                     self.gdf.geometry.iloc[b].area.to_numpy(),
@@ -169,7 +174,7 @@ class InstMerger:
                     if geometry.length > 0
                 )
 
-        # A duplicate group may contain at most one prediction from each tile.
+        # Two nuclei predicted in the same tile must remain separate objects.
         groups = nx.utils.UnionFind()
         source_tiles = {}
         for _, _, left, right in sorted(
@@ -192,6 +197,7 @@ class InstMerger:
             indices = sorted(component)
             fragments = self.gdf.iloc[indices]
             if self.overlapping:
+                # Keep an observed contour with context instead of inventing an outline.
                 context = [
                     self.gdf.geometry.iloc[i].distance(
                         self.grid.geometry.iloc[self.owners[i]].boundary
@@ -204,6 +210,7 @@ class InstMerger:
                 )
                 record = fragments.iloc[best].copy()
             else:
+                # Abutting tiles can join only fragments that already share a boundary.
                 record = fragments.iloc[
                     fragments.geometry.area.to_numpy().argmax()
                 ].copy()
