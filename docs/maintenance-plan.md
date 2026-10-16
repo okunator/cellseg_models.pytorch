@@ -119,20 +119,19 @@ loss reduction as segmentation accuracy or a useful trained model.
   checkpoints stay outside Git. Preserve historical-objective checkpoints until
   the maintainer accepts the corrected examples.
 - [ ] Document the HDF5 alternative without duplicating the training loop.
-- [x] Execute WSI inference on TCGA-AC-A6IW with the PanopTILs checkpoint:
-  804 overlapping tiles and 175,548 reconciled nuclei on DGX CUDA. Nearest-centre
-  ownership discards internal edge context; shared-area matching retains original
-  contours. Topology, source attribution and empty-tile regressions pass. All output
-  contours/classes match source predictions; twelve saved seam regions have no
-  disconnected multipart nuclei or source-edge cuts. Full-slide geometry, ID and
-  coordinate checks pass. Keep the slide, tile files and superseded runs outside
-  Git until visual acceptance, then retire redundant abutting/interrupted runs.
-- [ ] Correct detection loss before accepting the WSI example. A follow-up audit
-  of the same twelve regions found 40 unrepresented raw candidate groups:
-  39 involve early ownership rejection and one survives ownership but is lost in
-  duplicate matching. Add detection-preservation regressions alongside topology
-  checks. The comparison gallery and runtime benchmarks stay outside Git; retire
-  these temporary diagnostics after the corrected examples are accepted.
+- [x] Execute WSI inference on held-out TCGA-AC-A6IW with the PanopTILs
+  checkpoint: 804 overlapping tiles and 191,712 reconciled nuclei on DGX CUDA.
+  Match before selection, preserve unmatched detections and record border contact
+  before smoothing. Regressions cover centroid shifts, tiny-mask replacement,
+  disconnected fragments and mixed overlapping/abutting grids. All output contours
+  and classes retain source provenance; geometry, IDs and slide bounds pass.
+  All 40 previously lost candidate groups are represented in the same twelve
+  seam regions, with no multipart outputs there. This checks preservation, not
+  ground-truth accuracy. Median core merging is 13.17 s versus 7.01 s on identical
+  input (one warmup, five repeats); inference plus merge I/O increases about 1.2%.
+- [ ] Visually accept the corrected twelve seam regions. Keep the slide, tile
+  predictions and prior runs outside Git until acceptance, then retire redundant
+  runs, the temporary comparison gallery and benchmark/diagnostic artifacts.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
   reference. Keep the current normalization helper; issue 78's replacement/license
   proposal does not justify a silent preprocessing or dependency change.
