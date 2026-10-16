@@ -87,6 +87,8 @@ def tutorial(tmp_path, monkeypatch, pipeline):
 
 def test_wsi_notebook_writes_all_tiles_and_preserves_their_nuclei(tutorial):
     ns, cells, download = tutorial
+    # Check stitching preservation separately from the optional fragment filter.
+    ns["filter_level"] = 0
     for source in cells[1:]:
         exec(source, ns)
     assert ns["slide_path"].read_bytes() == b"slide fixture"
@@ -114,6 +116,21 @@ def test_wsi_notebook_writes_all_tiles_and_preserves_their_nuclei(tutorial):
             next(source for source in cells if source.startswith("output_dir.mkdir")),
             ns,
         )
+
+
+def test_wsi_notebook_filters_small_thin_nuclei_with_slide_calibration(tutorial):
+    ns, cells, _ = tutorial
+    assert ns["filter_level"] == 2
+    for source in cells[1:]:
+        exec(source, ns)
+        if source.startswith("merged_path ="):
+            break
+
+    # These tiny fixture nuclei fall below both physical limits at 0.252 µm/pixel.
+    assert ns["pixel_size"] == 0.252
+    assert len(list((ns["output_dir"] / "tiles").glob("*.parquet"))) == 4
+    assert ns["nuclei"].empty
+    assert ns["counts"]["Nuclei"].sum() == 0
 
 
 def test_failed_download_is_not_published_as_a_slide(tutorial):

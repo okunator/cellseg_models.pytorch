@@ -120,14 +120,16 @@ loss reduction as segmentation accuracy or a useful trained model.
   the maintainer accepts the corrected examples.
 - [ ] Document the HDF5 alternative without duplicating the training loop.
 - [x] Validate WSI inference on held-out TCGA-AC-A6IW with the PanopTILs checkpoint:
-  804 overlapping tiles and 184,954 reconciled nuclei on DGX CUDA. Preserve whole
-  source contours/classes and unmatched detections; all forty recovered groups
-  survive. The same twelve fields have no contained duplicate pairs or multipart
-  outputs. A fresh GPU notebook reproduces all cached tile files byte-for-byte
-  and all audited final contours, attributes and IDs exactly, with four saved
-  figures. Precision-aware view ranking keeps identical source identities,
-  attributes and IDs across six full-slide placements up to +/-1 million pixels;
-  native and compatibility unions agree. Synthetic regressions catch clearance
+  804 overlapping tiles and 184,954 reconciled nuclei before filtering on DGX CUDA.
+  Preserve whole source contours/classes and unmatched detections; all forty
+  recovered groups survive. The same twelve fields have no contained duplicate
+  pairs or multipart outputs. Fresh GPU execution reproduces all cached tile
+  files byte-for-byte. The final notebook demonstrates optional level-2 filtering,
+  retaining 173,726 nuclei with the reviewed contours, attributes and IDs exactly,
+  four saved figures and the same twelve detailed views. Precision-aware view
+  ranking keeps identical source identities, attributes and IDs across six
+  full-slide placements up to +/-1 million pixels; native and compatibility unions
+  agree. Synthetic regressions catch clearance
   and area roundoff, preserve meaningful subpixel differences and retained-row
   tie ordering, and compare edge clearance against GEOS. On DGX Spark, median
   core merging falls from 17.21 s to 16.68 s (3.1%; one warmup, five repeats,
@@ -168,7 +170,8 @@ above and in PR 113. Small source detections remain unfiltered by default.
 Optional polygon filtering runs after stitching with explicit pixel calibration;
 `filter_level=0` (default) or `None` disables it; levels 1, 2 and 3 select
 conservative, middle and strong area/thickness limits. Regression tests cover
-thin stromal contours, physical limits, preserved metadata and joined fragments.
+thin stromal contours, physical limits, preserved metadata, joined fragments and
+filtering after simplification and rounding.
 
 The temporary fragment-filter comparison traces the reported strips to reconstructed
 per-tile masks, before polygon smoothing or stitching. Polygon area/thickness probes
