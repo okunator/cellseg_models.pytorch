@@ -119,16 +119,14 @@ loss reduction as segmentation accuracy or a useful trained model.
   checkpoints stay outside Git. Preserve historical-objective checkpoints until
   the maintainer accepts the corrected examples.
 - [ ] Document the HDF5 alternative without duplicating the training loop.
-- [x] Execute the full WSI notebook on TCGA-AC-A6IW with the PanopTILs checkpoint:
-  453 tissue tiles and 174,013 merged nuclei on DGX CUDA. Saved tissue-selection,
-  overview and seam overlays accompany offline merge regressions; all exported
-  geometries and slide-wide IDs pass the full-slide audit. The page keeps a
-  tissue-edge false positive visible rather than implying whole-slide accuracy.
-  Visual review found that matching fragments can retain disconnected contours
-  and straight seam cuts despite sharing an ID. Correct stitching and add
-  topology regressions with smoothed fragments before accepting this workflow.
-  Per-tile outputs and the public slide stay outside Git; retain them until the
-  example is accepted, then retire redundant run artifacts.
+- [x] Execute WSI inference on TCGA-AC-A6IW with the PanopTILs checkpoint:
+  804 overlapping tiles and 175,548 reconciled nuclei on DGX CUDA. Nearest-centre
+  ownership discards internal edge context; shared-area matching retains original
+  contours. Topology, source attribution and empty-tile regressions pass. All output
+  contours/classes match source predictions; twelve saved seam regions have no
+  disconnected multipart nuclei or source-edge cuts. Full-slide geometry, ID and
+  coordinate checks pass. Keep the slide, tile files and superseded runs outside
+  Git until visual acceptance, then retire redundant abutting/interrupted runs.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
   reference. Keep the current normalization helper; issue 78's replacement/license
   proposal does not justify a silent preprocessing or dependency change.

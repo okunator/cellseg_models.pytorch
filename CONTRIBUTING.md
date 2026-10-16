@@ -95,7 +95,9 @@ independent use of public pretrained checkpoints on an appropriate input.
 The WSI notebook uses the same training checkpoint on held-out TCGA-AC-A6IW.
 Its OpenSlide dependencies live in the docs group. Offline tests substitute the
 reader and model, but run the real tiled writer and instance merger; execute the
-full-slide workflow on the DGX and inspect seam overlays separately.
+full-slide workflow on the DGX and inspect all twelve seam regions separately.
+Overlap regressions check source-tile identity, connected contours from complete
+predictions, and preservation of separate nuclei and prediction attributes.
 The separate checkpoint baseline tests retain their original 256-pixel inputs and
 numerical references; do not replace them with tutorial predictions.
 Run the data-preparation notebook once and reuse its patient-separated PanopTILs

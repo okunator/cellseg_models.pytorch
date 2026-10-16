@@ -11,8 +11,11 @@ import pytest
 import torch
 from safetensors.torch import save_file
 
-from cellseg_models_pytorch.inference.tests.test_wsi_segmenter import pipeline as pipeline
+from cellseg_models_pytorch.inference.tests.test_wsi_segmenter import (
+    pipeline as pipeline,
+)
 from cellseg_models_pytorch.wsi import SlideReader
+from cellseg_models_pytorch.wsi.tiles import get_region_from_array
 
 
 @pytest.fixture
@@ -52,7 +55,12 @@ def tutorial(tmp_path, monkeypatch, pipeline):
     )
     reader.dimensions = (32, 32)
     reader.level_from_max_dimension = lambda size: 0
-    reader.read_level = lambda level: np.tile(image, (2, 2, 1))
+    canvas = np.zeros((32, 32, 3), dtype=np.uint8)
+    for y in (4, 16):
+        for x in (4, 16):
+            canvas[y : y + 8, x : x + 8] = 255
+    reader.read_level = lambda level: canvas
+    reader.read_region = lambda bounds, level: get_region_from_array(canvas, bounds)
     reader.get_tissue_mask = lambda **kwargs: (128, np.ones((32, 32), dtype=np.uint8))
     reader.get_tile_coordinates = lambda **kwargs: SlideReader.get_tile_coordinates(
         reader, **kwargs
@@ -83,17 +91,18 @@ def test_wsi_notebook_writes_all_tiles_and_preserves_their_nuclei(tutorial):
         exec(source, ns)
     assert ns["slide_path"].read_bytes() == b"slide fixture"
     download.assert_called_once_with(ns["slide_url"], stream=True, timeout=120)
-    assert len(ns["coordinates"]) == 4
+    assert len(ns["coordinates"]) == 9
     assert len(list((ns["output_dir"] / "tiles").glob("*.parquet"))) == 4
     assert len(ns["nuclei"]) == 4
+    assert len(ns["seam_centres"]) == 12
     assert ns["nuclei"].uid.is_unique
     assert ns["nuclei"].geometry.is_valid.all()
     assert ns["nuclei"].crs is None
     assert ns["counts"]["Nuclei"].to_list() == [0, 4, 0, 0, 0, 0, 0]
-    # Smoothing changes centroids, but neighboring tiles must remain 16 pixels apart.
+    # Smoothing changes centroids, but the four complete nuclei must remain 12 pixels apart.
     for values in (ns["nuclei"].geometry.centroid.x, ns["nuclei"].geometry.centroid.y):
         centers = np.sort(values.to_numpy())
-        np.testing.assert_allclose(centers[2:] - centers[:2], 16, rtol=0, atol=1e-12)
+        np.testing.assert_allclose(centers[2:] - centers[:2], 12, rtol=0, atol=1e-12)
     _, axis = plt.subplots()
     ns["plot_region"](axis, (0, 0, 16, 16), "Fixture crop")
     assert len(axis.collections[0].get_segments()) == 1
