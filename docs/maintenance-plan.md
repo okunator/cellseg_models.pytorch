@@ -119,17 +119,15 @@ loss reduction as segmentation accuracy or a useful trained model.
   checkpoints stay outside Git. Preserve historical-objective checkpoints until
   the maintainer accepts the corrected examples.
 - [ ] Document the HDF5 alternative without duplicating the training loop.
-- [x] Execute WSI inference on held-out TCGA-AC-A6IW with the PanopTILs checkpoint:
-  804 overlapping tiles and 185,854 reconciled nuclei on DGX CUDA. Resolve nested
-  and one-versus-many alternatives as coherent source-tile observations in vector
-  space, preserving distinct overlapping contours without intersection objects.
-  All forty previously lost candidate groups remain represented in the same twelve
-  fields, with no multipart outputs; contained pairs fall from 21 to zero. Source
-  provenance, geometry, IDs and slide bounds pass. A fresh full GPU notebook run
-  exactly reproduces all cached tile files and final contours/classes, with four
-  saved figures. Median core merging is 13.86 s
-  versus 13.63 s on identical input (one warmup, five repeats), with 67 MiB more
-  process RSS. These checks establish consistency and preservation, not accuracy.
+- [x] Validate WSI inference on held-out TCGA-AC-A6IW with the PanopTILs checkpoint:
+  804 overlapping tiles and 184,954 reconciled nuclei on DGX CUDA. Preserve whole
+  source contours/classes and unmatched detections; all forty recovered groups
+  survive. The same twelve fields have no contained duplicate pairs or multipart
+  outputs. A fresh GPU notebook reproduces all cached tile files byte-for-byte
+  and all audited final contours, attributes and IDs exactly, with four saved
+  figures. Median core merging is 18.64 s versus 13.85 s (one warmup, five repeats),
+  with 42 MiB more peak process memory. These checks establish consistency and
+  preservation, not biological accuracy.
 - [ ] Visually accept the twelve updated seam regions. Keep the slide, tile
   predictions and prior runs outside Git until acceptance, then retire redundant
   runs, the temporary comparison gallery and benchmark/diagnostic artifacts.
@@ -151,25 +149,12 @@ loss reduction as segmentation accuracy or a useful trained model.
 
 ### WSI reconciliation and deferred scoring
 
-Implemented: local vector conflict groups compare complete source-tile observations.
-Complete contours compete at IoU >= 0.5 or >=80% coverage of the smaller contour;
-smaller border-cut observations retain the >=50% coverage rule. Complete observations
-can replace a larger partial alternative collectively when each has >=80% smaller
-coverage and their union area reaches half its area. Prefer complete views, keep
-those with >=80% of the largest eligible union area, then use minimum
-tile-edge clearance; if all views are cut, prefer area. Union area avoids rewarding
-object count. Suppress direct competitors only, preserving unmatched detections,
-separate nuclei from a chosen view and original contours/classes. Distinct output
-polygons may overlap; shared regions never become new objects. Abutting fragments
-still require physical contact. No raster merging, clipping, buffering or gap fill.
-
-Regressions cover nested alternatives, one-versus-many choices in either direction,
-partial/complete priority, row-order changes, direct versus transitive conflicts,
-source attributes, and two/three overlapping nuclei without intersection objects,
-including simplification and rounding. Revisit the same twelve fields and trace all
-forty recovered groups. Benchmark the same 804 cached tiles separately from GPU
-inference and report export time and process memory. Complete WSI ground truth is
-unavailable; geometry and context do not guarantee the correct biological split.
+Whole-tile reconciliation and regressions are implemented. Review the same twelve
+fields and five screenshot close-ups before acceptance. They cover differing
+partitions, four-view duplicates, unmatched neighbors and incomplete views.
+Contracts and thresholds live in `InstMerger` and its tests; validation is recorded
+above and in PR 113. Small source detections remain unfiltered; any additional
+rejection rule needs labelled validation, including valid small and irregular nuclei.
 
 Defer probability export and model/supervision changes: the small score probe did
 not establish that mean foreground confidence distinguishes fragments, merged pairs
