@@ -8,6 +8,7 @@ from shapely import (
     STRtree,
     area,
     boundary,
+    bounds,
     distance,
     disjoint_subset_union_all,
     from_wkt,
@@ -107,6 +108,9 @@ class InstMerger:
         Retain the selected original contours and attributes, and unmatched
         detections from other tiles. Distinct nuclei may overlap;
         intersections are not objects.
+        View ranking treats clearance differences within eight floating-point
+        coordinate spacings as ties, scaling that margin by perimeter for area ties.
+        Remaining ties use source-row order. Overlap thresholds stay unchanged.
 
         Abutting joins are handled separately per tile pair and require actual
         boundary contact, including in grids that also contain overlapping tiles.
@@ -139,22 +143,41 @@ class InstMerger:
         geometries = self.gdf.geometry.to_numpy()
         tiles = self.grid.geometry.to_numpy()
         areas = area(geometries)
+        # Use input-coordinate roundoff only to resolve view-ranking ties.
+        coordinate_tolerance = (
+            8 * np.spacing(np.abs(self.grid.total_bounds).max()) if len(tiles) else 0.0
+        )
         context = np.zeros(len(geometries))
         cut = np.zeros(len(geometries), dtype=bool)
         known = np.flatnonzero(self.owners >= 0)
-        context[known] = distance(
-            geometries[known], boundary(tiles)[self.owners[known]]
-        )
+
+        # Reuse one spatial index per tile instead of rebuilding it for each seam.
+        ordered = known[np.argsort(self.owners[known], kind="stable")]
+        counts = np.bincount(self.owners[known], minlength=len(tiles))
+        tile_rows = np.split(ordered, np.cumsum(counts)[:-1]) if len(tiles) else []
+        # Inside a rectangular tile, the nearest edge is given by the extrema.
+        for rows, tile, (minx, miny, maxx, maxy) in zip(
+            tile_rows, tiles, bounds(tiles)
+        ):
+            edges = bounds(geometries[rows])
+            clearance = np.minimum.reduce(
+                (
+                    edges[:, 0] - minx,
+                    edges[:, 1] - miny,
+                    maxx - edges[:, 2],
+                    maxy - edges[:, 3],
+                )
+            )
+            outside = clearance < 0
+            if outside.any():
+                clearance[outside] = distance(geometries[rows[outside]], boundary(tile))
+            context[rows] = clearance
         if "is_partial" in self.gdf:
             cut = self.gdf["is_partial"].to_numpy(dtype=bool)
         else:
             # Older exports lack pre-smoothing border flags; retain uncertain contours.
             cut[known] = context[known] < 1
 
-        # Reuse one spatial index per tile instead of rebuilding it for each seam.
-        ordered = known[np.argsort(self.owners[known], kind="stable")]
-        counts = np.bincount(self.owners[known], minlength=len(tiles))
-        tile_rows = np.split(ordered, np.cumsum(counts)[:-1]) if len(tiles) else []
         trees = [STRtree(geometries[rows]) for rows in tile_rows]
         conflicts = nx.Graph()
         abutting = []
@@ -308,18 +331,29 @@ class InstMerger:
                     tile for tile in eligible if footprint_areas[tile] >= 0.8 * largest
                 ]
 
-                def view_rank(tile):
-                    rows = whole_views[tile]
-                    complete = not cut[rows].any()
-                    clearance = context[rows].min()
-                    return (
-                        complete,
-                        clearance if complete else footprint_areas[tile],
-                        footprint_areas[tile] if complete else clearance,
-                        -rows[0],
-                    )
-
-                selected_tile = max(supported, key=view_rank)
+                priorities = (
+                    ("clearance", "area") if complete_views else ("area", "clearance")
+                )
+                for priority in priorities:
+                    if len(supported) == 1:
+                        break
+                    if priority == "clearance":
+                        values = {
+                            tile: context[whole_views[tile]].min() for tile in supported
+                        }
+                        tolerance = coordinate_tolerance
+                    else:
+                        values = footprint_areas
+                        # Area roundoff scales with the contour perimeter.
+                        tolerance = coordinate_tolerance * max(
+                            footprints[tile].length for tile in supported
+                        )
+                    best = max(values[tile] for tile in supported)
+                    supported = [
+                        tile for tile in supported if best - values[tile] <= tolerance
+                    ]
+                # Discarded fragments must not decide which retained source row wins.
+                selected_tile = min(supported, key=lambda tile: whole_views[tile][0])
                 selected = set(whole_views[selected_tile])
                 rejected = {
                     other

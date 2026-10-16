@@ -1,5 +1,6 @@
 import geopandas as gpd
 import pytest
+from shapely import distance
 from shapely.geometry import box
 from shapely.ops import unary_union
 
@@ -16,6 +17,11 @@ def union_backend(request, monkeypatch):
             raise NotImplementedError("Disjoint-subset union requires GEOS 3.12")
 
         monkeypatch.setattr(inst_merger, "disjoint_subset_union_all", unsupported_union)
+
+
+@pytest.fixture(params=[(0, 0), (60928, 0), (0, 60928), (-1_000_000, 1_000_000)])
+def coordinate_offset(request):
+    return request.param
 
 
 @pytest.mark.parametrize(
@@ -679,3 +685,114 @@ def test_complete_tiny_detection_does_not_replace_a_larger_partial_contour():
     ).merge(simplify_level=0)
     assert len(actual) == 2
     assert actual.geometry.iloc[0].equals(source.geometry.iloc[0])
+
+
+@pytest.mark.parametrize("clearance_advantage", [0, 1e-4])
+def test_coordinate_roundoff_cannot_override_view_area(
+    coordinate_offset, union_backend, clearance_advantage
+):
+    dx, dy = coordinate_offset
+    source = gpd.GeoDataFrame(
+        {"class_name": [0, 1, 2], "is_partial": [False] * 3},
+        geometry=[
+            box(20880, 7055, 20921.775186911873 - clearance_advantage, 7090),
+            box(20880, 7055, 20917, 7075),
+            box(20880, 7075, 20917, 7097.775186911869),
+        ],
+    )
+    source.geometry = source.geometry.translate(xoff=dx, yoff=dy)
+    coordinates = [
+        (19968 + dx, 6912 + dy, 1024, 1024),
+        (20736 + dx, 6144 + dy, 1024, 1024),
+    ]
+    actual = InstMerger(source, coordinates, tile_indices=[0, 1, 1]).merge(
+        simplify_level=0
+    )
+    # Roundoff ties use area; a real clearance advantage still takes priority.
+    expected = source.iloc[[0] if clearance_advantage else [1, 2]]
+    assert actual.class_name.tolist() == expected.class_name.tolist()
+    assert actual.geometry.to_wkb().tolist() == expected.geometry.to_wkb().tolist()
+    assert actual.uid.tolist() == list(range(len(expected)))
+
+
+@pytest.mark.parametrize("area_advantage", [0, 1e-4])
+@pytest.mark.parametrize("partial", [False, True])
+def test_coordinate_roundoff_cannot_break_equal_area_ties(
+    coordinate_offset, union_backend, area_advantage, partial
+):
+    dx, dy = coordinate_offset
+    source = gpd.GeoDataFrame(
+        {"class_name": [0, 1], "is_partial": [partial] * 2},
+        geometry=[
+            box(20880, 7060, 20921.775186911873, 7090),
+            box(20880, 7056, 20910 + area_advantage, 7097.775186911869),
+        ],
+    )
+    source.geometry = source.geometry.translate(xoff=dx, yoff=dy)
+    coordinates = [
+        (19968 + dx, 6912 + dy, 1024, 1024),
+        (20736 + dx, 6144 + dy, 1024, 1024),
+    ]
+    actual = InstMerger(source, coordinates, tile_indices=[0, 1]).merge(
+        simplify_level=0
+    )
+    # Equal areas retain source-row order; distinguishable areas keep their rank.
+    expected = source.iloc[[1] if area_advantage else [0]]
+    assert actual.class_name.tolist() == expected.class_name.tolist()
+    assert actual.geometry.to_wkb().tolist() == expected.geometry.to_wkb().tolist()
+    assert actual.uid.tolist() == [0]
+
+
+@pytest.mark.parametrize(
+    "geometry",
+    [
+        box(50, 35, 95, 45),
+        box(95, 40, 105, 50),
+        # Disconnected pieces can straddle an edge without touching it.
+        box(10, 40, 20, 50).union(box(60, 40, 70, 50)),
+        box(50, 30, 80, 60).difference(box(55, 35, 75, 55)),
+    ],
+)
+def test_view_clearance_matches_geos_for_inside_and_outside_contours(
+    geometry, coordinate_offset
+):
+    dx, dy = coordinate_offset
+    source = gpd.GeoDataFrame(
+        {"class_name": [0, 1], "is_partial": [False, False]}, geometry=[geometry] * 2
+    )
+    source.geometry = source.geometry.translate(xoff=dx, yoff=dy)
+    coordinates = [(dx, dy, 100, 100), (40 + dx, 20 + dy, 100, 100)]
+    tile_edges = [box(x, y, x + w, y + h).boundary for x, y, w, h in coordinates]
+    expected_row = distance(source.geometry.iloc[0], tile_edges).argmax()
+    actual = InstMerger(source, coordinates, tile_indices=[0, 1]).merge(
+        simplify_level=0
+    )
+    assert actual.class_name.tolist() == [expected_row]
+    assert (
+        actual.geometry.to_wkb().tolist()
+        == source.geometry.iloc[[expected_row]].to_wkb().tolist()
+    )
+
+
+def test_view_ties_use_retained_rows_after_excluding_fragments():
+    source = gpd.GeoDataFrame(
+        {"class_name": list(range(6)), "is_partial": [False] * 6},
+        geometry=[
+            box(105, 40, 115, 50),
+            box(125, 20, 145, 40),
+            box(125, 20, 145, 40),
+            box(70, 20, 91, 60),
+            box(85, 30, 129, 50),
+            box(70, 20, 80, 30),
+        ],
+    )
+    actual = InstMerger(
+        source,
+        [(0, 0, 180, 100), (60, 0, 180, 100)],
+        tile_indices=[0, 1, 0, 0, 1, 1],
+    ).merge(simplify_level=0)
+    assert actual.class_name.tolist() == [1, 3, 4]
+    assert (
+        actual.geometry.to_wkb().tolist()
+        == source.geometry.iloc[[1, 3, 4]].to_wkb().tolist()
+    )

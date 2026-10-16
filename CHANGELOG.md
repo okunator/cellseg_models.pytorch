@@ -17,6 +17,8 @@
   unmatched nuclei do not decide which tile supplies a disputed group.
   Skip redundant coverage calculations and use faster temporary polygon unions
   where supported by GEOS, preserving the selected contours and attributes.
+  Resolve view-clearance and area ties at coordinate precision so roundoff from
+  slide-coordinate translations cannot override the next selection preference.
   Keep distinct overlapping nuclei without creating intersection objects or
   filling gaps between fragments.
   Abutting fragments must actually touch to join. Preserve first/last tile nuclei,
