@@ -125,12 +125,18 @@ loss reduction as segmentation accuracy or a useful trained model.
   survive. The same twelve fields have no contained duplicate pairs or multipart
   outputs. A fresh GPU notebook reproduces all cached tile files byte-for-byte
   and all audited final contours, attributes and IDs exactly, with four saved
-  figures. CPU optimization preserves every output contour, attribute and ID with
-  native and compatibility union paths. On DGX Spark, median core merging falls
-  from 18.28 s to 17.22 s (5.8%; one warmup, five repeats, one OMP/BLAS thread,
-  float64 geometry, 0.1-pixel simplification, no I/O). Peak process RSS stays at
-  about 1,415 MiB. These checks establish consistency and preservation,
-  not biological accuracy.
+  figures. Precision-aware view ranking keeps identical source identities,
+  attributes and IDs across six full-slide placements up to +/-1 million pixels;
+  native and compatibility unions agree. Synthetic regressions catch clearance
+  and area roundoff, preserve meaningful subpixel differences and retained-row
+  tie ordering, and compare edge clearance against GEOS. On DGX Spark, median
+  core merging falls from 17.21 s to 16.68 s (3.1%; one warmup, five repeats,
+  one OMP/BLAS thread, float64 geometry, 0.1-pixel simplification, no I/O), with
+  peak process RSS remaining about 1.38 GiB. The 3,216-tile load/merge/export
+  check produces 739,816 instances at about 6.33 GiB before and after the fix.
+  Merge memory still grows with all source polygons; these CPU measurements
+  exclude the model and CUDA allocations. These checks establish consistency
+  and preservation, not biological accuracy.
 - [x] Visually review the twelve updated seam regions and screenshot close-ups;
   the maintainer found the whole-tile reconciliation results acceptable.
 - [ ] After PR 113 is merged, retire redundant runs, the temporary comparison
