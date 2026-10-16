@@ -168,15 +168,23 @@ def test_overlap_keeps_a_complete_contour_instead_of_disconnected_fragments(axis
     assert any(actual.geometry.iloc[0].equals(fragment) for fragment in fragments)
 
 
-def test_overlap_matching_cannot_fuse_two_nuclei_from_the_same_tile():
+@pytest.mark.parametrize("better_view", [0, 1])
+def test_one_versus_many_uses_a_coherent_view_without_combining_alternatives(
+    better_view,
+):
     source = gpd.GeoDataFrame(
-        {"class_name": [1, 2, 3]},
+        {"class_name": [1, 2, 3], "is_partial": [False] * 3},
         geometry=[box(70, 20, 90, 35), box(70, 35, 90, 50), box(70, 20, 90, 50)],
     )
-    actual = InstMerger(
-        source, [(0, 0, 100, 100), (60, 0, 100, 100)], tile_indices=[0, 0, 1]
-    ).merge(simplify_level=0)
-    assert len(actual) == 2
+    coordinates = [(0, 0, 120, 100), (60, 0, 100, 100)]
+    if better_view == 1:
+        coordinates.reverse()
+    actual = InstMerger(source, coordinates, tile_indices=[0, 0, 1]).merge(
+        simplify_level=0
+    )
+    expected = source.iloc[:2] if better_view == 0 else source.iloc[2:]
+    assert actual.class_name.tolist() == expected.class_name.tolist()
+    assert all(a.equals(b) for a, b in zip(actual.geometry, expected.geometry))
     assert actual.uid.is_unique
 
 
@@ -270,12 +278,141 @@ def test_tiny_interior_prediction_cannot_replace_a_complete_nucleus():
     actual = InstMerger(
         source, [(0, 0, 100, 100), (60, 0, 100, 100)], tile_indices=[0, 1]
     ).merge(simplify_level=0)
-    # Low mutual overlap does not establish that these complete detections are duplicates.
-    assert len(actual) == 2
+    assert len(actual) == 1
     complete = actual.loc[actual.class_name == 3].iloc[0]
     assert complete.geometry.equals(source.geometry.iloc[0])
     assert complete.geometry.area == 1520
     assert complete.score == 0.9
+
+
+@pytest.mark.parametrize("count", [2, 3])
+@pytest.mark.parametrize("same_tile", [False, True])
+@pytest.mark.parametrize("simplify,precision", [(0, None), (0.1, 1)])
+def test_distinct_overlapping_nuclei_keep_original_contours_without_intersection_objects(
+    count, same_tile, simplify, precision
+):
+    geometries = [
+        box(65 + 7 * i, 20 + 7 * i, 85 + 7 * i, 40 + 7 * i) for i in range(count)
+    ]
+    source = gpd.GeoDataFrame(
+        {"class_name": list(range(1, count + 1)), "source_id": list(range(count))},
+        geometry=geometries,
+    )
+    actual = InstMerger(
+        source,
+        [(0, 0, 120, 100)] * count,
+        tile_indices=[0] * count if same_tile else list(range(count)),
+    ).merge(simplify_level=simplify, precision=precision)
+    assert len(actual) == count
+    assert actual.source_id.tolist() == list(range(count))
+    assert all(a.equals(b) for a, b in zip(actual.geometry, geometries))
+    assert actual.uid.is_unique and actual.is_valid.all()
+    assert actual.geometry.iloc[0].intersection(actual.geometry.iloc[1]).area > 0
+
+
+@pytest.mark.parametrize("order", [[0, 1, 2, 3], [3, 2, 0, 1], [1, 0, 3, 2]])
+def test_split_alternatives_below_half_iou_are_selected_independently_of_row_order(
+    order,
+):
+    geometries = [
+        box(70, 20, 90, 50),
+        box(68, 20, 91, 34),
+        box(68, 36, 91, 50),
+        box(100, 65, 105, 70),
+    ]
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 2, 3, 4], "is_partial": [False] * 4}, geometry=geometries
+    ).iloc[order]
+    owners = [0, 1, 1, 0]
+    actual = InstMerger(
+        source,
+        [(0, 0, 110, 100), (40, 0, 110, 100)],
+        tile_indices=[owners[i] for i in order],
+    ).merge(simplify_level=0)
+    assert set(actual.class_name) == {2, 3, 4}
+    for label in (2, 3, 4):
+        assert (
+            actual.loc[actual.class_name == label]
+            .geometry.iloc[0]
+            .equals(geometries[label - 1])
+        )
+
+
+def test_an_existing_intersection_prediction_is_redundant_to_two_complete_nuclei():
+    first, second = box(70, 20, 90, 45), box(80, 20, 100, 45)
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 2, 3], "source_id": [10, 20, 30]},
+        geometry=[first, second, first.intersection(second)],
+    )
+    actual = InstMerger(
+        source, [(0, 0, 120, 100), (60, 0, 120, 100)], tile_indices=[0, 0, 1]
+    ).merge(simplify_level=0)
+    assert actual.source_id.tolist() == [10, 20]
+    assert actual.geometry.iloc[0].equals(first)
+    assert actual.geometry.iloc[1].equals(second)
+    assert actual.geometry.iloc[0].intersection(actual.geometry.iloc[1]).area == 250
+
+
+def test_conflict_selection_does_not_discard_a_transitively_connected_nucleus():
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 2, 3], "is_partial": [False] * 3},
+        geometry=[box(70, 30, 90, 50), box(75, 30, 95, 50), box(80, 30, 100, 50)],
+    )
+    actual = InstMerger(
+        source,
+        [(-10, 0, 130, 100), (70, 0, 100, 100), (75, 0, 100, 100)],
+        tile_indices=[0, 1, 2],
+    ).merge(simplify_level=0)
+    assert actual.class_name.tolist() == [1, 3]
+    assert actual.geometry.iloc[0].equals(source.geometry.iloc[0])
+    assert actual.geometry.iloc[1].equals(source.geometry.iloc[2])
+
+
+def test_containment_within_one_source_tile_does_not_remove_an_instance():
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 2]}, geometry=[box(70, 20, 90, 45), box(75, 25, 80, 30)]
+    )
+    actual = InstMerger(
+        source, [(0, 0, 120, 100), (60, 0, 120, 100)], tile_indices=[0, 0]
+    ).merge(simplify_level=0)
+    assert len(actual) == 2
+    assert all(a.equals(b) for a, b in zip(actual.geometry, source.geometry))
+
+
+def test_complete_view_is_not_excluded_by_a_larger_partial_alternative():
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 2], "is_partial": [True, False]},
+        geometry=[box(70, 20, 100, 50), box(70, 20, 90, 50)],
+    )
+    actual = InstMerger(
+        source, [(0, 0, 100, 100), (60, 0, 100, 100)], tile_indices=[0, 1]
+    ).merge(simplify_level=0)
+    assert actual.class_name.tolist() == [2]
+    assert actual.geometry.iloc[0].equals(source.geometry.iloc[1])
+
+
+def test_complete_nuclei_collectively_replace_a_large_partial_alternative():
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 2, 3], "is_partial": [True, False, False]},
+        geometry=[box(70, 20, 100, 50), box(70, 20, 90, 34), box(70, 36, 90, 50)],
+    )
+    actual = InstMerger(
+        source, [(0, 0, 100, 100), (60, 0, 100, 100)], tile_indices=[0, 1, 1]
+    ).merge(simplify_level=0)
+    assert actual.class_name.tolist() == [2, 3]
+    assert all(a.equals(b) for a, b in zip(actual.geometry, source.geometry.iloc[1:]))
+
+
+def test_complete_alternative_can_replace_a_partial_contour_below_half_iou():
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 2], "is_partial": [True, False]},
+        geometry=[box(70, 20, 100, 50), box(67, 20, 85, 50)],
+    )
+    actual = InstMerger(
+        source, [(0, 0, 100, 100), (60, 0, 100, 100)], tile_indices=[0, 1]
+    ).merge(simplify_level=0)
+    assert actual.class_name.tolist() == [2]
+    assert actual.geometry.iloc[0].equals(source.geometry.iloc[1])
 
 
 def test_rounding_may_mix_overlapping_and_abutting_tiles():

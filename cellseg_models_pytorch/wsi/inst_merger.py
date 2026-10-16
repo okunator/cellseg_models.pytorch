@@ -85,15 +85,21 @@ class InstMerger:
     ) -> gpd.GeoDataFrame | None:
         """Match duplicate predictions and join physically touching tile fragments.
 
-        Complete predictions match at intersection-over-union >= 0.5. An
-        is_partial flag from vectorization identifies contours clipped by the
+        Complete predictions compete at intersection-over-union >= 0.5 or
+        coverage >= 0.8 of the smaller contour. An is_partial flag from
+        vectorization identifies contours clipped by the
         input image border before smoothing; these may instead match at half the
         smaller polygon's area when the smaller contour is partial. Older
         exports use tile-edge distance < 1 pixel as a fallback. Unmatched
-        predictions survive.
-        Duplicate groups contain at most one prediction per source tile. Prefer
-        complete contours, then tile-edge clearance; if all are cut, prefer area.
-        The selected original contour and its attributes are retained.
+        predictions survive. Complete observations with >=80% smaller-contour
+        coverage can also replace a larger partial alternative if their combined
+        union area is at least half its area. A lone tiny detection cannot do so.
+        Choose coherent observations from one source tile
+        within each local conflict, preserving its separate nuclei. Prefer complete
+        views, retaining those with at least 80% of their largest union area, then
+        tile-edge clearance; if all views are cut, prefer area.
+        Suppress only direct competitors, retaining the selected original contours
+        and attributes. Distinct nuclei may overlap; intersections are not objects.
 
         Abutting joins are handled separately per tile pair and require actual
         boundary contact, including in grids that also contain overlapping tiles.
@@ -139,7 +145,7 @@ class InstMerger:
         counts = np.bincount(self.owners[known], minlength=len(tiles))
         tile_rows = np.split(ordered, np.cumsum(counts)[:-1]) if len(tiles) else []
         trees = [STRtree(geometries[rows]) for rows in tile_rows]
-        candidates = []
+        conflicts = nx.Graph()
         abutting = []
         for left, right, shared in self.seams:
             if shared.area == 0 and shared.length == 0:
@@ -165,23 +171,100 @@ class InstMerger:
                 coverage = np.divide(
                     shared_areas, smaller, out=np.zeros(len(a)), where=smaller > 0
                 )
-                # Containment alone cannot identify two complete contours as one nucleus.
+                # Strong coverage also links nested and one-versus-many alternatives.
                 partial_smaller = (cut[a] & (areas[a] <= areas[b])) | (
                     cut[b] & (areas[b] <= areas[a])
                 )
-                matches = (ious >= 0.5) | (partial_smaller & (coverage >= 0.5))
-                candidates.extend(
-                    (float(iou), float(score), int(i), int(j))
-                    for iou, score, i, j in zip(
-                        ious[matches], coverage[matches], a[matches], b[matches]
-                    )
+                matches = (
+                    (ious >= 0.5)
+                    | (~cut[a] & ~cut[b] & (coverage >= 0.8))
+                    | (partial_smaller & (coverage >= 0.5))
+                )
+                alternatives = np.flatnonzero(
+                    (coverage >= 0.8) & (cut[a] != cut[b]) & ~partial_smaller
+                )
+                partial_ids = np.where(
+                    cut[a[alternatives]], a[alternatives], b[alternatives]
+                )
+                complete_ids = np.where(
+                    cut[a[alternatives]], b[alternatives], a[alternatives]
+                )
+                for index in np.unique(partial_ids):
+                    positions = partial_ids == index
+                    if matches[alternatives[positions]].all():
+                        continue
+                    # Several complete nuclei can explain one border-cut alternative.
+                    observed = union_all(geometries[complete_ids[positions]])
+                    if observed.area >= 0.5 * areas[index]:
+                        matches[alternatives[positions]] = True
+                conflicts.add_weighted_edges_from(
+                    (int(i), int(j), float(iou))
+                    for iou, i, j in zip(ious[matches], a[matches], b[matches])
                 )
             else:
                 touching = length(common) > 0
                 abutting.extend(zip(a[touching].tolist(), b[touching].tolist()))
 
-        groups = nx.utils.UnionFind()
+        representatives = np.arange(len(geometries))
         source_tiles = {}
+        for component in nx.connected_components(conflicts):
+            remaining = set(component)
+            while remaining:
+                views = {}
+                for index in sorted(remaining):
+                    views.setdefault(self.owners[index], []).append(index)
+                complete_views = {
+                    tile: rows for tile, rows in views.items() if not cut[rows].any()
+                }
+                eligible = complete_views or views
+                # Union area avoids rewarding duplicate or overlapping masks by count.
+                footprints = {
+                    tile: areas[rows[0]]
+                    if len(rows) == 1
+                    else union_all(geometries[rows]).area
+                    for tile, rows in eligible.items()
+                }
+                largest = max(footprints.values())
+                # An interior fragment cannot displace a view of the whole nucleus.
+                supported = [
+                    tile for tile in eligible if footprints[tile] >= 0.8 * largest
+                ]
+
+                def view_rank(tile):
+                    rows = views[tile]
+                    complete = not cut[rows].any()
+                    clearance = context[rows].min()
+                    return (
+                        complete,
+                        clearance if complete else footprints[tile],
+                        footprints[tile] if complete else clearance,
+                        -rows[0],
+                    )
+
+                selected = set(views[max(supported, key=view_rank)])
+                rejected = {
+                    other
+                    for index in selected
+                    for other in conflicts[index]
+                    if other in remaining and other not in selected
+                }
+                for index in rejected:
+                    winner = max(
+                        selected.intersection(conflicts[index]),
+                        key=lambda other: (
+                            conflicts[index][other]["weight"],
+                            areas[other],
+                            -other,
+                        ),
+                    )
+                    representatives[index] = winner
+                    source_tiles.setdefault(winner, {self.owners[winner]}).add(
+                        self.owners[index]
+                    )
+                # A neighbour of a rejected alternative is not necessarily a duplicate.
+                remaining.difference_update(selected | rejected)
+
+        groups = nx.utils.UnionFind()
 
         def join(left: int, right: int) -> bool:
             a, b = groups[left], groups[right]
@@ -196,25 +279,6 @@ class InstMerger:
             source_tiles[groups[left]] = tiles_a | tiles_b
             return True
 
-        for _, _, left, right in sorted(
-            candidates, key=lambda item: (-item[0], -item[1], item[2], item[3])
-        ):
-            join(left, right)
-
-        representatives = np.arange(len(geometries))
-        for component in groups.to_sets():
-            # Prefer complete observations; retain the most area when all views are cut.
-            best = max(
-                component,
-                key=lambda i: (
-                    not cut[i],
-                    context[i] if not cut[i] else areas[i],
-                    areas[i] if not cut[i] else context[i],
-                    -i,
-                ),
-            )
-            representatives[list(component)] = best
-
         graph = nx.Graph()
         for left, right in abutting:
             a, b = representatives[left], representatives[right]
@@ -222,7 +286,7 @@ class InstMerger:
             if (
                 a != b
                 and geometries[a].intersection(geometries[b]).length > 0
-                and join(left, right)
+                and join(int(a), int(b))
             ):
                 graph.add_edge(int(a), int(b))
 

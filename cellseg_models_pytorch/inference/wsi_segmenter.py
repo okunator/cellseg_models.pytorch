@@ -118,9 +118,11 @@ class WsiSegmenter:
     ) -> None:
         """Reconcile saved nucleus predictions using their source tiles.
 
-        Match duplicates in overlapping tile regions and retain one original
-        contour with its attributes. Prefer complete predictions; unmatched
-        detections survive. Border flags recorded before smoothing distinguish
+        Reconcile duplicate and one-versus-many predictions in overlapping tile
+        regions, keeping coherent source-tile observations and their attributes.
+        Distinct nuclei may overlap without creating intersection objects.
+        Prefer complete predictions; unmatched detections survive.
+        Border flags recorded before smoothing distinguish
         partial contours from complete nuclei. Abutting fragments must actually
         touch to join, including in grids that also have overlapping tiles.
         Use overlapping tiles to predict complete contours across tile edges.
