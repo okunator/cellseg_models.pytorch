@@ -166,7 +166,8 @@ four-view duplicates, unmatched neighbors and incomplete views.
 Contracts and thresholds live in `InstMerger` and its tests; validation is recorded
 above and in PR 113. Small source detections remain unfiltered by default.
 Optional polygon filtering runs after stitching with explicit pixel calibration;
-its enabled default is the middle area/thickness level. Regression tests cover
+`filter_level=0` (default) or `None` disables it; levels 1, 2 and 3 select
+conservative, middle and strong area/thickness limits. Regression tests cover
 thin stromal contours, physical limits, preserved metadata and joined fragments.
 
 The temporary fragment-filter comparison traces the reported strips to reconstructed

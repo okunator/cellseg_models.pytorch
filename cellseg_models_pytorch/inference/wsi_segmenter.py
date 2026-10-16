@@ -1,6 +1,5 @@
 from collections.abc import Callable
 from pathlib import Path
-from typing import Literal
 
 import geopandas as gpd
 import numpy as np
@@ -117,8 +116,7 @@ class WsiSegmenter:
         simplify_level: float = 0.3,
         precision: int | None = None,
         *,
-        filter_fragments: bool = False,
-        filter_level: Literal["conservative", "middle", "strong"] = "middle",
+        filter_level: int | None = 0,
         pixel_size: float | None = None,
     ) -> None:
         """Reconcile saved nucleus predictions using their source tiles.
@@ -145,12 +143,12 @@ class WsiSegmenter:
             precision:
                 The precision level to apply to the merged instances. If None, no rounding
                 is applied.
-            filter_fragments: Remove small, thin polygons after stitching.
-                Defaults to False. Retained contours and IDs stay unchanged.
-            filter_level: Strength when filtering is enabled. Defaults to middle:
-                area < 12 square micrometers AND thickness proxy
-                (2 * area / perimeter) < 1.2 micrometers. Other levels are
-                conservative (6, 0.8) and strong (20, 1.6). Small valid nuclei
+            filter_level: 0 or None disables filtering (default 0). Levels 1, 2
+                and 3 select conservative, middle and strong filtering after
+                stitching. Area/thickness limits are (6, 0.8), (12, 1.2) and
+                (20, 1.6), in square micrometers and micrometers. Both must be
+                below their limits; thickness is 2 * area / perimeter.
+                Retained contours and IDs stay unchanged. Small valid nuclei
                 can also be removed; inspect the filtered result.
             pixel_size: Positive finite isotropic micrometers per level-zero
                 coordinate pixel, required when filtering is enabled.
@@ -184,7 +182,6 @@ class WsiSegmenter:
             dst,
             simplify_level=simplify_level,
             precision=precision,
-            filter_fragments=filter_fragments,
             filter_level=filter_level,
             pixel_size=pixel_size,
         )

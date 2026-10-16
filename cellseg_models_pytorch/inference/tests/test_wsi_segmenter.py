@@ -215,19 +215,15 @@ def test_merge_rejects_files_without_a_known_source_tile(tmp_path, pipeline):
     "kwargs,expected_count",
     [
         ({}, 2),
-        ({"filter_fragments": True, "pixel_size": 0.35}, 0),
-        (
-            {
-                "filter_fragments": True,
-                "pixel_size": 0.35,
-                "filter_level": "conservative",
-            },
-            2,
-        ),
-        ({"filter_fragments": True, "pixel_size": 0.5}, 2),
+        ({"filter_level": 0}, 2),
+        ({"filter_level": None}, 2),
+        ({"filter_level": 1, "pixel_size": 0.35}, 2),
+        ({"filter_level": 2, "pixel_size": 0.35}, 0),
+        ({"filter_level": 3, "pixel_size": 0.35}, 0),
+        ({"filter_level": 2, "pixel_size": 0.5}, 2),
     ],
 )
-def test_wsi_optional_filter_defaults_to_middle_and_uses_pixel_size(
+def test_wsi_optional_integer_filter_levels_and_pixel_size(
     tmp_path, pipeline, kwargs, expected_count
 ):
     model, reader, _, _ = pipeline

@@ -1,6 +1,5 @@
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Literal
 
 import geopandas as gpd
 import networkx as nx
@@ -26,26 +25,28 @@ __all__ = ["InstMerger", "filter_nuclei"]
 
 def filter_nuclei(
     gdf: gpd.GeoDataFrame,
-    pixel_size: float,
-    level: Literal["conservative", "middle", "strong"] = "middle",
+    pixel_size: float | None = None,
+    filter_level: int | None = 0,
 ) -> gpd.GeoDataFrame:
     """Remove polygons that are both small and thin, without changing contours.
 
     Apply after stitching, using full nucleus polygons in pixel coordinates.
     Area is measured in square micrometers; the thickness proxy is
     2 * area / perimeter in micrometers, not a nucleus diameter. Both values
-    must be strictly below their limits to remove an object. Conservative,
-    middle and strong limits are (6, 0.8), (12, 1.2) and (20, 1.6), respectively.
+    must be strictly below their limits to remove an object. Levels 1, 2 and 3
+    use limits (6, 0.8), (12, 1.2) and (20, 1.6), respectively.
     Small valid nuclei, including border-clipped cells, can also be removed.
 
     Args:
         gdf: Valid nucleus polygons, with arbitrary class and metadata columns.
         pixel_size: Positive finite micrometers per coordinate pixel. Pixels
-            must have the same physical width and height.
-        level: Filter strength. Defaults to the middle limits.
+            must have the same physical width and height. Required when filtering.
+        filter_level: 0 or None disables filtering (default 0). Levels 1, 2 and 3
+            select conservative, middle and strong filtering, respectively.
 
     Returns:
-        A new GeoDataFrame containing retained rows in their original order.
+        The input unchanged when disabled, otherwise a new GeoDataFrame containing
+        retained rows in their original order.
         Geometry, index, instance IDs, attributes and CRS are preserved.
         The input is not modified; no rasterization or geometry buffering is used.
 
@@ -54,15 +55,23 @@ def filter_nuclei(
 
     Example:
         >>> nuclei = gpd.GeoDataFrame(geometry=[box(0, 0, 4, 80), box(10, 0, 14, 40)])
-        >>> len(filter_nuclei(nuclei, pixel_size=0.25))
+        >>> len(filter_nuclei(nuclei, pixel_size=0.25, filter_level=2))
         1
     """
-    limits = {"conservative": (6.0, 0.8), "middle": (12.0, 1.2), "strong": (20.0, 1.6)}
-    if level not in limits:
-        raise ValueError(f"Unknown filter level: {level!r}. Choose {tuple(limits)}")
-    if not np.isfinite(pixel_size) or pixel_size <= 0:
+    if filter_level is None:
+        return gdf
+    if (
+        not isinstance(filter_level, (int, np.integer))
+        or isinstance(filter_level, (bool, np.bool_))
+        or filter_level not in (0, 1, 2, 3)
+    ):
+        raise ValueError("filter level must be None or an integer from 0 to 3")
+    if filter_level == 0:
+        return gdf
+    if pixel_size is None or not np.isfinite(pixel_size) or pixel_size <= 0:
         raise ValueError("pixel_size must be positive finite micrometers per pixel")
-    maximum_area, maximum_thickness = limits[level]
+    limits = {1: (6.0, 0.8), 2: (12.0, 1.2), 3: (20.0, 1.6)}
+    maximum_area, maximum_thickness = limits[filter_level]
     geometries = gdf.geometry.to_numpy()
     physical_area = area(geometries) * pixel_size**2
     perimeter = length(geometries) * pixel_size
@@ -139,8 +148,7 @@ class InstMerger:
         simplify_level: float = 1,
         precision: int | None = None,
         *,
-        filter_fragments: bool = False,
-        filter_level: Literal["conservative", "middle", "strong"] = "middle",
+        filter_level: int | None = 0,
         pixel_size: float | None = None,
     ) -> gpd.GeoDataFrame | None:
         """Match duplicate predictions and join physically touching tile fragments.
@@ -177,12 +185,11 @@ class InstMerger:
             dst: New .parquet, .geojson or .feather file; None returns the result.
             simplify_level: Geometry simplification tolerance in pixels; zero disables it.
             precision: Optional number of decimal places for coordinate rounding.
-            filter_fragments: Apply the optional polygon size/thickness filter
-                after stitching, simplification and rounding. Defaults to False.
-                Retained contours and slide-wide IDs stay unchanged.
-            filter_level: Strength used when filtering is enabled; defaults to
-                middle (area < 12 square micrometers AND thickness < 1.2
-                micrometers). See filter_nuclei for other levels and limitations.
+            filter_level: 0 or None disables filtering (default 0). Levels 1, 2
+                and 3 select conservative, middle and strong area/thickness
+                filtering after stitching, simplification and rounding. Retained
+                contours and slide-wide IDs stay unchanged. See filter_nuclei
+                for physical limits and limitations.
             pixel_size: Isotropic micrometers per coordinate pixel, required
                 when filtering is enabled.
 
@@ -547,10 +554,7 @@ class InstMerger:
             )
         merged["uid"] = np.arange(len(merged))
         merged = merged.set_index("uid", drop=False)
-        if filter_fragments:
-            if pixel_size is None:
-                raise ValueError("pixel_size is required when filter_fragments=True")
-            merged = filter_nuclei(merged, pixel_size=pixel_size, level=filter_level)
+        merged = filter_nuclei(merged, pixel_size=pixel_size, filter_level=filter_level)
 
         if path is None:
             return merged

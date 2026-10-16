@@ -3,8 +3,9 @@
 ## Features
 
 - Add optional vector-only nucleus filtering after WSI stitching. Filtering is
-  disabled by default; enabling it uses the middle area/thickness limits unless
-  another level is selected and requires explicit physical pixel calibration.
+  disabled by default (`filter_level=0` or `None`); integer levels 1, 2 and 3
+  select conservative, middle and strong area/thickness limits. Enabling it
+  requires explicit physical pixel calibration.
   Retained contours, IDs and attributes are preserved.
 
 - Add CellPose and StarDist dense-network ONNX export (contributed by

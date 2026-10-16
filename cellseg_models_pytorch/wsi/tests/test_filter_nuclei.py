@@ -31,7 +31,7 @@ def test_middle_filter_preserves_thin_stromal_nuclei_and_small_thicker_nuclei(
     ).rename_geometry("contour")
     before = source.copy()
     # Rotation roundoff is irrelevant here; neither retained contour is near both limits.
-    actual = filter_nuclei(source, pixel_size=pixel_size)
+    actual = filter_nuclei(source, pixel_size=pixel_size, filter_level=2)
     expected = source.iloc[:2]
     assert_geodataframe_equal(actual, expected)
     assert actual.geometry.to_wkb().tolist() == expected.geometry.to_wkb().tolist()
@@ -39,17 +39,18 @@ def test_middle_filter_preserves_thin_stromal_nuclei_and_small_thicker_nuclei(
 
 
 @pytest.mark.parametrize(
-    "level,expected",
-    [("conservative", [10, 20, 30]), ("middle", [20, 30]), ("strong", [30])],
+    "filter_level,expected",
+    [(1, [10, 20, 30]), (2, [20, 30]), (3, [30]), (np.int64(2), [20, 30])],
 )
 def test_filter_levels_require_both_area_and_thickness_below_their_limits(
-    level, expected
+    filter_level, expected
 ):
     source = gpd.GeoDataFrame(
         {"uid": [10, 20, 30], "class_name": [2, 2, 2]},
         geometry=[box(0, 0, 1, 8), box(3, 0, 4, 14), box(6, 0, 9, 8)],
     )
-    assert filter_nuclei(source, pixel_size=1, level=level).uid.tolist() == expected
+    actual = filter_nuclei(source, pixel_size=1, filter_level=filter_level)
+    assert actual.uid.tolist() == expected
 
 
 @pytest.mark.parametrize(
@@ -63,21 +64,26 @@ def test_filter_levels_require_both_area_and_thickness_below_their_limits(
 )
 def test_middle_filter_uses_strict_physical_thresholds(geometry, keep):
     source = gpd.GeoDataFrame(geometry=[geometry])
-    actual = filter_nuclei(source, pixel_size=0.25)
+    actual = filter_nuclei(source, pixel_size=0.25, filter_level=2)
     assert len(actual) == int(keep)
     if keep:
         assert actual.geometry.iloc[0].wkb == geometry.wkb
 
 
-@pytest.mark.parametrize("pixel_size", [0, -0.25, np.nan, np.inf, -np.inf])
+@pytest.mark.parametrize("pixel_size", [None, 0, -0.25, np.nan, np.inf, -np.inf])
 def test_filter_rejects_invalid_calibration(pixel_size):
     with pytest.raises(ValueError, match="pixel_size"):
-        filter_nuclei(gpd.GeoDataFrame(geometry=[]), pixel_size=pixel_size)
+        filter_nuclei(
+            gpd.GeoDataFrame(geometry=[]), pixel_size=pixel_size, filter_level=2
+        )
 
 
-def test_filter_rejects_unknown_level():
+@pytest.mark.parametrize("filter_level", [-1, 4, 0.0, 2.0, True, False, "2", "middle"])
+def test_filter_rejects_unknown_or_noninteger_level(filter_level):
     with pytest.raises(ValueError, match="filter level"):
-        filter_nuclei(gpd.GeoDataFrame(geometry=[]), pixel_size=0.25, level="unknown")
+        filter_nuclei(
+            gpd.GeoDataFrame(geometry=[]), pixel_size=0.25, filter_level=filter_level
+        )
 
 
 def test_empty_filtered_result_preserves_schema_and_crs():
@@ -85,8 +91,10 @@ def test_empty_filtered_result_preserves_schema_and_crs():
         {"uid": [7], "class_name": [0]}, geometry=[box(0, 0, 1, 4)], crs="EPSG:3857"
     )
     empty = source.iloc[:0]
-    assert_geodataframe_equal(filter_nuclei(source, pixel_size=1), empty)
-    assert_geodataframe_equal(filter_nuclei(empty, pixel_size=1), empty)
+    assert_geodataframe_equal(
+        filter_nuclei(source, pixel_size=1, filter_level=2), empty
+    )
+    assert_geodataframe_equal(filter_nuclei(empty, pixel_size=1, filter_level=2), empty)
 
 
 @pytest.mark.parametrize("export", [False, True])
@@ -103,10 +111,10 @@ def test_merge_filters_after_joining_fragments_and_preserves_retained_ids(
     )
     unfiltered = merger.merge(simplify_level=0)
     assert len(unfiltered) == 2
-    assert filter_nuclei(source.iloc[1:], pixel_size=0.25).empty
+    assert filter_nuclei(source.iloc[1:], pixel_size=0.25, filter_level=2).empty
     destination = tmp_path / "nuclei.parquet" if export else None
     actual = merger.merge(
-        destination, simplify_level=0, filter_fragments=True, pixel_size=0.25
+        destination, simplify_level=0, filter_level=2, pixel_size=0.25
     )
     if export:
         assert actual is None
@@ -116,27 +124,43 @@ def test_merge_filters_after_joining_fragments_and_preserves_retained_ids(
     assert actual.geometry.iloc[0].equals(unary_union(geometries[1:]))
 
 
-def test_disabled_filter_does_no_filter_work(monkeypatch):
-    def unexpected_filter(*args, **kwargs):
+@pytest.mark.parametrize(
+    "kwargs",
+    [{}, {"filter_level": 0}, {"filter_level": None}, {"filter_level": np.int64(0)}],
+)
+def test_disabled_filter_returns_input_without_measuring_polygons(monkeypatch, kwargs):
+    def unexpected_measurement(*args, **kwargs):
         pytest.fail("A disabled filter must not measure or select polygons")
 
-    monkeypatch.setattr(inst_merger, "filter_nuclei", unexpected_filter)
+    monkeypatch.setattr(inst_merger, "area", unexpected_measurement)
+    monkeypatch.setattr(inst_merger, "length", unexpected_measurement)
     source = gpd.GeoDataFrame({"class_name": [2]}, geometry=[box(10, 10, 11, 14)])
-    actual = InstMerger(source, [(0, 0, 40, 40)]).merge(simplify_level=0)
+    assert filter_nuclei(source, **kwargs) is source
+
+
+@pytest.mark.parametrize("kwargs", [{}, {"filter_level": 0}, {"filter_level": None}])
+def test_disabled_merge_filter_keeps_small_thin_contours_without_calibration(kwargs):
+    source = gpd.GeoDataFrame({"class_name": [2]}, geometry=[box(10, 10, 11, 14)])
+    actual = InstMerger(source, [(0, 0, 40, 40)]).merge(simplify_level=0, **kwargs)
     assert actual.geometry.iloc[0].wkb == source.geometry.iloc[0].wkb
 
 
 @pytest.mark.parametrize(
-    "kwargs", [{}, {"pixel_size": 0}, {"pixel_size": 0.25, "filter_level": "unknown"}]
+    "kwargs",
+    [
+        {"filter_level": 2},
+        {"filter_level": 2, "pixel_size": 0},
+        {"filter_level": 4, "pixel_size": 0.25},
+        {"filter_level": 0.0},
+        {"filter_level": False},
+    ],
 )
 def test_invalid_enabled_filter_leaves_existing_data_untouched(tmp_path, kwargs):
     source = gpd.GeoDataFrame({"class_name": [2]}, geometry=[box(10, 10, 11, 14)])
     before = source.copy()
     destination = tmp_path / "nuclei.parquet"
     with pytest.raises(ValueError):
-        InstMerger(source, [(0, 0, 40, 40)]).merge(
-            destination, filter_fragments=True, **kwargs
-        )
+        InstMerger(source, [(0, 0, 40, 40)]).merge(destination, **kwargs)
     assert not destination.exists()
     assert_geodataframe_equal(source, before)
 
@@ -195,6 +219,6 @@ def test_observed_elongated_stromal_contour_is_retained_unchanged():
     source = gpd.GeoDataFrame(
         {"uid": [110], "class_name": [2]}, geometry=[geometry], index=[110]
     )
-    actual = filter_nuclei(source, pixel_size=0.25)
+    actual = filter_nuclei(source, pixel_size=0.25, filter_level=2)
     assert_geodataframe_equal(actual, source)
     assert actual.geometry.iloc[0].wkb == geometry.wkb
