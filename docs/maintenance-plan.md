@@ -125,12 +125,17 @@ loss reduction as segmentation accuracy or a useful trained model.
   survive. The same twelve fields have no contained duplicate pairs or multipart
   outputs. A fresh GPU notebook reproduces all cached tile files byte-for-byte
   and all audited final contours, attributes and IDs exactly, with four saved
-  figures. Median core merging is 18.64 s versus 13.85 s (one warmup, five repeats),
-  with 42 MiB more peak process memory. These checks establish consistency and
-  preservation, not biological accuracy.
-- [ ] Visually accept the twelve updated seam regions. Keep the slide, tile
-  predictions and prior runs outside Git until acceptance, then retire redundant
-  runs, the temporary comparison gallery and benchmark/diagnostic artifacts.
+  figures. CPU optimization preserves every output contour, attribute and ID with
+  native and compatibility union paths. On DGX Spark, median core merging falls
+  from 18.28 s to 17.22 s (5.8%; one warmup, five repeats, one OMP/BLAS thread,
+  float64 geometry, 0.1-pixel simplification, no I/O). Peak process RSS stays at
+  about 1,415 MiB. These checks establish consistency and preservation,
+  not biological accuracy.
+- [x] Visually review the twelve updated seam regions and screenshot close-ups;
+  the maintainer found the whole-tile reconciliation results acceptable.
+- [ ] After PR 113 is merged, retire redundant runs, the temporary comparison
+  gallery and benchmark/diagnostic artifacts. Keep the slide and cached tile
+  predictions outside Git until then.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
   reference. Keep the current normalization helper; issue 78's replacement/license
   proposal does not justify a silent preprocessing or dependency change.
@@ -149,9 +154,9 @@ loss reduction as segmentation accuracy or a useful trained model.
 
 ### WSI reconciliation and deferred scoring
 
-Whole-tile reconciliation and regressions are implemented. Review the same twelve
-fields and five screenshot close-ups before acceptance. They cover differing
-partitions, four-view duplicates, unmatched neighbors and incomplete views.
+Whole-tile reconciliation and regressions are implemented. The maintainer reviewed
+the same twelve fields and five screenshot close-ups, covering differing partitions,
+four-view duplicates, unmatched neighbors and incomplete views.
 Contracts and thresholds live in `InstMerger` and its tests; validation is recorded
 above and in PR 113. Small source detections remain unfiltered; any additional
 rejection rule needs labelled validation, including valid small and irregular nuclei.

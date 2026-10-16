@@ -9,7 +9,9 @@ from shapely import (
     area,
     boundary,
     distance,
+    disjoint_subset_union_all,
     from_wkt,
+    geos_version,
     intersection,
     length,
     to_wkt,
@@ -130,6 +132,10 @@ class InstMerger:
             if path.exists():
                 raise FileExistsError(path)
 
+        # Disjoint groups are common; older GEOS builds need the general union.
+        footprint_union = (
+            disjoint_subset_union_all if geos_version >= (3, 12, 0) else union_all
+        )
         geometries = self.gdf.geometry.to_numpy()
         tiles = self.grid.geometry.to_numpy()
         areas = area(geometries)
@@ -199,7 +205,7 @@ class InstMerger:
                     if matches[alternatives[positions]].all():
                         continue
                     # Several complete nuclei can explain one border-cut alternative.
-                    observed = union_all(geometries[complete_ids[positions]])
+                    observed = footprint_union(geometries[complete_ids[positions]])
                     if observed.area >= 0.5 * areas[index]:
                         matches[alternatives[positions]] = True
                 # Disagreeing splits may agree as a set without any strong pair.
@@ -238,13 +244,17 @@ class InstMerger:
                 views.setdefault(self.owners[other], []).append(other)
             explained = False
             for rows in views.values():
-                shared_area = sum(neighbors[other]["overlap"] for other in rows)
+                overlaps = [neighbors[other]["overlap"] for other in rows]
+                shared_area = sum(overlaps)
                 if shared_area < 0.5 * areas[index]:
                     fragments[list(undersized.intersection(rows))] = True
                     continue
-                if len(rows) > 1:
+                # One covering contour already proves coverage by the whole view.
+                if len(rows) > 1 and max(overlaps) < 0.5 * areas[index]:
                     shared_area = (
-                        geometries[index].intersection(union_all(geometries[rows])).area
+                        geometries[index]
+                        .intersection(footprint_union(geometries[rows]))
+                        .area
                     )
                 if shared_area >= 0.5 * areas[index]:
                     explained = True
@@ -263,6 +273,9 @@ class InstMerger:
                 views = {}
                 for index in sorted(remaining):
                     views.setdefault(self.owners[index], []).append(index)
+                # No competing tile remains; keep all its original detections.
+                if len(views) == 1:
+                    break
                 # A tiny nested mask cannot stand in for a whole nucleus elsewhere.
                 whole_views = {
                     tile: rows
@@ -285,7 +298,7 @@ class InstMerger:
                 footprints = {
                     tile: geometries[rows[0]]
                     if len(rows) == 1
-                    else union_all(geometries[rows])
+                    else footprint_union(geometries[rows])
                     for tile, rows in eligible.items()
                 }
                 footprint_areas = {tile: geom.area for tile, geom in footprints.items()}
@@ -322,7 +335,7 @@ class InstMerger:
                             footprints[tile] = (
                                 geometries[rows[0]]
                                 if len(rows) == 1
-                                else union_all(geometries[rows])
+                                else footprint_union(geometries[rows])
                             )
                     agreements = {tile: set() for tile in views}
                     view_tiles = list(views)

@@ -3,7 +3,19 @@ import pytest
 from shapely.geometry import box
 from shapely.ops import unary_union
 
+from cellseg_models_pytorch.wsi import inst_merger
 from cellseg_models_pytorch.wsi.inst_merger import InstMerger
+
+
+@pytest.fixture(params=["native", "general"])
+def union_backend(request, monkeypatch):
+    if request.param == "general":
+        monkeypatch.setattr(inst_merger, "geos_version", (3, 11, 0))
+
+        def unsupported_union(geometries):
+            raise NotImplementedError("Disjoint-subset union requires GEOS 3.12")
+
+        monkeypatch.setattr(inst_merger, "disjoint_subset_union_all", unsupported_union)
 
 
 @pytest.mark.parametrize(
@@ -481,7 +493,9 @@ def test_unmatched_neighbor_cannot_make_a_small_alternative_replace_a_whole_nucl
     assert all(a.equals(b) for a, b in zip(actual.geometry, source.geometry.iloc[1:]))
 
 
-def test_partition_agreement_does_not_require_a_strong_individual_pair():
+def test_partition_agreement_does_not_require_a_strong_individual_pair(
+    union_backend,
+):
     geometries = [box(70 + 10 * i, 20, 80 + 10 * i, 50) for i in range(3)]
     geometries += [box(70, 20 + 10 * i, 100, 30 + 10 * i) for i in range(3)]
     source = gpd.GeoDataFrame(
@@ -495,6 +509,49 @@ def test_partition_agreement_does_not_require_a_strong_individual_pair():
     ).merge(simplify_level=0)
     assert actual.class_name.tolist() == [0, 1, 2]
     assert all(a.equals(b) for a, b in zip(actual.geometry, geometries[:3]))
+
+
+def test_overlapping_alternatives_do_not_double_count_coverage(union_backend):
+    # Pairwise intersection areas count the same overlap more than once.
+    source = gpd.GeoDataFrame(
+        {"class_name": list(range(6)), "is_partial": [False] * 6},
+        geometry=[
+            box(65, 25, 100, 45),
+            box(75, 30, 105, 60),
+            box(74, 28, 101, 55),
+            box(85, 45, 105, 65),
+            box(84, 23, 99, 51),
+            box(90, 25, 105, 40),
+        ],
+    )
+    actual = InstMerger(
+        source,
+        [(0, 0, 150, 100), (60, 0, 150, 100)],
+        tile_indices=[0, 0, 0, 1, 1, 1],
+    ).merge(simplify_level=0)
+    assert actual.class_name.tolist() == [0, 1, 2]
+    assert all(a.equals(b) for a, b in zip(actual.geometry, source.geometry.iloc[:3]))
+
+
+def test_remaining_source_view_keeps_all_unmatched_fragments():
+    source = gpd.GeoDataFrame(
+        {"class_name": list(range(4)), "is_partial": [False, False, True, True]},
+        geometry=[
+            box(70, 20, 90, 60),
+            box(75, 20, 95, 60),
+            box(85, 20, 105, 38),
+            box(85, 42, 105, 60),
+        ],
+    )
+    actual = InstMerger(
+        source,
+        [(0, 0, 150, 100), (60, 0, 150, 100), (65, 0, 150, 100)],
+        tile_indices=[0, 1, 2, 2],
+    ).merge(simplify_level=0)
+    assert actual.class_name.tolist() == [0, 2, 3]
+    assert all(
+        a.equals(b) for a, b in zip(actual.geometry, source.geometry.iloc[[0, 2, 3]])
+    )
 
 
 def test_incomplete_views_preserve_the_whole_nucleus_missing_from_each_tile():
