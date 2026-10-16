@@ -119,17 +119,18 @@ loss reduction as segmentation accuracy or a useful trained model.
   checkpoints stay outside Git. Preserve historical-objective checkpoints until
   the maintainer accepts the corrected examples.
 - [ ] Document the HDF5 alternative without duplicating the training loop.
-- [x] Execute WSI inference on held-out TCGA-AC-A6IW with the PanopTILs
-  checkpoint: 804 overlapping tiles and 191,712 reconciled nuclei on DGX CUDA.
-  Match before selection, preserve unmatched detections and record border contact
-  before smoothing. Regressions cover centroid shifts, tiny-mask replacement,
-  disconnected fragments and mixed overlapping/abutting grids. All output contours
-  and classes retain source provenance; geometry, IDs and slide bounds pass.
-  All 40 previously lost candidate groups are represented in the same twelve
-  seam regions, with no multipart outputs there. This checks preservation, not
-  ground-truth accuracy. Median core merging is 13.17 s versus 7.01 s on identical
-  input (one warmup, five repeats); inference plus merge I/O increases about 1.2%.
-- [ ] Visually accept the corrected twelve seam regions. Keep the slide, tile
+- [x] Execute WSI inference on held-out TCGA-AC-A6IW with the PanopTILs checkpoint:
+  804 overlapping tiles and 185,854 reconciled nuclei on DGX CUDA. Resolve nested
+  and one-versus-many alternatives as coherent source-tile observations in vector
+  space, preserving distinct overlapping contours without intersection objects.
+  All forty previously lost candidate groups remain represented in the same twelve
+  fields, with no multipart outputs; contained pairs fall from 21 to zero. Source
+  provenance, geometry, IDs and slide bounds pass. A fresh full GPU notebook run
+  exactly reproduces all cached tile files and final contours/classes, with four
+  saved figures. Median core merging is 13.86 s
+  versus 13.63 s on identical input (one warmup, five repeats), with 67 MiB more
+  process RSS. These checks establish consistency and preservation, not accuracy.
+- [ ] Visually accept the twelve updated seam regions. Keep the slide, tile
   predictions and prior runs outside Git until acceptance, then retire redundant
   runs, the temporary comparison gallery and benchmark/diagnostic artifacts.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
@@ -147,6 +148,44 @@ loss reduction as segmentation accuracy or a useful trained model.
   foreground class 0, outside the pages.
   Reuse the Python 3.11 source job, with no new job or recurring weight downloads.
   Keep real-checkpoint, GPU and full-slide runs explicit, with skips/limits reported.
+
+### WSI reconciliation and deferred scoring
+
+Implemented: local vector conflict groups compare complete source-tile observations.
+Complete contours compete at IoU >= 0.5 or >=80% coverage of the smaller contour;
+smaller border-cut observations retain the >=50% coverage rule. Complete observations
+can replace a larger partial alternative collectively when each has >=80% smaller
+coverage and their union area reaches half its area. Prefer complete views, keep
+those with >=80% of the largest eligible union area, then use minimum
+tile-edge clearance; if all views are cut, prefer area. Union area avoids rewarding
+object count. Suppress direct competitors only, preserving unmatched detections,
+separate nuclei from a chosen view and original contours/classes. Distinct output
+polygons may overlap; shared regions never become new objects. Abutting fragments
+still require physical contact. No raster merging, clipping, buffering or gap fill.
+
+Regressions cover nested alternatives, one-versus-many choices in either direction,
+partial/complete priority, row-order changes, direct versus transitive conflicts,
+source attributes, and two/three overlapping nuclei without intersection objects,
+including simplification and rounding. Revisit the same twelve fields and trace all
+forty recovered groups. Benchmark the same 804 cached tiles separately from GPU
+inference and report export time and process memory. Complete WSI ground truth is
+unavailable; geometry and context do not guarantee the correct biological split.
+
+Defer probability export and model/supervision changes: the small score probe did
+not establish that mean foreground confidence distinguishes fragments, merged pairs
+and complete nuclei. If later justified, derive foreground as `1 - P(background)`
+only from a compatible softmax head with separately supervised background; retain
+cell-type confidence separately. PanopTILs class 0 also includes untyped nuclei,
+so its current head is not a calibrated source of that foreground score. Preserve
+checkpoint and standalone reconstruction APIs; no flow requirement. A future
+built-in semantic head can use background/nucleus for untyped segmentation or
+background plus cell types, without silently relabelling data or retrofitting old
+checkpoints. Resolve the low-level binary-only forward contract and predictor
+`save_intermediate` aliasing explicitly if those paths become part of that work.
+
+Keep diagnostics outside Git. Retire the temporary gallery, superseded runs and
+this investigation section after visual acceptance and maintained API/test coverage.
+Reuse existing CI jobs; add no recurring WSI or checkpoint downloads.
 
 After adoption, remove this temporary docs checklist; the pages and examples become
 the maintained guidance. Release validation below stays separate from docs delivery.
