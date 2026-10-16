@@ -169,20 +169,25 @@ def test_overlap_keeps_a_complete_contour_instead_of_disconnected_fragments(axis
 
 
 @pytest.mark.parametrize("better_view", [0, 1])
+@pytest.mark.parametrize("count", [2, 3])
 def test_one_versus_many_uses_a_coherent_view_without_combining_alternatives(
-    better_view,
+    better_view, count
 ):
+    splits = [
+        box(70, 20 + i * 30 / count, 90, 20 + (i + 1) * 30 / count)
+        for i in range(count)
+    ]
     source = gpd.GeoDataFrame(
-        {"class_name": [1, 2, 3], "is_partial": [False] * 3},
-        geometry=[box(70, 20, 90, 35), box(70, 35, 90, 50), box(70, 20, 90, 50)],
+        {"class_name": list(range(count + 1)), "is_partial": [False] * (count + 1)},
+        geometry=[*splits, box(70, 20, 90, 50)],
     )
     coordinates = [(0, 0, 120, 100), (60, 0, 100, 100)]
     if better_view == 1:
         coordinates.reverse()
-    actual = InstMerger(source, coordinates, tile_indices=[0, 0, 1]).merge(
+    actual = InstMerger(source, coordinates, tile_indices=[0] * count + [1]).merge(
         simplify_level=0
     )
-    expected = source.iloc[:2] if better_view == 0 else source.iloc[2:]
+    expected = source.iloc[:count] if better_view == 0 else source.iloc[count:]
     assert actual.class_name.tolist() == expected.class_name.tolist()
     assert all(a.equals(b) for a, b in zip(actual.geometry, expected.geometry))
     assert actual.uid.is_unique
@@ -366,6 +371,150 @@ def test_conflict_selection_does_not_discard_a_transitively_connected_nucleus():
     assert actual.class_name.tolist() == [1, 3]
     assert actual.geometry.iloc[0].equals(source.geometry.iloc[0])
     assert actual.geometry.iloc[1].equals(source.geometry.iloc[2])
+
+
+@pytest.mark.parametrize("better_view", [0, 1])
+@pytest.mark.parametrize("order", [[0, 1, 2, 3], [3, 2, 0, 1]])
+def test_disagreeing_splits_choose_one_whole_view_and_keep_unmatched_nuclei(
+    better_view, order
+):
+    geometries = [
+        box(70, 20, 110, 40),
+        box(64, 20, 89, 40),
+        box(91, 20, 116, 40),
+        box(108, 42, 125, 60),
+    ]
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 2, 3, 4], "is_partial": [False] * 4},
+        geometry=geometries,
+    ).iloc[order]
+    coordinates = [(0, 0, 150, 100), (60, 0, 150, 100)]
+    if better_view == 1:
+        coordinates.reverse()
+    owners = [0, 1, 1, 1]
+    actual = InstMerger(
+        source, coordinates, tile_indices=[owners[i] for i in order]
+    ).merge(simplify_level=0)
+    expected = {1, 4} if better_view == 0 else {2, 3, 4}
+    assert set(actual.class_name) == expected
+    for row in actual.itertuples():
+        assert row.geometry.equals(geometries[row.class_name - 1])
+
+
+def test_competing_partitions_are_compared_as_sets_of_whole_nuclei():
+    geometries = [
+        box(70, 20, 90, 60),
+        box(90, 20, 110, 60),
+        box(66, 20, 114, 40),
+        box(66, 40, 114, 60),
+        box(108, 58, 125, 75),
+    ]
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 2, 3, 4, 5], "is_partial": [False] * 5},
+        geometry=geometries,
+    )
+    actual = InstMerger(
+        source,
+        [(0, 0, 150, 100), (60, 0, 150, 100)],
+        tile_indices=[0, 0, 1, 1, 1],
+    ).merge(simplify_level=0)
+    assert actual.class_name.tolist() == [1, 2, 5]
+    assert all(
+        row.geometry.equals(geometries[row.class_name - 1])
+        for row in actual.itertuples()
+    )
+
+
+def test_four_tile_agreement_resolves_duplicates_through_two_other_views():
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 2, 3, 4], "is_partial": [False] * 4},
+        geometry=[box(x, 40, x + 20, 60) for x in (70, 74, 78, 74)],
+    )
+    actual = InstMerger(
+        source,
+        [
+            (-10, 0, 140, 120),
+            (60, 0, 140, 120),
+            (50, 0, 140, 120),
+            (65, 0, 140, 120),
+        ],
+        tile_indices=[0, 1, 2, 3],
+    ).merge(simplify_level=0)
+    assert actual.class_name.tolist() == [1]
+    assert actual.geometry.iloc[0].equals(source.geometry.iloc[0])
+
+
+def test_weak_cross_links_do_not_mix_two_locally_matching_partitions():
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 2, 3, 4], "is_partial": [False] * 4},
+        geometry=[
+            box(70, 20, 90, 40),
+            box(70, 40, 90, 60),
+            box(68, 20, 92, 44),
+            box(68, 44, 92, 60),
+        ],
+    )
+    actual = InstMerger(
+        source,
+        [(0, 0, 150, 70), (40, 0, 150, 100)],
+        tile_indices=[0, 0, 1, 1],
+    ).merge(simplify_level=0)
+    assert actual.class_name.tolist() == [3, 4]
+    assert all(a.equals(b) for a, b in zip(actual.geometry, source.geometry.iloc[2:]))
+
+
+def test_unmatched_neighbor_cannot_make_a_small_alternative_replace_a_whole_nucleus():
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 2, 3], "is_partial": [False] * 3},
+        geometry=[
+            box(70, 20, 90, 30),
+            box(89, 30, 119, 50),
+            box(70, 20, 90, 60),
+        ],
+    )
+    actual = InstMerger(
+        source,
+        [(0, 0, 150, 100), (60, 0, 150, 100)],
+        tile_indices=[0, 0, 1],
+    ).merge(simplify_level=0)
+    assert actual.class_name.tolist() == [2, 3]
+    assert all(a.equals(b) for a, b in zip(actual.geometry, source.geometry.iloc[1:]))
+
+
+def test_partition_agreement_does_not_require_a_strong_individual_pair():
+    geometries = [box(70 + 10 * i, 20, 80 + 10 * i, 50) for i in range(3)]
+    geometries += [box(70, 20 + 10 * i, 100, 30 + 10 * i) for i in range(3)]
+    source = gpd.GeoDataFrame(
+        {"class_name": list(range(6)), "is_partial": [False] * 6},
+        geometry=geometries,
+    )
+    actual = InstMerger(
+        source,
+        [(0, 0, 150, 100), (60, 0, 150, 100)],
+        tile_indices=[0] * 3 + [1] * 3,
+    ).merge(simplify_level=0)
+    assert actual.class_name.tolist() == [0, 1, 2]
+    assert all(a.equals(b) for a, b in zip(actual.geometry, geometries[:3]))
+
+
+def test_incomplete_views_preserve_the_whole_nucleus_missing_from_each_tile():
+    source = gpd.GeoDataFrame(
+        {"class_name": [1, 2, 3, 4], "is_partial": [False] * 4},
+        geometry=[
+            box(70, 20, 90, 60),
+            box(94, 40, 114, 50),
+            box(70, 20, 90, 30),
+            box(89, 30, 119, 50),
+        ],
+    )
+    actual = InstMerger(
+        source,
+        [(0, 0, 150, 100), (60, 0, 150, 100)],
+        tile_indices=[0, 0, 1, 1],
+    ).merge(simplify_level=0)
+    assert actual.class_name.tolist() == [1, 4]
+    assert actual.geometry.iloc[0].equals(source.geometry.iloc[0])
+    assert actual.geometry.iloc[1].equals(source.geometry.iloc[3])
 
 
 def test_containment_within_one_source_tile_does_not_remove_an_instance():

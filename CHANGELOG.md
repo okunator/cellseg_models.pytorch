@@ -13,6 +13,8 @@
   polygon area, preserving unmatched detections. Record border contact before
   smoothing and prefer complete original contours over partial detections,
   resolving nested and one-versus-many alternatives as coherent tile observations.
+  Compare whole local partitions even when individual contour matches are weak;
+  unmatched nuclei do not decide which tile supplies a disputed group.
   Keep distinct overlapping nuclei without creating intersection objects or
   filling gaps between fragments.
   Abutting fragments must actually touch to join. Preserve first/last tile nuclei,
