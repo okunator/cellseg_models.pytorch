@@ -198,21 +198,18 @@ def minmax_normalize(
     if isinstance(img, torch.Tensor):
         im = img.to(dtype=torch.float32)
         minimum = im.amin()
-        maximum = im.amax()
         low, high = min(amin, amax), max(amin, amax)
         # Match OpenCV's global range and constant-image behavior on the device.
         epsilon = torch.finfo(torch.float64).eps
         if img.is_floating_point():
             # Halve before subtraction so even opposite float32 extremes fit.
             half_minimum = minimum * 0.5
-            half_span = maximum * 0.5 - half_minimum
+            half_span = im.amax() * 0.5 - half_minimum
             unit_range = (im * 0.5 - half_minimum) / half_span.clamp_min(epsilon * 0.5)
-            return (
-                torch.where(half_span > epsilon * 0.5, unit_range, 0) * (high - low)
-                + low
-            )
+            scale = torch.where(half_span > epsilon * 0.5, high - low, 0)
+            return unit_range * scale + low
 
-        span = maximum - minimum
+        span = im.amax() - minimum
         scale = torch.where(span > epsilon, (high - low) / span.clamp_min(epsilon), 0)
         return (im - minimum) * scale + low
 

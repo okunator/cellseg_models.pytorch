@@ -5,6 +5,11 @@ import torch
 from cellseg_models_pytorch.transforms.functional.normalization import minmax_normalize
 
 
+def test_tensor_minmax_preserves_nan_propagation():
+    image = torch.tensor([[0, float("nan"), 1]])
+    assert torch.isnan(minmax_normalize(image)).all()
+
+
 @pytest.mark.parametrize("bounds", [(0, 1), (-1, 1), (3, 2)])
 def test_tensor_minmax_handles_extreme_finite_float32_values(bounds):
     image = np.array([[-3e38, 0, 3e38]], dtype=np.float32)
