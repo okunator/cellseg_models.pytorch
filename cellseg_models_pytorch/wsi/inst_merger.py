@@ -211,6 +211,20 @@ def _choose_tile(
 
 
 class InstMerger:
+    """Stitch tiled nucleus segmentation polygons into one slide-wide result.
+
+    1. Find neighboring tiles and their shared edges or overlapping areas.
+    2. Compare nucleus polygons there by shared area and intersection-over-union
+       (IoU) to identify possible duplicate segmentations.
+    3. Choose whole polygons from one source tile for each duplicate group, using
+       completeness, covered area and distance from tile edges. Keep nuclei that
+       have no adequate replacement in another tile.
+    4. Join touching nucleus fragments from tiles that share an edge without overlap.
+
+    Matching and joining use vector polygons in whole-slide pixel coordinates.
+    The result can then be simplified, rounded, filtered and saved.
+    """
+
     def __init__(
         self,
         gdf: gpd.GeoDataFrame,
