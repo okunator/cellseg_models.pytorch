@@ -314,23 +314,23 @@ class InstMerger:
             merged.to_feather(path)
 
     def _tile_detections(self, geometries):
-        """Group detected nucleus outlines by the tile that produced them.
+        """Group nucleus segmentation polygons by their source image tile.
 
-        A detection is one nucleus polygon from a tile's segmentation result,
-        already placed in slide coordinates. Overlapping tiles can detect the
-        same nucleus more than once. Collect each polygon's source tile and
-        edge information so later steps can prefer a whole nucleus outline.
+        Each polygon outlines one nucleus segmented in one tile. Its coordinates
+        are already in whole-slide pixels. Overlapping tiles can therefore
+        provide several polygons for the same nucleus. Collect their source
+        tiles and edge information so later steps can prefer a whole nucleus.
 
         Args:
-            geometries: Nucleus polygons in the same row order as self.gdf,
-                using level-zero slide pixels.
+            geometries: Nucleus segmentation polygons, one per row of self.gdf,
+                in full-resolution slide pixel coordinates.
 
         Returns:
-            A tuple (tile_rows, clearance, partial). tile_rows contains input
-            row indices grouped by source tile. clearance gives each polygon's
-            distance to its tile edge in pixels. partial marks polygons that
-            may be cut off by that edge. The last two arrays follow input row
-            order; only polygons with a known source appear in tile_rows.
+            A tuple (tile_rows, clearance, partial). tile_rows contains polygon
+            indices grouped by source tile. clearance gives the distance to the
+            nearest source-tile edge for polygons with a known source. partial
+            flags polygons that may be cut off at a tile edge. Distances are in
+            pixels; the last two arrays follow the input polygon order.
         """
         tiles = self.grid.geometry.to_numpy()
         clearance_by_row = np.zeros(len(geometries))
@@ -367,25 +367,26 @@ class InstMerger:
         return tile_rows, clearance_by_row, partial
 
     def _find_matches(self, geometries, areas, tile_rows, partial):
-        """Find nucleus outlines that neighboring tiles may have detected twice.
+        """Find possible duplicate nucleus polygons between neighboring tiles.
 
-        Where tiles overlap, record outlines that share area for later duplicate
-        selection. Where tiles meet without overlap, record touching outlines
-        that may be pieces of one nucleus. This step collects the relationships
-        used to choose or join outlines later.
+        The same nucleus can have a segmentation polygon from each overlapping
+        tile. Record polygons that share area so later steps can choose between
+        them. For tiles that meet without overlap, record touching nucleus
+        fragments that may need to be joined.
 
         Args:
-            geometries: Nucleus polygons in slide pixels, in input row order.
-            areas: Area of each polygon in square pixels, in the same order.
-            tile_rows: Input row indices grouped by source tile, as returned by
+            geometries: Nucleus segmentation polygons in whole-slide pixels,
+                in the same order as the input rows.
+            areas: Area of each input polygon in square pixels.
+            tile_rows: Input polygon indices grouped by source tile, from
                 _tile_detections.
-            partial: One boolean per polygon marking possibly cut-off outlines.
+            partial: One boolean per input polygon marking possibly cut-off nuclei.
 
         Returns:
-            A tuple (conflicts, touching). conflicts is a graph linking input
-            row indices for potentially duplicate nuclei, with their overlap
-            measurements and match strength. touching is a list of row-index
-            pairs whose outlines touch across a shared tile edge.
+            A tuple (conflicts, touching). conflicts is a graph of polygon pairs
+            that might represent the same nucleus, including their overlap and
+            match strength. touching is a list of polygon-index pairs that
+            touch across a shared tile edge. All indices refer to input polygons.
         """
         # Reuse each tile's search index across all its neighbors.
         trees = [STRtree(geometries[rows]) for rows in tile_rows]
@@ -430,23 +431,24 @@ class InstMerger:
         return conflicts, touching
 
     def _preserve_unmatched(self, conflicts, geometries, areas):
-        """Protect nuclei that have no adequate replacement in another tile.
+        """Keep nucleus polygons that have no adequate match in another tile.
 
-        A slight overlap with another outline is not enough to replace a nucleus.
-        Exclude these unmatched nuclei from duplicate selection so they survive.
-        Also flag small competing outlines that cover too little of a larger
-        nucleus to serve as its replacement.
+        A nucleus segmented in only one tile should survive stitching. Exclude
+        its polygon from duplicate selection. Also flag small polygons that
+        cover only a fragment of a larger nucleus in another tile, so later
+        selection can prefer the whole nucleus polygon.
 
         Args:
-            conflicts: Candidate duplicate relationships from _find_matches.
-                Updated in place to exclude nuclei with no adequate replacement.
-            geometries: Nucleus polygons in slide pixels, in input row order.
-            areas: Area of each polygon in square pixels, in the same order.
+            conflicts: Candidate nucleus polygon matches from _find_matches.
+                Updated in place to exclude polygons with no adequate match.
+            geometries: Nucleus segmentation polygons in whole-slide pixels,
+                in the same order as the input rows.
+            areas: Area of each input polygon in square pixels.
 
         Returns:
-            A boolean array in input row order. True marks a small competing
-            outline that cannot adequately replace a larger nucleus. Later
-            selection uses these flags to prefer whole nucleus outlines.
+            A boolean array in input polygon order. True marks a small competing
+            polygon that covers too little of a larger nucleus to replace it.
+            Later selection uses these flags to prefer whole nucleus polygons.
         """
         unmatched = []
         fragments = np.zeros(len(geometries), dtype=bool)
