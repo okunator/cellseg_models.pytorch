@@ -550,7 +550,25 @@ class InstMerger:
         partial: _BoolArray,
         fragments: _BoolArray,
     ) -> tuple[_IndexArray, dict[int, set[np.intp]]]:
-        """Choose whole nucleus polygons from each group of competing tiles."""
+        """Choose whole nucleus polygons from each group of competing tiles.
+
+        Args:
+            conflicts: Graph linking input polygon indices that may describe
+                the same nucleus, with their overlap and match strength.
+            geometries: Nucleus segmentation polygons in whole-slide pixels,
+                in input row order.
+            areas: Area of each input polygon in square pixels.
+            clearance: Distance from each polygon to its source-tile edge in pixels.
+            partial: Flags for input polygons that may be cut off at a tile edge.
+            fragments: Flags for small polygons that cannot replace a larger nucleus.
+
+        Returns:
+            A tuple (representatives, source_tiles). representatives maps each
+            input polygon index to the retained polygon index; kept polygons map
+            to themselves. source_tiles is a new dictionary from retained polygon
+            indices to represented source tile indices, populated when duplicates
+            are replaced.
+        """
         # Map each discarded row to the original row that replaces it.
         representatives = np.arange(len(geometries))
         # Joining later must account for every source tile a nucleus represents.
@@ -631,7 +649,24 @@ class InstMerger:
         geometries: _PolygonArray,
         areas: _FloatArray,
     ) -> _IndexArray:
-        """Find replacements supported by agreement between whole tile predictions."""
+        """Find duplicate nucleus polygons supported by agreement between tiles.
+
+        Args:
+            alternatives: Input polygon indices still under consideration.
+            selected_tile: Source tile chosen to supply the retained nuclei.
+            views: Read-only map from tile indices to input polygon indices
+                in the group being compared.
+            footprints: Combined nucleus geometry for each tile in this group.
+                Missing tile entries are added to this dictionary in place.
+            conflicts: Graph of candidate nucleus polygon matches and their overlap.
+            geometries: Nucleus segmentation polygons in whole-slide pixels,
+                in input row order.
+            areas: Area of each input polygon in square pixels.
+
+        Returns:
+            Input indices of alternative polygons that the selected tile's
+            nuclei can replace, supported by agreement with other tiles.
+        """
         for tile, rows in views.items():
             if tile not in footprints:
                 footprints[tile] = (
@@ -681,7 +716,23 @@ class InstMerger:
         geometries: _PolygonArray,
         areas: _FloatArray,
     ) -> gpd.GeoDataFrame:
-        """Join touching fragments and keep metadata from their largest member."""
+        """Join touching nucleus fragments and keep their largest member's metadata.
+
+        Args:
+            touching: Input polygon-index pairs from tiles that meet without overlap.
+            representatives: Map from each input polygon index to its retained
+                polygon index after duplicate selection.
+            source_tiles: Dictionary mapping polygon or joined-group representatives
+                to the source tile indices they represent. Updated in place as
+                fragments join, to keep separate nuclei from one tile apart.
+            geometries: Nucleus segmentation polygons in whole-slide pixels,
+                in input row order.
+            areas: Area of each input polygon in square pixels.
+
+        Returns:
+            A new GeoDataFrame of retained nucleus polygons with touching fragments
+            joined. Each joined nucleus keeps its largest fragment's attributes.
+        """
         groups: nx.utils.UnionFind[int] = nx.utils.UnionFind()
         graph: nx.Graph[int] = nx.Graph()
         for left, right in touching:
