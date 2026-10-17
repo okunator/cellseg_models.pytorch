@@ -125,49 +125,6 @@ def test_readme_quickstart_minmax(monkeypatch, img_sample, dtype, image_kind):
     model.post_process.assert_called_once_with(model.predict.return_value)
 
 
-def test_in_memory_guide_runs_hovernet_without_image_files(monkeypatch):
-    from cellseg_models_pytorch.models.hovernet import HoverNet
-    from cellseg_models_pytorch.transforms.functional.normalization import (
-        minmax_normalize,
-    )
-
-    torch.manual_seed(0)
-    torch.set_num_threads(2)
-    model = HoverNet(
-        3, enc_name="resnet18", enc_pretrain=False, device=torch.device("cpu")
-    )
-    load = Mock(return_value=model)
-    monkeypatch.setattr(HoverNet, "from_pretrained", load)
-    predict = Mock(wraps=model.predict)
-    monkeypatch.setattr(model, "predict", predict)
-    image = np.zeros((65, 79, 3), dtype=np.uint8)
-    image[12:35, 20:49] = [220, 130, 180]
-    original = image.copy()
-    page = (TUTORIALS.parent / "in-memory-inference.md").read_text()
-    source = page.split("```python\n", 1)[1].split("```", 1)[0]
-    namespace = {"image": image}
-
-    exec(source, namespace)
-
-    load.assert_called_once_with("hgsc_v1_efficientnet_b5", device=torch.device("cpu"))
-    assert not model.model.training
-    assert not model.predictor.mixed_precision
-    predict.assert_called_once()
-    assert predict.call_args.kwargs == {
-        "use_sliding_win": True,
-        "window_size": (256, 256),
-        "stride": 128,
-    }
-    normalized = predict.call_args.args[0]
-    np.testing.assert_array_equal(normalized, minmax_normalize(image, copy=True))
-    assert normalized.dtype == np.float32
-    assert namespace["prediction"]["nuc"].aux_map.shape == (1, 2, 65, 79)
-    assert namespace["prediction"]["nuc"].type_map.shape == (1, 65, 79)
-    assert namespace["instances"].shape == image.shape[:2]
-    assert namespace["instances"].dtype == np.int32
-    np.testing.assert_array_equal(image, original)
-
-
 @pytest.mark.parametrize(
     "execution_device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
 )

@@ -13,6 +13,5 @@ training model. To use public pretrained weights with your own image, follow the
 tutorials/prepare-data
 tutorials/training
 tutorials/inference
-in-memory-inference
 tutorials/wsi
 ```
