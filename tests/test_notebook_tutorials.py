@@ -78,7 +78,9 @@ def test_cpu_fixture_restores_cuda_rng(monkeypatch):
 
 
 @pytest.mark.parametrize("dtype", [np.uint8, np.float32])
-@pytest.mark.parametrize("image_kind", ["channels", "constant", "histology"])
+@pytest.mark.parametrize(
+    "image_kind", ["channels", "constant", "low_contrast", "histology"]
+)
 def test_readme_quickstart_minmax(monkeypatch, img_sample, dtype, image_kind):
     albu = pytest.importorskip("albumentations")
     from cellseg_models_pytorch.models.cellpose import CellPose
@@ -92,6 +94,8 @@ def test_readme_quickstart_minmax(monkeypatch, img_sample, dtype, image_kind):
     image = np.stack([pixels, pixels + 80, pixels + 160], axis=-1).astype(dtype)
     if image_kind == "constant":
         image.fill(37)
+    elif image_kind == "low_contrast":
+        image = image % 2 + 100
     elif image_kind == "histology":
         image = img_sample.astype(dtype)
     if dtype == np.float32:
@@ -106,7 +110,7 @@ def test_readme_quickstart_minmax(monkeypatch, img_sample, dtype, image_kind):
     namespace = {"IMG_PATH": "example.png"}
     exec(source, namespace)
 
-    transform = namespace["transform"].transforms[-1]
+    transform = namespace["normalize"]
     assert isinstance(transform, albu.Normalize)
     assert transform.normalization == "min_max"
     actual = model.predict.call_args.args[0]
@@ -114,8 +118,7 @@ def test_readme_quickstart_minmax(monkeypatch, img_sample, dtype, image_kind):
     assert actual.shape == (1024, 1024, 3)
     resized = albu.Resize(1024, 1024)(image=original)["image"]
     expected = minmax_normalize(resized, copy=True)
-    # The uint8 built-in adds an epsilon; bound its difference from OpenCV.
-    np.testing.assert_allclose(actual, expected, rtol=0, atol=5e-7)
+    np.testing.assert_array_equal(actual, expected)
     np.testing.assert_array_equal(image, original)
     if image_kind == "constant":
         np.testing.assert_array_equal(actual, np.zeros_like(actual))
