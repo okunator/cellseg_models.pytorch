@@ -4,6 +4,9 @@ Segment a large RGB image already loaded as a NumPy array. Overlapping windows
 let the model process it at its original resolution, then combine its predictions
 before reconstructing the nuclei.
 
+For a worked example with an image and predicted masks, see
+[Image inference](tutorials/inference.ipynb).
+
 Set `image` to your array with shape `(height, width, 3)`. Choose trained
 segmentation weights appropriate for your tissue. This example loads the
 [HGSC HoVer-Net model](https://huggingface.co/csmp-hub/hovernet-histo-hgsc-nuc-v1),

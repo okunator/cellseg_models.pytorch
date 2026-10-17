@@ -4,7 +4,7 @@ import json
 import random
 import re
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -202,8 +202,19 @@ def test_inference_notebook_outputs(execution_device, prepared_panoptils):
         metadata={"class_names": json.dumps(class_names)},
     )
     namespace = {}
-    for source in _code_cells("inference"):
-        exec(source, namespace)
+    with patch.object(
+        CellPose, "predict", autospec=True, side_effect=CellPose.predict
+    ) as predict:
+        for source in _code_cells("inference"):
+            exec(source, namespace)
+    assert predict.call_count == 2
+    assert predict.call_args_list[0].kwargs == {}
+    assert predict.call_args_list[1].kwargs == {
+        "use_sliding_win": True,
+        "window_size": (256, 256),
+        "stride": 128,
+    }
+    assert predict.call_args_list[1].args[1] is namespace["image"]
     assert namespace["device"].type == execution_device
     for outputs in (namespace["prediction"], namespace["result"]):
         assert outputs["cyto"] is None and outputs["tissue"] is None
@@ -241,8 +252,38 @@ def test_inference_notebook_outputs(execution_device, prepared_panoptils):
     np.testing.assert_array_equal(
         fig.axes[5].images[0].get_array(), namespace["class_colors"]
     )
-    plt.show.assert_called_once()
+    sliding_instances = namespace["sliding_instances"]
+    sliding_classes = namespace["sliding_classes"]
+    assert sliding_instances.shape == sliding_classes.shape == expected_image.shape[:2]
+    assert sliding_instances.dtype == sliding_classes.dtype == np.int32
+    assert set(np.unique(sliding_classes)) <= set(range(7))
+    assert namespace["sliding_prediction"]["nuc"].aux_map.shape == (
+        1,
+        2,
+        *expected_image.shape[:2],
+    )
+    sliding_fig = namespace["sliding_fig"]
+    sliding_fig.canvas.draw()
+    assert [axis.get_title() for axis in sliding_fig.axes] == [
+        "Held-out image",
+        "Sliding-window instances",
+        "Sliding-window cell types",
+    ]
+    np.testing.assert_array_equal(
+        sliding_fig.axes[0].images[0].get_array(), namespace["raw_image"]
+    )
+    np.testing.assert_array_equal(
+        sliding_fig.axes[1].images[0].get_array(),
+        label2rgb(sliding_instances, bg_label=0),
+    )
+    expected_colors = namespace["class_palette"][sliding_classes]
+    expected_colors[sliding_instances == 0] = 0
+    np.testing.assert_array_equal(
+        sliding_fig.axes[2].images[0].get_array(), expected_colors
+    )
+    assert plt.show.call_count == 2
     plt.close(fig)
+    plt.close(sliding_fig)
 
 
 def test_inference_plot_distinguishes_class_zero_from_background():
@@ -269,12 +310,30 @@ def test_inference_plot_distinguishes_class_zero_from_background():
             "unknown",
         ],
     }
-    exec(_code_cells("inference")[-2], namespace)
+    exec(
+        next(
+            source
+            for source in _code_cells("inference")
+            if source.startswith("# Use the same class colours")
+        ),
+        namespace,
+    )
     colors = namespace["class_colors"]
     assert not colors[[0, 1], [0, 1]].any()
     assert colors[0, 1].any()
     assert not np.array_equal(colors[0, 1], colors[1, 0])
     plt.close(namespace["fig"])
+    namespace.update(sliding_instances=instances, sliding_classes=classes)
+    exec(
+        next(
+            source
+            for source in _code_cells("inference")
+            if source.startswith("# Keep the same class colours")
+        ),
+        namespace,
+    )
+    np.testing.assert_array_equal(namespace["sliding_class_colors"], colors)
+    plt.close(namespace["sliding_fig"])
 
 
 @pytest.fixture
