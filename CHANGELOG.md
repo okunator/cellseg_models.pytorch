@@ -77,9 +77,9 @@
 - Update the development lock's existing Soup Sieve and Pygments transitives to
   2.10 and 2.21.0 for selector parsing and ADL lexer fixes. Their versions remain
   governed by their parent packages in published installations.
-- Remove fsspec/setuptools runtime minimums added solely for advisories outside
-  the library's used paths; retain their patched lock versions. Keep the HTTP,
-  hostname and cache-lock minimums required by reachable download/cache paths.
+- Leave urllib3, IDNA, filelock, fsspec and setuptools requirements to their parent
+  packages instead of declaring transitive security minimums. Retain their updated
+  lock versions.
 
 - Honor `percentile_normalize99` clipping bounds and initialize zero-percentile
   spans to zero before clipping. Reject reversed bounds and preserve float32
@@ -112,8 +112,8 @@
 - Require Pillow 12.3.0 or newer within the 12.x series for image decoding,
   drawing, font, and related security fixes.
 
-- Raise Requests, urllib3, IDNA, and filelock security minimums for downloads
-  and checkpoint caching, and update their locked versions.
+- Raise the Requests security minimum for downloads and update the locked HTTP
+  and cache dependencies.
 
 - Allow inference dataset and WSI segmenter imports without optional training
   dependencies. WSI datasets accept callable transforms without Albumentations,
