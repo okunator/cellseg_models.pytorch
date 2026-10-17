@@ -132,6 +132,9 @@ the synchronized environment. They are the source for the corresponding pages.
 Use Google-style docstrings for public APIs, including relevant arguments,
 output semantics, exceptions, and a working example. Describe tensor shapes and
 preprocessing; omit empty boilerplate sections and types already in signatures.
+Start with a short statement of the operation's purpose. Describe the caller's
+contract, not a walkthrough of the algorithm. Keep implementation details beside
+the relevant code, with short comments in plain language.
 Preserve existing docstring content when converting style. Keep unrelated
 documentation rewrites out of functional changes.
 Use generic example paths and no machine-specific identifiers or patient data.

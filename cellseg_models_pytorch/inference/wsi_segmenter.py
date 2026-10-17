@@ -133,39 +133,28 @@ class WsiSegmenter:
         filter_level: int | None = 0,
         pixel_size: float | None = None,
     ) -> None:
-        """Reconcile saved nucleus predictions using their source tiles.
+        """Combine saved tile predictions into one slide-wide nucleus file.
 
-        Reconcile duplicate and one-versus-many predictions in overlapping tile
-        regions, keeping coherent source-tile observations and their attributes.
-        Distinct nuclei may overlap without creating intersection objects.
-        Prefer complete predictions; unmatched detections survive.
-        Border flags recorded before smoothing distinguish
-        partial contours from complete nuclei. Abutting fragments must actually
-        touch to join, including in grids that also have overlapping tiles.
-        Use overlapping tiles to predict complete contours across tile edges.
+        Keep whole contours and attributes from the selected source tiles,
+        preserving unmatched nuclei. Fragments from tiles sharing an edge must
+        touch to join. See InstMerger.merge for stitching behavior.
 
         Args:
-            src:
-                The directory containing the instances segmentations (.parquet-files).
-            dst: The destination path for the output file. Allowed formats are
-                '.parquet', '.geojson', and '.feather'.
-            clear_in_dir: Whether to clear the source directory after merging.
-                Defaults to False.
-            simplify_level:
-                The level of simplification to apply to the merged instances.
-                Defaults to 0.3.
-            precision:
-                The precision level to apply to the merged instances. If None, no rounding
-                is applied.
-            filter_level: 0 or None disables filtering (default 0). Levels 1, 2
-                and 3 select conservative, middle and strong filtering after
-                stitching. Area/thickness limits are (6, 0.8), (12, 1.2) and
-                (20, 1.6), in square micrometers and micrometers. Both must be
-                below their limits; thickness is 2 * area / perimeter.
-                Retained contours and IDs stay unchanged. Small valid nuclei
-                can also be removed; inspect the filtered result.
-            pixel_size: Positive finite isotropic micrometers per level-zero
-                coordinate pixel, required when filtering is enabled.
+            src: Directory of predicted nucleus .parquet files.
+            dst: New .parquet, .geojson or .feather output file.
+            clear_in_dir: Delete all files in src after a successful merge.
+            simplify_level: Simplification tolerance in pixels; zero disables it.
+            precision: Optional decimal places for coordinate rounding.
+            filter_level: Optional area/thickness filter, applied after
+                simplification and rounding. See filter_nuclei for levels and
+                limits; 0 or None disables it. Retained contours and IDs are preserved.
+            pixel_size: Isotropic micrometers per level-zero pixel, required for filtering.
+
+        Raises:
+            ValueError: Segmentation has not run, an input file has no source tile,
+                or the output format or filter parameters are invalid.
+            FileNotFoundError: The source directory does not exist.
+            FileExistsError: The destination already exists.
         """
         if not self._has_processed:
             raise ValueError("You must segment the instances first.")

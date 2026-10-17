@@ -176,8 +176,9 @@ hooks or hide failures with broad ignores.
 
 Before editing public docstrings, pages or notebooks, read and follow
 [the documentation standards](CONTRIBUTING.md#documentation). They cover
-Google-style docstrings, prose for new library users, readable examples and validation
-outside tutorial pages. Development and PyTorch rules apply to example code too.
+concise Google-style docstrings, prose for new library users, readable examples
+and validation outside tutorial pages. Development and PyTorch rules apply to
+example code too.
 
 Keep commits thematic and use Conventional Commits. Leave unrelated user edits
 untouched and preserve contributor attribution. Do not rewrite shared history.

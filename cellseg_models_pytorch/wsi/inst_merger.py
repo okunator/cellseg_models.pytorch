@@ -30,11 +30,10 @@ def filter_nuclei(
 ) -> gpd.GeoDataFrame:
     """Remove polygons that are both small and thin, without changing contours.
 
-    Apply after stitching, using full nucleus polygons in pixel coordinates.
-    Area is measured in square micrometers; the thickness proxy is
-    2 * area / perimeter in micrometers, not a nucleus diameter. Both values
-    must be strictly below their limits to remove an object. Levels 1, 2 and 3
-    use limits (6, 0.8), (12, 1.2) and (20, 1.6), respectively.
+    Apply after stitching. Remove an object only when its area and
+    2 * area / perimeter are both below their limits. Levels 1, 2 and 3 use
+    (6 µm², 0.8 µm), (12 µm², 1.2 µm) and (20 µm², 1.6 µm), respectively.
+    The thickness measure is not a nucleus diameter.
     Small valid nuclei, including border-clipped cells, can also be removed.
 
     Args:
@@ -45,10 +44,9 @@ def filter_nuclei(
             select conservative, middle and strong filtering, respectively.
 
     Returns:
-        The input unchanged when disabled, otherwise a new GeoDataFrame containing
-        retained rows in their original order.
-        Geometry, index, instance IDs, attributes and CRS are preserved.
-        The input is not modified; no rasterization or geometry buffering is used.
+        The input unchanged when disabled, otherwise retained rows in their
+        original order with geometry, index, IDs, attributes and CRS preserved.
+        The input is not modified.
 
     Raises:
         ValueError: Pixel size is nonfinite/nonpositive or the level is unknown.
@@ -83,6 +81,108 @@ def filter_nuclei(
     )
     remove = (physical_area < maximum_area) & (thickness < maximum_thickness)
     return gdf.loc[~remove]
+
+
+def _union_footprint(geometries):
+    """Combine polygon areas without counting overlaps twice."""
+    # Separate groups can be combined faster on newer GEOS versions.
+    union = disjoint_subset_union_all if geos_version >= (3, 12, 0) else union_all
+    return union(geometries)
+
+
+def _match_overlaps(geometries, areas, partial, left_ids, right_ids, common):
+    """Identify strong matches between two overlapping tiles."""
+    shared_areas = area(common)
+    union_areas = areas[left_ids] + areas[right_ids] - shared_areas
+    # IoU compares shared area with the combined area of both predictions.
+    ious = np.divide(
+        shared_areas,
+        union_areas,
+        out=np.zeros(len(left_ids)),
+        where=union_areas > 0,
+    )
+    smaller = np.minimum(areas[left_ids], areas[right_ids])
+    coverage = np.divide(
+        shared_areas, smaller, out=np.zeros(len(left_ids)), where=smaller > 0
+    )
+    # A cut-off contour needs less overlap to match a whole nucleus.
+    partial_smaller = (partial[left_ids] & (areas[left_ids] <= areas[right_ids])) | (
+        partial[right_ids] & (areas[right_ids] <= areas[left_ids])
+    )
+    matches = (
+        (ious >= 0.5)
+        | (~partial[left_ids] & ~partial[right_ids] & (coverage >= 0.8))
+        | (partial_smaller & (coverage >= 0.5))
+    )
+    alternatives = np.flatnonzero(
+        (coverage >= 0.8) & (partial[left_ids] != partial[right_ids]) & ~partial_smaller
+    )
+    partial_ids = np.where(
+        partial[left_ids[alternatives]], left_ids[alternatives], right_ids[alternatives]
+    )
+    complete_ids = np.where(
+        partial[left_ids[alternatives]], right_ids[alternatives], left_ids[alternatives]
+    )
+    for index in np.unique(partial_ids):
+        positions = partial_ids == index
+        if matches[alternatives[positions]].all():
+            continue
+        # Several whole nuclei can replace one larger, cut-off prediction.
+        observed = _union_footprint(geometries[complete_ids[positions]])
+        if observed.area >= 0.5 * areas[index]:
+            matches[alternatives[positions]] = True
+    return matches, ious, shared_areas
+
+
+def _choose_tile(
+    views, geometries, clearance, partial, fragments, coordinate_tolerance
+):
+    """Prefer a complete, well-supported view of the disputed nuclei."""
+    # A tiny nested mask cannot stand in for a whole nucleus elsewhere.
+    whole_views = {
+        tile: rows for tile, rows in views.items() if not fragments[rows].any()
+    }
+    if not whole_views:
+        whole_views = {
+            tile: [index for index in rows if not fragments[index]]
+            for tile, rows in views.items()
+            if not fragments[rows].all()
+        } or views
+    complete_views = {
+        tile: rows for tile, rows in whole_views.items() if not partial[rows].any()
+    }
+    eligible = complete_views or whole_views
+    # Count covered area once, even when a tile's own predictions overlap.
+    footprints = {
+        tile: geometries[rows[0]]
+        if len(rows) == 1
+        else _union_footprint(geometries[rows])
+        for tile, rows in eligible.items()
+    }
+    footprint_areas = {tile: geom.area for tile, geom in footprints.items()}
+    largest = max(footprint_areas.values())
+    # Consider only tiles covering at least 80% of the largest prediction set.
+    supported = [tile for tile in eligible if footprint_areas[tile] >= 0.8 * largest]
+
+    priorities = ("clearance", "area") if complete_views else ("area", "clearance")
+    for priority in priorities:
+        if len(supported) == 1:
+            break
+        if priority == "clearance":
+            values = {tile: clearance[whole_views[tile]].min() for tile in supported}
+            tolerance = coordinate_tolerance
+        else:
+            values = footprint_areas
+            # Longer outlines accumulate more area rounding error.
+            tolerance = coordinate_tolerance * max(
+                footprints[tile].length for tile in supported
+            )
+        best = max(values[tile] for tile in supported)
+        supported = [tile for tile in supported if best - values[tile] <= tolerance]
+    # Discarded fragments must not decide which retained source row wins.
+    selected_tile = min(supported, key=lambda tile: whole_views[tile][0])
+    selected = set(whole_views[selected_tile])
+    return selected_tile, selected, footprints
 
 
 class InstMerger:
@@ -151,55 +251,28 @@ class InstMerger:
         filter_level: int | None = 0,
         pixel_size: float | None = None,
     ) -> gpd.GeoDataFrame | None:
-        """Match duplicate predictions and join physically touching tile fragments.
+        """Combine tiled nucleus predictions into one slide-wide result.
 
-        Direct duplicates compete at intersection-over-union >= 0.5 or
-        coverage >= 0.8 of the smaller contour. An is_partial flag from
-        vectorization identifies contours clipped by the
-        input image border before smoothing; these may instead match at half the
-        smaller polygon's area when the smaller contour is partial. Older
-        exports use tile-edge distance < 1 pixel as a fallback. Unmatched
-        predictions survive. Complete observations with >=80% smaller-contour
-        coverage can also replace a larger partial alternative if their combined
-        union area is at least half its area. A lone tiny detection cannot do so.
-        Compare intersecting local source-tile partitions.
-        Their polygon unions must agree at IoU >= 0.5, directly or
-        through two other source tiles. Keep whole nuclei from one view;
-        an alternative needs >=50% coverage by the selected view to be removed.
-        A single intermediate match cannot establish a transitive duplicate.
-        Prefer views that cover at least half of strongly matched larger nuclei,
-        then complete views with at least 80% of their largest union area, then
-        tile-edge clearance; if all views are cut, prefer area.
-        Retain the selected original contours and attributes, and unmatched
-        detections from other tiles. Distinct nuclei may overlap;
-        intersections are not objects.
-        View ranking treats clearance differences within eight floating-point
-        coordinate spacings as ties, scaling that margin by perimeter for area ties.
-        Remaining ties use source-row order. Overlap thresholds stay unchanged.
-
-        Abutting joins are handled separately per tile pair and require actual
-        boundary contact, including in grids that also contain overlapping tiles.
-        No polygon is expanded to close a gap. Coordinates and CRS stay unchanged.
+        Keep whole contours from one tile where predictions duplicate each other,
+        and preserve unmatched nuclei. Join fragments from tiles with a shared
+        edge only when the fragments touch. Coordinates, CRS and selected source
+        attributes are preserved; polygon intersections do not become objects.
 
         Args:
             dst: New .parquet, .geojson or .feather file; None returns the result.
-            simplify_level: Geometry simplification tolerance in pixels; zero disables it.
-            precision: Optional number of decimal places for coordinate rounding.
-            filter_level: 0 or None disables filtering (default 0). Levels 1, 2
-                and 3 select conservative, middle and strong area/thickness
-                filtering after stitching, simplification and rounding. Retained
-                contours and slide-wide IDs stay unchanged. See filter_nuclei
-                for physical limits and limitations.
-            pixel_size: Isotropic micrometers per coordinate pixel, required
-                when filtering is enabled.
+            simplify_level: Simplification tolerance in pixels; zero disables it.
+            precision: Optional decimal places for coordinate rounding.
+            filter_level: Optional area/thickness filter, applied after
+                simplification and rounding. See filter_nuclei for levels and
+                limits; 0 or None disables it.
+            pixel_size: Isotropic micrometers per pixel, required for filtering.
 
         Returns:
-            The merged GeoDataFrame when dst is None; otherwise writes the file
-            and returns None. Each row has a unique slide-wide uid.
+            A GeoDataFrame with unique slide-wide uid values, or None when saved
+            to dst. Filtering retains the surviving IDs without renumbering.
 
         Raises:
-            ValueError: The destination extension or enabled filter parameters
-                are invalid.
+            ValueError: Destination extension or enabled filter parameters are invalid.
             FileExistsError: The destination already exists.
         """
         path = Path(dst) if dst is not None else None
@@ -209,26 +282,49 @@ class InstMerger:
             if path.exists():
                 raise FileExistsError(path)
 
-        # Disjoint groups are common; older GEOS builds need the general union.
-        footprint_union = (
-            disjoint_subset_union_all if geos_version >= (3, 12, 0) else union_all
-        )
         geometries = self.gdf.geometry.to_numpy()
-        tiles = self.grid.geometry.to_numpy()
         areas = area(geometries)
-        # Use input-coordinate roundoff only to resolve view-ranking ties.
-        coordinate_tolerance = (
-            8 * np.spacing(np.abs(self.grid.total_bounds).max()) if len(tiles) else 0.0
+        tile_rows, clearance, partial = self._tile_detections(geometries)
+        conflicts, touching = self._find_matches(geometries, areas, tile_rows, partial)
+        fragments = self._preserve_unmatched(conflicts, geometries, areas)
+        representatives, source_tiles = self._select_predictions(
+            conflicts, geometries, areas, clearance, partial, fragments
         )
-        context = np.zeros(len(geometries))
-        cut = np.zeros(len(geometries), dtype=bool)
+        merged = self._join_touching(
+            touching, representatives, source_tiles, geometries, areas
+        )
+        if simplify_level:
+            merged.geometry = merged.geometry.simplify(simplify_level)
+        if precision is not None:
+            merged.geometry = from_wkt(
+                to_wkt(merged.geometry.to_numpy(), rounding_precision=precision)
+            )
+        merged["uid"] = np.arange(len(merged))
+        merged = merged.set_index("uid", drop=False)
+        merged = filter_nuclei(merged, pixel_size=pixel_size, filter_level=filter_level)
+
+        if path is None:
+            return merged
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.suffix == ".parquet":
+            merged.to_parquet(path)
+        elif path.suffix == ".geojson":
+            merged.to_file(path, driver="GeoJSON")
+        else:
+            merged.to_feather(path)
+
+    def _tile_detections(self, geometries):
+        """Group predictions by tile and identify contours cut by tile edges."""
+        tiles = self.grid.geometry.to_numpy()
+        clearance_by_row = np.zeros(len(geometries))
+        partial = np.zeros(len(geometries), dtype=bool)
         known = np.flatnonzero(self.owners >= 0)
 
-        # Reuse one spatial index per tile instead of rebuilding it for each seam.
+        # Keep each tile's rows together without changing their source order.
         ordered = known[np.argsort(self.owners[known], kind="stable")]
         counts = np.bincount(self.owners[known], minlength=len(tiles))
         tile_rows = np.split(ordered, np.cumsum(counts)[:-1]) if len(tiles) else []
-        # Inside a rectangular tile, the nearest edge is given by the extrema.
+        # Rectangle bounds give edge distances without measuring every outline.
         for rows, tile, (minx, miny, maxx, maxy) in zip(
             tile_rows, tiles, bounds(tiles)
         ):
@@ -244,72 +340,43 @@ class InstMerger:
             outside = clearance < 0
             if outside.any():
                 clearance[outside] = distance(geometries[rows[outside]], boundary(tile))
-            context[rows] = clearance
+            clearance_by_row[rows] = clearance
         if "is_partial" in self.gdf:
-            cut = self.gdf["is_partial"].to_numpy(dtype=bool)
+            partial = self.gdf["is_partial"].to_numpy(dtype=bool)
         else:
-            # Older exports lack pre-smoothing border flags; retain uncertain contours.
-            cut[known] = context[known] < 1
+            # Older files lack border flags; treat near-edge contours as cut off.
+            partial[known] = clearance_by_row[known] < 1
 
+        return tile_rows, clearance_by_row, partial
+
+    def _find_matches(self, geometries, areas, tile_rows, partial):
+        """Find competing predictions in overlaps and touching fragments at tile edges."""
+        # Reuse each tile's search index across all its neighbors.
         trees = [STRtree(geometries[rows]) for rows in tile_rows]
+        # Edges connect competing predictions from different source tiles.
         conflicts = nx.Graph()
-        abutting = []
+        touching = []
         for left, right, shared in self.seams:
             if shared.area == 0 and shared.length == 0:
                 continue
             if not len(tile_rows[left]) or not len(tile_rows[right]):
                 continue
-            left_ids = tile_rows[left][
+            left_rows = tile_rows[left][
                 trees[left].query(shared, predicate="intersects")
             ]
-            pairs = trees[right].query(geometries[left_ids], predicate="intersects")
-            a, b = left_ids[pairs[0]], tile_rows[right][pairs[1]]
-            common = intersection(geometries[a], geometries[b])
+            pairs = trees[right].query(geometries[left_rows], predicate="intersects")
+            left_ids, right_ids = left_rows[pairs[0]], tile_rows[right][pairs[1]]
+            common = intersection(geometries[left_ids], geometries[right_ids])
             if shared.area > 0:
-                shared_areas = area(common)
-                union_areas = areas[a] + areas[b] - shared_areas
-                ious = np.divide(
-                    shared_areas,
-                    union_areas,
-                    out=np.zeros(len(a)),
-                    where=union_areas > 0,
+                matches, ious, shared_areas = _match_overlaps(
+                    geometries, areas, partial, left_ids, right_ids, common
                 )
-                smaller = np.minimum(areas[a], areas[b])
-                coverage = np.divide(
-                    shared_areas, smaller, out=np.zeros(len(a)), where=smaller > 0
-                )
-                # Strong coverage also links nested and one-versus-many alternatives.
-                partial_smaller = (cut[a] & (areas[a] <= areas[b])) | (
-                    cut[b] & (areas[b] <= areas[a])
-                )
-                matches = (
-                    (ious >= 0.5)
-                    | (~cut[a] & ~cut[b] & (coverage >= 0.8))
-                    | (partial_smaller & (coverage >= 0.5))
-                )
-                alternatives = np.flatnonzero(
-                    (coverage >= 0.8) & (cut[a] != cut[b]) & ~partial_smaller
-                )
-                partial_ids = np.where(
-                    cut[a[alternatives]], a[alternatives], b[alternatives]
-                )
-                complete_ids = np.where(
-                    cut[a[alternatives]], b[alternatives], a[alternatives]
-                )
-                for index in np.unique(partial_ids):
-                    positions = partial_ids == index
-                    if matches[alternatives[positions]].all():
-                        continue
-                    # Several complete nuclei can explain one border-cut alternative.
-                    observed = footprint_union(geometries[complete_ids[positions]])
-                    if observed.area >= 0.5 * areas[index]:
-                        matches[alternatives[positions]] = True
-                # Disagreeing splits may agree as a set without any strong pair.
+                # Keep weak pairs too: several nuclei may jointly match another tile.
                 candidates = np.flatnonzero(shared_areas > 0)
                 conflicts.add_edges_from(
                     (
-                        int(a[index]),
-                        int(b[index]),
+                        int(left_ids[index]),
+                        int(right_ids[index]),
                         {
                             "weight": float(ious[index]),
                             "strong": bool(matches[index]),
@@ -319,12 +386,18 @@ class InstMerger:
                     for index in candidates
                 )
             else:
-                touching = length(common) > 0
-                abutting.extend(zip(a[touching].tolist(), b[touching].tolist()))
+                contact = length(common) > 0
+                touching.extend(
+                    zip(left_ids[contact].tolist(), right_ids[contact].tolist())
+                )
 
+        return conflicts, touching
+
+    def _preserve_unmatched(self, conflicts, geometries, areas):
+        """Preserve unmatched nuclei and flag undersized competing fragments."""
         unmatched = []
         fragments = np.zeros(len(geometries), dtype=bool)
-        # Separate unmatched nuclei from views that only explain a small fragment.
+        # A small matching fragment cannot replace a larger nucleus on its own.
         for index in conflicts:
             neighbors = conflicts[index]
             strong = {other for other, data in neighbors.items() if data["strong"]}
@@ -345,11 +418,11 @@ class InstMerger:
                 if shared_area < 0.5 * areas[index]:
                     fragments[list(undersized.intersection(rows))] = True
                     continue
-                # One covering contour already proves coverage by the whole view.
+                # Measure a union only when no single contour covers enough area.
                 if len(rows) > 1 and max(overlaps) < 0.5 * areas[index]:
                     shared_area = (
                         geometries[index]
-                        .intersection(footprint_union(geometries[rows]))
+                        .intersection(_union_footprint(geometries[rows]))
                         .area
                     )
                 if shared_area >= 0.5 * areas[index]:
@@ -358,76 +431,44 @@ class InstMerger:
                     fragments[list(undersized.intersection(rows))] = True
             if not strong and not explained:
                 unmatched.append(index)
-        # Weakly touched nuclei survive without changing which tile wins a dispute.
+        # Preserve unmatched nuclei without letting them decide between other tiles.
         conflicts.remove_nodes_from(unmatched)
 
+        return fragments
+
+    def _select_predictions(
+        self, conflicts, geometries, areas, clearance, partial, fragments
+    ):
+        """Choose whole predictions from each group of competing tiles."""
+        # Map each discarded row to the original row that replaces it.
         representatives = np.arange(len(geometries))
+        # Joining later must account for every source tile a nucleus represents.
         source_tiles = {}
+        # Only tie-breaking depends on coordinate precision, not overlap matching.
+        coordinate_tolerance = (
+            8 * np.spacing(np.abs(self.grid.total_bounds).max())
+            if len(self.grid)
+            else 0.0
+        )
         for component in nx.connected_components(conflicts):
             remaining = set(component)
             while remaining:
                 views = {}
+                # A view is the set of predictions supplied by one tile.
                 for index in sorted(remaining):
                     views.setdefault(self.owners[index], []).append(index)
-                # No competing tile remains; keep all its original detections.
+                # Nothing competes with the remaining tile's own detections.
                 if len(views) == 1:
                     break
-                # A tiny nested mask cannot stand in for a whole nucleus elsewhere.
-                whole_views = {
-                    tile: rows
-                    for tile, rows in views.items()
-                    if not fragments[rows].any()
-                }
-                if not whole_views:
-                    whole_views = {
-                        tile: [index for index in rows if not fragments[index]]
-                        for tile, rows in views.items()
-                        if not fragments[rows].all()
-                    } or views
-                complete_views = {
-                    tile: rows
-                    for tile, rows in whole_views.items()
-                    if not cut[rows].any()
-                }
-                eligible = complete_views or whole_views
-                # Union area avoids rewarding duplicate or overlapping masks by count.
-                footprints = {
-                    tile: geometries[rows[0]]
-                    if len(rows) == 1
-                    else footprint_union(geometries[rows])
-                    for tile, rows in eligible.items()
-                }
-                footprint_areas = {tile: geom.area for tile, geom in footprints.items()}
-                largest = max(footprint_areas.values())
-                # An interior fragment cannot displace a view of the whole nucleus.
-                supported = [
-                    tile for tile in eligible if footprint_areas[tile] >= 0.8 * largest
-                ]
-
-                priorities = (
-                    ("clearance", "area") if complete_views else ("area", "clearance")
+                selected_tile, selected, footprints = _choose_tile(
+                    views,
+                    geometries,
+                    clearance,
+                    partial,
+                    fragments,
+                    coordinate_tolerance,
                 )
-                for priority in priorities:
-                    if len(supported) == 1:
-                        break
-                    if priority == "clearance":
-                        values = {
-                            tile: context[whole_views[tile]].min() for tile in supported
-                        }
-                        tolerance = coordinate_tolerance
-                    else:
-                        values = footprint_areas
-                        # Area roundoff scales with the contour perimeter.
-                        tolerance = coordinate_tolerance * max(
-                            footprints[tile].length for tile in supported
-                        )
-                    best = max(values[tile] for tile in supported)
-                    supported = [
-                        tile for tile in supported if best - values[tile] <= tolerance
-                    ]
-                # Discarded fragments must not decide which retained source row wins.
-                selected_tile = min(supported, key=lambda tile: whole_views[tile][0])
-                selected = set(whole_views[selected_tile])
+                # A direct match must explain at least half of the rejected nucleus.
                 rejected = {
                     other
                     for index in selected
@@ -437,58 +478,17 @@ class InstMerger:
                 }
                 alternatives = remaining - selected - rejected
                 if alternatives:
-                    for tile, rows in views.items():
-                        if tile not in footprints:
-                            footprints[tile] = (
-                                geometries[rows[0]]
-                                if len(rows) == 1
-                                else footprint_union(geometries[rows])
-                            )
-                    agreements = {tile: set() for tile in views}
-                    view_tiles = list(views)
-                    for position, left in enumerate(view_tiles):
-                        for right in view_tiles[position + 1 :]:
-                            if len(views[left]) == len(views[right]) == 1:
-                                edge = conflicts.get_edge_data(
-                                    views[left][0], views[right][0], {}
-                                )
-                                agrees = edge.get("weight", 0) >= 0.5
-                            else:
-                                shared_area = (
-                                    footprints[left]
-                                    .intersection(footprints[right])
-                                    .area
-                                )
-                                union_area = (
-                                    footprints[left].area
-                                    + footprints[right].area
-                                    - shared_area
-                                )
-                                agrees = (
-                                    union_area > 0 and shared_area >= 0.5 * union_area
-                                )
-                            if agrees:
-                                agreements[left].add(right)
-                                agreements[right].add(left)
-                    competing_tiles = {
-                        tile
-                        for tile in views
-                        if tile in agreements[selected_tile]
-                        # Two corroborating views avoid following a lone broad bridge.
-                        or len(agreements[tile] & agreements[selected_tile]) >= 2
-                    }
-                    candidates = np.array(
-                        sorted(
-                            index
-                            for index in alternatives
-                            if self.owners[index] in competing_tiles
-                        ),
-                        dtype=int,
+                    rejected.update(
+                        self._covered_alternatives(
+                            alternatives,
+                            selected_tile,
+                            views,
+                            footprints,
+                            conflicts,
+                            geometries,
+                            areas,
+                        )
                     )
-                    covered = area(
-                        intersection(geometries[candidates], footprints[selected_tile])
-                    )
-                    rejected.update(candidates[covered >= 0.5 * areas[candidates]])
                 for index in rejected:
                     neighbors = selected.intersection(conflicts[index])
                     if not neighbors:
@@ -508,36 +508,91 @@ class InstMerger:
                 # Keep detections that the chosen view does not explain.
                 remaining.difference_update(selected | rejected)
 
+        return representatives, source_tiles
+
+    def _covered_alternatives(
+        self,
+        alternatives,
+        selected_tile,
+        views,
+        footprints,
+        conflicts,
+        geometries,
+        areas,
+    ):
+        """Find replacements supported by agreement between whole tile predictions."""
+        for tile, rows in views.items():
+            if tile not in footprints:
+                footprints[tile] = (
+                    geometries[rows[0]]
+                    if len(rows) == 1
+                    else _union_footprint(geometries[rows])
+                )
+        # Compare each tile's local predictions as a set, not just nucleus pairs.
+        agreements = {tile: set() for tile in views}
+        view_tiles = list(views)
+        for position, left in enumerate(view_tiles):
+            for right in view_tiles[position + 1 :]:
+                if len(views[left]) == len(views[right]) == 1:
+                    edge = conflicts.get_edge_data(views[left][0], views[right][0], {})
+                    agrees = edge.get("weight", 0) >= 0.5
+                else:
+                    shared_area = footprints[left].intersection(footprints[right]).area
+                    union_area = (
+                        footprints[left].area + footprints[right].area - shared_area
+                    )
+                    agrees = union_area > 0 and shared_area >= 0.5 * union_area
+                if agrees:
+                    agreements[left].add(right)
+                    agreements[right].add(left)
+        competing_tiles = {
+            tile
+            for tile in views
+            if tile in agreements[selected_tile]
+            # Require two supporting tiles before accepting an indirect match.
+            or len(agreements[tile] & agreements[selected_tile]) >= 2
+        }
+        candidates = np.array(
+            sorted(
+                index for index in alternatives if self.owners[index] in competing_tiles
+            ),
+            dtype=int,
+        )
+        # An agreeing tile may still contain extra nuclei that must survive.
+        covered = area(intersection(geometries[candidates], footprints[selected_tile]))
+        return candidates[covered >= 0.5 * areas[candidates]]
+
+    def _join_touching(
+        self, touching, representatives, source_tiles, geometries, areas
+    ):
+        """Join touching fragments and keep metadata from their largest member."""
         groups = nx.utils.UnionFind()
-
-        def join(left: int, right: int) -> bool:
-            a, b = groups[left], groups[right]
-            if a == b:
-                return False
-            tiles_a = source_tiles.get(a, {self.owners[left]})
-            tiles_b = source_tiles.get(b, {self.owners[right]})
-            # Two nuclei predicted in one tile must remain separate objects.
-            if tiles_a & tiles_b:
-                return False
-            groups.union(a, b)
-            source_tiles[groups[left]] = tiles_a | tiles_b
-            return True
-
         graph = nx.Graph()
-        for left, right in abutting:
-            a, b = representatives[left], representatives[right]
-            # Recheck contact after replacing duplicates by their selected contours.
-            if (
-                a != b
-                and geometries[a].intersection(geometries[b]).length > 0
-                and join(int(a), int(b))
-            ):
-                graph.add_edge(int(a), int(b))
+        for left, right in touching:
+            a, b = int(representatives[left]), int(representatives[right])
+            # The chosen whole contours may no longer touch where fragments did.
+            if a == b:
+                continue
+            touches = geometries[a].intersection(geometries[b]).length > 0
+            if not touches:
+                continue
+            group_a, group_b = groups[a], groups[b]
+            if group_a == group_b:
+                continue
+            tiles_a = source_tiles.get(group_a, {self.owners[a]})
+            tiles_b = source_tiles.get(group_b, {self.owners[b]})
+            # Never join two detections that were already separate in one source tile.
+            if tiles_a & tiles_b:
+                continue
+            groups.union(group_a, group_b)
+            source_tiles[groups[a]] = tiles_a | tiles_b
+            graph.add_edge(a, b)
 
         keep = representatives == np.arange(len(geometries))
         unions = {}
         for component in nx.connected_components(graph):
             indices = sorted(component)
+            # Joined fragments inherit their largest member's class and attributes.
             best = max(indices, key=lambda i: (areas[i], -i))
             keep[indices] = False
             keep[best] = True
@@ -546,22 +601,4 @@ class InstMerger:
         for index, geometry in unions.items():
             merged.at[index, merged.geometry.name] = geometry
         merged = merged.reset_index(drop=True)
-        if simplify_level:
-            merged.geometry = merged.geometry.simplify(simplify_level)
-        if precision is not None:
-            merged.geometry = from_wkt(
-                to_wkt(merged.geometry.to_numpy(), rounding_precision=precision)
-            )
-        merged["uid"] = np.arange(len(merged))
-        merged = merged.set_index("uid", drop=False)
-        merged = filter_nuclei(merged, pixel_size=pixel_size, filter_level=filter_level)
-
-        if path is None:
-            return merged
-        path.parent.mkdir(parents=True, exist_ok=True)
-        if path.suffix == ".parquet":
-            merged.to_parquet(path)
-        elif path.suffix == ".geojson":
-            merged.to_file(path, driver="GeoJSON")
-        else:
-            merged.to_feather(path)
+        return merged
