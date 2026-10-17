@@ -20,6 +20,7 @@ from cellseg_models_pytorch.wsi.tiles import get_region_from_array
 
 @pytest.fixture
 def tutorial(tmp_path, monkeypatch, pipeline):
+    pytest.importorskip("polars", reason="WSI notebook needs the docs group")
     model, reader, image, _ = pipeline
     previous_threads = torch.get_num_threads()
     monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
