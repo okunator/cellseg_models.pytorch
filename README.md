@@ -74,26 +74,30 @@ installing this library.
 **Initialize a pre-trained model and run inference**
 ```
 pip install cellseg-models-pytorch
-pip install albumentations
+pip install albumentations==2.0.8
 ```
 
+This checkpoint expects RGB images with pixel values scaled globally to 0–1.
+
 ```python
-from albumentations import Resize, Compose
+import numpy as np
+from albumentations import Compose, Normalize, Resize
+
 from cellseg_models_pytorch.models.cellpose import CellPose
 from cellseg_models_pytorch.utils import FileHandler
-from cellseg_models_pytorch.transforms.albu_transforms import MinMaxNormalization
 
-# intialize nuclei segmentation model trained on HGSC data
+# Initialize a nuclei segmentation model trained on HGSC data.
 # see models in https://huggingface.co/csmp-hub
 model = CellPose.from_pretrained(weights="hgsc_v1_efficientnet_b5")
 
 model.set_inference_mode()
 
 # Resize to multiple of 32 of your own choosing
-transform = Compose([Resize(1024, 1024), MinMaxNormalization()])
+transform = Compose([Resize(1024, 1024), Normalize(normalization="min_max")])
 
 im = FileHandler.read_img(IMG_PATH)
-im = transform(image=im)["image"]
+# Albumentations can return float64 for uint8 images.
+im = transform(image=im)["image"].astype(np.float32, copy=False)
 
 prob = model.predict(im)
 out = model.post_process(prob)

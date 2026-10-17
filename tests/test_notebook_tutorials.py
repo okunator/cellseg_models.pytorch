@@ -1,4 +1,4 @@
-"""Regression checks for the code rendered in the tutorial notebooks."""
+"""Regression checks for the README quick start and tutorial notebook code."""
 
 import json
 import random
@@ -75,6 +75,51 @@ def test_cpu_fixture_restores_cuda_rng(monkeypatch):
             with pytest.raises(StopIteration):
                 next(fixture)
         torch.testing.assert_close(cuda_rng, original)
+
+
+@pytest.mark.parametrize("dtype", [np.uint8, np.float32])
+@pytest.mark.parametrize("image_kind", ["channels", "constant", "histology"])
+def test_readme_quickstart_minmax(monkeypatch, img_sample, dtype, image_kind):
+    albu = pytest.importorskip("albumentations")
+    from cellseg_models_pytorch.models.cellpose import CellPose
+    from cellseg_models_pytorch.transforms.functional.normalization import (
+        minmax_normalize,
+    )
+    from cellseg_models_pytorch.utils import FileHandler
+
+    # Separate channel ranges distinguish global from per-channel normalization.
+    pixels = np.arange(77).reshape(7, 11)
+    image = np.stack([pixels, pixels + 80, pixels + 160], axis=-1).astype(dtype)
+    if image_kind == "constant":
+        image.fill(37)
+    elif image_kind == "histology":
+        image = img_sample.astype(dtype)
+    if dtype == np.float32:
+        image = image / 255 - 0.5
+    original = image.copy()
+
+    model = Mock()
+    monkeypatch.setattr(CellPose, "from_pretrained", Mock(return_value=model))
+    monkeypatch.setattr(FileHandler, "read_img", Mock(return_value=image))
+    readme = (TUTORIALS.parents[1] / "README.md").read_text()
+    source = readme.split("```python\n", 1)[1].split("```", 1)[0]
+    namespace = {"IMG_PATH": "example.png"}
+    exec(source, namespace)
+
+    transform = namespace["transform"].transforms[-1]
+    assert isinstance(transform, albu.Normalize)
+    assert transform.normalization == "min_max"
+    actual = model.predict.call_args.args[0]
+    assert actual.dtype == np.float32
+    assert actual.shape == (1024, 1024, 3)
+    resized = albu.Resize(1024, 1024)(image=original)["image"]
+    expected = minmax_normalize(resized, copy=True)
+    # The uint8 built-in adds an epsilon; bound its difference from OpenCV.
+    np.testing.assert_allclose(actual, expected, rtol=0, atol=5e-7)
+    np.testing.assert_array_equal(image, original)
+    if image_kind == "constant":
+        np.testing.assert_array_equal(actual, np.zeros_like(actual))
+    model.post_process.assert_called_once_with(model.predict.return_value)
 
 
 @pytest.mark.parametrize(
