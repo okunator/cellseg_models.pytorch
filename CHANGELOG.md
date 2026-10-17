@@ -22,6 +22,11 @@
 
 ## Fixes
 
+- Correct in-memory sliding-window prediction for small images and asymmetric or
+  zero padding. Honor disabled boundary weighting, normalize auxiliary overlaps
+  by their weights, and preserve optional nuclear/cytoplasm/tissue maps. Reject
+  strides that leave gaps or fail to advance. Add a pretrained HoVer-Net example.
+
 - Avoid overflow when tensor min-max normalization receives extreme finite
   float32 values, preserving the uint8 GPU tile path.
 

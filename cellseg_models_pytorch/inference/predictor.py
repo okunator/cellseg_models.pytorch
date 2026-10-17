@@ -1,5 +1,4 @@
-from dataclasses import fields
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Union
 
 import numpy as np
 import torch
@@ -14,6 +13,8 @@ from cellseg_models_pytorch.decoders.multitask_decoder import (
 from cellseg_models_pytorch.utils.convolve import filter2D, gaussian_kernel2d
 
 __all__ = ["Predictor"]
+
+_PredictionMaps = dict[str, SoftInstanceOutput | SoftSemanticOutput | None]
 
 
 def compute_pyramid_patch_weight_loss(width: int, height: int) -> np.ndarray:
@@ -271,38 +272,49 @@ class Predictor(BasePredictor):
 
     def predict_sliding_win(
         self,
-        x: Union[torch.Tensor, np.ndarray, Image],
-        window_size: Tuple[int, int],
+        x: torch.Tensor | np.ndarray | Image,
+        window_size: tuple[int, int],
         stride: int,
-        padding: int = 20,
+        padding: int | None = 20,
         apply_boundary_weight: bool = True,
         save_intermediate: bool = False,
-    ) -> Dict[str, torch.Tensor]:
-        """Run the input through the model.
-
-        Note:
-            No post-processing is applied.
+    ) -> _PredictionMaps | tuple[_PredictionMaps, _PredictionMaps]:
+        """Predict overlapping windows and restore maps to the input image grid.
 
         Args:
-            x: Input image (H, W, C) or input image batch (B, C, H, W).
+            x: HWC NumPy/PIL image or CHW/BCHW tensor, preprocessed for the
+                checkpoint. Tensor inputs must already be on the model device.
             window_size: Height and width of the window size.
             stride: The amount of stride for sliding window.
-            padding: Padding during applying sliding window.
-                Defaults to 20.
+            padding: Minimum total padding per axis, split between both sides.
+                Extra padding completes the windows. None uses the default, 20.
             apply_boundary_weight:
-                Whether to apply boundary weights to mitigate boundary artefacts
-                in aux predictions.
+                Downweight auxiliary and binary instance maps at window edges
+                before averaging overlaps.
                 Defaults to True.
             save_intermediate:
-                Whether to save intermediate results (logits). If True, the method
-                returns a tuple (final predictions, intermediate results), where the
-                intermediate results are the raw model outputs before argmax.
+                Also return the intermediate output dictionary.
                 Defaults to False.
 
         Returns:
-            Dict[str, torch.Tensor]:
-                Dictionary containing the model predictions. Shapes: (B, C, H, W).
+            Full-image maps grouped by head. Type maps contain class IDs with
+            shape BHW; auxiliary and binary maps retain their BCHW channels.
+            With save_intermediate=True, returns a pair of output dictionaries.
+
+        Raises:
+            ValueError: Window dimensions or stride are nonpositive, stride leaves
+                gaps, padding is negative, or the input image has invalid dimensions.
         """
+        if len(window_size) != 2 or any(size <= 0 for size in window_size):
+            raise ValueError("window_size must contain two positive dimensions.")
+        if stride <= 0 or stride > min(window_size):
+            raise ValueError(
+                "stride must be positive and no larger than either window dimension."
+            )
+        padding = 20 if padding is None else padding
+        if padding < 0:
+            raise ValueError("padding must be nonnegative.")
+
         # check if the input is a tensor
         if not isinstance(x, torch.Tensor):
             x = self._to_tensor(x).to(self.device)
@@ -314,6 +326,8 @@ class Predictor(BasePredictor):
                 raise ValueError(
                     f"Expected input tensor to have 3 or 4 dimensions (C, H, W) or (B, C, H, W), but got {x.ndim}."
                 )
+        if min(x.shape[-2:]) <= 0:
+            raise ValueError("Input image must have positive height and width.")
 
         if apply_boundary_weight:
             weight_mat = compute_pyramid_patch_weight_loss(*window_size)
@@ -329,12 +343,16 @@ class Predictor(BasePredictor):
         with torch.no_grad():
             if self.mixed_precision:
                 with torch.autocast(self.device.type, dtype=torch.float16):
-                    probs = self._predict_sliding_win(x, window_size, stride, padding)
+                    probs = self._predict_sliding_win(
+                        x, window_size, stride, padding, apply_boundary_weight
+                    )
                     if save_intermediate:
                         intermediate = probs
                     probs = self._argmax(probs)
             else:
-                probs = self._predict_sliding_win(x, window_size, stride, padding)
+                probs = self._predict_sliding_win(
+                    x, window_size, stride, padding, apply_boundary_weight
+                )
                 if save_intermediate:
                     intermediate = probs
                 probs = self._argmax(probs)
@@ -346,35 +364,21 @@ class Predictor(BasePredictor):
 
     @staticmethod
     def _get_margins(
-        first_endpoint: int, img_size: int, stride: int, pad: int = None
-    ) -> Tuple[int, int]:
-        """Get the number of slices needed for one direction and the overlap."""
-        pad = int(pad) if pad is not None else 20  # at least some padding needed
-        img_size += pad
-
-        n = 1
-        mod = 0
-        end = first_endpoint
-        while True:
-            n += 1
-            end += stride
-
-            if end > img_size:
-                mod = end - img_size
-                break
-            elif end == img_size:
-                break
-
-        return n, mod + pad
+        first_endpoint: int, img_size: int, stride: int, pad: int | None = None
+    ) -> tuple[int, int]:
+        """Return the window count and total padding needed along one image axis."""
+        pad = int(pad) if pad is not None else 20
+        n = max(0, (img_size + pad - first_endpoint + stride - 1) // stride) + 1
+        return n, first_endpoint + (n - 1) * stride - img_size
 
     @staticmethod
     def _get_slices(
         stride: int,
-        patch_shape: Tuple[int, int],
-        img_size: Tuple[int, int],
-        pad: int = None,
-    ) -> Tuple[Dict[str, slice], int, int]:
-        """Get all the overlapping slices in a dictionary and the needed paddings."""
+        patch_shape: tuple[int, int],
+        img_size: tuple[int, int],
+        pad: int | None = None,
+    ) -> tuple[list[tuple[slice, slice]], int, int]:
+        """Return window row/column slices and total vertical/horizontal padding."""
         y_end, x_end = patch_shape
         nrows, pady = Predictor._get_margins(y_end, img_size[0], stride, pad=pad)
         ncols, padx = Predictor._get_margins(x_end, img_size[1], stride, pad=pad)
@@ -396,14 +400,22 @@ class Predictor(BasePredictor):
         return torch.zeros(B, C, H, W, dtype=dtype, device=device)
 
     def _init_output(
-        self, x: torch.Tensor, soft_masks: Union[SoftInstanceOutput, SoftSemanticOutput]
-    ) -> Dict[str, Any]:
-        """Initialize the output tensors for the instance segmentation."""
+        self, x: torch.Tensor, soft_masks: SoftInstanceOutput | SoftSemanticOutput
+    ) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
+        """Allocate full-image type, auxiliary and binary maps for one output head.
+
+        Args:
+            x: Padded BCHW input; supplies batch size, image size, dtype and device.
+            soft_masks: One window's output; supplies the head's channel counts.
+
+        Returns:
+            Type, auxiliary and binary buffers. Absent maps return None.
+        """
         C = soft_masks.type_map.shape[1]
         out = self._zeros(x.shape[0], C, *x.shape[2:], x.dtype, x.device)
 
         out_aux = None
-        if any([f.name == "aux_map" for f in fields(soft_masks)]):
+        if isinstance(soft_masks, SoftInstanceOutput):
             Ca = soft_masks.aux_map.shape[1]
             out_aux = self._zeros(x.shape[0], Ca, *x.shape[2:], x.dtype, x.device)
 
@@ -417,23 +429,28 @@ class Predictor(BasePredictor):
     def _predict_sliding_win(
         self,
         x: torch.Tensor,
-        window_size: Tuple[int, int],
+        window_size: tuple[int, int],
         stride: int,
         padding: int = 20,
         apply_boundary_weight: bool = True,
-    ) -> Dict[str, Any]:
-        """Run the model in sliding window mode."""
+    ) -> _PredictionMaps:
+        """Combine window predictions into maps aligned with the unpadded BCHW input."""
+        height, width = x.shape[-2:]
         slices, pady, padx = self._get_slices(
             stride, window_size, tuple(x.shape[2:]), padding
         )
 
-        padx, modx = divmod(padx, 2)
-        pady, mody = divmod(pady, 2)
-        padx += modx
-        pady += mody
-
-        x = F.pad(x, pad=(padx, padx, pady, pady), mode="reflect")
-        recovery = self._zeros(x.shape[0], 1, *x.shape[2:], x.dtype, x.device)
+        top, left = pady // 2, padx // 2
+        bottom, right = pady - top, padx - left
+        # Reflection cannot extend beyond a small input; repeat its edge instead.
+        mode = (
+            "reflect"
+            if max(top, bottom) < height and max(left, right) < width
+            else "replicate"
+        )
+        x = F.pad(x, pad=(left, right, top, bottom), mode=mode)
+        recovery = self._zeros(1, 1, *x.shape[2:], x.dtype, x.device)
+        aux_recovery = torch.zeros_like(recovery) if apply_boundary_weight else recovery
         for i, (yslice, xslice) in enumerate(slices):
             x_i = x[..., yslice, xslice]
             soft_masks = self._predict(x_i, apply_boundary_weight=apply_boundary_weight)
@@ -465,35 +482,34 @@ class Predictor(BasePredictor):
             if soft_masks["tissue"] is not None:
                 tissue[..., yslice, xslice] += soft_masks["tissue"].type_map
                 if tissue_binary is not None:
-                    cyto_binary[..., yslice, xslice] += soft_masks["cyto"].binary_map
+                    tissue_binary[..., yslice, xslice] += soft_masks[
+                        "tissue"
+                    ].binary_map
 
             recovery[..., yslice, xslice] += 1
+            if apply_boundary_weight:
+                aux_recovery[..., yslice, xslice] += self.weight_mat
 
-        # normalize the output matrices
-        soft_masks["nuc"].type_map = (nuc / recovery)[..., pady:-pady, padx:-padx]
-        soft_masks["nuc"].aux_map = (nuc_aux / recovery)[..., pady:-pady, padx:-padx]
+        rows, cols = slice(top, top + height), slice(left, left + width)
+        # Auxiliary/binary instance maps were weighted; divide by those same weights.
+        soft_masks["nuc"].type_map = (nuc / recovery)[..., rows, cols]
+        soft_masks["nuc"].aux_map = (nuc_aux / aux_recovery)[..., rows, cols]
         if nuc_binary is not None:
-            soft_masks["nuc"].aux_map = (nuc_binary / recovery)[
-                ..., pady:-pady, padx:-padx
-            ]
+            soft_masks["nuc"].binary_map = (nuc_binary / aux_recovery)[..., rows, cols]
 
         if soft_masks["cyto"] is not None:
-            soft_masks["cyto"].type_map = (cyto / recovery)[..., pady:-pady, padx:-padx]
-            soft_masks["cyto"].aux_map = (cyto_aux / recovery)[
-                ..., pady:-pady, padx:-padx
-            ]
+            soft_masks["cyto"].type_map = (cyto / recovery)[..., rows, cols]
+            soft_masks["cyto"].aux_map = (cyto_aux / aux_recovery)[..., rows, cols]
             if cyto_binary is not None:
-                soft_masks["cyto"].binary_map = (cyto_binary / recovery)[
-                    pady:-pady, padx:-padx
+                soft_masks["cyto"].binary_map = (cyto_binary / aux_recovery)[
+                    ..., rows, cols
                 ]
 
         if soft_masks["tissue"] is not None:
-            soft_masks["tissue"].type_map = (tissue / recovery)[
-                ..., pady:-pady, padx:-padx
-            ]
+            soft_masks["tissue"].type_map = (tissue / recovery)[..., rows, cols]
             if tissue_binary is not None:
                 soft_masks["tissue"].binary_map = (tissue_binary / recovery)[
-                    ..., pady:-pady, padx:-padx
+                    ..., rows, cols
                 ]
 
         return soft_masks
