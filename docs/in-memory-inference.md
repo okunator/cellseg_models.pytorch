@@ -45,6 +45,12 @@ the example discards that class mask when unpacking the result.
 than either window dimension. Padding and cropping preserve the original image
 coordinates, including images smaller than a window.
 
-Windows limit the size of each model forward pass. The input image and combined
-output maps still occupy device memory. For whole slides, use the
+Use sliding windows when a full-image forward pass exceeds GPU memory, or when
+a model requires a fixed input size. This preserves nucleus size instead of
+shrinking the image. Overlap can reduce crop-edge artifacts compared with separate,
+non-overlapping patches, at the cost of extra computation.
+
+This implementation reduces memory used by intermediate model activations. The
+full image and combined maps must still fit on the model’s device; it does not
+stream windows from CPU memory to the GPU. For whole slides, use the
 [WSI example](tutorials/wsi.ipynb) to read and process tiles from the slide file.
