@@ -314,7 +314,24 @@ class InstMerger:
             merged.to_feather(path)
 
     def _tile_detections(self, geometries):
-        """Group predictions by tile and identify contours cut by tile edges."""
+        """Group detected nucleus outlines by the tile that produced them.
+
+        A detection is one nucleus polygon from a tile's segmentation result,
+        already placed in slide coordinates. Overlapping tiles can detect the
+        same nucleus more than once. Collect each polygon's source tile and
+        edge information so later steps can prefer a whole nucleus outline.
+
+        Args:
+            geometries: Nucleus polygons in the same row order as self.gdf,
+                using level-zero slide pixels.
+
+        Returns:
+            A tuple (tile_rows, clearance, partial). tile_rows contains input
+            row indices grouped by source tile. clearance gives each polygon's
+            distance to its tile edge in pixels. partial marks polygons that
+            may be cut off by that edge. The last two arrays follow input row
+            order; only polygons with a known source appear in tile_rows.
+        """
         tiles = self.grid.geometry.to_numpy()
         clearance_by_row = np.zeros(len(geometries))
         partial = np.zeros(len(geometries), dtype=bool)
@@ -350,7 +367,26 @@ class InstMerger:
         return tile_rows, clearance_by_row, partial
 
     def _find_matches(self, geometries, areas, tile_rows, partial):
-        """Find competing predictions in overlaps and touching fragments at tile edges."""
+        """Find nucleus outlines that neighboring tiles may have detected twice.
+
+        Where tiles overlap, record outlines that share area for later duplicate
+        selection. Where tiles meet without overlap, record touching outlines
+        that may be pieces of one nucleus. This step collects the relationships
+        used to choose or join outlines later.
+
+        Args:
+            geometries: Nucleus polygons in slide pixels, in input row order.
+            areas: Area of each polygon in square pixels, in the same order.
+            tile_rows: Input row indices grouped by source tile, as returned by
+                _tile_detections.
+            partial: One boolean per polygon marking possibly cut-off outlines.
+
+        Returns:
+            A tuple (conflicts, touching). conflicts is a graph linking input
+            row indices for potentially duplicate nuclei, with their overlap
+            measurements and match strength. touching is a list of row-index
+            pairs whose outlines touch across a shared tile edge.
+        """
         # Reuse each tile's search index across all its neighbors.
         trees = [STRtree(geometries[rows]) for rows in tile_rows]
         # Edges connect competing predictions from different source tiles.
@@ -394,7 +430,24 @@ class InstMerger:
         return conflicts, touching
 
     def _preserve_unmatched(self, conflicts, geometries, areas):
-        """Preserve unmatched nuclei and flag undersized competing fragments."""
+        """Protect nuclei that have no adequate replacement in another tile.
+
+        A slight overlap with another outline is not enough to replace a nucleus.
+        Exclude these unmatched nuclei from duplicate selection so they survive.
+        Also flag small competing outlines that cover too little of a larger
+        nucleus to serve as its replacement.
+
+        Args:
+            conflicts: Candidate duplicate relationships from _find_matches.
+                Updated in place to exclude nuclei with no adequate replacement.
+            geometries: Nucleus polygons in slide pixels, in input row order.
+            areas: Area of each polygon in square pixels, in the same order.
+
+        Returns:
+            A boolean array in input row order. True marks a small competing
+            outline that cannot adequately replace a larger nucleus. Later
+            selection uses these flags to prefer whole nucleus outlines.
+        """
         unmatched = []
         fragments = np.zeros(len(geometries), dtype=bool)
         # A small matching fragment cannot replace a larger nucleus on its own.
