@@ -22,6 +22,9 @@
 
 ## Fixes
 
+- Avoid overflow when tensor min-max normalization receives extreme finite
+  float32 values, preserving the uint8 GPU tile path.
+
 - Correct cuCIM pyramid size scaling and edge padding without moving CUDA tiles
   to the host.
 

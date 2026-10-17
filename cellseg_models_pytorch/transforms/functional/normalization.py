@@ -178,10 +178,8 @@ def minmax_normalize(
 
     Args:
         img: HWC or HW image. Tensors stay on their input device.
-        amin: Lower output value. Constant images use this value.
-            Defaults to 0.0.
-        amax: Upper output value.
-            Defaults to 1.0.
+        amin: One output endpoint. Constant images use the lower endpoint.
+        amax: Other output endpoint; the endpoints may be supplied in either order.
         copy: Copy the NumPy input before normalization. Tensor results are
             always newly allocated. Defaults to False.
 
@@ -200,10 +198,21 @@ def minmax_normalize(
     if isinstance(img, torch.Tensor):
         im = img.to(dtype=torch.float32)
         minimum = im.amin()
-        span = im.amax() - minimum
+        maximum = im.amax()
         low, high = min(amin, amax), max(amin, amax)
         # Match OpenCV's global range and constant-image behavior on the device.
         epsilon = torch.finfo(torch.float64).eps
+        if img.is_floating_point():
+            # Halve before subtraction so even opposite float32 extremes fit.
+            half_minimum = minimum * 0.5
+            half_span = maximum * 0.5 - half_minimum
+            unit_range = (im * 0.5 - half_minimum) / half_span.clamp_min(epsilon * 0.5)
+            return (
+                torch.where(half_span > epsilon * 0.5, unit_range, 0) * (high - low)
+                + low
+            )
+
+        span = maximum - minimum
         scale = torch.where(span > epsilon, (high - low) / span.clamp_min(epsilon), 0)
         return (im - minimum) * scale + low
 
