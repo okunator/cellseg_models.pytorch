@@ -81,7 +81,7 @@ This checkpoint expects RGB images with pixel values scaled globally to 0–1.
 
 ```python
 import numpy as np
-from albumentations import Compose, Normalize, Resize
+from albumentations import Normalize, Resize
 
 from cellseg_models_pytorch.models.cellpose import CellPose
 from cellseg_models_pytorch.utils import FileHandler
@@ -93,11 +93,13 @@ model = CellPose.from_pretrained(weights="hgsc_v1_efficientnet_b5")
 model.set_inference_mode()
 
 # Resize to multiple of 32 of your own choosing
-transform = Compose([Resize(1024, 1024), Normalize(normalization="min_max")])
+resize = Resize(1024, 1024)
+normalize = Normalize(normalization="min_max")
 
 im = FileHandler.read_img(IMG_PATH)
-# Albumentations can return float64 for uint8 images.
-im = transform(image=im)["image"].astype(np.float32, copy=False)
+# Match the checkpoint's float32 preprocessing before normalization.
+im = resize(image=im)["image"].astype(np.float32, copy=False)
+im = normalize(image=im)["image"]
 
 prob = model.predict(im)
 out = model.post_process(prob)
