@@ -24,9 +24,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from __future__ import annotations
+
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 import numpy as np
 from PIL import Image
@@ -49,6 +51,10 @@ from .tiles import (
 from .tissue import clean_tissue_mask, get_tissue_mask
 
 AVAILABLE_BACKENDS = ("OPENSLIDE", "CUCIM", "BIOIO")
+
+
+if TYPE_CHECKING:
+    import torch
 
 
 class SlideReader:
@@ -118,6 +124,19 @@ class SlideReader:
         return self._reader.dimensions
 
     @property
+    def pixel_size(self) -> tuple[float, float]:
+        """Level-zero pixel size (height, width) in micrometers.
+
+        Both axes are preserved, including anisotropic pixels. This describes
+        physical calibration, not pyramid downsampling.
+
+        Raises:
+            ValueError: Calibration is missing, invalid or uses unsupported units.
+
+        """
+        return self._reader.pixel_size
+
+    @property
     def level_count(self) -> int:
         """Number of slide pyramid levels."""
         return self._reader.level_count
@@ -148,22 +167,31 @@ class SlideReader:
         return self._reader.read_level(level=level)
 
     def read_region(
-        self, xywh: tuple[int, int, int, int], level: int = 0
-    ) -> np.ndarray:
+        self,
+        xywh: tuple[int, int, int, int],
+        level: int = 0,
+        *,
+        device: str | torch.device | None = None,
+    ) -> np.ndarray | torch.Tensor:
         """Read region based on `xywh`-coordinates.
 
         Args:
             xywh: Coordinates for the region.
             level: Slide pyramid level to read from.
                 Defaults to 0.
+            device: None returns a CPU NumPy array (default). With the CUCIM
+                backend, a CUDA device returns a GPU tensor without a host copy.
+                Other backends do not support device reads.
 
         Raises:
-            ValueError: Invalid `level` argument.
+            ValueError: Invalid level or unsupported device read.
 
         Returns:
-            np.ndarray:
-                Array containing image data from `xywh`-region.
+            RGB uint8 HWC pixels. Bounds use level-zero xywh coordinates;
+            height and width are downsampled at the selected level.
         """
+        if device is not None:
+            return self._reader.read_region(xywh=xywh, level=level, device=device)
         return self._reader.read_region(xywh=xywh, level=level)
 
     def level_from_max_dimension(self, max_dimension: int = 4096) -> int:

@@ -24,11 +24,45 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Union
+from typing import TYPE_CHECKING, Union
 
 import numpy as np
+
+
+if TYPE_CHECKING:
+    import torch
+
+
+def _pixel_size_um(
+    values: Sequence[float | str | None],
+    units: Sequence[str] = ("µm", "µm"),
+) -> tuple[float, float]:
+    if len(values) != 2 or len(units) != 2:
+        raise ValueError("Pixel-size metadata must contain both height and width")
+    factors = {
+        "µm": 1.0,
+        "μm": 1.0,
+        "um": 1.0,
+        "micrometer": 1.0,
+        "nm": 1e-3,
+        "nanometer": 1e-3,
+        "mm": 1e3,
+        "millimeter": 1e3,
+    }
+    try:
+        y, x = (float(value) * factors[unit] for value, unit in zip(values, units))
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(
+            "Pixel-size metadata is missing, invalid or has unknown units"
+        ) from error
+    if not all(np.isfinite(value) and value > 0 for value in (y, x)):
+        raise ValueError("Pixel sizes must be positive finite micrometers per pixel")
+    return y, x
 
 
 class SlideReaderBackend(ABC):
@@ -56,6 +90,15 @@ class SlideReaderBackend(ABC):
     def suffix(self) -> str:
         """Slide file-extension."""
         return self.__path.suffix
+
+    @property
+    def pixel_size(self) -> tuple[float, float]:
+        """Level-zero pixel size (height, width) in micrometers.
+
+        Raises:
+            ValueError: Physical calibration is unavailable.
+        """
+        raise ValueError("This backend does not provide pixel-size metadata")
 
     @property
     @abstractmethod
@@ -102,12 +145,20 @@ class SlideReaderBackend(ABC):
         """
 
     @abstractmethod
-    def read_region(self, xywh: tuple[int, int, int, int], level: int) -> np.ndarray:
+    def read_region(
+        self,
+        xywh: tuple[int, int, int, int],
+        level: int,
+        *,
+        device: str | torch.device | None = None,
+    ) -> np.ndarray | torch.Tensor:
         """Read region based on `xywh`-coordinates.
 
         Args:
             xywh: Coordinates for the region.
             level: Slide pyramid level to read from. Defaults to 0.
+            device: None returns NumPy pixels; supported backends can return
+                a tensor on the explicitly requested CUDA device.
 
         Raises:
             ValueError: Invalid `level` argument.

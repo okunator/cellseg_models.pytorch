@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ._base_reader import SlideReaderBackend
+from ._base_reader import SlideReaderBackend, _pixel_size_um
 from .tiles import _divide_xywh, _get_allowed_dimensions, _pad_tile, format_level
+
+if TYPE_CHECKING:
+    import torch
 
 try:
     from bioio import BioImage
@@ -72,6 +78,26 @@ class BioIOReader(SlideReaderBackend):
         return self.__reader
 
     @property
+    def pixel_size(self) -> tuple[float, float]:
+        """Level-zero pixel size (height, width) in micrometers.
+
+        Raises:
+            ValueError: The BioIO plugin cannot supply calibrated OME metadata.
+        """
+        try:
+            pixels = self.__reader.ome_metadata.images[
+                self.__reader.current_scene_index
+            ].pixels
+        except NotImplementedError as error:
+            raise ValueError(
+                "BioIO plugin does not provide calibrated OME metadata"
+            ) from error
+        return _pixel_size_um(
+            (pixels.physical_size_y, pixels.physical_size_x),
+            (pixels.physical_size_y_unit.value, pixels.physical_size_x_unit.value),
+        )
+
+    @property
     def data_bounds(self) -> tuple[int, int, int, int]:
         h, w = self.dimensions
         return (0, 0, w, h)
@@ -128,7 +154,15 @@ class BioIOReader(SlideReaderBackend):
             0, 0, 0, range(y, y + allowed_h), range(x, x + allowed_w)
         ]
 
-    def read_region(self, xywh: tuple[int, int, int, int], level: int) -> np.ndarray:
+    def read_region(
+        self,
+        xywh: tuple[int, int, int, int],
+        level: int,
+        *,
+        device: str | torch.device | None = None,
+    ) -> np.ndarray:
+        if device is not None:
+            raise ValueError("BioIO reads CPU NumPy arrays; use CUCIM for CUDA tiles")
         *__, w, h = _divide_xywh(xywh, self.level_downsamples[level])
         tile = self._read_region(xywh, level)
         tile = np.array(tile)[..., :3]  # only rgb channels

@@ -6,7 +6,8 @@ configuration define current behavior; this plan does not enable future features
 
 ## Current baseline
 
-Reconciled on 2026-10-12 against main at `b2b158e`, version `0.1.30`.
+Reconciled on 2026-10-13 against main at `4d5af51`, version `0.1.30`.
+The maintainer chose validation only: keep the version unchanged; no tags or publication.
 No maintenance release has been published. Python 3.10 remains the minimum;
 source and clean wheel/source installs are tested on 3.10, 3.11 and 3.12.
 Python 3.14.1 is excluded by the torchvision requirement; newer Python versions
@@ -26,7 +27,7 @@ Completed work:
 - Shared normalization and DRFNS saturation, low-IoU metric assignment/FP/FN/sparse
   IDs, and HDF5 sample counts/target alignment are fixed (104/106/109).
 - Legacy notebooks are retired; the README quick start is preserved (107/108).
-  Replacement examples and user guides are deferred to the docs-pages phase.
+  Replacement examples and user guides are the next phase below.
 - uv 0.11.4 and `uv.lock` replace Poetry CLI (110); poetry-core 2.2.1 remains the
   build backend. Migration retained all 128 active dependency versions and verified
   artifact contents, source tests and sampled checkpoint predictions.
@@ -34,28 +35,187 @@ Completed work:
   shared convolution helper (97/111), with no numerical behavior changes.
   Broader library typing and `py.typed` remain future work.
 
-All 13 hosted checks passed for the latest typing patch:
-[PR 111 validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38296855470).
+Cleanup is merged (112). All 13 checks passed on merged main:
+[main validation](https://github.com/okunator/cellseg_models.pytorch/actions/runs/38381936618).
+The final CPU pass checked both pinned checkpoints from source and an installed
+wheel, 15 optional HDF5 cases, 37 compiled numerical cases and four sampled decoder
+forward/backward cases. No open dependency alerts were reported on 2026-10-13.
+This is validation of current main, not a versioned release candidate.
 Completed investigations and advisory details live in their PRs and Git history,
 not a second review diary in this repository.
 
-## Next work, in order
+## Next work: documentation
 
-1. Finish the cleanup audit below, retaining maintained regressions and actionable
-   guidance. Keep tooling, runtime, typing and structural changes independently
-   reviewable.
-2. Validate a release candidate against the affected checkpoint, optional backend,
-   numerical and training paths. Refresh dependency advisory triage. Resolve any
-   concrete failures before advancing; sampled CPU evidence does not establish
-   representative accuracy, full-slide execution or GPU/AMP compatibility.
-3. Agree on the release version and compatibility notes, then update manifest,
-   module version and lockfile together using [the release guide](releasing.md).
-   Publication and tags require maintainer authorization. Verify trusted publishing
-   on that release and install the published package before closing issue 68.
-4. Build documentation pages and verified CPU inference/training/fine-tuning
-   examples after maintenance. Revisit the deferred structure proposals separately.
+Dependency maintenance is complete. Build and validate the examples against
+current main; distinguish its unreleased requirements from PyPI.
+Fix concrete failures in the paths being documented, without reopening deferred
+refactors. Keep the README quick start and link it to the fuller guide.
+
+### Small docs-pages plan
+
+| Page | Content |
+| --- | --- |
+| Start here | Installation, tested Python/device support, CPU quick start, current main versus published release |
+| Inference | RGB HWC images versus BCHW batches, checkpoint loading, exact normalization, prediction and instance/type masks; tiled inference and output saving |
+| Models and checkpoints | Implemented architectures versus original papers, encoder choices, available weights, class IDs and checkpoint compatibility; do not invent semantic class names |
+| Data and training | Folder/HDF5 layout, instance/type labels, aligned augmentation, model-specific targets, losses and a plain PyTorch training/validation loop |
+| Optional workflows | Explicit requirements and tested limits for WSI backends, ONNX export and GPU/AMP; avoid unsupported performance/accuracy claims |
+| API reference | Focused public entry points with Google-style docstrings and tensor contracts |
+
+Keep contributor and release guidance in the repository, excluded from the
+user-facing Sphinx site.
+
+### Data preparation and runnable examples
+
+Use maintained Jupyter notebooks under `docs/tutorials/`, rendered directly as
+pages with Sphinx, MyST-NB and the PyData theme; do not duplicate their code in scripts. Begin with CellPose; add another model only
+when its distinct target/output contract needs an example.
+
+1. **Data preparation:** pinned full PanopTILs archive, patient-level split before
+   aligned native-scale patches, instance and cell-type labels only, and a visible
+   label/class-distribution check. Keep original held-out regions for evaluation.
+2. **Inference:** one RGB image and a local or explicitly downloaded checkpoint,
+   explicit GPU preference with CPU fallback and checkpoint preprocessing, then save instance
+   and type masks. Explain the returned head keys, shapes, dtypes and background.
+3. **Training:** include optional encoder freezing and use the Histolytics nuclei
+   recipe through existing public APIs:
+   pretrained image encoder, aligned augmentation, MSE flows, CE with spectral
+   decoupling plus Dice cell-type loss, AdamW and a cosine schedule. Evaluate
+   reconstructed instances and per-class quality, not just losses/dense labels.
+
+All examples document input layout, optional packages, output paths and commands.
+Use synthetic tiny data for offline checks; real data/checkpoints are explicit,
+with attribution and patient/slide-independent splits. Do not present synthetic
+loss reduction as segmentation accuracy or a useful trained model.
+
+### Delivery and validation
+
+- [x] Establish Sphinx/PyData/MyST-NB navigation, installation guidance and the
+  inference notebook. A separate docs group preserves all prior locked versions.
+  Navigation starts with installation and quick start, then groups notebooks in
+  the user guide. Build instructions stay in contributor guidance.
+- [x] Maintain offline training and optional-freezing regressions: finite losses
+  and gradients, parameter updates, frozen encoder state and exact checkpoint reload
+  are validated in `tests/test_notebook_tutorials.py`, outside the rendered pages.
+- [x] Fix augmentation defects exposed by the real recipe: generate auxiliary
+  targets after aligned image/mask transforms and compose all sampled image
+  operations. Folder regressions, 24 optional HDF5 cases and the ordinary suite pass.
+- [x] Prepare all 1,349 pinned PanopTILs regions: patient-separated splits,
+  17,536 training and 4,048 validation patches at native scale, nucleus instances
+  and cell types only. Dataset construction lives in the preparation notebook,
+  with nucleus counts per cell type before cropping. Its offline tests execute
+  those cells directly; raw data stays outside Git and distributions.
+  Use one headless OpenCV provider for runtime and Albumentations. The existing
+  installed-package gate rejects overlapping providers; runtime/docs sync round
+  trips and both pinned CPU checkpoint predictions are verified.
+- [x] Validate five full-data training epochs with the Histolytics nuclei recipe
+  and corrected spatial DiceLoss. Twenty-one numerical CPU cases and the explicit
+  CUDA loss check cover reduction, rare/absent classes, weighting, masking,
+  smoothing, gradients and precision. On 16 held-out regions, instance PQ is 0.643;
+  rare-class support/weakness remains visible. Model weights use safetensors beside
+  separate resume state. The standalone fine-tuning notebook is retired in favor
+  of a short optional-freezing section; tests cover frozen parameters and BatchNorm
+  statistics. Inference uses the training checkpoint. Raw logs and resumable
+  checkpoints stay outside Git. Preserve historical-objective checkpoints until
+  the maintainer accepts the corrected examples.
+- [ ] Document the HDF5 alternative without duplicating the training loop.
+- [x] Validate WSI inference on held-out TCGA-AC-A6IW with the PanopTILs checkpoint:
+  804 overlapping tiles and 184,954 reconciled nuclei before filtering on DGX CUDA.
+  Preserve whole source contours/classes and unmatched detections; all forty
+  recovered groups survive. The same twelve fields have no contained duplicate
+  pairs or multipart outputs. Fresh GPU execution reproduces all cached tile
+  files byte-for-byte. The final notebook demonstrates optional level-2 filtering,
+  retaining 173,726 nuclei with the reviewed contours, attributes and IDs exactly,
+  four saved figures and the same twelve detailed views. Precision-aware view
+  ranking keeps identical source identities, attributes and IDs across six
+  full-slide placements up to +/-1 million pixels; native and compatibility unions
+  agree. Synthetic regressions catch clearance
+  and area roundoff, preserve meaningful subpixel differences and retained-row
+  tie ordering, and compare edge clearance against GEOS. On DGX Spark, median
+  core merging falls from 17.21 s to 16.68 s (3.1%; one warmup, five repeats,
+  one OMP/BLAS thread, float64 geometry, 0.1-pixel simplification, no I/O), with
+  peak process RSS remaining about 1.38 GiB. The fixed 3,216-tile load/merge/export
+  check produces 739,816 instances; memory stays about 6.33 GiB in both versions.
+  Merge memory still grows with all source polygons; these CPU measurements
+  exclude the model and CUDA allocations. These checks establish consistency
+  and preservation, not biological accuracy. The merger's public and private
+  functions have parameter and return annotations; strict mypy runs in the
+  existing Python 3.11 source job using development-only geospatial/graph stubs.
+- [x] Visually review the twelve updated seam regions and screenshot close-ups;
+  the maintainer found the whole-tile reconciliation results acceptable.
+- [x] Expose calibrated reader pixel size and optional cuCIM CUDA tiles through
+  normalization/model input. On the same 804 DGX tiles, cuCIM 26.10 reads about
+  3.2 times faster and full inference/export is 4.7% faster in one run. Twelve
+  fields agree at 0.9968 detection F1 and 0.9921 matched IoU; decoder differences
+  remain visible. CPU regressions, four CUDA cases and real allocation/stream
+  checks pass; BioIO calibration has mocked coverage only. OpenSlide stays the
+  notebook default. Detailed timing/memory scopes and limits live in PR 113;
+  diagnostics stay outside Git. Add no new CI job or required GPU package.
+- [ ] After PR 113 is merged, retire redundant runs, the temporary comparison
+  galleries (including backend comparisons) and benchmark/diagnostic artifacts.
+  Keep the slide and cached tile
+  predictions outside Git until then.
+- [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
+  reference. Keep the current normalization helper; issue 78's replacement/license
+  proposal does not justify a silent preprocessing or dependency change.
+- [x] Execute inference with the learned PanopTILs checkpoint and held-out labels
+  at their original 1024-pixel scale. Keep the independent public-checkpoint quick
+  start and the original 256-pixel numerical regression inputs/references unchanged.
+- [x] Build with warnings treated as errors and render reviewed notebook outputs
+  in CI. Execute all real-data/checkpoint notebooks explicitly outside offline CI.
+  Model notebooks execute on the DGX Spark CUDA GPU; preparation runs on CPU. Reviewed cell
+  outputs are retained without machine-specific paths. CPU checks stay in ordinary
+  CI; CUDA notebook regressions use the existing `--cuda` category manually.
+  Labelled figures show the input and masks; tests verify plotted labels, including
+  foreground class 0, outside the pages.
+  Reuse the Python 3.11 source job, with no new job or recurring weight downloads.
+  Keep real-checkpoint, GPU and full-slide runs explicit, with skips/limits reported.
+
+### WSI reconciliation and deferred scoring
+
+Whole-tile reconciliation and regressions are implemented. The maintainer reviewed
+the same twelve fields and five screenshot close-ups, covering differing partitions,
+four-view duplicates, unmatched neighbors and incomplete views.
+Contracts and thresholds live in `InstMerger` and its tests; validation is recorded
+above and in PR 113. Small source detections remain unfiltered by default.
+Optional polygon filtering runs after stitching with explicit pixel calibration;
+`filter_level=0` (default) or `None` disables it; levels 1, 2 and 3 select
+conservative, middle and strong area/thickness limits. Regression tests cover
+thin stromal contours, physical limits, preserved metadata, joined fragments and
+filtering after simplification and rounding.
+
+The temporary fragment-filter comparison traces the reported strips to reconstructed
+per-tile masks, before polygon smoothing or stitching. Polygon area/thickness probes
+cover the same twelve seam fields, six stromal-rich WSI fields and 22 held-out
+PanopTILs regions. Stronger thresholds discard annotation-supported stromal nuclei;
+filtering remains opt-in. Keep these diagnostics outside Git and retire them after
+PR 113 merge, preserving the maintained regression tests.
+
+Defer probability export and model/supervision changes: the small score probe did
+not establish that mean foreground confidence distinguishes fragments, merged pairs
+and complete nuclei. If later justified, derive foreground as `1 - P(background)`
+only from a compatible softmax head with separately supervised background; retain
+cell-type confidence separately. PanopTILs class 0 also includes untyped nuclei,
+so its current head is not a calibrated source of that foreground score. Preserve
+checkpoint and standalone reconstruction APIs; no flow requirement. A future
+built-in semantic head can use background/nucleus for untyped segmentation or
+background plus cell types, without silently relabelling data or retrofitting old
+checkpoints. Resolve the low-level binary-only forward contract and predictor
+`save_intermediate` aliasing explicitly if those paths become part of that work.
+
+Keep diagnostics outside Git. Retire the temporary gallery, superseded runs and
+this investigation section after visual acceptance and maintained API/test coverage.
+Reuse existing CI jobs; add no recurring WSI or checkpoint downloads.
+
+After adoption, remove this temporary docs checklist; the pages and examples become
+the maintained guidance. Release validation below stays separate from docs delivery.
+Retire the superseded four-region execution artifacts after the full-data runs are
+verified; preserve actual checkpoint regressions and this workflow's resumable state.
 
 ## Remaining validation and compatibility work
+
+- [ ] Correct IoULoss and TverskyLoss class-axis reductions with independent
+  numerical regressions before recommending them; the current examples use neither.
 
 - [ ] Verify published installation resolves issue 68. Python 3.12 source and
   clean-distribution checks already pass; a published-release check is still needed.
@@ -75,10 +235,15 @@ not a second review diary in this repository.
 - [ ] Check dependency wheels and execution before adding newer Python CI versions
   or changing the minimum. Update metadata, workflow, Ruff target, README and lock
   together in an explicit support-policy patch; retain Python 3.10 for now.
+  Aim for installation without a user-supplied upper Python cap. Metadata already
+  permits 3.13/3.14 except 3.14.1; Torch 2.14.1 and torchvision 0.29.1 provide
+  wheels for both. Validate clean installs, compiled helpers and model execution
+  on 3.13/3.14 next; retain the upstream 3.14.1 exclusion until torchvision removes it.
 - [ ] Expand library annotations/stub coverage incrementally without blanket
   suppressions, casts or altered runtime representations. Package `py.typed` only
   after the supported surface and downstream distribution checks are ready.
-- [ ] Review issue 78 without silently changing preprocessing or licensing.
+- [ ] Address issue 78 when updating the inference guide; retain existing
+  preprocessing and licensing unless an explicit, validated change is agreed.
 - [ ] Retire the five superseded Dependabot PRs (23/48/50/52/57) and configure
   future grouped weekly dependency/Actions updates in a separate policy patch.
   Their proposed versions are older than the merged upgrades.
@@ -115,7 +280,7 @@ paths. fsspec/setuptools/Soup Sieve/Pygments vulnerable paths were not used by t
 library; their patched lock versions remain without unnecessary runtime floors.
 Published installs use parent requirements, not the project lockfile.
 
-No open GitHub dependency alerts were reported on 2026-10-12 after PR 105.
+No open GitHub dependency alerts were reported on 2026-10-13 after PR 105.
 Refresh advisory ranges and applicability before the release candidate; this dated
 snapshot is not a continuing security certification. Hub's transport migration,
 libpysal's Python minimum and OpenCV 5 need separate compatibility checks.
@@ -132,8 +297,8 @@ preserve past evidence. Review after each batch; do not add another inventory fi
   test/fixture entries through the existing build backend, retaining checkout tests.
   The wheel shrinks from 4.04 MB to 271 KB and the source archive from 3.91 MB to
   164 KB; retained wheel payload bytes are identical. Local installed wheel/source
-  imports, serialization and CPU training checks pass. Hosted clean-install gates
-  remain required before merge.
+  imports, serialization and CPU training checks pass. All six hosted clean-install
+  gates also passed on merged main.
 - [x] Review CI timings, downloads and artifact retention. Retire a job only when
   its contract is obsolete or covered elsewhere. Preserve distinct source,
   installed-package, minimum/current export and release checks. Avoid recurring
@@ -157,10 +322,8 @@ are consumed by offline integrity and manual comparison checks.
 
 ## Deferred work
 
-User documentation pages cover quick start, training/fine-tuning (76),
-model/checkpoint/backbone guidance (74), in-memory inference (69) and optional
-packages. Introduce working examples and the smallest useful validation then.
-Keep the README quick start. 3D support and new architectures are separate features.
+The active docs phase above covers issues 69/74/76 and the quick start.
+3D support and new architectures remain separate feature work.
 
 [The module-boundary draft](module-boundaries-draft.md) proposes one-way imports
 and independent feature installs. It remains deferred structural work, not a

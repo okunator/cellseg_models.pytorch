@@ -27,6 +27,7 @@ SOFTWARE.
 from collections.abc import Callable, Sequence
 
 import numpy as np
+import torch
 from torch.utils.data import Dataset
 
 from cellseg_models_pytorch.wsi.reader import SlideReader
@@ -40,7 +41,9 @@ class WSIDatasetInfer(Dataset):
         reader: SlideReader,
         coordinates: Sequence[tuple[int, int, int, int]],
         level: int = 0,
-        transforms: Callable[..., dict[str, np.ndarray]] | None = None,
+        transforms: Callable[..., dict[str, np.ndarray | torch.Tensor]] | None = None,
+        *,
+        read_device: str | torch.device | None = None,
     ) -> None:
         """Initialize WSIReaderDataset.
 
@@ -53,19 +56,27 @@ class WSIDatasetInfer(Dataset):
                 a dictionary containing the transformed HWC ``image``.
                 Albumentations Compose objects follow this contract.
                 Defaults to None.
+            read_device: None reads NumPy tiles on CPU. A CUDA device requests
+                GPU tiles from CUCIM; transforms must then accept HWC tensors.
         """
         super().__init__()
         self.reader = reader
         self.coordinates = coordinates
         self.level = level
         self.transforms = transforms
+        self.read_device = read_device
 
     def __len__(self) -> int:
         return len(self.coordinates)
 
-    def __getitem__(self, index: int) -> dict[str, np.ndarray | str]:
+    def __getitem__(self, index: int) -> dict[str, np.ndarray | torch.Tensor | str]:
         xywh = self.coordinates[index]
-        tile = self.reader.read_region(xywh, level=self.level)
+        if self.read_device is None:
+            tile = self.reader.read_region(xywh, level=self.level)
+        else:
+            tile = self.reader.read_region(
+                xywh, level=self.level, device=self.read_device
+            )
         if self.transforms is not None:
             tile = self.transforms(image=tile)["image"]
 

@@ -74,6 +74,11 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+/data/panoptils/
+/data/panoptils-nuclei/
+/docs/tutorials/training-checkpoints/
+/docs/tutorials/finetuning-checkpoints/
+/docs/tutorials/finetuned-panoptils.pt
 
 # PyBuilder
 target/

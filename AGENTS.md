@@ -20,59 +20,68 @@ future work; it does not make planned tools or features available today.
 | `cellseg_models_pytorch/**/tests/`, `conftest.py` | Library tests and shared fixtures |
 | `tests/`, `tests/fixtures/` | Repository-only checkpoint comparisons and reference data |
 | `tools/`, `tools/tests/` | Build and release checks and their tests |
-| `docs/`, `.github/` | Maintenance guidance and CI; user examples are deferred |
+| `docs/`, `docs/tutorials/`, `.github/` | Sphinx/PyData pages, notebook examples, maintenance guidance and CI |
 
 Keep this layout. A migration to `src/`, a new training framework, or a new output
 representation is a separate change, not incidental cleanup.
 
-The following two sections are the Ponytail development instructions.
-
 ## Before you write
 
-Read the task and the code it touches. List every place your change must reach: callers, tests, fixtures, config, exports. Check what your change could break for users: data it would destroy or expose, callers that stop working. That is scope. Extra features are not.
+Read the task and affected code. List the callers, tests, fixtures, config and
+exports the change must reach, and risks to users: data loss/exposure or broken
+callers. That is scope; extra features are not. For a bug fix, grep every caller
+of the affected function before editing.
 
-Fix the root cause in the layer that owns the behavior. Avoid hot fixes and creative workarounds that bypass existing interfaces or hide broken contracts. If a proper fix requires a broader change, make its scope explicit rather than adding a workaround.
+Fix the root cause once in the layer that owns it. Avoid hot fixes and creative
+workarounds that bypass interfaces or hide broken contracts. If the proper fix
+needs broader scope, state that scope instead of adding a workaround.
 
 ## The smallest complete change
 
 Take the first option that fully works:
 
-1. Does it need to exist? Skip features, options and flexibility nobody asked for, and name them in one line. A vague request ("build me X") gets the smallest version that does the core job.
-2. Already in this codebase (a helper, component, service, pattern)? Use it the way the surrounding code does.
-3. Standard library or a platform feature? Use it, unless the project has its own. A house component beats a native widget.
-4. An installed dependency? Use it. Never add a dependency for a few lines.
-5. Can it be one line a reader gets at a glance? One line.
-6. Otherwise: the minimum code that works.
+1. Skip unrequested features, options and flexibility; name omissions in one line.
+   For a vague request ("build me X"), build the smallest version that does the core job.
+2. Reuse an existing helper, component, service or pattern as surrounding code does.
+3. Use the standard library or platform feature unless the project has its own.
+   A house component beats a native widget.
+4. Use an installed dependency. Never add one for a few lines.
+5. Use one line when a reader can understand it at a glance.
+6. Otherwise, use the minimum code that works.
 
-- Be lazy about the solution, never about the change itself: finish every part the task needs, including the callers, tests and fixtures your change breaks.
-- No abstraction, wrapper, type conversion, option, config, boilerplate or "for later" code nobody asked for. Keep values in the form the platform already gives you. Deletion beats addition. Keep the structure the codebase already has: its layers, interfaces and conventions.
-- The shortest working diff wins, once you know everything it must touch. A one-liner that needs decoding is not short.
+- Finish the whole scoped change, including affected callers, tests and fixtures.
+- Add no unrequested abstraction, wrapper, conversion, option, config, boilerplate
+  or "for later" code. Keep platform-native values and existing layers, interfaces
+  and conventions. Deletion beats addition.
+- Prefer the shortest complete working diff. A cryptic one-liner is not short.
 - Comment only the why the code cannot show, in one line.
-- Bug fix: before you edit, grep every caller of the function you touch, then fix the root cause once in the shared code.
 - Code you move or merge keeps its error handling and validation.
 - Between options of equal size, take the one that is correct on edge cases.
-- Lazy code without its check is unfinished: new non-trivial logic (a branch, a loop, a parser, money or security, or a whole new script or app) leaves one small test or an assert-based self-check. Trivial changes need none.
+- New non-trivial logic (branch, loop, parser, money/security logic, or a new script
+  or app) needs one small test or assert-based self-check. Trivial changes need none.
 - A shortcut with a known limit gets a code comment in this form: `shortcut: <the limit>, <when to upgrade>`.
 
 Never cut: validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs, anything the user asked for.
 
 ## Python and typing
 
-- Add accurate annotations to new or changed public APIs. Prefer `list[T]`,
-  `dict[K, V]`, and `X | None` where they work on the supported Python versions.
-  Avoid unrelated annotation sweeps.
+- Add accurate parameter and return annotations to new or changed library
+  functions, including private helpers. Prefer `list[T]`, `dict[K, V]`, and
+  `X | None` where they work on the supported Python versions. Avoid unrelated
+  annotation sweeps.
 - Type checking is being introduced gradually. Mypy checks
-  `tools/check_release_metadata.py` and
-  `cellseg_models_pytorch/utils/convolve.py` in strict mode, targeting Python 3.10.
-  `uv run --locked mypy` runs both scopes; CI checks the library helper in the
-  existing Python 3.11 source job and the release guard in the developer-only job.
-  Expand the checked scope explicitly before requiring broader runs.
+  `tools/check_release_metadata.py`, `cellseg_models_pytorch/utils/convolve.py`
+  and `cellseg_models_pytorch/wsi/inst_merger.py` in strict mode, targeting Python
+  3.10. `uv run --locked mypy` runs all three files; CI checks the library files
+  in the existing Python 3.11 source job and the release guard in the
+  developer-only job. Expand the checked scope explicitly before requiring
+  broader runs.
 - Preserve existing tensor, array, dictionary, and dataclass contracts. Do not
   add wrappers, conversions, or `cast()` calls just to silence a checker.
 - Narrow optional values and validate external inputs. Keep `Any` at genuinely
   untyped integration boundaries; do not spread it through the internal API.
-- Do not hide errors with blanket `ignore_errors`, `# type: ignore`, or lint
-  suppressions. A necessary third-party suppression must name the error and why.
+- Do not hide errors with blanket `ignore_errors`, `# type: ignore` or lint
+  suppressions. Necessary third-party suppressions must name the error and reason.
 - Prefer functions for stateless work, `pathlib` for paths, explicit imports,
   and the existing `__all__` exports. Keep I/O separate from numerical logic.
 - Avoid mutable defaults and silent failures. Use contextual built-in exceptions
@@ -133,14 +142,14 @@ installs undeclared optional packages or that a skipped integration test validat
 anything. After explicitly installing optional packages, use `uv run --no-sync`
 for those checks so automatic synchronization does not remove them. Check collection, skips, and execution when adding a CI gate.
 
-Run the narrowest meaningful checks, then the required CI checks. Avoid unrelated
-formatting or repeated full suites without a new reason. Report the exact scope,
-results, and any unverified device, version, or optional path.
+Run the narrowest meaningful checks, then required CI checks. Avoid unrelated
+formatting and repeated full suites without a new reason. Report exact scope,
+results and unverified devices, versions or optional paths.
 
 ## Current development commands
 
-uv 0.11.4 and `uv.lock` are authoritative. The required uv version is declared
-in `pyproject.toml`; use locked synchronization and keep one project lockfile.
+uv 0.11.4 and `uv.lock` are authoritative. Use the required version in
+`pyproject.toml`, locked synchronization and one project lockfile.
 The build backend remains poetry-core 2.2.1; Poetry CLI is not needed.
 Use [CONTRIBUTING.md](CONTRIBUTING.md) for setup and
 [the release guide](docs/releasing.md) before changing publication.
@@ -155,23 +164,23 @@ Use [CONTRIBUTING.md](CONTRIBUTING.md) for setup and
 | Hooks for changed files | `uv run --locked pre-commit run --files <changed-files>` |
 | Install commit and push hooks | `uv run --locked pre-commit install --hook-type pre-commit --hook-type pre-push` |
 | Build distributions | `uv build` |
+| Build docs | `uv run --locked --group docs sphinx-build -W --keep-going -b html docs docs/_build/html` |
 
 Ruff 0.17.0 is the development linter/formatter and matches the pre-commit hook
 revision. Black, isort, and Flake8 are no longer parallel toolchains. Preserve the
 current lint rule scope unless a separate cleanup establishes broader coverage.
-CI checks Ruff on `tools/` and strict mypy on the release-version guard and
-convolution helper; this is not a passing whole-library lint or typing claim. Use `uv run --locked ruff check tools`,
+CI checks Ruff on `tools/` and mypy on the limited scope above; this is not a
+whole-library lint or typing claim. Use `uv run --locked ruff check tools`,
 `uv run --locked ruff format --check tools`, and `uv run --locked mypy` locally. Never bypass
 hooks or hide failures with broad ignores.
 
 ## Documentation and delivery
 
-Use Google-style docstrings for public APIs, including relevant arguments,
-output semantics, exceptions, and a working example. Describe tensor shapes and
-preprocessing; omit empty boilerplate sections and types already in signatures.
-Preserve existing docstring content when converting style. Keep unrelated
-documentation rewrites out of functional changes.
-Use generic example paths and no machine-specific identifiers or patient data.
+Before editing public docstrings, pages or notebooks, read and follow
+[the documentation standards](CONTRIBUTING.md#documentation). They cover
+concise Google-style docstrings, prose for new library users, readable examples
+and validation outside tutorial pages. Development and PyTorch rules apply to
+example code too.
 
 Keep commits thematic and use Conventional Commits. Leave unrelated user edits
 untouched and preserve contributor attribution. Do not rewrite shared history.

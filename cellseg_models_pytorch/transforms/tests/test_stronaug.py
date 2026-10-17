@@ -29,7 +29,7 @@ def test_stronaug_transforms(img_sample, op_name):
     rng = np.random.RandomState(seed=123)
     kwargs = dict(
         name=op_name,
-        **_magnitude_kwargs(op_name, bounds=AUGMENT_SPACE[op_name], rng=rng)
+        **_magnitude_kwargs(op_name, bounds=AUGMENT_SPACE[op_name], rng=rng),
     )
 
     tr_img = _apply_operation(img_sample, op_name, **kwargs)
@@ -37,3 +37,24 @@ def test_stronaug_transforms(img_sample, op_name):
     assert tr_img.shape == img_sample.shape
     assert tr_img.dtype == img_sample.dtype
     assert tr_img.max() <= 255
+
+
+def test_strong_augment_composes_selected_operations():
+    pytest.importorskip("albumentations")
+    from cellseg_models_pytorch.transforms.albu_transforms import AlbuStrongAugment
+
+    image = np.arange(12 * 12 * 3, dtype=np.uint8).reshape(12, 12, 3)
+    mask = np.arange(12 * 12, dtype=np.int32).reshape(12, 12)
+    transform = AlbuStrongAugment(
+        augment_space={"brightness": (0.5, 0.5), "gamma": (2.0, 2.0)},
+        operations=(2,),
+        probabilites=(1.0,),
+        seed=0,
+    )
+    result = transform(image=image.copy(), masks=[mask])
+    expected = image.copy()
+    for operation, params in transform.last_operations.items():
+        expected = _apply_operation(expected, operation, **params)
+    np.testing.assert_array_equal(result["image"], expected)
+    np.testing.assert_array_equal(result["masks"][0], mask)
+    assert len(transform.last_operations) == 2

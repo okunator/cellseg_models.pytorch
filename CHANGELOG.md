@@ -2,12 +2,63 @@
 
 ## Features
 
+- Expose calibrated level-zero pixel size through `SlideReader.pixel_size` in
+  `(height, width)` micrometers, retaining anisotropic axes and rejecting missing
+  calibration. cuCIM also reads Aperio MPP metadata. Optional CUDA tile reads and
+  `WsiSegmenter(read_device="cuda")` keep decoded tiles and tensor min-max
+  normalization on the GPU through model input; CPU reads remain the default.
+  Instance reconstruction and vector export retain their CPU paths.
+
+- Add optional vector-only nucleus filtering after WSI stitching. Filtering is
+  disabled by default (`filter_level=0` or `None`); integer levels 1, 2 and 3
+  select conservative, middle and strong area/thickness limits. Enabling it
+  requires explicit physical pixel calibration.
+  Retained contours, IDs and attributes are preserved.
+
 - Add CellPose and StarDist dense-network ONNX export (contributed by
   Ajinkya Kulkarni). Instance reconstruction remains in Python. Export requires
   optional ONNX packages. Dynamic batches retain fixed spatial dimensions, and export
   preserves model dtype and individual module training modes.
 
 ## Fixes
+
+- Avoid overflow when tensor min-max normalization receives extreme finite
+  float32 values, preserving the uint8 GPU tile path.
+
+- Correct cuCIM pyramid size scaling and edge padding without moving CUDA tiles
+  to the host.
+
+- Reconcile overlapping WSI predictions using source-tile identity and shared
+  polygon area, preserving unmatched detections. Record border contact before
+  smoothing and prefer complete original contours over partial detections,
+  resolving nested and one-versus-many alternatives as coherent tile observations.
+  Compare whole local partitions even when individual contour matches are weak;
+  unmatched nuclei do not decide which tile supplies a disputed group.
+  Skip redundant coverage calculations and use faster temporary polygon unions
+  where supported by GEOS, preserving the selected contours and attributes.
+  Resolve view-clearance and area ties at coordinate precision so roundoff from
+  slide-coordinate translations cannot override the next selection preference.
+  Keep distinct overlapping nuclei without creating intersection objects or
+  filling gaps between fragments.
+  Abutting fragments must actually touch to join. Preserve first/last tile nuclei,
+  unique slide-wide IDs and pixel coordinates without a geographic CRS; reject
+  existing merge outputs. Vector export retains foreground class 0 and classes in
+  tiles without background pixels, and repairs self-intersections from smoothing.
+
+- Correct DiceLoss to compute per-image, per-class spatial overlap rather than
+  soft pixel accuracy. Average over target-present classes, including background;
+  mask overlap and volume consistently, weight class losses and add positive
+  spectral regularization. Training objectives change; existing model checkpoints
+  remain loadable. Class weights now follow loss-module device/dtype moves without
+  adding checkpoint state.
+
+- Generate training auxiliary targets after image/mask augmentation, keeping flows
+  and other vector targets aligned after flips and crops in folder/HDF5 datasets.
+  Apply sampled StrongAugment operations sequentially rather than discarding all
+  but the last operation.
+
+- Use headless OpenCV for image processing, avoiding overlapping `cv2` files
+  when Albumentations is installed and training dependencies are later removed.
 
 - Exclude package-local tests and their image/HDF5 fixtures from wheels and source
   distributions. Tests remain available in the repository checkout.

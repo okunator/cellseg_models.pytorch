@@ -52,12 +52,18 @@ def test_hdf5_length_and_auxiliary_targets(h5_samples, two_transforms, inst_keys
     if two_transforms:
         transforms.append(HoverNetTransform())
     dataset = TrainDatasetH5(
-        str(path), image_key, inst_keys, inst_keys,
-        A.Compose([]), ApplyEach(transforms, as_list=True),
+        str(path),
+        image_key,
+        inst_keys,
+        inst_keys,
+        A.Compose([]),
+        ApplyEach(transforms, as_list=True),
     )
     assert len(dataset) == 2
     sample = dataset[1]
-    np.testing.assert_array_equal(sample[image_key], arrays[image_key][1].transpose(2, 0, 1))
+    np.testing.assert_array_equal(
+        sample[image_key], arrays[image_key][1].transpose(2, 0, 1)
+    )
     assert sample[image_key].dtype == torch.float32
     for key in inst_keys:
         np.testing.assert_array_equal(sample[key], arrays[key][1])
@@ -80,3 +86,42 @@ def test_hdf5_rejects_unaligned_sample_counts(h5_samples):
         h5.create_array("/", "inst", arrays["inst"][:1])
     with pytest.raises(ValueError, match="inst"):
         TrainDatasetH5(str(path), image_key, ("inst",), ("inst",), None, None)
+
+
+@pytest.mark.parametrize("operation", ["horizontal", "vertical", "crop"])
+def test_hdf5_targets_follow_augmented_instances(h5_samples, operation):
+    import albumentations as A
+    from cellseg_models_pytorch.transforms.albu_transforms import (
+        ApplyEach,
+        CellposeTransform,
+        HoverNetTransform,
+    )
+
+    path, arrays, image_key = h5_samples
+    operations = {
+        "horizontal": A.HorizontalFlip(p=1),
+        "vertical": A.VerticalFlip(p=1),
+        "crop": A.Crop(x_min=3, y_min=2, x_max=14, y_max=11),
+    }
+    transforms = [CellposeTransform(), HoverNetTransform()]
+    dataset = TrainDatasetH5(
+        str(path),
+        image_key,
+        ("inst", "cyto_inst"),
+        ("inst",),
+        A.Compose([operations[operation]]),
+        ApplyEach(transforms, as_list=True),
+    )
+    sample = dataset[0]
+    expected = A.Compose([operations[operation]])(
+        image=arrays[image_key][0], masks=[arrays["inst"][0], arrays["cyto_inst"][0]]
+    )
+    np.testing.assert_array_equal(
+        sample[image_key], expected["image"].transpose(2, 0, 1)
+    )
+    np.testing.assert_array_equal(sample["inst"], expected["masks"][0])
+    for key, mask in zip(("inst", "cyto_inst"), expected["masks"]):
+        for transform in transforms:
+            np.testing.assert_allclose(
+                sample[f"{key}_{transform.name}"], transform(mask).astype(np.float32)
+            )

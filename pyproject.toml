@@ -15,7 +15,7 @@ dependencies = [
     "torchvision>=0.28.0,<0.30",
     "scipy>=1.15.3,<2",
     "scikit-image>=0.25.2,<0.27",
-    "opencv-python>=4.14.0,<5",
+    "opencv-python-headless>=4.14.0,<5",
     "tqdm>=4.64.0,<5",
     "scikit-learn>=1.7.2,<2",
     "requests>=2.33.0,<3",
@@ -54,6 +54,19 @@ dev = [
     "ruff==0.17.0",
     "tomli>=2.2.1,<3",
     "scriv[toml]>=1.8.0,<2",
+    "types-geopandas>=1.1.4,<1.2",
+    "types-networkx>=3.4.2,<4",
+    "types-shapely>=2.1,<2.3",
+]
+docs = [
+    "albumentations==2.0.8",
+    "matplotlib>=3.10.9,<3.11",
+    "myst-nb>=1,<2",
+    "openslide-bin>=4.0.1.2,<5",
+    "openslide-python>=1.4.6,<2",
+    "polars>=1.44.2,<2",
+    "pydata-sphinx-theme>=0.16,<1",
+    "sphinx>=8,<9",
 ]
 
 [tool.uv]
@@ -181,5 +194,9 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
 python_version = "3.10"
-files = ["tools/check_release_metadata.py", "cellseg_models_pytorch/utils/convolve.py"]
+files = [
+    "tools/check_release_metadata.py",
+    "cellseg_models_pytorch/utils/convolve.py",
+    "cellseg_models_pytorch/wsi/inst_merger.py",
+]
 strict = true

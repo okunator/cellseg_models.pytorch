@@ -3,6 +3,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -23,7 +24,10 @@ class WsiSegmenter:
         level: int,
         coordinates: list[tuple[int, int, int, int]],
         batch_size: int = 8,
-        normalization: Callable[..., dict[str, np.ndarray]] | None = None,
+        normalization: Callable[..., dict[str, np.ndarray | torch.Tensor]]
+        | None = None,
+        *,
+        read_device: str | torch.device | None = None,
     ) -> None:
         """Class for segmenting WSIs.
 
@@ -36,16 +40,27 @@ class WsiSegmenter:
             batch_size: The batch size for the DataLoader.
             normalization: Callable receiving ``image=tile`` and returning a
                 dictionary containing the transformed HWC ``image``.
+                For CUDA tiles this must accept and return a tensor.
+            read_device: None reads tiles on CPU (default). A CUDA device keeps
+                CUCIM tiles on the GPU through normalization and model input.
+                Instance reconstruction and polygon export still use CPU data.
         """
         self.batch_size = batch_size
         self.coordinates = coordinates
         self.model = model
 
         self.dataset = WSIDatasetInfer(
-            reader, coordinates, level=level, transforms=normalization
+            reader,
+            coordinates,
+            level=level,
+            transforms=normalization,
+            read_device=read_device,
         )
         self.dataloader = DataLoader(
-            self.dataset, batch_size=batch_size, shuffle=False, pin_memory=True
+            self.dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            pin_memory=read_device is None,
         )
         self._has_processed = False
 
@@ -109,35 +124,70 @@ class WsiSegmenter:
 
     def merge_instances(
         self,
-        src: str,
-        dst: str,
+        src: str | Path,
+        dst: str | Path,
         clear_in_dir: bool = False,
-        simplify_level: int = 0.3,
-        precision: int = None,
+        simplify_level: float = 0.3,
+        precision: int | None = None,
+        *,
+        filter_level: int | None = 0,
+        pixel_size: float | None = None,
     ) -> None:
-        """Merge the instances at the image boundaries.
+        """Combine saved tile predictions into one slide-wide nucleus file.
+
+        Keep whole contours and attributes from the selected source tiles,
+        preserving unmatched nuclei. Fragments from tiles sharing an edge must
+        touch to join. See InstMerger.merge for stitching behavior.
 
         Args:
-            src:
-                The directory containing the instances segmentations (.parquet-files).
-            dst: The destination path for the output file. Allowed formats are
-                '.parquet', '.geojson', and '.feather'.
-            clear_in_dir: Whether to clear the source directory after merging.
-                Defaults to False.
-            simplify_level:
-                The level of simplification to apply to the merged instances.
-                Defaults to 1.
-            precision:
-                The precision level to apply to the merged instances. If None, no rounding
-                is applied.
+            src: Directory of predicted nucleus .parquet files.
+            dst: New .parquet, .geojson or .feather output file.
+            clear_in_dir: Delete all files in src after a successful merge.
+            simplify_level: Simplification tolerance in pixels; zero disables it.
+            precision: Optional decimal places for coordinate rounding.
+            filter_level: Optional area/thickness filter, applied after
+                simplification and rounding. See filter_nuclei for levels and
+                limits; 0 or None disables it. Retained contours and IDs are preserved.
+            pixel_size: Isotropic micrometers per level-zero pixel, required for filtering.
+
+        Raises:
+            ValueError: Segmentation has not run, an input file has no source tile,
+                or the output format or filter parameters are invalid.
+            FileNotFoundError: The source directory does not exist.
+            FileExistsError: The destination already exists.
         """
         if not self._has_processed:
             raise ValueError("You must segment the instances first.")
 
         in_dir = Path(src)
-        gdf = gpd.read_parquet(in_dir)
-        merger = InstMerger(gdf, self.coordinates)
-        merger.merge(dst, simplify_level=simplify_level, precision=precision)
+        if not in_dir.is_dir():
+            raise FileNotFoundError(in_dir)
+        frames = []
+        tile_indices = []
+        source_tiles = {
+            f"{self.dataset.reader.name}_x{x}-y{y}_w{width}-h{height}.parquet": index
+            for index, (x, y, width, height) in enumerate(self.coordinates)
+        }
+        # The vector writer omits empty tiles; identify each saved tile by its name.
+        for path in sorted(in_dir.glob("*.parquet")):
+            if path.name not in source_tiles:
+                raise ValueError(f"Prediction file has no source tile: {path.name}")
+            frame = gpd.read_parquet(path)
+            frames.append(frame)
+            tile_indices.extend([source_tiles[path.name]] * len(frame))
+        gdf = (
+            gpd.GeoDataFrame(pd.concat(frames, ignore_index=True), crs=frames[0].crs)
+            if frames
+            else gpd.GeoDataFrame(columns=["class_name", "geometry"])
+        )
+        merger = InstMerger(gdf, self.coordinates, tile_indices=tile_indices)
+        merger.merge(
+            dst,
+            simplify_level=simplify_level,
+            precision=precision,
+            filter_level=filter_level,
+            pixel_size=pixel_size,
+        )
 
         if clear_in_dir:
             for f in in_dir.glob("*"):

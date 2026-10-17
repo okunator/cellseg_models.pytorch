@@ -114,72 +114,50 @@ def inst2gdf(
     min_size: int = 15,
     smooth_func: Callable = uniform_smooth,
 ) -> gpd.GeoDataFrame:
-    """Convert an instance segmentation raster mask to a GeoDataFrame.
-
-    Note:
-        This function should be applied to nuclei instance segmentation masks. Nuclei
-        types can be provided with the `type_map` and `class_dict` arguments if needed.
-
-        inst_map (np.ndarray):
-            An instance segmentation mask. Shape (H, W).
-        type_map (np.ndarray):
-            A type segmentation mask. Shape (H, W). If provided, the types will be
-            included in the resulting GeoDataFrame in column 'class_name'.
-        xoff (int):
-            The x offset. Optional. The offset is used to translate the geometries
-            in the GeoDataFrame. If None, no translation is applied.
-        yoff (int):
-            The y offset. Optional. The offset is used to translate the geometries
-            in the GeoDataFrame. If None, no translation is applied.
-        class_dict (Dict[int, str]):
-            A dictionary mapping class indices to class names.
-            e.g. {1: 'neoplastic', 2: 'immune'}. If None, the class indices will be used.
-        min_size (int):
-            The minimum size (in pixels) of the polygons to include in the GeoDataFrame.
-        smooth_func (Callable):
-            A function to smooth the polygons. The function should take a shapely Polygon
-            as input and return a shapely Polygon. Defaults to `uniform_smooth`, which
-            applies a uniform filter. `histolytics.utils._filters` also provides
-            `gaussian_smooth` and `median_smooth` for smoothing.
-
+    """Convert labelled nuclei to polygons in image-pixel coordinates.
 
     Args:
-        returns: gpd.GeoDataFrame:
-                A GeoDataFrame of the raster instance mask. Contains columns:
+        inst_map: Integer instance labels of shape (H, W); 0 is background.
+        type_map: Optional aligned class labels of shape (H, W). Class 0 on a
+            positive instance is retained. Without this map, foreground is class 1.
+        xoff: Optional horizontal offset in pixels.
+        yoff: Optional vertical offset in pixels.
+        class_dict: Optional class-ID-to-name mapping. Include every foreground
+            class, including 0 if present; otherwise numeric IDs are retained.
+        min_size: Minimum polygon area before smoothing, in square pixels.
+            Polygons with area equal to this threshold are also excluded.
+        smooth_func: Optional polygon smoothing function; None disables smoothing.
+            Invalid contours are repaired after smoothing.
 
-                    - 'id' - the numeric pixel value of the instance mask,
-                    - 'class_name' - the name or index of the instance class (requires `type_map` and `class_dict`),
-                    - 'geometry' - the geometry of the polygon.
-
-    Examples:
-        >>> from histolytics.utils.raster import inst2gdf
-        >>> from histolytics.data import hgsc_cancer_inst_mask, hgsc_cancer_type_mask
-        >>> # load raster masks
-        >>> inst_mask = hgsc_cancer_inst_mask()
-        >>> type_mask = hgsc_cancer_type_mask()
-        >>> # convert to GeoDataFrame
-        >>> gdf = inst2gdf(inst_mask, type_mask)
-        >>> print(gdf.head(3))
-                uid  class_name                                           geometry
-            0  135           1  POLYGON ((405.019 0.45, 405.43 1.58, 406.589 2...
-            1  200           1  POLYGON ((817.01 0.225, 817.215 0.804, 817.795...
-            2    0           1  POLYGON ((1394.01 0.45, 1394.215 1.58, 1394.79...
+    Returns:
+        A GeoDataFrame with uid (instance ID), class_name and geometry columns.
+        The boolean is_partial column records contact with the input image border
+        before smoothing. Disconnected components can share an instance ID.
+        Coordinates have no geographic CRS; offsets preserve the image convention
+        of y increasing down.
     """
     # handle empty masks
     if inst_map.size == 0 or np.max(inst_map) == 0:
-        return gpd.GeoDataFrame(columns=["uid", "class_name", "geometry"])
+        return gpd.GeoDataFrame(
+            {
+                "uid": [],
+                "class_name": [],
+                "geometry": [],
+                "is_partial": pd.Series(dtype=bool),
+            }
+        )
 
     if type_map is None:
         type_map = inst_map > 0
 
-    types = np.unique(type_map)[1:]
+    types = np.unique(type_map[inst_map > 0])
 
     if class_dict is None:
         class_dict = {int(i): int(i) for i in types}
 
     inst_maps_per_type = []
     for t in types:
-        mask = type_map == t
+        mask = (type_map == t) & (inst_map > 0)
         vectorized_data = (
             (value, class_dict[int(t)], shape(polygon))
             for polygon, value in shapes(inst_map, mask=mask)
@@ -197,6 +175,16 @@ def inst2gdf(
     # filter out small geometries
     res = res.loc[res.area > min_size].reset_index(drop=True)
 
+    # Record clipping before smoothing can pull a cut contour away from the border.
+    bounds = res.geometry.bounds
+    height, width = inst_map.shape
+    res["is_partial"] = (
+        (bounds.minx == 0)
+        | (bounds.miny == 0)
+        | (bounds.maxx == width)
+        | (bounds.maxy == height)
+    )
+
     # translate geometries if offsets are provided
     if xoff is not None or yoff is not None:
         res["geometry"] = res["geometry"].translate(
@@ -206,6 +194,9 @@ def inst2gdf(
     # smooth geometries if a smoothing function is provided
     if smooth_func is not None:
         res["geometry"] = res["geometry"].apply(smooth_func)
+
+    # Smoothing narrow contours can introduce self-intersections.
+    res["geometry"] = res.geometry.make_valid()
 
     return res
 

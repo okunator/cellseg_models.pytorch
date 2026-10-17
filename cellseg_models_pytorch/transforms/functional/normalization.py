@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import torch
 from skimage import img_as_ubyte
 
 __all__ = [
@@ -168,31 +169,49 @@ def normalize(
 
 
 def minmax_normalize(
-    img: np.ndarray, amin: float = 0.0, amax: float = 1.0, copy: bool = False
-) -> np.ndarray:
-    """Min-max normalization per image channel. Optional clamping.
+    img: np.ndarray | torch.Tensor,
+    amin: float = 0.0,
+    amax: float = 1.0,
+    copy: bool = False,
+) -> np.ndarray | torch.Tensor:
+    """Scale the global image minimum and maximum to the requested range.
 
     Args:
-        img: Input image to be normalized. Shape (H, W, C)|(H, W).
-        amin: Clamp min value. No clamping performed if None.
-            Defaults to 0.0.
-        amax: Clamp max value. No clamping performed if None.
-            Defaults to 1.0.
-        copy: If True, normalize the copy of the input.
-            Defaults to False.
+        img: HWC or HW image. Tensors stay on their input device.
+        amin: One output endpoint. Constant images use the lower endpoint.
+        amax: Other output endpoint; the endpoints may be supplied in either order.
+        copy: Copy the NumPy input before normalization. Tensor results are
+            always newly allocated. Defaults to False.
 
     Returns:
-        np.ndarray:
-            Min-max normalized image. Same shape as input. dtype: float32.
+        Min-max normalized image of the same shape and array/tensor type,
+        with float32 dtype. The input is not modified.
 
     Raises:
-        ValueError;
-            If input image does not have shape (H, W) or (H, W, C).
+        ValueError: Input image does not have shape (H, W) or (H, W, C).
     """
     if img.ndim not in (2, 3):
         raise ValueError(
             f"Input img needs to have shape (H, W, C)|(H, W). Got: {img.shape}"
         )
+
+    if isinstance(img, torch.Tensor):
+        im = img.to(dtype=torch.float32)
+        minimum = im.amin()
+        low, high = min(amin, amax), max(amin, amax)
+        # Match OpenCV's global range and constant-image behavior on the device.
+        epsilon = torch.finfo(torch.float64).eps
+        if img.is_floating_point():
+            # Halve before subtraction so even opposite float32 extremes fit.
+            half_minimum = minimum * 0.5
+            half_span = im.amax() * 0.5 - half_minimum
+            unit_range = (im * 0.5 - half_minimum) / half_span.clamp_min(epsilon * 0.5)
+            scale = torch.where(half_span > epsilon * 0.5, high - low, 0)
+            return unit_range * scale + low
+
+        span = im.amax() - minimum
+        scale = torch.where(span > epsilon, (high - low) / span.clamp_min(epsilon), 0)
+        return (im - minimum) * scale + low
 
     if copy:
         im = img.copy()

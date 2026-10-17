@@ -92,28 +92,22 @@ class TrainDatasetH5(Dataset):
 
         Images and auxiliary maps are CHW tensors; integer masks are HW tensors.
         Auxiliary keys retain the format ``{instance_key}_{transform_name}``.
+        Targets are generated from the augmented instance geometry.
         """
         data = FileHandler.read_h5(self.path, ix, keys=self.keys)
 
-        # get instance transform kwargs
-        inst_kws = {k: data[k] for k in self.inst_keys}
-
-        # apply instance transforms
-        aux = self.inst_transforms(**inst_kws)
-
-        # append integer masks and instance transformed masks
-        masks = [data[k][..., np.newaxis] for k in self.mask_keys] + aux
-
-        # number of channels per non image data
-        mask_chls = [m.shape[2] for m in masks]
-
-        # concatenate all masks + inst transforms
-        masks = np.concatenate(masks, axis=-1)
-        tr = self.transforms(image=data[self.img_key], masks=[masks])
+        # Augment labels first; derive vector targets from their new geometry.
+        keys = list(dict.fromkeys((*self.mask_keys, *self.inst_keys)))
+        tr = self.transforms(
+            image=data[self.img_key], masks=[data[key] for key in keys]
+        )
+        transformed = dict(zip(keys, tr["masks"]))
+        aux = self.inst_transforms(**{key: transformed[key] for key in self.inst_keys})
+        masks = [transformed[key][..., np.newaxis] for key in self.mask_keys] + aux
+        mask_chls = [mask.shape[2] for mask in masks]
 
         image = to_tensor(tr["image"])
-        masks = to_tensor(tr["masks"][0])
-        masks = torch.split(masks, mask_chls, dim=0)
+        masks = torch.split(to_tensor(np.concatenate(masks, axis=-1)), mask_chls, dim=0)
 
         integer_masks = {
             n: masks[i].squeeze().long() for i, n in enumerate(self.mask_keys)
