@@ -2,6 +2,13 @@
 
 ## Features
 
+- Expose calibrated level-zero pixel size through `SlideReader.pixel_size` in
+  `(height, width)` micrometers, retaining anisotropic axes and rejecting missing
+  calibration. cuCIM also reads Aperio MPP metadata. Optional CUDA tile reads and
+  `WsiSegmenter(read_device="cuda")` keep decoded tiles and tensor min-max
+  normalization on the GPU through model input; CPU reads remain the default.
+  Instance reconstruction and vector export retain their CPU paths.
+
 - Add optional vector-only nucleus filtering after WSI stitching. Filtering is
   disabled by default (`filter_level=0` or `None`); integer levels 1, 2 and 3
   select conservative, middle and strong area/thickness limits. Enabling it
@@ -14,6 +21,9 @@
   preserves model dtype and individual module training modes.
 
 ## Fixes
+
+- Correct cuCIM pyramid size scaling and edge padding without moving CUDA tiles
+  to the host.
 
 - Reconcile overlapping WSI predictions using source-tile identity and shared
   polygon area, preserving unmatched detections. Record border contact before

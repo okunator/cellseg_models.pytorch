@@ -24,12 +24,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ._base_reader import SlideReaderBackend
+from ._base_reader import SlideReaderBackend, _pixel_size_um
 from .tiles import _divide_xywh, _get_allowed_dimensions, _pad_tile, format_level
+
+if TYPE_CHECKING:
+    import torch
 
 try:
     import openslide
@@ -100,6 +106,14 @@ class OpenSlideReader(SlideReaderBackend):
         return self.__reader
 
     @property
+    def pixel_size(self) -> tuple[float, float]:
+        """Level-zero pixel size (height, width) in micrometers."""
+        properties = self.__reader.properties
+        return _pixel_size_um(
+            (properties.get("openslide.mpp-y"), properties.get("openslide.mpp-x"))
+        )
+
+    @property
     def data_bounds(self) -> tuple[int, int, int, int]:
         properties = dict(self.__reader.properties)
         x_bound = int(properties.get("openslide.bounds-x", 0))
@@ -132,7 +146,17 @@ class OpenSlideReader(SlideReaderBackend):
         level_h, level_w = self.level_dimensions[level]
         return np.array(self.__reader.get_thumbnail(size=(level_w, level_h)))
 
-    def read_region(self, xywh: tuple[int, int, int, int], level: int) -> np.ndarray:
+    def read_region(
+        self,
+        xywh: tuple[int, int, int, int],
+        level: int,
+        *,
+        device: str | torch.device | None = None,
+    ) -> np.ndarray:
+        if device is not None:
+            raise ValueError(
+                "OpenSlide reads CPU NumPy arrays; use CUCIM for CUDA tiles"
+            )
         level = format_level(level, available=list(self.level_dimensions))
         # Only width and height have to be adjusted for the level.
         x, y, *__ = xywh

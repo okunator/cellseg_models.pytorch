@@ -157,6 +157,50 @@ def test_duplicate_tile_outputs_are_rejected(tmp_path, pipeline):
     assert not list(tmp_path.glob("*.parquet"))
 
 
+@pytest.mark.cuda
+def test_cuda_wsi_tiles_stay_on_device_until_model_input(tmp_path, pipeline):
+    from cellseg_models_pytorch.transforms.functional.normalization import (
+        minmax_normalize,
+    )
+
+    model, reader, image, _ = pipeline
+    model.model.cuda()
+    model.device = torch.device("cuda")
+    reads = []
+    normalized = []
+
+    def read_region(bounds, level, *, device):
+        tile = torch.as_tensor(image, device=device)
+        reads.append(tile.device)
+        return tile
+
+    def normalize(*, image):
+        tile = minmax_normalize(image)
+        normalized.append(tile.device)
+        return {"image": tile}
+
+    reader.read_region = read_region
+    segmenter = WsiSegmenter(
+        reader,
+        model,
+        0,
+        [(0, 0, 16, 16), (16, 0, 16, 16)],
+        batch_size=2,
+        normalization=normalize,
+        read_device="cuda",
+    )
+    assert not segmenter.dataloader.pin_memory
+    segmenter.segment(tmp_path)
+    assert len(reads) == len(normalized) == 2
+    assert all(device.type == "cuda" for device in [*reads, *normalized])
+    frames = [gpd.read_parquet(path) for path in sorted(tmp_path.glob("*.parquet"))]
+    assert [len(frame) for frame in frames] == [1, 1]
+    from shapely.affinity import translate
+
+    expected = translate(frames[0].geometry.iloc[0], xoff=16)
+    assert frames[1].geometry.iloc[0].equals_exact(expected, tolerance=1e-12)
+
+
 def test_overlapping_wsi_uses_source_tiles_and_preserves_complete_seam_nucleus(
     tmp_path, pipeline
 ):

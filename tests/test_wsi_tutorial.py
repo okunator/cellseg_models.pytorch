@@ -20,8 +20,6 @@ from cellseg_models_pytorch.wsi.tiles import get_region_from_array
 
 @pytest.fixture
 def tutorial(tmp_path, monkeypatch, pipeline):
-    pytest.importorskip("openslide")
-    pytest.importorskip("albumentations")
     model, reader, image, _ = pipeline
     previous_threads = torch.get_num_threads()
     monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
@@ -54,6 +52,7 @@ def tutorial(tmp_path, monkeypatch, pipeline):
         metadata={"class_names": json.dumps(classes)},
     )
     reader.dimensions = (32, 32)
+    reader.pixel_size = (0.252, 0.252)
     reader.level_from_max_dimension = lambda size: 0
     canvas = np.zeros((32, 32, 3), dtype=np.uint8)
     for y in (4, 16):
@@ -77,9 +76,6 @@ def tutorial(tmp_path, monkeypatch, pipeline):
     response.iter_content.return_value = [b"slide fixture"]
     download = Mock(return_value=response)
     monkeypatch.setattr(ns["requests"], "get", download)
-    metadata = MagicMock()
-    metadata.__enter__.return_value.properties = {"openslide.mpp-x": "0.252"}
-    monkeypatch.setattr(ns["openslide"], "OpenSlide", lambda *args: metadata)
     yield ns, cells, download
     torch.set_num_threads(previous_threads)
     plt.close("all")
@@ -139,3 +135,11 @@ def test_failed_download_is_not_published_as_a_slide(tutorial):
     with pytest.raises(RuntimeError, match="transfer failed"):
         exec(cells[1], ns)
     assert not ns["slide_path"].exists()
+
+
+def test_wsi_notebook_does_not_apply_scalar_filter_to_anisotropic_pixels(tutorial):
+    ns, cells, _ = tutorial
+    ns["reader"] = ns["SlideReader"]()
+    ns["reader"].pixel_size = (0.25, 0.5)
+    with pytest.raises(ValueError, match="square pixels"):
+        exec(next(source for source in cells if source.startswith("reader =")), ns)

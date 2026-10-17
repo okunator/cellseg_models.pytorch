@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ._base_reader import SlideReaderBackend
-from .tiles import _divide_xywh, _get_allowed_dimensions, _pad_tile, format_level
+from ._base_reader import SlideReaderBackend, _pixel_size_um
+from .tiles import _pad_tile, format_level
+
+if TYPE_CHECKING:
+    import torch
 
 try:
     from cucim import CuImage
@@ -32,7 +38,8 @@ class CucimReader(SlideReaderBackend):
         """
         if not HAS_CUCIM:
             raise ImportError(
-                "CUCIM not installed. `pip install cucim-cu12`",
+                "cuCIM not installed. Install cucim-cu12 or cucim-cu13 "
+                "matching your CUDA version.",
             )
 
         path = Path(path)
@@ -60,6 +67,16 @@ class CucimReader(SlideReaderBackend):
     def reader(self):
         """CUCIM instance."""
         return self.__reader
+
+    @property
+    def pixel_size(self) -> tuple[float, float]:
+        """Level-zero pixel size (height, width) in micrometers."""
+        units = self.__reader.spacing_units("YX")
+        # Aperio SVS stores isotropic MPP separately from generic TIFF spacing.
+        if not any(units) and "MPP" in self.__reader.metadata.get("aperio", {}):
+            mpp = self.__reader.metadata["aperio"]["MPP"]
+            return _pixel_size_um((mpp, mpp))
+        return _pixel_size_um(self.__reader.spacing("YX"), units)
 
     @property
     def data_bounds(self) -> tuple[int, int, int, int]:
@@ -93,17 +110,66 @@ class CucimReader(SlideReaderBackend):
         slide_h, slide_w = self.dimensions
         return self.read_region((0, 0, slide_w, slide_h), level)
 
-    def read_region(self, xywh: tuple[int, int, int, int], level: int) -> np.ndarray:
-        level = format_level(level, available=list(self.level_dimensions))
-        # Only width and height have to be adjusted for the level.
-        x, y, *__ = xywh
-        *__, w, h = _divide_xywh(xywh, self.level_downsamples[level])
-        # Read allowed region.
-        allowed_h, allowed_w = _get_allowed_dimensions((x, y, w, h), self.dimensions)
-        tile = self.__reader.read_region(
-            location=(x, y), level=level, size=(allowed_w, allowed_h)
-        )
-        tile = np.array(tile)[..., :3]  # only rgb channels
+    def read_region(
+        self,
+        xywh: tuple[int, int, int, int],
+        level: int,
+        *,
+        device: str | torch.device | None = None,
+    ) -> np.ndarray | torch.Tensor:
+        """Read RGB uint8 HWC pixels on CPU, or a CUDA tensor when requested.
 
-        # Pad tile.
-        return _pad_tile(tile, shape=(h, w))
+        Args:
+            xywh: Region bounds in level-zero pixels.
+            level: Pyramid level; output size is downsampled accordingly.
+            device: None returns a NumPy array. A CUDA device returns a tensor
+                sharing the decoder allocation through DLPack. Padding stays
+                on that device; out-of-slide pixels are white.
+
+        Raises:
+            ValueError: The device is not CUDA or bounds are invalid.
+        """
+        if device is not None:
+            import torch
+
+            device = torch.device(device)
+            if device.type != "cuda":
+                raise ValueError("cuCIM tensor reads require a CUDA device")
+            if device.index is None:
+                device = torch.device("cuda", torch.cuda.current_device())
+        level = format_level(level, available=list(self.level_dimensions))
+        x, y, width, height = xywh
+        if x < 0 or y < 0 or width <= 0 or height <= 0:
+            raise ValueError("Region needs nonnegative x/y and positive width/height")
+        down_y, down_x = self.level_downsamples[level]
+        w, h = round(width / down_x), round(height / down_y)
+        # Locations stay at level zero; only the decoded sizes are downsampled.
+        allowed_w = min(w, max(0, int(np.ceil((self.dimensions[1] - x) / down_x))))
+        allowed_h = min(h, max(0, int(np.ceil((self.dimensions[0] - y) / down_y))))
+        if allowed_w == 0 or allowed_h == 0:
+            if device is None:
+                return np.full((h, w, 3), 255, dtype=np.uint8)
+            return torch.full((h, w, 3), 255, dtype=torch.uint8, device=device)
+        tile = self.__reader.read_region(
+            location=(x, y),
+            level=level,
+            size=(allowed_w, allowed_h),
+            device="cpu" if device is None else str(device),
+        )
+        if device is None:
+            return _pad_tile(np.array(tile)[..., :3], shape=(h, w))
+
+        import cupy as cp
+        from torch.nn.functional import pad
+
+        # CuPy keeps the decoder owner alive; DLPack shares its CUDA storage.
+        tensor = torch.from_dlpack(cp.asarray(tile))[..., :3]
+        if tensor.device != device:
+            raise ValueError("cuCIM returned pixels on a different CUDA device")
+        if tensor.shape[:2] != (h, w):
+            tensor = pad(
+                tensor,
+                (0, 0, 0, w - tensor.shape[1], 0, h - tensor.shape[0]),
+                value=255,
+            )
+        return tensor

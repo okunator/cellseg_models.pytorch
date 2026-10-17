@@ -24,7 +24,10 @@ class WsiSegmenter:
         level: int,
         coordinates: list[tuple[int, int, int, int]],
         batch_size: int = 8,
-        normalization: Callable[..., dict[str, np.ndarray]] | None = None,
+        normalization: Callable[..., dict[str, np.ndarray | torch.Tensor]]
+        | None = None,
+        *,
+        read_device: str | torch.device | None = None,
     ) -> None:
         """Class for segmenting WSIs.
 
@@ -37,16 +40,27 @@ class WsiSegmenter:
             batch_size: The batch size for the DataLoader.
             normalization: Callable receiving ``image=tile`` and returning a
                 dictionary containing the transformed HWC ``image``.
+                For CUDA tiles this must accept and return a tensor.
+            read_device: None reads tiles on CPU (default). A CUDA device keeps
+                CUCIM tiles on the GPU through normalization and model input.
+                Instance reconstruction and polygon export still use CPU data.
         """
         self.batch_size = batch_size
         self.coordinates = coordinates
         self.model = model
 
         self.dataset = WSIDatasetInfer(
-            reader, coordinates, level=level, transforms=normalization
+            reader,
+            coordinates,
+            level=level,
+            transforms=normalization,
+            read_device=read_device,
         )
         self.dataloader = DataLoader(
-            self.dataset, batch_size=batch_size, shuffle=False, pin_memory=True
+            self.dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            pin_memory=read_device is None,
         )
         self._has_processed = False
 

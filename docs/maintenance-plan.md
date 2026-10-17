@@ -141,8 +141,17 @@ loss reduction as segmentation accuracy or a useful trained model.
   and preservation, not biological accuracy.
 - [x] Visually review the twelve updated seam regions and screenshot close-ups;
   the maintainer found the whole-tile reconciliation results acceptable.
+- [x] Expose calibrated reader pixel size and optional cuCIM CUDA tiles through
+  normalization/model input. On the same 804 DGX tiles, cuCIM 26.10 reads about
+  3.2 times faster and full inference/export is 4.7% faster in one run. Twelve
+  fields agree at 0.9968 detection F1 and 0.9921 matched IoU; decoder differences
+  remain visible. CPU regressions, four CUDA cases and real allocation/stream
+  checks pass; BioIO calibration has mocked coverage only. OpenSlide stays the
+  notebook default. Detailed timing/memory scopes and limits live in PR 113;
+  diagnostics stay outside Git. Add no new CI job or required GPU package.
 - [ ] After PR 113 is merged, retire redundant runs, the temporary comparison
-  gallery and benchmark/diagnostic artifacts. Keep the slide and cached tile
+  galleries (including backend comparisons) and benchmark/diagnostic artifacts.
+  Keep the slide and cached tile
   predictions outside Git until then.
 - [ ] Add model/checkpoint and optional-workflow guidance, then the focused API
   reference. Keep the current normalization helper; issue 78's replacement/license
