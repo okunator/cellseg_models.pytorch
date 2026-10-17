@@ -43,7 +43,9 @@ jobs:
 
       - name: Check strict library typing
         if: matrix.python-version == '3.11'
-        run: uv run --no-sync mypy cellseg_models_pytorch/utils/convolve.py
+        run: >-
+          uv run --no-sync mypy cellseg_models_pytorch/utils/convolve.py
+          cellseg_models_pytorch/wsi/inst_merger.py
 
       - name: Build docs from reviewed notebook outputs
         if: matrix.python-version == '3.11'

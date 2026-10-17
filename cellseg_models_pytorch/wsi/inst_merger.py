@@ -1,9 +1,13 @@
-from collections.abc import Sequence
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import TypeAlias
 
 import geopandas as gpd
 import networkx as nx
 import numpy as np
+from numpy.typing import NDArray
 from shapely import (
     STRtree,
     area,
@@ -19,8 +23,15 @@ from shapely import (
     union_all,
 )
 from shapely.geometry import box
+from shapely.geometry.base import BaseGeometry
 
 __all__ = ["InstMerger", "filter_nuclei"]
+
+# Shapely stores nucleus polygons in NumPy object arrays.
+_PolygonArray: TypeAlias = NDArray[np.object_]
+_IndexArray: TypeAlias = NDArray[np.intp]
+_FloatArray: TypeAlias = NDArray[np.float64]
+_BoolArray: TypeAlias = NDArray[np.bool_]
 
 
 def filter_nuclei(
@@ -80,17 +91,25 @@ def filter_nuclei(
         where=perimeter > 0,
     )
     remove = (physical_area < maximum_area) & (thickness < maximum_thickness)
-    return gdf.loc[~remove]
+    retained: gpd.GeoDataFrame = gdf.loc[~remove]
+    return retained
 
 
-def _union_footprint(geometries):
+def _union_footprint(geometries: _PolygonArray) -> BaseGeometry:
     """Combine polygon areas without counting overlaps twice."""
     # Separate groups can be combined faster on newer GEOS versions.
     union = disjoint_subset_union_all if geos_version >= (3, 12, 0) else union_all
     return union(geometries)
 
 
-def _match_overlaps(geometries, areas, partial, left_ids, right_ids, common):
+def _match_overlaps(
+    geometries: _PolygonArray,
+    areas: _FloatArray,
+    partial: _BoolArray,
+    left_ids: _IndexArray,
+    right_ids: _IndexArray,
+    common: _PolygonArray,
+) -> tuple[_BoolArray, _FloatArray, _FloatArray]:
     """Identify strong matches between two overlapping tiles."""
     shared_areas = area(common)
     union_areas = areas[left_ids] + areas[right_ids] - shared_areas
@@ -135,8 +154,13 @@ def _match_overlaps(geometries, areas, partial, left_ids, right_ids, common):
 
 
 def _choose_tile(
-    views, geometries, clearance, partial, fragments, coordinate_tolerance
-):
+    views: dict[np.intp, list[int]],
+    geometries: _PolygonArray,
+    clearance: _FloatArray,
+    partial: _BoolArray,
+    fragments: _BoolArray,
+    coordinate_tolerance: float | np.float64,
+) -> tuple[np.intp, set[int], dict[np.intp, BaseGeometry]]:
     """Prefer a complete, well-supported view of the disputed nuclei."""
     # A tiny nested mask cannot stand in for a whole nucleus elsewhere.
     whole_views = {
@@ -153,7 +177,7 @@ def _choose_tile(
     }
     eligible = complete_views or whole_views
     # Count covered area once, even when a tile's own predictions overlap.
-    footprints = {
+    footprints: dict[np.intp, BaseGeometry] = {
         tile: geometries[rows[0]]
         if len(rows) == 1
         else _union_footprint(geometries[rows])
@@ -165,6 +189,7 @@ def _choose_tile(
     supported = [tile for tile in eligible if footprint_areas[tile] >= 0.8 * largest]
 
     priorities = ("clearance", "area") if complete_views else ("area", "clearance")
+    values: Mapping[np.intp, float | np.float64]
     for priority in priorities:
         if len(supported) == 1:
             break
@@ -192,7 +217,7 @@ class InstMerger:
         coordinates: list[tuple[int, int, int, int]],
         tile_indices: Sequence[int] | None = None,
     ) -> None:
-        """Reconcile nucleus predictions in slide-pixel coordinates.
+        """Reconcile nucleus segmentation polygons in slide-pixel coordinates.
 
         Args:
             gdf: Nucleus polygons in level-zero pixel coordinates, with class_name
@@ -224,7 +249,7 @@ class InstMerger:
         if tile_indices is None:
             if overlapping:
                 raise ValueError("Overlapping tiles require source tile_indices")
-            self.owners = np.full(len(self.gdf), -1, dtype=int)
+            self.owners: _IndexArray = np.full(len(self.gdf), -1, dtype=int)
             matches = self.grid.sindex.query(
                 self.gdf.geometry.representative_point(), predicate="within"
             )
@@ -251,7 +276,7 @@ class InstMerger:
         filter_level: int | None = 0,
         pixel_size: float | None = None,
     ) -> gpd.GeoDataFrame | None:
-        """Combine tiled nucleus predictions into one slide-wide result.
+        """Combine tiled nucleus segmentation polygons into one slide-wide result.
 
         Keep whole contours from one tile where predictions duplicate each other,
         and preserve unmatched nuclei. Join fragments from tiles with a shared
@@ -312,8 +337,11 @@ class InstMerger:
             merged.to_file(path, driver="GeoJSON")
         else:
             merged.to_feather(path)
+        return None
 
-    def _tile_detections(self, geometries):
+    def _tile_detections(
+        self, geometries: _PolygonArray
+    ) -> tuple[list[_IndexArray], _FloatArray, _BoolArray]:
         """Group nucleus segmentation polygons by their source image tile.
 
         Each polygon outlines one nucleus segmented in one tile. Its coordinates
@@ -366,7 +394,13 @@ class InstMerger:
 
         return tile_rows, clearance_by_row, partial
 
-    def _find_matches(self, geometries, areas, tile_rows, partial):
+    def _find_matches(
+        self,
+        geometries: _PolygonArray,
+        areas: _FloatArray,
+        tile_rows: list[_IndexArray],
+        partial: _BoolArray,
+    ) -> tuple[nx.Graph[int], list[tuple[int, int]]]:
         """Find possible duplicate nucleus polygons between neighboring tiles.
 
         The same nucleus can have a segmentation polygon from each overlapping
@@ -391,8 +425,8 @@ class InstMerger:
         # Reuse each tile's search index across all its neighbors.
         trees = [STRtree(geometries[rows]) for rows in tile_rows]
         # Edges connect competing predictions from different source tiles.
-        conflicts = nx.Graph()
-        touching = []
+        conflicts: nx.Graph[int] = nx.Graph()
+        touching: list[tuple[int, int]] = []
         for left, right, shared in self.seams:
             if shared.area == 0 and shared.length == 0:
                 continue
@@ -430,7 +464,9 @@ class InstMerger:
 
         return conflicts, touching
 
-    def _preserve_unmatched(self, conflicts, geometries, areas):
+    def _preserve_unmatched(
+        self, conflicts: nx.Graph[int], geometries: _PolygonArray, areas: _FloatArray
+    ) -> _BoolArray:
         """Keep nucleus polygons that have no adequate match in another tile.
 
         A nucleus segmented in only one tile should survive stitching. Exclude
@@ -463,7 +499,7 @@ class InstMerger:
             }
             if strong and not undersized:
                 continue
-            views = {}
+            views: dict[np.intp, list[int]] = {}
             for other in neighbors:
                 views.setdefault(self.owners[other], []).append(other)
             explained = False
@@ -492,13 +528,19 @@ class InstMerger:
         return fragments
 
     def _select_predictions(
-        self, conflicts, geometries, areas, clearance, partial, fragments
-    ):
-        """Choose whole predictions from each group of competing tiles."""
+        self,
+        conflicts: nx.Graph[int],
+        geometries: _PolygonArray,
+        areas: _FloatArray,
+        clearance: _FloatArray,
+        partial: _BoolArray,
+        fragments: _BoolArray,
+    ) -> tuple[_IndexArray, dict[int, set[np.intp]]]:
+        """Choose whole nucleus polygons from each group of competing tiles."""
         # Map each discarded row to the original row that replaces it.
         representatives = np.arange(len(geometries))
         # Joining later must account for every source tile a nucleus represents.
-        source_tiles = {}
+        source_tiles: dict[int, set[np.intp]] = {}
         # Only tie-breaking depends on coordinate precision, not overlap matching.
         coordinate_tolerance = (
             8 * np.spacing(np.abs(self.grid.total_bounds).max())
@@ -508,7 +550,7 @@ class InstMerger:
         for component in nx.connected_components(conflicts):
             remaining = set(component)
             while remaining:
-                views = {}
+                views: dict[np.intp, list[int]] = {}
                 # A view is the set of predictions supplied by one tile.
                 for index in sorted(remaining):
                     views.setdefault(self.owners[index], []).append(index)
@@ -567,14 +609,14 @@ class InstMerger:
 
     def _covered_alternatives(
         self,
-        alternatives,
-        selected_tile,
-        views,
-        footprints,
-        conflicts,
-        geometries,
-        areas,
-    ):
+        alternatives: set[int],
+        selected_tile: np.intp,
+        views: dict[np.intp, list[int]],
+        footprints: dict[np.intp, BaseGeometry],
+        conflicts: nx.Graph[int],
+        geometries: _PolygonArray,
+        areas: _FloatArray,
+    ) -> _IndexArray:
         """Find replacements supported by agreement between whole tile predictions."""
         for tile, rows in views.items():
             if tile not in footprints:
@@ -584,7 +626,7 @@ class InstMerger:
                     else _union_footprint(geometries[rows])
                 )
         # Compare each tile's local predictions as a set, not just nucleus pairs.
-        agreements = {tile: set() for tile in views}
+        agreements: dict[np.intp, set[np.intp]] = {tile: set() for tile in views}
         view_tiles = list(views)
         for position, left in enumerate(view_tiles):
             for right in view_tiles[position + 1 :]:
@@ -607,7 +649,7 @@ class InstMerger:
             # Require two supporting tiles before accepting an indirect match.
             or len(agreements[tile] & agreements[selected_tile]) >= 2
         }
-        candidates = np.array(
+        candidates: _IndexArray = np.array(
             sorted(
                 index for index in alternatives if self.owners[index] in competing_tiles
             ),
@@ -618,11 +660,16 @@ class InstMerger:
         return candidates[covered >= 0.5 * areas[candidates]]
 
     def _join_touching(
-        self, touching, representatives, source_tiles, geometries, areas
-    ):
+        self,
+        touching: list[tuple[int, int]],
+        representatives: _IndexArray,
+        source_tiles: dict[int, set[np.intp]],
+        geometries: _PolygonArray,
+        areas: _FloatArray,
+    ) -> gpd.GeoDataFrame:
         """Join touching fragments and keep metadata from their largest member."""
-        groups = nx.utils.UnionFind()
-        graph = nx.Graph()
+        groups: nx.utils.UnionFind[int] = nx.utils.UnionFind()
+        graph: nx.Graph[int] = nx.Graph()
         for left, right in touching:
             a, b = int(representatives[left]), int(representatives[right])
             # The chosen whole contours may no longer touch where fragments did.
@@ -652,8 +699,9 @@ class InstMerger:
             keep[indices] = False
             keep[best] = True
             unions[best] = union_all(geometries[indices])
-        merged = self.gdf.loc[keep].copy()
+        merged: gpd.GeoDataFrame = self.gdf.loc[keep].copy()
         for index, geometry in unions.items():
-            merged.at[index, merged.geometry.name] = geometry
+            # pandas-stubs omits Shapely geometries from DataFrame scalar assignments.
+            merged.at[index, merged.geometry.name] = geometry  # type: ignore[assignment]
         merged = merged.reset_index(drop=True)
         return merged

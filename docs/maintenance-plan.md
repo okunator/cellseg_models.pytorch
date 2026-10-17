@@ -138,7 +138,9 @@ loss reduction as segmentation accuracy or a useful trained model.
   check produces 739,816 instances; memory stays about 6.33 GiB in both versions.
   Merge memory still grows with all source polygons; these CPU measurements
   exclude the model and CUDA allocations. These checks establish consistency
-  and preservation, not biological accuracy.
+  and preservation, not biological accuracy. The merger's public and private
+  functions have parameter and return annotations; strict mypy runs in the
+  existing Python 3.11 source job using development-only geospatial/graph stubs.
 - [x] Visually review the twelve updated seam regions and screenshot close-ups;
   the maintainer found the whole-tile reconciliation results acceptable.
 - [x] Expose calibrated reader pixel size and optional cuCIM CUDA tiles through

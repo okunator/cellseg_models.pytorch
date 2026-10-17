@@ -65,15 +65,17 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 
 ## Python and typing
 
-- Add accurate annotations to new or changed public APIs. Prefer `list[T]`,
-  `dict[K, V]`, and `X | None` where they work on the supported Python versions.
-  Avoid unrelated annotation sweeps.
+- Add accurate parameter and return annotations to new or changed library
+  functions, including private helpers. Prefer `list[T]`, `dict[K, V]`, and
+  `X | None` where they work on the supported Python versions. Avoid unrelated
+  annotation sweeps.
 - Type checking is being introduced gradually. Mypy checks
-  `tools/check_release_metadata.py` and
-  `cellseg_models_pytorch/utils/convolve.py` in strict mode, targeting Python 3.10.
-  `uv run --locked mypy` runs both scopes; CI checks the library helper in the
-  existing Python 3.11 source job and the release guard in the developer-only job.
-  Expand the checked scope explicitly before requiring broader runs.
+  `tools/check_release_metadata.py`, `cellseg_models_pytorch/utils/convolve.py`
+  and `cellseg_models_pytorch/wsi/inst_merger.py` in strict mode, targeting Python
+  3.10. `uv run --locked mypy` runs all three files; CI checks the library files
+  in the existing Python 3.11 source job and the release guard in the
+  developer-only job. Expand the checked scope explicitly before requiring
+  broader runs.
 - Preserve existing tensor, array, dictionary, and dataclass contracts. Do not
   add wrappers, conversions, or `cast()` calls just to silence a checker.
 - Narrow optional values and validate external inputs. Keep `Any` at genuinely
