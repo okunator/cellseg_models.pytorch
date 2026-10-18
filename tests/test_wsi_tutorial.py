@@ -30,10 +30,16 @@ def tutorial(tmp_path, monkeypatch, pipeline):
     cells = [
         "".join(cell["source"])
         for cell in notebook["cells"]
-        if cell["cell_type"] == "code"
+        if cell["cell_type"] == "code" and cell["id"] != "wsi-cucim-init"
     ]
     ns = {}
     exec(cells[0], ns)
+    assert ns["backend"] == "CUCIM"
+    assert ns["read_device"] == "cuda"
+    assert ns["device"] == torch.device("cuda")
+    # Exercise the GPU tutorial's remaining workflow with the offline CPU fixture.
+    ns["device"] = torch.device("cpu")
+    ns["read_device"] = None
     ns["slide_path"] = tmp_path / "data/slide.svs"
     ns["checkpoint_path"] = tmp_path / "model.safetensors"
     ns["output_dir"] = tmp_path / "results"
@@ -68,7 +74,7 @@ def tutorial(tmp_path, monkeypatch, pipeline):
     reader.get_annotated_thumbnail = lambda *args, **kwargs: (
         SlideReader.get_annotated_thumbnail(reader, *args, **kwargs)
     )
-    ns["SlideReader"] = lambda *args, **kwargs: reader
+    ns["SlideReader"] = Mock(return_value=reader)
     ns["CellPose"] = SimpleNamespace(from_pretrained=lambda *args, **kwargs: model)
     model.set_inference_mode = lambda **kwargs: None
     ns["PostProcessor"] = lambda *args, **kwargs: model.post_processor
@@ -88,6 +94,7 @@ def test_wsi_notebook_writes_all_tiles_and_preserves_their_nuclei(tutorial):
     ns["filter_level"] = 0
     for source in cells[1:]:
         exec(source, ns)
+    ns["SlideReader"].assert_called_once_with(ns["slide_path"], backend="CUCIM")
     assert ns["slide_path"].read_bytes() == b"slide fixture"
     download.assert_called_once_with(ns["slide_url"], stream=True, timeout=120)
     assert len(ns["coordinates"]) == 9
