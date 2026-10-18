@@ -15,6 +15,7 @@ maps.
 | `CELoss` | BCHW logits; BHW class IDs | Mean multiclass cross-entropy |
 | `DiceLoss` | BCHW logits; BHW class IDs | Dice loss, averaged over classes present in each target image |
 | `IoULoss` | BCHW logits; BHW class IDs | Soft IoU loss, averaged over target-present image/class pairs |
+| `TverskyLoss` | BCHW logits; BHW class IDs | Spatial overlap with separate false-positive and false-negative coefficients |
 | `FocalLoss` | BCHW logits; BHW class IDs | Cross-entropy that gives more weight to poorly predicted pixels |
 | `MSE` | BCHW raw maps; matching floating targets | Mean squared error; useful for predicting flow maps |
 | `MAE` | BCHW raw maps; matching floating targets | Mean absolute error; masking changes how errors are averaged |
@@ -24,7 +25,6 @@ maps.
 | `MSSSIM` | Comparable BCHW maps, at least 32 pixels per axis | Compares structure at five scales; differs from standard MS-SSIM |
 | `InstanSegCriterion` | B4HW maps; BHW instance IDs | Seed and center-offset losses; call directly with `pred` |
 
-`TverskyLoss` needs correction before use and is not covered here.
 `MSSSIM` differs from the standard definition; check its description before use.
 
 ## Combine losses for a model output
@@ -109,6 +109,16 @@ Options vary by loss; check its parameters below.
 .. autoclass:: cellseg_models_pytorch.losses.IoULoss
    :members: forward
 ```
+
+```{eval-rst}
+.. autoclass:: cellseg_models_pytorch.losses.TverskyLoss
+   :members: forward
+```
+
+Tversky uses `TP / (TP + alpha * FP + beta * FN)` for each image and class,
+then averages the losses for target-present classes, including background.
+`alpha` weights false positives and `beta` weights false negatives. Using
+`alpha=beta=0.5` gives Dice loss; `alpha=beta=1` gives IoU loss.
 
 ```{eval-rst}
 .. autoclass:: cellseg_models_pytorch.losses.FocalLoss

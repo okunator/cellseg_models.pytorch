@@ -23,9 +23,8 @@ class Loss(nn.Module):
         """Choose a loss and its settings.
 
         Args:
-            name: ce, bce, dice, iou, focal, mse, mae, ssim, msssim or sce.
-                tversky remains accepted, but its calculation across classes
-                needs correction before use. The registered instanseg route
+            name: ce, bce, dice, iou, tversky, focal, mse, mae, ssim, msssim or sce.
+                The registered instanseg route
                 currently rejects these forwarded options; construct InstanSegCriterion
                 directly and call it with pred and target.
             apply_sd: Add a squared-prediction penalty for losses supporting it.

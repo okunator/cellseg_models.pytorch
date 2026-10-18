@@ -110,6 +110,6 @@ def test_loss(
         class_weights=cw,
     )
     result = criterion(yhat=yhat, target=target, target_weight=wmap, mask=mask)
-    if loss in ("bce", "sce"):
+    if loss in ("bce", "sce", "tversky"):
         assert result.ndim == 0
         assert torch.isfinite(result)

@@ -31,6 +31,13 @@
 
 ## Fixes
 
+- Correct `TverskyLoss` to sum overlap across spatial axes per image and class,
+  with `alpha` weighting false positives and `beta` weighting false negatives.
+  Average target-present pairs, weight overlap terms consistently, scale class
+  losses and add positive masked regularization. Fully masked inputs have zero
+  loss and gradients; half-precision sums accumulate in float32. Training
+  objectives change; existing model checkpoints remain loadable.
+
 - Correct `BCELoss` to use unclipped logits, weight independent output channels,
   and smooth binary targets toward 0.5. Stabilize `SCELoss` with direct
   log-probabilities and a 1e-4 target floor to keep reverse terms finite for hard
