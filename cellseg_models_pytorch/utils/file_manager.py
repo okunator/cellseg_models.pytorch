@@ -1,5 +1,4 @@
 import warnings
-import zipfile
 from pathlib import Path
 from typing import Dict, Tuple, Union
 
@@ -429,19 +428,3 @@ class FileHandler:
         except Exception as e:
             h5.close()
             raise e
-
-    @staticmethod
-    def extract_zips_in_folder(path: Union[str, Path], rm: bool = False) -> None:
-        """Extract files from all the .zip files inside a folder.
-
-        Args:
-            path (str or Path): Path to a folder containing .zip files.
-            rm: remove the .zip files after extraction.
-                Defaults to False.
-        """
-        for f in Path(path).iterdir():
-            if f.is_file() and f.suffix == ".zip":
-                with zipfile.ZipFile(f, "r") as z:
-                    z.extractall(path)
-                if rm:
-                    f.unlink()

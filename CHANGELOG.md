@@ -1,5 +1,14 @@
 # Unreleased
 
+## Removed
+
+- Remove `cellseg_models_pytorch.datasets.Pannuke`. Download PanNuke from
+  [Hugging Face](https://huggingface.co/datasets/csmp-hub/pannuke) using the
+  README example. The training loaders in `torch_datasets` remain available.
+- Remove `utils.Downloader` and `FileHandler.extract_zips_in_folder`. Use
+  Hugging Face download tools and Python's `zipfile.ZipFile` instead. Move
+  `requests` to the docs dependencies for the whole-slide tutorial.
+
 ## Features
 
 - Expose calibrated level-zero pixel size through `SlideReader.pixel_size` in

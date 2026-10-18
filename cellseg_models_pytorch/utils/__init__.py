@@ -1,4 +1,3 @@
-from .downloader import Downloader
 from .file_manager import FileHandler, H5Handler
 from .mask_utils import (
     binarize,
@@ -30,7 +29,6 @@ from .mask_utils import (
 from .tensor_utils import to_device, to_tensor
 
 __all__ = [
-    "Downloader",
     "FileHandler",
     "H5Handler",
     "remove_small_objects",
