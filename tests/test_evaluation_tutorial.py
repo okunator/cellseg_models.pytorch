@@ -234,11 +234,16 @@ def test_notebook_loads_saved_predictions_and_averages_defined_image_scores(
     second = np.zeros_like(first)
     second[2:4, 4:6] = 51
     perfect = np.where(second > 0, 907, 0).astype(np.int32)
+    partial = perfect.copy()
+    partial[2, 4] = 0
     blank = np.zeros_like(first)
     for name, reference, prediction, cell_type in (
         ("a", first, missed, 1),
         ("b", second, perfect, 3),
         ("c", blank, blank, 1),
+        ("d", second, partial, 1),
+        ("e", second, blank, 1),
+        ("f", blank, perfect, 1),
     ):
         savemat(
             data / "labels" / f"{name}.mat",
@@ -265,29 +270,41 @@ def test_notebook_loads_saved_predictions_and_averages_defined_image_scores(
             if identifier == "metrics-setup":
                 namespace["example_images"] = ["a", "b"]
         summary = namespace["summary"].row(0, named=True)
+        # PQ values are 2/3, 1, 3/4, 0 and 0; only the empty pair is excluded.
         assert summary == pytest.approx(
             {
-                "Images": 3,
-                "Scored images": 2,
-                "Reference nuclei": 3,
-                "Predicted nuclei": 2,
-                "PQ": 5 / 6,
-                "DQ": 5 / 6,
-                "SQ": 1,
-                "Dice": 5 / 6,
-                "IoU": 0.75,
+                "Images": 6,
+                "Scored images": 5,
+                "Reference nuclei": 5,
+                "Predicted nuclei": 4,
+                "PQ": 29 / 60,
+                "DQ": 8 / 15,
+                "SQ": 11 / 20,
+                "Dice": 53 / 105,
+                "IoU": 9 / 20,
             }
         )
+        assert summary["PQ"] != pytest.approx(summary["DQ"] * summary["SQ"])
         by_type = {
             row["Cell type"]: row for row in namespace["class_summary"].to_dicts()
         }
-        assert by_type["neoplastic"]["Scored images"] == 1
-        assert by_type["neoplastic"]["PQ"] == pytest.approx(2 / 3)
+        neoplastic = by_type["neoplastic"]
+        # The same category spans a missed nucleus, a partial match and both zero cases.
+        assert neoplastic == {
+            "Cell type": "neoplastic",
+            "Scored images": 4,
+            "Reference nuclei": 4,
+            "Predicted nuclei": 3,
+            "PQ": pytest.approx(17 / 48),
+            "DQ": pytest.approx(5 / 12),
+            "SQ": pytest.approx(7 / 16),
+        }
+        assert neoplastic["PQ"] != pytest.approx(neoplastic["DQ"] * neoplastic["SQ"])
         assert by_type["inflammatory"]["Scored images"] == 1
         assert by_type["inflammatory"]["PQ"] == pytest.approx(1)
         assert by_type["stromal"]["Scored images"] == 0
         assert by_type["stromal"]["PQ"] is None
-        assert namespace["image_scores"].height == 3
+        assert namespace["image_scores"].height == 6
         figure = namespace["fig"]
         assert [axis.get_title() for axis in figure.axes] == [
             "a: image",
