@@ -85,6 +85,8 @@ def test_loss(
     apply_mask: bool,
 ) -> None:
     yhat, target = _get_dummy_pair(n_classes)
+    if loss == "bce":
+        target = (target > 0).float()
 
     wmap = None
     if edge_weight is not None:
@@ -107,4 +109,7 @@ def test_loss(
         edge_weight=edge_weight,
         class_weights=cw,
     )
-    criterion(yhat=yhat, target=target, target_weight=wmap, mask=mask)
+    result = criterion(yhat=yhat, target=target, target_weight=wmap, mask=mask)
+    if loss in ("bce", "sce"):
+        assert result.ndim == 0
+        assert torch.isfinite(result)

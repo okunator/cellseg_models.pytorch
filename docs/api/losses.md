@@ -18,14 +18,14 @@ maps.
 | `FocalLoss` | BCHW logits; BHW class IDs | Cross-entropy that gives more weight to poorly predicted pixels |
 | `MSE` | BCHW raw maps; matching floating targets | Mean squared error; useful for predicting flow maps |
 | `MAE` | BCHW raw maps; matching floating targets | Mean absolute error; masking changes how errors are averaged |
-| `BCELoss` | BCHW maps; binary targets | Current implementation clips predictions before BCE-with-logits |
-| `SCELoss` | BCHW logits; BHW class IDs | Can return infinite loss unless target smoothing is enabled |
+| `BCELoss` | BCHW logits; BCHW binary/soft targets, or a shared BHW binary map | Independent binary cross-entropy per output channel |
+| `SCELoss` | BCHW logits; BHW class IDs | Weighted forward and reverse multiclass cross-entropy |
 | `SSIM` | Comparable floating image/maps | Compares local image patterns; can also return a contrast difference |
 | `MSSSIM` | Comparable BCHW maps, at least 32 pixels per axis | Compares structure at five scales; differs from standard MS-SSIM |
 | `InstanSegCriterion` | B4HW maps; BHW instance IDs | Seed and center-offset losses; call directly with `pred` |
 
 `TverskyLoss` needs correction before use and is not covered here.
-Check the limitations above before choosing `BCELoss`, `SCELoss` or `MSSSIM`.
+`MSSSIM` differs from the standard definition; check its description before use.
 
 ## Combine losses for a model output
 
@@ -86,7 +86,8 @@ Options vary by loss; check its parameters below.
 
 - `apply_sd` penalizes large prediction values.
 - `apply_ls` softens class labels; `apply_svls` also uses neighboring pixels.
-- `class_weights` weights classes when targets contain class IDs.
+- `class_weights` weights classes when targets contain class IDs; for BCE it
+  weights independent output channels.
 - `edge_weight` sets per-pixel weights as `edge_weight ** target_weight`; how
   these enter the calculation depends on the loss.
 - `apply_mask=True` enables masking. Masked averages differ by loss; see each
@@ -119,7 +120,16 @@ Options vary by loss; check its parameters below.
    :members: forward
 ```
 
+SCE floors target probabilities at `1e-4` only inside the reverse logarithm,
+as in the [authors' implementation](https://github.com/YisenWang/symmetric_cross_entropy_for_noisy_labels/blob/master/loss.py).
+This keeps hard-label reverse terms finite without smoothing the forward term.
+
 ## Binary loss
+
+Pass raw logits. Each channel is an independent binary task, and targets must be
+in `[0, 1]`. `class_weights` supplies one multiplier per channel, including when
+there is only one channel; it does not select background/foreground weights.
+Uniform label smoothing moves binary targets toward `0.5`.
 
 ```{eval-rst}
 .. autoclass:: cellseg_models_pytorch.losses.BCELoss

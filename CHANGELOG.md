@@ -31,6 +31,14 @@
 
 ## Fixes
 
+- Correct `BCELoss` to use unclipped logits, weight independent output channels,
+  and smooth binary targets toward 0.5. Stabilize `SCELoss` with direct
+  log-probabilities and a 1e-4 target floor to keep reverse terms finite for hard
+  labels. Avoid NaN from zero-target terms when an extreme log-probability
+  overflows to negative infinity. Both losses compute half-precision inputs and
+  regularization in float32 and support combined spatial/uniform smoothing. These corrections
+  change training objectives; existing model checkpoints remain loadable.
+
 - Stabilize `CELoss` and `FocalLoss` with direct log-probability calculations,
   preserving gradients for confidently wrong predictions. Float16 and bfloat16
   logits use float32 loss and spectral regularization arithmetic. Preserve
