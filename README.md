@@ -42,28 +42,6 @@ cellseg-models.pytorch for its segmentation models.
 pip install cellseg-models-pytorch
 ```
 
-## Models
-
-Find pretrained checkpoints on [csmp-hub on Hugging Face](https://huggingface.co/csmp-hub).
-
-| Model                      | Paper                                                                          |
-| -------------------------- | ------------------------------------------------------------------------------ |
-| [[1](#references)] HoVer-Net | https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub |
-| [[2](#references)] Cellpose  | https://www.nature.com/articles/s41592-020-01018-x                             |
-| [[3](#references)] Omnipose  | https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2                    |
-| [[4](#references)] Stardist  | https://arxiv.org/abs/1806.03535                                               |
-| [[5](#references)] CellVit-SAM  | https://arxiv.org/abs/2306.15350                                               |
-| [[6](#references)] CPP-Net  | https://arxiv.org/abs/2102.06867                                               |
-| [[7](#references)] InstanSeg | https://arxiv.org/abs/2408.15954                                            |
-
-## Datasets
-
-| Dataset                       | Paper                                                                                            |
-| ----------------------------- | ------------------------------------------------------------------------------------------------ |
-| [[8, 9](#references)] [PanNuke](https://huggingface.co/datasets/csmp-hub/pannuke) | https://arxiv.org/abs/2003.10778 , https://link.springer.com/chapter/10.1007/978-3-030-23937-4_2 |
-
-PanNuke is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) for noncommercial use.
-
 ## Quick Start
 
 **Initialize a pre-trained model and run inference**
@@ -101,6 +79,44 @@ out = model.post_process(prob)
 # out = {"nuc": [(nuc instances (H, W), nuc types (H, W))], "cyto": None, "tissue": None}
 ```
 
+
+## Models
+
+Find pretrained checkpoints on [csmp-hub on Hugging Face](https://huggingface.co/csmp-hub).
+
+| Model                      | Paper                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| [[1](#references)] HoVer-Net | https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub |
+| [[2](#references)] Cellpose  | https://www.nature.com/articles/s41592-020-01018-x                             |
+| [[3](#references)] Omnipose  | https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2                    |
+| [[4](#references)] Stardist  | https://arxiv.org/abs/1806.03535                                               |
+| [[5](#references)] CellVit-SAM  | https://arxiv.org/abs/2306.15350                                               |
+| [[6](#references)] CPP-Net  | https://arxiv.org/abs/2102.06867                                               |
+| [[7](#references)] InstanSeg | https://arxiv.org/abs/2408.15954                                            |
+
+## Datasets
+
+| Dataset                       | Paper                                                                                            |
+| ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| [[8, 9](#references)] [PanNuke](https://huggingface.co/datasets/csmp-hub/pannuke) | https://arxiv.org/abs/2003.10778 , https://link.springer.com/chapter/10.1007/978-3-030-23937-4_2 |
+
+PanNuke is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) for noncommercial use.
+
+Download all three folds:
+
+```python
+from huggingface_hub import snapshot_download
+
+snapshot_download(
+    repo_id="csmp-hub/pannuke",
+    repo_type="dataset",
+    local_dir="data/pannuke-parquet",
+    allow_patterns="*.parquet",
+)
+```
+
+See the [dataset card](https://huggingface.co/datasets/csmp-hub/pannuke#read-a-sample)
+for examples of reading the images and masks.
 
 ## References
 
