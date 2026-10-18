@@ -1,3 +1,5 @@
+from typing import Any
+
 import torch
 import torch.nn.functional as F
 
@@ -18,9 +20,9 @@ class CELoss(WeightedBaseLoss):
         apply_ls: bool = False,
         apply_svls: bool = False,
         apply_mask: bool = False,
-        edge_weight: float = None,
-        class_weights: torch.Tensor = None,
-        **kwargs,
+        edge_weight: float | None = None,
+        class_weights: torch.Tensor | None = None,
+        **kwargs: Any,
     ) -> None:
         """Compute multiclass cross-entropy from class logits.
 
@@ -46,14 +48,15 @@ class CELoss(WeightedBaseLoss):
         self,
         yhat: torch.Tensor,
         target: torch.Tensor,
-        target_weight: torch.Tensor = None,
-        mask: torch.Tensor = None,
-        **kwargs,
+        target_weight: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None,
+        **kwargs: Any,
     ) -> torch.Tensor:
         """Compute the loss for one batch.
 
         Masking multiplies per-pixel losses before the full-image mean; it does
-        not divide by the number of included pixels.
+        not divide by the number of included pixels. Spectral regularization is
+        added after masking; class and edge weights scale the resulting pixel losses.
 
         Args:
             yhat: Floating BCHW class logits.
@@ -66,8 +69,15 @@ class CELoss(WeightedBaseLoss):
         Returns:
             A single loss value on the prediction device, with gradients for training.
             Combine channel errors first, then average across images and pixels.
+            Float16 and bfloat16 logits use float32 loss and regularization arithmetic.
         """
-        input_soft = F.softmax(yhat, dim=1) + self.eps  # (B, C, H, W)
+        # Keep log-probabilities and regularization finite for low-precision logits.
+        dtype = (
+            torch.float32
+            if yhat.dtype in (torch.float16, torch.bfloat16)
+            else yhat.dtype
+        )
+        log_probabilities = F.log_softmax(yhat, dim=1, dtype=dtype)
         n_classes = yhat.shape[1]
         target_one_hot = F.one_hot(target.long(), n_classes).permute(0, 3, 1, 2)
         assert target_one_hot.shape == yhat.shape
@@ -79,16 +89,18 @@ class CELoss(WeightedBaseLoss):
 
         if self.apply_ls:
             target_one_hot = self.apply_ls_to_target(
-                target_one_hot, n_classes, **kwargs
+                target_one_hot,
+                n_classes,
+                label_smoothing=kwargs.get("label_smoothing", 0.1),
             )
 
-        loss = -torch.sum(target_one_hot * torch.log(input_soft), dim=1)  # (B, H, W)
+        loss = -torch.sum(target_one_hot * log_probabilities, dim=1)  # (B, H, W)
 
         if self.apply_mask and mask is not None:
             loss = self.apply_mask_weight(loss, mask, norm=False)  # (B, H, W)
 
         if self.apply_sd:
-            loss = self.apply_spectral_decouple(loss, yhat)
+            loss = self.apply_spectral_decouple(loss, yhat.to(dtype=dtype))
 
         if self.class_weights is not None:
             loss = self.apply_class_weights(loss, target)

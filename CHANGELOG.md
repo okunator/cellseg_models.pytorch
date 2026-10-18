@@ -22,6 +22,13 @@
 
 ## Fixes
 
+- Stabilize `CELoss` and `FocalLoss` with direct log-probability calculations,
+  preserving gradients for confidently wrong predictions. Float16 and bfloat16
+  logits use float32 loss and spectral regularization arithmetic. Preserve
+  existing smoothing, mask, weight and reduction behavior, and allow custom
+  spatial kernels alongside uniform label smoothing. Extreme-logit training
+  losses change; existing model checkpoints remain loadable.
+
 - Correct `IoULoss` to use per-image, per-class spatial intersection over union
   and average target-present image/class pairs, including background. Apply mask
   and edge weights to intersection and union, scale class losses, and add positive
