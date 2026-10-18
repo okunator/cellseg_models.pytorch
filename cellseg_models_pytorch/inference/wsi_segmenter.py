@@ -17,6 +17,8 @@ __all__ = ["WsiSegmenter"]
 
 
 class WsiSegmenter:
+    """Predict slide tiles and merge their saved nucleus polygons."""
+
     def __init__(
         self,
         reader: SlideReader,
@@ -29,21 +31,23 @@ class WsiSegmenter:
         *,
         read_device: str | torch.device | None = None,
     ) -> None:
-        """Class for segmenting WSIs.
+        """Set up tiled nucleus prediction for a slide.
 
         Args:
-            reader: The `SlideReader` object for reading the WSIs.
-            model: An instance segmentation model configured for inference.
-            level: The level of the WSI to segment.
-            coordinates:
-                The bounding box coordinates from `reader.get_tile_coordinates()`.
-            batch_size: The batch size for the DataLoader.
-            normalization: Callable receiving ``image=tile`` and returning a
-                dictionary containing the transformed HWC ``image``.
-                For CUDA tiles this must accept and return a tensor.
-            read_device: None reads tiles on CPU (default). A CUDA device keeps
-                CUCIM tiles on the GPU through normalization and model input.
-                Instance reconstruction and polygon export still use CPU data.
+            reader: SlideReader used to read the tiles.
+            model: Model with set_inference_mode already called. Use the normalization
+                and class mapping supplied with its checkpoint.
+            level: Read level. Use 0 for slide-wide polygons: higher levels reduce
+                tile images, but saved polygon sizes are not scaled back to level zero.
+            coordinates: List of level-zero (x, y, width, height) bounds. Pass
+                TileCoordinates.coordinates when using reader-generated tiles.
+                Read tiles in a batch must have matching image sizes.
+            batch_size: Number of tiles predicted together.
+            normalization: Callable receiving image=tile and returning a dictionary
+                with an HWC image. For CUDA reads, accept and return a tensor.
+            read_device: None reads CPU tiles. A CUDA device requires CUCIM and
+                keeps tiles on GPU through normalization. Reconstruction and
+                polygon saving still use CPU data.
         """
         self.batch_size = batch_size
         self.coordinates = coordinates
@@ -65,20 +69,22 @@ class WsiSegmenter:
         self._has_processed = False
 
     def segment(self, save_dir: str | Path, maptype: str = "amap") -> None:
-        """Segment the WSIs and save the instances as parquet files to `save_dir`.
+        """Predict the selected tiles and save nucleus polygons.
 
         Args:
-            save_dir: The directory to save the instances.
-            maptype: Legacy output selector. Only ``amap`` (GeoParquet) is supported.
+            save_dir: Tile-output folder; created if needed. Filenames record the
+                slide name and source bounds. Choose a new folder for each run.
+            maptype: Only "amap" (GeoParquet) is supported.
 
         Raises:
-            ValueError: The requested map type is unsupported or tile paths collide.
+            ValueError: Map type is unsupported or source bounds produce duplicate names.
             FileExistsError: A tile output already exists.
 
         Note:
-            Uint8 RGB tiles are scaled to [0, 1]. Callable transforms return HWC
-            values that are passed as float32 BCHW tensors on the model device.
-            Failed runs retain any completed tile files and are not marked complete.
+            Tiles are processed in batches as float32 tensors on the model device.
+            Uint8 images are divided by 255; other values are kept as supplied.
+            Empty tiles produce no file. Failed runs keep completed tile files;
+            merging is enabled only after every batch succeeds.
         """
         self._has_processed = False
         if maptype != "amap":
@@ -133,28 +139,35 @@ class WsiSegmenter:
         filter_level: int | None = 0,
         pixel_size: float | None = None,
     ) -> None:
-        """Combine saved tile predictions into one slide-wide nucleus file.
-
-        Keep whole contours and attributes from the selected source tiles,
-        preserving unmatched nuclei. Fragments from tiles sharing an edge must
-        touch to join. See InstMerger.merge for stitching behavior.
+        """Merge this run's tile files into one slide-wide nucleus file.
 
         Args:
-            src: Directory of predicted nucleus .parquet files.
-            dst: New .parquet, .geojson or .feather output file.
-            clear_in_dir: Delete all files in src after a successful merge.
-            simplify_level: Simplification tolerance in pixels; zero disables it.
-            precision: Optional decimal places for coordinate rounding.
-            filter_level: Optional area/thickness filter, applied after
-                simplification and rounding. See filter_nuclei for levels and
-                limits; 0 or None disables it. Retained contours and IDs are preserved.
-            pixel_size: Isotropic micrometers per level-zero pixel, required for filtering.
+            src: Folder containing this run's nucleus .parquet files. Each filename
+                must identify one of the original source tiles.
+            dst: New .parquet, .geojson or .feather file. Parent folders are created.
+            clear_in_dir: Delete every file in src and remove the folder after merging,
+                including unrelated files. Leave False to retain tile outputs.
+            simplify_level: Outline simplification tolerance in pixels; 0 disables it.
+            precision: Decimal places for coordinate rounding, or None.
+            filter_level: Small/thin-object filter after simplification and rounding.
+                0 or None disables it. See filter_nuclei for levels and limits.
+            pixel_size: Micrometers per level-zero pixel, required when filtering.
+                Pixels must have equal physical height and width.
+
+        Returns:
+            None. Writes polygons and their selected source attributes, with new
+            slide-wide uid values. See InstMerger.merge for merging behavior.
 
         Raises:
-            ValueError: Segmentation has not run, an input file has no source tile,
-                or the output format or filter parameters are invalid.
-            FileNotFoundError: The source directory does not exist.
+            ValueError: segment has not finished, a file has no matching source tile,
+                or output/filter settings are invalid.
+            FileNotFoundError: The source folder does not exist.
             FileExistsError: The destination already exists.
+
+        Note:
+            Merging loads the saved polygon tables into memory. Memory use grows
+            with the number and complexity of polygons, even though reading and
+            prediction use batches.
         """
         if not self._has_processed:
             raise ValueError("You must segment the instances first.")

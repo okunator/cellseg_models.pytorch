@@ -36,6 +36,12 @@ __all__ = ["WSIDatasetInfer"]
 
 
 class WSIDatasetInfer(Dataset):
+    """Read slide regions as HWC images for tiled inference.
+
+    Unlike the HDF5 inference reader, this dataset keeps channels last. Use the
+    whole-slide guide for the reader and tile-coordinate workflow.
+    """
+
     def __init__(
         self,
         reader: SlideReader,
@@ -45,19 +51,18 @@ class WSIDatasetInfer(Dataset):
         *,
         read_device: str | torch.device | None = None,
     ) -> None:
-        """Initialize WSIReaderDataset.
+        """Choose slide regions, read level and optional normalization.
 
         Args:
-            reader: `SlideReader` instance.
-            coordinates: Indexable sequence of xywh-coordinates.
-            level: Slide level for reading tile images.
-            transforms:
-                Callable receiving an HWC image as ``image=tile`` and returning
-                a dictionary containing the transformed HWC ``image``.
-                Albumentations Compose objects follow this contract.
-                Defaults to None.
-            read_device: None reads NumPy tiles on CPU. A CUDA device requests
-                GPU tiles from CUCIM; transforms must then accept HWC tensors.
+            reader: SlideReader used to read regions and supply the slide name.
+            coordinates: Indexable sequence of (x, y, width, height) tuples following
+                SlideReader.read_region's coordinate contract. Pass a TileCoordinates
+                object's coordinates field for a plain sequence.
+            level: Slide pyramid level passed to read_region.
+            transforms: Callable receiving image=tile and returning a dictionary
+                with an HWC image. Albumentations Compose follows this contract.
+            read_device: None reads NumPy tiles on CPU. A CUDA device requests GPU
+                tensors through cuCIM; transforms must then accept and return HWC tensors.
         """
         super().__init__()
         self.reader = reader
@@ -67,9 +72,23 @@ class WSIDatasetInfer(Dataset):
         self.read_device = read_device
 
     def __len__(self) -> int:
+        """Return the number of requested regions."""
+
         return len(self.coordinates)
 
     def __getitem__(self, index: int) -> dict[str, np.ndarray | torch.Tensor | str]:
+        """Read and optionally transform one slide region.
+
+        Args:
+            index: Position in the supplied coordinate sequence.
+
+        Returns:
+            Dictionary with image (HWC NumPy array or tensor), name (slide name),
+            and coords (NumPy array holding x, y, width, height). Pixel values and
+            image dtype follow the reader and transform; this dataset does not
+            automatically normalize or convert to channels-first tensors.
+        """
+
         xywh = self.coordinates[index]
         if self.read_device is None:
             tile = self.reader.read_region(xywh, level=self.level)

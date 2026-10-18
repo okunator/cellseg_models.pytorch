@@ -39,28 +39,26 @@ def filter_nuclei(
     pixel_size: float | None = None,
     filter_level: int | None = 0,
 ) -> gpd.GeoDataFrame:
-    """Remove polygons that are both small and thin, without changing contours.
+    """Remove polygons that are both small and thin.
 
-    Apply after stitching. Remove an object only when its area and
-    2 * area / perimeter are both below their limits. Levels 1, 2 and 3 use
-    (6 µm², 0.8 µm), (12 µm², 1.2 µm) and (20 µm², 1.6 µm), respectively.
-    The thickness measure is not a nucleus diameter.
-    Small valid nuclei, including border-clipped cells, can also be removed.
+    An object is removed only when its area and thickness are both below the
+    selected limits. Thickness is 2 * area / perimeter, not the nucleus diameter.
+    Levels 1, 2 and 3 use (6 µm², 0.8 µm), (12 µm², 1.2 µm) and
+    (20 µm², 1.6 µm), respectively. Small valid nuclei can also be removed.
 
     Args:
-        gdf: Valid nucleus polygons, with arbitrary class and metadata columns.
-        pixel_size: Positive finite micrometers per coordinate pixel. Pixels
-            must have the same physical width and height. Required when filtering.
-        filter_level: 0 or None disables filtering (default 0). Levels 1, 2 and 3
-            select conservative, middle and strong filtering, respectively.
+        gdf: Valid nucleus polygons and any class or metadata columns.
+        pixel_size: Positive finite micrometers per coordinate pixel. Required
+            when enabled; pixels must have equal physical height and width.
+        filter_level: 0 or None disables filtering. Use 1 for the mildest filter,
+            2 for the middle setting or 3 for the strongest.
 
     Returns:
-        The input unchanged when disabled, otherwise retained rows in their
-        original order with geometry, index, IDs, attributes and CRS preserved.
-        The input is not modified.
+        Retained rows in their original order, with outlines, IDs, index, attributes
+        and CRS unchanged. Returns the input itself when disabled; does not modify it.
 
     Raises:
-        ValueError: Pixel size is nonfinite/nonpositive or the level is unknown.
+        ValueError: An enabled filter lacks valid pixel size, or the level is unknown.
 
     Example:
         >>> nuclei = gpd.GeoDataFrame(geometry=[box(0, 0, 4, 80), box(10, 0, 14, 40)])
@@ -211,18 +209,10 @@ def _choose_tile(
 
 
 class InstMerger:
-    """Stitch tiled nucleus segmentation polygons into one slide-wide result.
+    """Combine tiled nucleus polygons into one slide-wide result.
 
-    1. Find neighboring tiles and their shared edges or overlapping areas.
-    2. Compare nucleus polygons there by shared area and intersection-over-union
-       (IoU) to identify possible duplicate segmentations.
-    3. Choose whole polygons from one source tile for each duplicate group, using
-       completeness, covered area and distance from tile edges. Keep nuclei that
-       have no adequate replacement in another tile.
-    4. Join touching nucleus fragments from tiles that share an edge without overlap.
-
-    Matching and joining use vector polygons in whole-slide pixel coordinates.
-    The result can then be simplified, rounded, filtered and saved.
+    Duplicate predictions keep a whole contour from one source tile. Unmatched
+    nuclei are retained. Touching fragments can join across a shared tile edge.
     """
 
     def __init__(
@@ -231,17 +221,20 @@ class InstMerger:
         coordinates: list[tuple[int, int, int, int]],
         tile_indices: Sequence[int] | None = None,
     ) -> None:
-        """Reconcile nucleus segmentation polygons in slide-pixel coordinates.
+        """Set up merging for polygons from known source tiles.
 
         Args:
-            gdf: Nucleus polygons in level-zero pixel coordinates, with class_name
-                and optionally the boolean is_partial column from inst2gdf.
-            coordinates: Tile bounds in level-zero (x, y, width, height) pixels.
-            tile_indices: Source-tile index for each input row. Required when tiles
-                overlap; centroid position cannot identify the source tile.
+            gdf: Nucleus polygons in level-zero slide pixels. Keep class_name and any
+                other source attributes. Optional is_partial must be boolean, with
+                no missing values, and marks objects cut off by tile edges.
+            coordinates: Source-tile bounds as (x, y, width, height) in the same
+                level-zero pixel coordinates as the polygons.
+            tile_indices: One index into coordinates per input row. Required for
+                overlapping tiles. Without overlap, the source can be inferred
+                from each polygon's position.
 
         Raises:
-            ValueError: Source indices are missing for overlapping tiles or invalid.
+            ValueError: Source indices are missing or invalid, or is_partial is not boolean.
         """
         self.grid = gpd.GeoDataFrame(
             geometry=[box(x, y, x + w, y + h) for x, y, w, h in coordinates]
@@ -290,28 +283,30 @@ class InstMerger:
         filter_level: int | None = 0,
         pixel_size: float | None = None,
     ) -> gpd.GeoDataFrame | None:
-        """Combine tiled nucleus segmentation polygons into one slide-wide result.
+        """Merge polygons, then optionally simplify, filter and save them.
 
-        Keep whole contours from one tile where predictions duplicate each other,
-        and preserve unmatched nuclei. Join fragments from tiles with a shared
-        edge only when the fragments touch. Coordinates, CRS and selected source
-        attributes are preserved; polygon intersections do not become objects.
+        Duplicates retain one source contour and its attributes. Joined fragments
+        keep the largest fragment's attributes. Unmatched nuclei remain in the result.
+        Fragments must share a boundary to join; a corner touch is not enough.
 
         Args:
-            dst: New .parquet, .geojson or .feather file; None returns the result.
-            simplify_level: Simplification tolerance in pixels; zero disables it.
-            precision: Optional decimal places for coordinate rounding.
-            filter_level: Optional area/thickness filter, applied after
-                simplification and rounding. See filter_nuclei for levels and
-                limits; 0 or None disables it.
-            pixel_size: Isotropic micrometers per pixel, required for filtering.
+            dst: New .parquet, .geojson or .feather file. None returns the table.
+                Parent folders are created; an existing file is never overwritten.
+            simplify_level: Outline simplification tolerance in pixels; 0 keeps
+                the original outlines before any joining or rounding.
+            precision: Decimal places for coordinate rounding, or None to keep them.
+            filter_level: Optional small/thin-object filter, after simplification
+                and rounding. 0 or None disables it; see filter_nuclei for limits.
+            pixel_size: Micrometers per coordinate pixel when filtering. Pixels
+                must have equal physical height and width.
 
         Returns:
-            A GeoDataFrame with unique slide-wide uid values, or None when saved
-            to dst. Filtering retains the surviving IDs without renumbering.
+            A GeoDataFrame, or None when saved. Input attributes and CRS are kept;
+            uid is replaced with unique slide-wide IDs and also used as the index.
+            Filtering does not renumber surviving IDs. Coordinates stay in pixels.
 
         Raises:
-            ValueError: Destination extension or enabled filter parameters are invalid.
+            ValueError: Output format or enabled filter settings are invalid.
             FileExistsError: The destination already exists.
         """
         path = Path(dst) if dst is not None else None

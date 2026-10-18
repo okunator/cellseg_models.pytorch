@@ -35,17 +35,18 @@ import numpy as np
 
 @dataclass(frozen=False)
 class TileCoordinates:
-    """Data class representing a collection of tile coordinates.
+    """Tile bounds and the settings used to generate them.
+
+    Iterate or index this collection to get (x, y, width, height) tuples in
+    level-zero slide pixels. Names and filtering settings are stored separately.
 
     Args:
-        coordinates (list[tuple[int, int, int, int]]):
-            List of `xywh`-coordinates.
-        width (int): Tile width.
-        height (int): Tile height.
-        overlap (float): Overlap between neighbouring tiles.
-        max_background (float): Maximum amount of background in each tile.
-        tissue_mask (np.ndarray):
-            Tissue mask used for filtering tiles based on `max_background`.
+        coordinates: Tile bounds in reading order.
+        width: Tile width in level-zero pixels.
+        height: Tile height in level-zero pixels.
+        overlap: Fraction shared by neighboring tiles, from 0 up to but excluding 1.
+        max_background: Largest allowed background fraction, or None if not filtered.
+        tissue_mask: Optional 2D mask used for filtering: 1 is tissue, 0 background.
     """
 
     coordinates: list[tuple[int, int, int, int]]
@@ -55,8 +56,20 @@ class TileCoordinates:
     max_background: Optional[float] = field(default=None)
     tissue_mask: Optional[np.ndarray] = field(default=None)
 
-    def get_properties(self, level: int, level_downsample: tuple[float, float]) -> dict:
-        """Generate dictonary of properties."""
+    def get_properties(
+        self, level: int, level_downsample: tuple[float, float]
+    ) -> dict[str, int | float | tuple[float, float] | None]:
+        """Return the tile settings as a dictionary.
+
+        Args:
+            level: Read level to record.
+            level_downsample: Height/width downsample factors to record for that level.
+
+        Returns:
+            Keys num_tiles, level, level_downsample, width, height, overlap and
+            max_background. Width and height keep their level-zero values; this
+            method records the supplied level metadata without changing coordinates.
+        """
         return {
             "num_tiles": len(self),
             "level": level,
@@ -68,12 +81,15 @@ class TileCoordinates:
         }
 
     def __len__(self) -> int:
+        """Return the number of tile bounds."""
         return len(self.coordinates)
 
     def __iter__(self) -> Iterator[tuple[int, int, int, int]]:
+        """Iterate over tile bounds in their stored order."""
         return iter(self.coordinates)
 
     def __getitem__(self, index: int) -> tuple[int, int, int, int]:
+        """Return the tile bounds at an index; negative indices count from the end."""
         return self.coordinates[index]
 
     def __repr__(self) -> str:
@@ -85,28 +101,32 @@ class TileCoordinates:
 
 @dataclass(frozen=False)
 class SpotCoordinates:
-    """Data class representing a collection of spot coordinates.
+    """Detected tissue microarray spots and their names.
+
+    Iterate or index this collection to get (x, y, width, height) bounds in
+    level-zero pixels. Iteration returns bounds only; pair them with spot_names
+    when you also need names.
 
     Args:
-        coordinates (list[tuple[int, int, int, int]]):
-            List of XYWH-coordinates.
-        spot_names (list[str]):
-            Spot numbers.
-        tissue_mask (np.ndarray):
-            Tissue mask used to detect spots.
+        coordinates: One bounding box per spot.
+        spot_names: Names in the same order as coordinates, such as "spot_1".
+        tissue_mask: Cleaned 2D uint8 mask at the detection image size; 1 is tissue.
     """
 
-    coordinates: tuple[int, int, int, int] = field(repr=False)
+    coordinates: list[tuple[int, int, int, int]] = field(repr=False)
     spot_names: list[str] = field(repr=False)
     tissue_mask: np.ndarray = field(repr=False)
 
     def __len__(self) -> int:
+        """Return the number of spots."""
         return len(self.coordinates)
 
-    def __iter__(self) -> Iterator[str, tuple[int, int, int, int]]:
+    def __iter__(self) -> Iterator[tuple[int, int, int, int]]:
+        """Iterate over spot bounds; names remain in spot_names."""
         return iter(self.coordinates)
 
     def __getitem__(self, index: int) -> tuple[int, int, int, int]:
+        """Return the spot bounds at an index; negative indices count from the end."""
         return self.coordinates[index]
 
     def __repr__(self) -> str:

@@ -26,7 +26,7 @@ SOFTWARE.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Union
 
@@ -58,23 +58,24 @@ if TYPE_CHECKING:
 
 
 class SlideReader:
-    """Reader class for histological slide images."""
+    """Read slide images, find tissue and choose tiles for prediction."""
 
     def __init__(
         self,
         path: Union[str, Path],
         backend: str = "OPENSLIDE",
     ) -> None:
-        """Initialize `SlideReader` instance.
+        """Open a slide with the selected reader.
 
         Args:
-            path (str, Path): Path to slide image.
-            backend: Backend to use for reading slide images.
-                Defaults to "OPENSLIDE".
+            path: Path to a slide supported by the backend.
+            backend: "OPENSLIDE", "CUCIM" or "BIOIO". Install the chosen reader and
+                its native libraries or format plugins before opening the slide.
 
         Raises:
-            FileNotFoundError: Path does not exist.
-            ValueError: Backend name not recognised.
+            FileNotFoundError: The slide path does not exist.
+            ValueError: The backend name or file suffix is unsupported.
+            ImportError: The selected reader is not installed.
         """
         super().__init__()
         if backend not in AVAILABLE_BACKENDS:
@@ -89,80 +90,82 @@ class SlideReader:
 
     @property
     def path(self) -> str:
-        """Full slide filepath."""
+        """Absolute slide file path."""
         return self._reader.path
 
     @property
     def name(self) -> str:
-        """Slide filename without an extension."""
+        """Slide filename without its final extension."""
         return self._reader.name
 
     @property
     def suffix(self) -> str:
-        """Slide file-extension."""
+        """Final file extension, including the dot."""
         return self._reader.suffix
 
     @property
     def backend_name(self) -> str:
-        """Name of the slide reader backend."""
+        """Active reader name: OPENSLIDE, CUCIM or BIOIO."""
         return self._reader.BACKEND_NAME
 
     @property
     def data_bounds(self) -> tuple[int, int, int, int]:
-        """Data bounds defined by `xywh`-coordinates at `level=0`.
+        """Image-data bounds as (x, y, width, height) in level-zero pixels.
 
-        Some image formats (eg. `.mrxs`) define a bounding box where image data resides,
-        which may differ from the actual image dimensions. `HistoPrep` always uses the
-        full image dimensions, but other software (such as `QuPath`) uses the image
-        dimensions defined by this data bound.
+        Some formats store tissue in a smaller area than the full image.
+        Region coordinates still refer to the full image origin.
         """
         return self._reader.data_bounds
 
     @property
     def dimensions(self) -> tuple[int, int]:
-        """Image dimensions (height, width) at `level=0`."""
+        """Full-resolution slide size as (height, width) in pixels."""
         return self._reader.dimensions
 
     @property
     def pixel_size(self) -> tuple[float, float]:
-        """Level-zero pixel size (height, width) in micrometers.
+        """Level-zero pixel size as (height, width) in micrometers.
 
-        Both axes are preserved, including anisotropic pixels. This describes
-        physical calibration, not pyramid downsampling.
+        The two values can differ. They describe physical size, not level downsampling.
 
         Raises:
             ValueError: Calibration is missing, invalid or uses unsupported units.
-
         """
         return self._reader.pixel_size
 
     @property
     def level_count(self) -> int:
-        """Number of slide pyramid levels."""
+        """Number of image levels, from full resolution to smaller images."""
         return self._reader.level_count
 
     @property
     def level_dimensions(self) -> dict[int, tuple[int, int]]:
-        """Image dimensions (height, width) for each pyramid level."""
+        """Dictionary mapping each level to its (height, width) in pixels."""
         return self._reader.level_dimensions
 
     @property
     def level_downsamples(self) -> dict[int, tuple[float, float]]:
-        """Image downsample factors (height, width) for each pyramid level."""
+        """Dictionary mapping each level to its height/width reduction factors.
+
+        For example, (2.0, 2.0) means half as many pixels along each axis.
+        """
         return self._reader.level_downsamples
 
     def read_level(self, level: int) -> np.ndarray:
-        """Read full pyramid level data.
+        """Read a whole image level into CPU memory.
 
         Args:
-            level: Slide pyramid level to read.
-
-        Raises:
-            ValueError: Invalid level argument.
+            level: Image level; 0 is full resolution and -1 is the smallest level.
 
         Returns:
-            np.ndarray:
-                Array containing image data from `level`.
+            OpenSlide/CUCIM return an RGB uint8 NumPy image with height, width,
+            channels axes. OpenSlide uses
+            its thumbnail reader, which can return a slightly different image size
+            from the level metadata. A full-resolution read can be large.
+            BIOIO whole-level reading currently needs a separate correction.
+
+        Raises:
+            ValueError: The requested level is unavailable.
         """
         return self._reader.read_level(level=level)
 
@@ -173,38 +176,35 @@ class SlideReader:
         *,
         device: str | torch.device | None = None,
     ) -> np.ndarray | torch.Tensor:
-        """Read region based on `xywh`-coordinates.
+        """Read one rectangular region of the slide.
 
         Args:
-            xywh: Coordinates for the region.
-            level: Slide pyramid level to read from.
-                Defaults to 0.
-            device: None returns a CPU NumPy array (default). With the CUCIM
-                backend, a CUDA device returns a GPU tensor without a host copy.
-                Other backends do not support device reads.
-
-        Raises:
-            ValueError: Invalid level or unsupported device read.
+            xywh: (x, y, width, height) bounds in level-zero pixels, even when reading
+                another level. Out-of-image areas are padded with white pixels.
+            level: Image level to read; 0 gives full resolution.
+            device: None returns a CPU NumPy array. A CUDA device is supported only
+                by CUCIM and returns a tensor on that device.
 
         Returns:
-            RGB uint8 HWC pixels. Bounds use level-zero xywh coordinates;
-            height and width are downsampled at the selected level.
+            RGB uint8 pixels with height, width, channels axes. Width and height
+            are reduced by the chosen level's downsample factors.
+
+        Raises:
+            ValueError: The level or device request is unsupported.
         """
         if device is not None:
             return self._reader.read_region(xywh=xywh, level=level, device=device)
         return self._reader.read_region(xywh=xywh, level=level)
 
     def level_from_max_dimension(self, max_dimension: int = 4096) -> int:
-        """Find pyramid level with *both* dimensions less or equal to `max_dimension`.
-        If one isn't found, return the last pyramid level.
+        """Choose a level small enough to fit within the requested size.
 
         Args:
-            max_dimension: Maximum dimension for the level.
-                Defaults to 4096.
+            max_dimension: Maximum height and width, in pixels.
 
         Returns:
-            int:
-                Slide pyramid level.
+            First level with both dimensions within the limit, or the smallest
+            available level if none fits.
         """
         for level, (level_h, level_w) in self.level_dimensions.items():
             if level_h <= max_dimension and level_w <= max_dimension:
@@ -212,14 +212,14 @@ class SlideReader:
         return list(self.level_dimensions.keys())[-1]
 
     def level_from_dimensions(self, dimensions: tuple[int, int]) -> int:
-        """Find pyramid level which is closest to `dimensions`.
+        """Choose the level closest to an image size.
 
         Args:
-            dimensions: Height and width.
+            dimensions: Desired (height, width) in pixels.
 
         Returns:
-            int:
-                Slide pyramid level.
+            Level with the smallest total difference in height and width.
+            Ties use the first matching level.
         """
         height, width = dimensions
         available = []
@@ -237,31 +237,23 @@ class SlideReader:
         multiplier: float = 1.05,
         sigma: float = 0.0,
     ) -> tuple[int, np.ndarray]:
-        """Detect tissue from slide pyramid level image.
+        """Find tissue on a slide image level.
 
         Args:
-            level (int):
-                Slide pyramid level to use for tissue detection. If None, uses the
-                `level_from_max_dimension` method.
-                Defaults to None.
-            threshold (int):
-                Threshold for tissue detection. If set, will detect tissue by global
-                thresholding. Otherwise Otsu's method is used to find a threshold.
-                Defaults to None.
-            multiplier:
-                Otsu's method finds an optimal threshold by minimizing the weighted
-                within-class variance. This threshold is then multiplied with
-                `multiplier`. Ignored if `threshold` is not None.
-                Defaults to 1.05.
-            sigma: Sigma for gaussian blurring.
-                Defaults to 0.0.
-
-        Raises:
-            ValueError: Threshold not between 0 and 255.
+            level: Level for detection. None chooses a level with
+                level_from_max_dimension().
+            threshold: Grayscale cutoff from 0 to 255. None chooses it automatically
+                with Otsu's method. Darker pixels are treated as tissue.
+            multiplier: Scale the automatic cutoff; ignored with a fixed threshold.
+            sigma: Blur strength in detection-image pixels; 0 disables blurring.
 
         Returns:
-            tuple[int, np.ndarray]:
-                Threshold and tissue mask.
+            (threshold, mask), with a 2D uint8 mask at the detection image size:
+            1 is tissue and 0 is background. The first value is the cutoff, not
+            the image level.
+
+        Raises:
+            ValueError: The threshold or level is invalid.
         """
         level = (
             self.level_from_max_dimension()
@@ -285,33 +277,25 @@ class SlideReader:
         max_background: float = 0.95,
         out_of_bounds: bool = True,
     ) -> TileCoordinates:
-        """Generate tile coordinates.
+        """Choose slide tiles, optionally excluding mostly empty regions.
 
         Args:
-            width: Width of a tile.
-            tissue_mask (np.ndarray):
-                Tissue mask for filtering tiles with too much background. If None,
-                the filtering is disabled.
-                Defaults to None.
-            height (int): Height of a tile. If None, will be set to `width`.
-                Defaults to None.
-            overlap: Overlap between neighbouring tiles.
-                Defaults to 0.0.
-            max_background:
-                Maximum proportion of background in tiles. Ignored if `tissue_mask`
-                is None.
-                Defaults to 0.95.
-            out_of_bounds: Keep tiles which contain regions outside of the image.
-                Defaults to True.
-
-        Raises:
-            ValueError: Height and/or width are smaller than 1.
-            ValueError: Height and/or width is larger than dimensions.
-            ValueError: Overlap is not in range [0, 1).
+            width: Tile width in level-zero pixels; no larger than the slide width.
+            tissue_mask: 2D tissue mask spanning the full slide, scaled equally
+                along both axes. Pass None explicitly to disable background filtering.
+            height: Tile height in level-zero pixels. None uses width.
+            overlap: Fraction shared by neighboring tiles, in [0, 1).
+            max_background: Largest allowed background fraction. Ignored without
+                a tissue mask. Outside-slide pixels count as background.
+            out_of_bounds: Keep tiles extending beyond the slide; reads pad those areas.
 
         Returns:
-            TileCoordinates:
-                `TileCoordinates` dataclass.
+            TileCoordinates with level-zero (x, y, width, height) bounds in row order.
+            An all-background mask can leave the collection empty.
+
+        Raises:
+            TypeError: Tile dimensions are not integers.
+            ValueError: Tile dimensions are invalid or overlap is outside [0, 1).
         """
         tile_coordinates = get_tile_coordinates(
             dimensions=self.dimensions,
@@ -350,31 +334,21 @@ class SlideReader:
         min_area_relative: float = 0.2,
         max_area_relative: Optional[float] = 2.0,
     ) -> SpotCoordinates:
-        """Generate tissue microarray spot coordinates.
+        """Find tissue microarray spots from a tissue mask.
 
         Args:
-            tissue_mask:
-                Tissue mask of the slide. It's recommended to increase `sigma` value when
-                detecting tissue to remove non-TMA spots from the mask. Rest of the areas
-                can be handled with the following arguments.
-            min_area_pixel: Minimum pixel area for contours.
-                Defaults to 10.
-            max_area_pixel (int): Maximum pixel area for contours.
-                Defaults to None.
-            min_area_relative:
-                Relative minimum contour area, calculated from the median contour area
-                after filtering contours with `[min,max]_pixel` arguments
-                (`min_area_relative * median(contour_areas)`).
-                Defaults to 0.2.
-            max_area_relative (float):
-                Relative maximum contour area, calculated from the median contour area
-                after filtering contours with `[min,max]_pixel` arguments
-                (`max_area_relative * median(contour_areas)`).
-                Defaults to 2.0.
+            tissue_mask: 2D uint8 full-slide mask, scaled equally along both axes.
+                Use 1 for tissue and 0 for background. Remove artifacts first.
+            min_area_pixel: Smallest contour area in mask pixels.
+            max_area_pixel: Largest contour area in mask pixels, or None for no limit.
+            min_area_relative: Smallest area as a fraction of the median area after
+                pixel-area filtering.
+            max_area_relative: Largest area as a multiple of that median, or None.
 
         Returns:
-            SpotCoordinates:
-                `SpotCoordinates` instance.
+            SpotCoordinates with level-zero bounds, corresponding spot_names and
+            the cleaned mask at its original resolution. Bounds and names have
+            matching order; names describe positions in the detected spot grid.
         """
         spot_mask = clean_tissue_mask(
             tissue_mask=tissue_mask,
@@ -399,20 +373,22 @@ class SlideReader:
     def get_annotated_thumbnail(
         self,
         image: np.ndarray,
-        coordinates: Iterator[tuple[int, int, int, int]],
+        coordinates: Sequence[tuple[int, int, int, int]]
+        | TileCoordinates
+        | SpotCoordinates,
         linewidth: int = 1,
     ) -> Image.Image:
-        """Generate annotated thumbnail from coordinates.
+        """Draw tile or spot rectangles on a slide overview.
 
         Args:
-            image: Input image.
-            coordinates: Coordinates to annotate.
-            linewidth: Width of rectangle lines.
-                Defaults to 1.
+            image: RGB uint8 NumPy overview with the slide's aspect ratio.
+            coordinates: Level-zero bounds, as a TileCoordinates, SpotCoordinates
+                or a list of (x, y, width, height) tuples.
+            linewidth: Rectangle line width in overview pixels.
 
         Returns:
-            PIL.Image.Image:
-                Annotated thumbnail.
+            A new PIL image. Spot collections include names; tile collections
+            highlight the first tile. Coordinates are scaled to the overview size.
         """
         kwargs = {
             "image": image,

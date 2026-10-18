@@ -22,6 +22,9 @@
 
 ## Fixes
 
+- Correct `SpotCoordinates` annotations to describe a list of bounds and iteration
+  over bounds only. Returned data is unchanged.
+
 - Correct the normalization transform export list to use the existing
   `Normalization` class name instead of the nonexistent `ImgNormalization`.
 
