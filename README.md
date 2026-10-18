@@ -7,7 +7,7 @@
 [![Generic badge](https://img.shields.io/badge/License-MIT-<COLOR>.svg)](https://github.com/okunator/cellseg_models.pytorch/blob/master/LICENSE)
 [![PyTorch - Version](https://img.shields.io/badge/PYTORCH-2+-red?&logo=pytorch)](https://pytorch.org/)
 [![Python - Version](https://img.shields.io/badge/PYTHON-3.10+-red?&logo=python&logoColor=white)](https://www.python.org/)
-[![Model Checkpoints](https://img.shields.io/badge/%F0%9F%A4%97%20HF-Model%20Hub-yellow)](https://huggingface.co/csmp-hub)
+[![Model Checkpoints](https://img.shields.io/badge/HF-Model%20Hub-yellow)](https://huggingface.co/csmp-hub)
 <br>
 [![Github Test](https://img.shields.io/github/actions/workflow/status/okunator/cellseg_models.pytorch/tests.yml?label=Tests&logo=github)](https://github.com/okunator/cellseg_models.pytorch/actions/workflows/tests.yml)
 [![Pypi](https://img.shields.io/pypi/v/cellseg-models-pytorch?color=blue&logo=pypi)](https://pypi.org/project/cellseg-models-pytorch/)
@@ -25,18 +25,14 @@
 
 **cellseg-models.pytorch** is a library built upon [PyTorch](https://pytorch.org/) that contains multi-task encoder-decoder architectures along with dedicated post-processing methods for segmenting cell/nuclei instances. As the name might suggest, this library is heavily inspired by [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch) library for semantic segmentation.
 
-## What's new? 📢
-- Simplified model usage
-- First pre-trained models in [csmp-hub](https://huggingface.co/csmp-hub). More to come soon!
-
-## Features 🌟
+## Features
 
 - High level API to define cell/nuclei instance segmentation models.
 - 6 cell/nuclei instance segmentation model architectures
 - Flexibility to modify the components of the model architectures.
 - Sliding window inference for large images.
 
-## Installation 🛠️
+## Installation
 
 ```shell
 pip install cellseg-models-pytorch
@@ -51,7 +47,7 @@ For GPU use, install a PyTorch build compatible with your GPU and driver using
 [PyTorch's installation guide](https://pytorch.org/get-started/locally/) before
 installing this library.
 
-## Models 🤖
+## Models
 
 | Model                      | Paper                                                                          |
 | -------------------------- | ------------------------------------------------------------------------------ |
@@ -69,7 +65,7 @@ installing this library.
 | [[7, 8](#References)] Pannuke | https://arxiv.org/abs/2003.10778 , https://link.springer.com/chapter/10.1007/978-3-030-23937-4_2 |
 
 
-## Quick Start 💻
+## Quick Start
 
 **Initialize a pre-trained model and run inference**
 ```
