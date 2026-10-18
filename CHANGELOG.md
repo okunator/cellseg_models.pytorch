@@ -22,6 +22,9 @@
 
 ## Fixes
 
+- Correct the normalization transform export list to use the existing
+  `Normalization` class name instead of the nonexistent `ImgNormalization`.
+
 - Correct in-memory sliding-window prediction for small images and asymmetric or
   zero padding. Honor disabled boundary weighting, normalize auxiliary overlaps
   by their weights, and preserve optional nuclear/cytoplasm/tissue maps. Reject
