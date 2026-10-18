@@ -85,10 +85,44 @@ uv run --locked --group docs sphinx-build -W --keep-going -b html docs docs/_bui
 Validate notebook code with offline fixtures separately from the site build:
 
 ```sh
-HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked --group docs pytest tests/test_prepare_panoptils.py tests/test_notebook_tutorials.py tests/test_wsi_tutorial.py
+HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --locked --group docs pytest tests/test_prepare_panoptils.py tests/test_notebook_tutorials.py tests/test_wsi_tutorial.py tests/test_evaluation_tutorial.py
 ```
 
-All four notebooks use real data or weights and are excluded from forced offline
+API example tests execute the page code in order and the documented docstring
+examples, using temporary images, labels and local weights:
+
+```sh
+HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --no-sync pytest tests/test_api_examples.py
+HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --no-sync pytest --optional tests/test_api_examples.py
+```
+
+The optional cases need PyTables and the packages in `tools/onnx-requirements.txt`.
+Install these explicitly in the test environment and use `--no-sync` afterward.
+The ONNX example is exported and executed on CPU, then compared with PyTorch.
+
+### Maintaining the API reference
+
+Pages under `docs/api/` own the list of documented objects and members. Use explicit
+`autoclass`, `autofunction` and `automethod` entries with selected members; avoid
+recursive module listings and inherited implementation details. An omitted object
+remains importable; reference scope does not change the public API.
+
+Cover APIs used by the quick start and maintained guides, plus model-family classes
+and factory functions. Keep internal building blocks out of the reference. Database
+creation, alternative dataset preparation and custom transform authoring need a
+maintained user workflow before expanding their reference scope.
+
+When a guide uses another package API, add or link its reference entry in the same
+change. Cover the methods, attributes and output fields the example uses, including
+inherited methods. The API tests check guide imports against the reference, and
+execute page code and docstring examples. Add new page examples to those checks.
+
+Review both the docstrings and rendered page for accuracy and readability. Keep
+introductions brief, explain required inputs and returned values, and put necessary
+limits beside the affected API. Link complete workflows to the notebooks. Keep
+deferred features and functional fixes in the maintenance plan, not a second API list.
+
+The notebooks use real data or weights and are excluded from forced offline
 builds. Execute them explicitly and review saved outputs; CI renders those outputs
 without downloading data or checkpoints. Execute inference after training so
 its image, labels, weights and class taxonomy match. The quick start covers
@@ -159,6 +193,8 @@ Use generic example paths and no machine-specific identifiers or patient data.
   and developer instructions in contributor guidance, not user tutorials.
 - Review prose alongside code: remove repetition, unnecessary technical explanation
   and jargon that does not help the reader complete the task.
+- Keep API introductions brief. Put detailed requirements and limitations beside
+  the relevant object or method, and link to guides for full workflows.
 
 ### Code and notebooks
 

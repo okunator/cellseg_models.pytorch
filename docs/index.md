@@ -9,6 +9,7 @@ or adapt an existing model to your data.
 installation
 quickstart
 user-guide
+api/index
 ```
 
 The [repository README](https://github.com/okunator/cellseg_models.pytorch#readme)

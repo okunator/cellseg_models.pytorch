@@ -38,3 +38,6 @@ category number, whose meaning depends on the checkpoint.
 For a runnable demonstration, output saving and larger images, continue with
 [image inference](tutorials/inference.ipynb). To train a model, start with
 [training](tutorials/training.ipynb).
+
+For arguments and output details, see the [model reference](api/models.md) and
+[normalization reference](api/transforms.md).

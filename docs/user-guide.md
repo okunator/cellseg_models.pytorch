@@ -16,3 +16,6 @@ tutorials/inference
 tutorials/wsi
 tutorials/evaluation
 ```
+
+Use the [API reference](api/index.md) to look up arguments, input formats and
+outputs for the APIs used in these workflows.

@@ -2,7 +2,7 @@
 
 project = "cellseg-models.pytorch"
 author = "Oskari Lehtonen"
-extensions = ["myst_nb", "sphinx.ext.napoleon"]
+extensions = ["myst_nb", "sphinx.ext.autodoc", "sphinx.ext.napoleon"]
 html_theme = "pydata_sphinx_theme"
 html_title = "cellseg-models.pytorch"
 html_theme_options = {
@@ -28,3 +28,6 @@ nb_execution_raise_on_error = True
 nb_execution_timeout = 120
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False
+autoclass_content = "both"
+autodoc_typehints = "description"
+add_module_names = False
