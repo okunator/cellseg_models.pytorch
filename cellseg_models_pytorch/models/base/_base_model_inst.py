@@ -30,14 +30,50 @@ class BaseModelInst:
         device: torch.device = torch.device("cuda"),
         model_kwargs: Dict[str, Any] = {},
     ) -> "BaseModelInst":
-        """Load the model from pretrained weights.
+        """Create a model from saved segmentation weights.
+
+        The checkpoint determines the encoder name and number of cell-type
+        output channels. Use the same preprocessing and class mapping as the
+        training run. Call ``set_inference_mode`` before predicting images.
 
         Args:
-            model_name (str): Name of the pretrained model.
-            device: Device to run the model on. Default is "cuda".
-                Defaults to torch.device("cuda").
-            model_kwargs: Additional arguments for the model.
-                Defaults to {}.
+            weights: Path to a local checkpoint, or a registered checkpoint name
+                for this model family. Registered names download weights from
+                Hugging Face when they are not already cached. Safetensors files
+                and PyTorch state dictionaries must match this library's network.
+            device: Device on which to load the weights and create the network.
+                Pass ``torch.device("cpu")`` for CPU use; the default requires CUDA.
+            model_kwargs: Additional network options needed to reproduce the
+                checkpoint's architecture. Encoder name and class count are
+                inferred from the weights rather than supplied here.
+
+        Returns:
+            An instance of the model class used to call this method, with loaded
+            weights. Inference is not yet enabled; its PyTorch network is
+            available as ``model`` for training.
+
+        Raises:
+            ValueError: The path is not a file or a registered checkpoint name.
+            ImportError: Loading a safetensors file requires safetensors.
+            RuntimeError: The checkpoint weights do not match the network.
+
+        Example:
+            Load your checkpoint for image inference on the CPU:
+
+            .. code-block:: python
+
+                from pathlib import Path
+
+                import torch
+
+                from cellseg_models_pytorch.models.cellpose import CellPose
+
+                model = CellPose.from_pretrained(
+                    Path("checkpoints/cellpose.safetensors"),
+                    device=torch.device("cpu"),
+                )
+
+            Then follow the quick start to configure prediction and reconstruction.
         """
         weights_path = Path(weights)
         if not weights_path.is_file():
@@ -88,27 +124,35 @@ class BaseModelInst:
         use_sliding_win: bool = False,
         window_size: Tuple[int, int] = None,
         stride: int = None,
-    ) -> Dict[str, Union[SoftSemanticOutput, SoftInstanceOutput]]:
-        """Predict the input image or image batch.
+    ) -> dict[str, SoftSemanticOutput | SoftInstanceOutput | None]:
+        """Predict class labels and reconstruction maps for an image or batch.
+
+        Normalize inputs as required by the checkpoint. This method does not
+        reconstruct individual objects; pass its result to ``post_process``.
 
         Args:
-            x: Input image (H, W, C) or input image batch (B, C, H, W).
-            use_sliding_win: Whether to use sliding window for prediction.
-                Defaults to False.
-            window_size:
-                The height and width of the sliding window. If `use_sliding_win` is False
-                this argument is ignored.
-                Defaults to None.
-            stride:
-                The stride for the sliding window. If `use_sliding_win` is False this
-                argument is ignored.
-                Defaults to None.
+            x: RGB NumPy/PIL image with height, width and channels, or a tensor with
+                channels first: (C, H, W) or (B, C, H, W). B is batch size, C channels,
+                H height and W width. NumPy/PIL uint8 images are divided by 255;
+                floating-point images keep their values. Tensor inputs must already
+                have the network's device, floating dtype and expected value range.
+            use_sliding_win: Predict overlapping windows and combine them into
+                full-image maps. Each window must meet the network's size constraints.
+            window_size: Window (height, width), required for sliding-window inference.
+            stride: Window step in pixels, required with sliding windows. Must be
+                positive and no larger than either window dimension.
 
         Returns:
-            Dict[str, Union[SoftSemanticOutput, SoftInstanceOutput]]:
-                Dictionary of soft outputs:
-                    - "nuc": SoftInstanceOutput (type_map, aux_map).
-                    - "tissue": SoftSemanticOutput (type_map).
+            Dictionary with ``nuc``, ``cyto`` and ``tissue`` entries. Unused
+            outputs are None. Instance entries contain ``type_map`` class labels
+            of shape (B, H, W), and floating ``aux_map`` reconstruction values of
+            shape (B, channels, H, W). These remain on the network device. A tissue
+            entry contains class labels of shape (B, H, W). These are not probability
+            maps. Class meanings and reconstruction maps depend on the checkpoint.
+
+        Raises:
+            ValueError: Inference has not been enabled, or the window settings or
+                input dimensions are invalid.
         """
         if not self.inference_mode:
             raise ValueError("Run `.set_inference_mode()` before running `predict`")
@@ -141,41 +185,39 @@ class BaseModelInst:
         coords: List[Tuple[int, int, int, int]] = None,
         class_dict_nuc: Dict[int, str] = None,
         class_dict_cyto: Dict[int, str] = None,
-    ) -> Dict[str, List[np.ndarray]]:
-        """Post-process the output of the model.
+    ) -> dict[str, list[tuple[np.ndarray, np.ndarray] | np.ndarray | None] | None]:
+        """Turn predicted maps into individual nuclei and cell-type masks.
 
         Args:
-            x: The output of the .predict() method.
-            use_async_postproc:
-                Whether to use async post-processing. Can give some run-time benefits.
-                Defaults to True.
-            start_method:
-                The start method. One of: "threading", "fork", "spawn". See mpire docs.
-                Defaults to "threading".
-            n_jobs: The number of workers for the post-processing.
-                Defaults to 4.
-            save_paths_nuc:
-                The paths to save the nuclei masks. If None, the masks are not saved.
-                Defaults to None.
-            save_paths_cyto:
-                The paths to save the cytoplasm masks. If None, the masks are not saved.
-                Defaults to None.
-            coords:
-                The XYWH coordinates of the image patch. If not None, the coordinates are
-                saved in the filenames of outputs.
-                Defaults to None.
-            class_dict_nuc:
-                The dictionary of nuclei classes. E.g. {0: "bg", 1: "neoplastic"}
-                Defaults to None.
-            class_dict_cyto:
-                The dictionary of cytoplasm classes. E.g. {0: "bg", 1: "macrophage_cyto"}
-                Defaults to None.
+            x: Dictionary returned by ``predict``, including a nucleus entry.
+            use_async_postproc: Use asynchronous worker tasks for batches larger
+                than one. This call waits for their results before returning.
+                False uses synchronous workers; a single image always runs serially.
+            start_method: Worker mode: ``threading``, ``fork`` or ``spawn``.
+                Available process modes depend on the operating system.
+            n_jobs: Number of reconstruction workers for batches larger than one.
+            save_paths_nuc: One vector-output path per image for nuclei. Without
+                paths, return masks in memory. Saving returns None for that image.
+            save_paths_cyto: Equivalent paths for configured cytoplasm outputs.
+            coords: One (x, y, width, height) tuple per image. Vector coordinates
+                are offset by x and y when saving.
+            class_dict_nuc: Map nucleus class numbers to names in saved vector data.
+            class_dict_cyto: Map cytoplasm class numbers to names in saved vector data.
 
         Returns:
-            Dict[str, List[np.ndarray]]:
-                Dictionary of post-processed outputs:
-                    - "nuc": List of output nuclei masks (H, W).
-                    - "cyto": List of output cytoplasm masks (H, W).
+            Dictionary with ``nuc``, ``cyto`` and ``tissue`` entries. Nucleus and cytoplasm
+            results are lists of (instances, classes) NumPy mask pairs, one per image.
+            Both masks are int32 (H, W). Instance 0 is background; positive IDs
+            identify objects. Each object gets the most common predicted class
+            within its mask. Unused outputs and saved-image results are None.
+            Tissue results are class masks. Tensor maps are copied to CPU.
+
+        Raises:
+            ValueError: Inference has not been enabled.
+
+        Note:
+            Use ``PostProcessor`` directly for tissue saving or custom contour
+            smoothing. The selected model family controls the reconstruction method.
         """
         if not self.inference_mode:
             raise ValueError(

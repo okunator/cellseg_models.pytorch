@@ -85,6 +85,13 @@ class CPPRefine(nn.Module):
 
 
 class CPPNetUnet(nn.ModuleDict):
+    """A CPPNet family network with configurable output branches.
+
+    Use the family factory for standard nucleus heads. Direct construction is
+    for choosing your own branches and head channel counts. ``enc_name`` names
+    the encoder stored at ``network[network.enc_name]``.
+    """
+
     def __init__(
         self,
         decoders: Tuple[str, ...],
@@ -116,86 +123,43 @@ class CPPNetUnet(nn.ModuleDict):
         inst_key: str = "dist",
         **kwargs,
     ) -> None:
-        """Create CPP-Net.
+        """Configure the CPPNetUnet network and its output heads.
 
         CPP-Net:
         - CPP-Net: Context-aware Polygon Proposal Network for Nucleus Segmentation
         - https://arxiv.org/abs/2102.06867
 
         Args:
-            decoders:
-                Names of the decoder branches of this network. E.g. ("cppnet", "sem")
-            heads: The decoder branches mapped to segmentation heads E.g.
-                {"cppnet": {"type": 4, "stardist": 32}, "sem": {"sem": 5}}
-            n_rays: Number of rays predicted per object.
-            depth:
-                The depth of the encoder. I.e. Number of returned feature maps from
-                the encoder. Maximum depth = 5.
-                Defaults to 4.
-            out_channels: Out channels for each decoder stage.
-                Defaults to (256, 128, 64, 32).
-            style_channels:
-                Number of style vector channels. If None, style vectors are ignored.
-                Defaults to 256.
-            enc_name: Name of the encoder. See timm docs for more info.
-                Defaults to "resnet50".
-            enc_pretrain: Whether to use imagenet pretrained weights in the encoder.
-                Defaults to True.
-            enc_freeze: Freeze encoder weights for training.
-                Defaults to False.
-            enc_out_indices:
-                Indices of the encoder output features. If None, indices is set to
-                `range(len(depth))`.
-                Defaults to None.
-            upsampling:
-                The upsampling method. One of: "fixed-unpool", "nearest", "bilinear",
-                "bicubic", "conv_transpose"
-                Defaults to "fixed-unpool".
-            long_skip:
-                long skip method to be used. One of: "unet", "unetpp", "unet3p",
-                "unet3p-lite", None
-                Defaults to "unet".
-            merge_policy: The long skip merge policy. One of: "sum", "cat"
-                Defaults to "sum".
-            short_skip:
-                The name of the short skip method. One of: "residual", "dense", "basic"
-                Defaults to "basic".
-            block_type:
-                The type of the convolution block type. One of: "basic". "mbconv",
-                "fmbconv" "dws", "bottleneck".
-                Defaults to "basic".
-            normalization:
-                Normalization method. One of: "bn", "bcn", "gn", "in", "ln", None
-                Defaults to "bn".
-            activation:
-                Activation method. One of: "mish", "swish", "relu", "relu6", "rrelu",
-                "selu", "celu", "gelu", "glu", "tanh", "sigmoid", "silu", "prelu",
-                "leaky-relu", "elu", "hardshrink", "tanhshrink", "hardsigmoid"
-                Defaults to "relu".
-            convolution:
-                The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-                Defaults to "conv".
-            preactivate: If True, normalization will be applied before convolution.
-                Defaults to True.
-            attention: Attention method. One of: "se", "scse", "gc", "eca", None
-                Defaults to None.
-            preattend:
-                If True, Attention is applied at the beginning of forward pass.
-                Defaults to False.
-            out_size:
-                If specified, the output size of the model will be (out_size, out_size).
-                I.e. the outputs will be interpolated to this size.
-            encoder_kws:
-                Extra keyword arguments for the encoder. See timm docs for more info.
-                Defaults to None.
-            skip_kws: Extra keyword arguments for the skip-connection module.
-                Defaults to None.
-            stem_skip_kws:
-                Extra keyword arguments for the stem skip-connection module.
-                Defaults to None.
-            inst_key: The key for the model output that will be used in the instance
-                segmentation post-processing pipeline as the binary segmentation result.
-                Defaults to "dist".
+            decoders: Names of decoder branches. Each name must have an entry in heads.
+            heads: Output names and channel counts grouped by decoder. Use
+                ``nuc_stardist`` for the auxiliary head and ``nuc_type`` for
+                cell-type logits; ray-based reconstruction also needs ``nuc_binary``.
+            n_rays: Number of radial distance channels; match the configured ray head.
+            erosion_factors: Sampling distances used when refining the initial ray predictions.
+            depth: Number of decoder stages; align stage settings and encoder features.
+            out_channels: Channel counts at each decoder stage, from deepest to shallowest.
+            style_channels: Size of the vector describing image appearance. None disables its use.
+            enc_name: timm encoder name. Access it through network[network.enc_name].
+            enc_pretrain: Load pretrained encoder weights; may download on first use.
+            enc_freeze: Disable encoder weight gradients; does not keep it in evaluation mode.
+            enc_out_indices: Encoder feature indices. None selects range(depth).
+            upsampling: Method for increasing feature resolution between decoder stages.
+            long_skip: Connections from encoder features to decoder stages, such as "unet".
+            merge_policy: Combine connected features by "sum" or "cat" (concatenation).
+            short_skip: Connections within decoder blocks: "basic", "residual" or "dense".
+            block_type: Convolution block type used within each decoder stage.
+            normalization: Feature normalization, such as "bn" (batch normalization), or None.
+            activation: Activation function used within decoder blocks, such as "relu".
+            convolution: Convolution implementation: "conv", "wsconv" or "scaled_wsconv".
+            preactivate: Apply normalization and activation before the convolution.
+            attention: Channel attention method, or None to disable it.
+            preattend: Apply configured attention before the convolution block.
+            out_size: Optional square output size in pixels. None keeps the decoder output size.
+            encoder_kws: Additional keyword arguments passed to the timm encoder.
+            skip_kws: Additional settings for the selected skip-connection implementation.
+            stem_skip_kws: Additional settings for the connection from the input image to the decoder.
+            inst_key: Output kind used to identify the instance foreground head.
+            **kwargs: Additional keyword arguments are accepted but unused.
         """
         super().__init__()
         self.out_size = out_size
@@ -270,24 +234,22 @@ class CPPNetUnet(nn.ModuleDict):
             self[self.enc_name].freeze_encoder()
 
     def forward(self, x: torch.Tensor, return_pred_only: bool = True) -> Dict[str, Any]:
-        """Forward pass of Cellpose U-net.
-
-            x (torch.Tensor):
-                Input image batch. Shape: (B, C, H, W).
-            return_pred_only (bool, default=True):
-                If True, only the dense prediction maps are returned. If False, the
-                encoder features and decoder features are also returned.
-
+        """Compute raw CPPNet prediction maps for training or inference.
 
         Args:
-            Returns (Dict[str, Any]):
-                The output dictionary of the model. The keys of the dict are:
-                    - "nuc": SoftInstanceOutput(type_map, aux_map, Optional[binary_map]).
-                    - "cyto": SoftInstanceOutput(type_map, aux_map, Optional[binary_map]).
-                    - "tissue": SoftSemanticOutput(type_map, Optional[binary_map]).
-                    - "enc_feats": List[torch.Tensor].
-                    - "dec_feats": Dict[str, List[torch.Tensor]].
-                    - "enc_out": torch.Tensor.
+            x: Floating-point RGB batch with shape (B, 3, H, W), on the network's
+                device and dtype. B is batch size, H height and W width. Apply the
+                normalization used during training before calling the network.
+            return_pred_only: False also includes encoder/decoder features and
+                encoder output under ``enc_feats``, ``dec_feats`` and ``enc_out``.
+
+        Returns:
+            Dictionary with ``nuc``, ``cyto`` and ``tissue`` entries; unused outputs
+            are None. Instance outputs contain raw class scores (logits) in
+            ``type_map``, maps for separating objects in ``aux_map``, and optionally
+            foreground values in ``binary_map``. Map shape is (B, channels, H, W),
+            using the configured output size. Maps keep the network device, dtype
+            and gradients for training. Features are included only when requested.
         """
         enc_output, feats = self[self.enc_name](x)
         dec_out: DecoderSoftOutput = self.decoder(feats, x)
@@ -320,21 +282,20 @@ class CPPNetUnet(nn.ModuleDict):
 
 
 def cppnet_nuclei(n_rays: int, n_nuc_classes: int, **kwargs) -> nn.Module:
-    """Initialaize CPP-Net for nuclei segmentation.
+    """Create a CPPNet network with standard nucleus heads.
 
-    CPP-Net:
-        - https://arxiv.org/abs/2102.06867
-
-        n_rays (int):
-            Number of rays predicted per each object
-        n_nuc_classes (int):
-            Number of nuclei type classes.
-        **kwargs:
-            Arbitrary key word args for the CPPNet class.
-
+    - https://arxiv.org/abs/2102.06867
 
     Args:
-        Returns: nn.Module: The initialized CPP-Net model.
+        n_rays: Number of radial distances per pixel; match the training targets.
+        n_nuc_classes: Number of cell-type output channels, including any background.
+        **kwargs: Network options accepted by ``CPPNetUnet``, such as
+            ``enc_name`` and ``enc_pretrain=False`` for offline construction.
+            Decoder branches and head definitions are set by this factory.
+
+    Returns:
+        A ``CPPNetUnet`` PyTorch module. Call it with a normalized RGB batch
+        to obtain raw output maps; it does not reconstruct individual instances.
     """
     cppnet = CPPNetUnet(
         decoders=("stardist", "type"),

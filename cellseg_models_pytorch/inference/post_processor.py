@@ -24,17 +24,24 @@ __all__ = ["PostProcessor"]
 
 
 class PostProcessor:
+    """Reconstruct individual objects and assign a class to each object.
+
+    Choose the method that matches your model family.
+    Batch methods copy tensor maps to CPU NumPy arrays to separate objects.
+    """
+
     def __init__(self, postproc_method: str, postproc_kwargs: dict = {}) -> None:
-        """A class for post-processing of all the different types of model outputs.
+        """Choose the reconstruction method and its options.
 
         Args:
-            postproc_method:
-                The post-processing method for the instance segmentation mask.
-            postproc_kwargs:
-                Arbitrary post-processing kwargs for the postproc method.
+            postproc_method: Method name, for example ``cellpose``, ``omnipose``,
+                ``hovernet``, ``stardist`` or ``instanseg``. Must match the model output.
+            postproc_kwargs: Options passed to that method. For CellPose, use
+                ``{"use_gpu": False}`` for CPU reconstruction. InstanSeg needs the
+                trained network's ``pixel_classifier``.
 
         Raises:
-            ValueError: If the post-processing method is not allowed.
+            ValueError: The method name is unknown.
         """
         allowed = list(POSTPROC_LOOKUP.keys())
         if postproc_method not in allowed:
@@ -51,10 +58,23 @@ class PostProcessor:
         tissue_map: np.ndarray,
         save_path: Union[Path, str] = None,
         coords: Tuple[int, int, int, int] = None,
-        class_dict: Dict[str, int] = None,
+        class_dict: dict[int, str] | None = None,
         smooth_func: Callable = None,
-    ) -> np.ndarray:
-        """Run tissue map post-processing."""
+    ) -> np.ndarray | None:
+        """Clean one tissue-class mask and optionally save polygons.
+
+        Args:
+            tissue_map: Integer class mask (H, W). Small regions below 5000 pixels
+                are removed and holes are filled before output.
+            save_path: Optional vector output path; without it, return the mask.
+            coords: Optional (x, y, width, height) tuple. Saved geometry is offset
+                by x and y; masks returned in memory keep local pixel coordinates.
+            class_dict: Map integer class numbers to names for vector output.
+            smooth_func: Optional polygon-smoothing function used only when saving.
+
+        Returns:
+            Cleaned int32 class mask (H, W), or None when saving polygons.
+        """
         tissue_map = remove_debris_semantic(tissue_map, min_size=5000)
         tissue_map = fill_holes_semantic(tissue_map, min_size=5000).astype("i4")
 
@@ -74,10 +94,28 @@ class PostProcessor:
         type_map: np.ndarray,
         save_path: Union[Path, str] = None,
         coords: Tuple[int, int, int, int] = None,
-        class_dict: Dict[str, int] = None,
+        class_dict: dict[int, str] | None = None,
         smooth_func: Callable = gaussian_smooth,
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """Run instace map post-processing."""
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        """Reconstruct one image's objects and vote on their classes.
+
+        Args:
+            inst_map: HW foreground labels/scores expected by the reconstruction method.
+                This is the foreground input, not already reconstructed instance IDs.
+            aux_map: Floating family-specific reconstruction map (channels, H, W).
+            type_map: Integer class labels (H, W) used for majority voting per object.
+            save_path: Optional vector file path (.parquet, .geojson or .feather).
+                Existing-file behavior follows the selected writer.
+            coords: Optional (x, y, width, height) tuple. Saved geometry is offset
+                by x and y; masks returned in memory keep local pixel coordinates.
+            class_dict: Map integer class numbers to names for vector output.
+            smooth_func: Optional polygon-smoothing function used only when saving.
+
+        Returns:
+            (instances, classes) as int32 NumPy arrays of shape (H, W). Instance 0 is
+            background; positive IDs identify objects. Returns None instead when
+            saving to a file. Smoothing affects saved polygons, not returned masks.
+        """
         inst_map = self.postproc_func(inst_map, aux_map).astype("i4")
         type_map = majority_vote_sequential(type_map, inst_map).astype("i4")
 
@@ -111,8 +149,35 @@ class PostProcessor:
         nuc_smooth_func: Callable = gaussian_smooth,
         cyto_smooth_func: Callable = gaussian_smooth,
         tissue_smooth_func: Callable = None,
-    ) -> Dict[str, List[np.ndarray]]:
-        """Post-process the masks in parallel using multiprocessing."""
+    ) -> dict[str, list[tuple[np.ndarray, np.ndarray] | np.ndarray | None] | None]:
+        """Reconstruct a batch using workers.
+
+        Args:
+            soft_masks: Prediction dictionary with a nucleus entry and optional
+                ``cyto``/``tissue`` entries. Class maps must already contain class
+                labels, as returned by ``Predictor``, not raw class logits.
+            n_jobs: Number of workers; a batch of one uses one worker.
+            start_method: Worker mode: "threading", "fork" or "spawn", subject to
+                operating-system support.
+            progress_bar: Show worker progress.
+            save_paths_nuc: Optional vector output paths, one per image, for nuclei.
+            save_paths_cyto: Equivalent paths for cytoplasm.
+            save_paths_tissue: Equivalent paths for tissue.
+            coords: Optional (x, y, width, height) per image for vector coordinate offsets.
+            class_dict_nuc: Map nucleus class numbers to output names.
+            class_dict_cyto: Map cytoplasm class numbers to output names.
+            class_dict_tissue: Map tissue class numbers to output names.
+            nuc_smooth_func: Polygon smoothing for saved nuclei; None disables it.
+            cyto_smooth_func: Polygon smoothing for saved cytoplasm; None disables it.
+            tissue_smooth_func: Polygon smoothing for saved tissue; None disables it.
+
+        Returns:
+            Dictionary with ``nuc``, ``cyto`` and ``tissue`` lists, in input order.
+            Missing heads are None. Instance results are (instances, classes) int32
+            NumPy masks (H, W); tissue results are int32 class masks (H, W).
+            Saving an image returns None at that list position. All worker results
+            are resolved before returning; no future is returned to the caller.
+        """
         # set up input args for
         nuc_inst_maps, nuc_aux_maps, nuc_type_maps = self._prepare_inst_maps(
             soft_masks["nuc"]
@@ -216,12 +281,32 @@ class PostProcessor:
         cyto_smooth_func: Callable = gaussian_smooth,
         tissue_smooth_func: Callable = None,
     ) -> dict[str, list[tuple[np.ndarray, np.ndarray] | np.ndarray | None] | None]:
-        """Post-process the masks in parallel using async.
+        """Schedule batch reconstruction on workers and wait for all results.
+
+        Args:
+            soft_masks: Prediction dictionary with a nucleus entry and optional
+                ``cyto``/``tissue`` entries. Class maps must already contain class
+                labels, as returned by ``Predictor``, not raw class logits.
+            n_jobs: Number of workers; a batch of one uses one worker.
+            start_method: Worker mode: "threading", "fork" or "spawn", subject to
+                operating-system support.
+            save_paths_nuc: Optional vector output paths, one per image, for nuclei.
+            save_paths_cyto: Equivalent paths for cytoplasm.
+            save_paths_tissue: Equivalent paths for tissue.
+            coords: Optional (x, y, width, height) per image for vector coordinate offsets.
+            class_dict_nuc: Map nucleus class numbers to output names.
+            class_dict_cyto: Map cytoplasm class numbers to output names.
+            class_dict_tissue: Map tissue class numbers to output names.
+            nuc_smooth_func: Polygon smoothing for saved nuclei; None disables it.
+            cyto_smooth_func: Polygon smoothing for saved cytoplasm; None disables it.
+            tissue_smooth_func: Polygon smoothing for saved tissue; None disables it.
 
         Returns:
-            Resolved results for each head, or None when that head is absent.
-            Instance results contain instance and class masks; tissue results
-            contain semantic masks. Saved outputs have None results per tile.
+            Dictionary with ``nuc``, ``cyto`` and ``tissue`` lists, in input order.
+            Missing heads are None. Instance results are (instances, classes) int32
+            NumPy masks (H, W); tissue results are int32 class masks (H, W).
+            Saving an image returns None at that list position. All worker results
+            are resolved before returning; no future is returned to the caller.
         """
         # set up input args for
         nuc_inst_maps, nuc_aux_maps, nuc_type_maps = self._prepare_inst_maps(
@@ -330,8 +415,31 @@ class PostProcessor:
         nuc_smooth_func: Callable = gaussian_smooth,
         cyto_smooth_func: Callable = gaussian_smooth,
         tissue_smooth_func: Callable = None,
-    ) -> Dict[str, List[np.ndarray]]:
-        """Run post-processing sequentially."""
+    ) -> dict[str, list[tuple[np.ndarray, np.ndarray] | np.ndarray | None] | None]:
+        """Reconstruct a batch one image at a time.
+
+        Args:
+            soft_masks: Prediction dictionary with a nucleus entry and optional
+                ``cyto``/``tissue`` entries. Class maps must already contain class
+                labels, as returned by ``Predictor``, not raw class logits.
+            save_paths_nuc: Optional vector output paths, one per image, for nuclei.
+            save_paths_cyto: Equivalent paths for cytoplasm.
+            save_paths_tissue: Equivalent paths for tissue.
+            coords: Optional (x, y, width, height) per image for vector coordinate offsets.
+            class_dict_nuc: Map nucleus class numbers to output names.
+            class_dict_cyto: Map cytoplasm class numbers to output names.
+            class_dict_tissue: Map tissue class numbers to output names.
+            nuc_smooth_func: Polygon smoothing for saved nuclei; None disables it.
+            cyto_smooth_func: Polygon smoothing for saved cytoplasm; None disables it.
+            tissue_smooth_func: Polygon smoothing for saved tissue; None disables it.
+
+        Returns:
+            Dictionary with ``nuc``, ``cyto`` and ``tissue`` lists, in input order.
+            Missing heads are None. Instance results are (instances, classes) int32
+            NumPy masks (H, W); tissue results are int32 class masks (H, W).
+            Saving an image returns None at that list position. All worker results
+            are resolved before returning; no future is returned to the caller.
+        """
         nuc_inst_maps, nuc_aux_maps, nuc_type_maps = self._prepare_inst_maps(
             soft_masks["nuc"]
         )

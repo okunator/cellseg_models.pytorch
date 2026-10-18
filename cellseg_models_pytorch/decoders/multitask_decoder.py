@@ -62,17 +62,49 @@ SEM_SEG_COMBOS = [
 
 @dataclass
 class SoftInstanceOutput:
+    """Prediction maps for one instance head, such as nuclei or cytoplasm.
+
+    Args:
+        type_map: Raw network class logits of shape (B, classes, H, W).
+            After ``Predictor`` runs, this field contains integer class labels
+            of shape (B, H, W), not probabilities.
+        aux_map: Floating reconstruction values of shape (B, channels, H, W).
+            Channels depend on the model family: flows, horizontal/vertical
+            distances, radial distances or InstanSeg values.
+        binary_map: Optional separate foreground map of shape (B, 1, H, W).
+            Interpretation depends on the head; it is not universally a probability.
+        parents: Optional mapping from field names to their producing branch/head
+            names. Useful for identifying which network outputs populated a field.
+
+    Maps remain on the network device and use its computation dtype, except class
+    labels produced by prediction are integer tensors. B is batch size, H height,
+    W width. Reading a field does not copy its tensor.
+    """
+
     type_map: torch.Tensor
     aux_map: torch.Tensor
     binary_map: Optional[torch.Tensor] = field(default=None)
-    parents: Optional[Dict[str, List[str]]] = field(default=None)
+    parents: dict[str, list[str] | None] | None = field(default=None)
 
 
 @dataclass
 class SoftSemanticOutput:
+    """Prediction maps for a semantic head, such as tissue classes.
+
+    Args:
+        type_map: Raw class logits of shape (B, classes, H, W) from the network.
+            ``Predictor`` smooths the tissue probabilities and then replaces this
+            field with integer class labels of shape (B, H, W).
+        binary_map: Optional separate binary output map, otherwise None.
+        parents: Optional mapping from field names to producing branch/head names.
+
+    B is batch size, H height and W width. Tensors remain on the network device;
+    raw maps use its computation dtype and predicted class labels are integers.
+    """
+
     type_map: torch.Tensor
     binary_map: Optional[torch.Tensor] = field(default=None)
-    parents: Optional[Dict[str, List[str]]] = field(default=None)
+    parents: dict[str, list[str] | None] | None = field(default=None)
 
 
 @dataclass

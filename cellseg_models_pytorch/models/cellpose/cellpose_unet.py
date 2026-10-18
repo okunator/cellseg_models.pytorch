@@ -18,6 +18,13 @@ __all__ = [
 
 
 class CellPoseUnet(nn.ModuleDict):
+    """A CellPose family network with configurable output branches.
+
+    Use the family factory for standard nucleus heads. Direct construction is
+    for choosing your own branches and head channel counts. ``enc_name`` names
+    the encoder stored at ``network[network.enc_name]``.
+    """
+
     def __init__(
         self,
         decoders: Tuple[str, ...],
@@ -47,93 +54,41 @@ class CellPoseUnet(nn.ModuleDict):
         inst_key: str = "type",
         **kwargs,
     ) -> None:
-        """Cellpose/Omnipose (2D) U-net model implementation.
+        """Configure the CellPoseUnet network and its output heads.
 
-        Cellpose:
-            - https://www.nature.com/articles/s41592-020-01018-x
-
-        Omnipose:
-            - https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
-
-        Note:
-            Minor differences from the original implementation.
-            - Different encoder, (any encoder from timm-library).
-            - In the original implementation, all the outputs originate from one head,
-              here each output has a distinct segmentation head.
+        Based on `CellPose <https://www.nature.com/articles/s41592-020-01018-x>`_
+        and `Omnipose <https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2>`_.
+        This version uses a timm encoder and separate output heads.
 
         Args:
-            decoders:
-                Names of the decoder branches of this network. E.g. ("cellpose", "sem")
-            heads:
-                Names of the decoder branches (has to match `decoders`) mapped to dicts
-                 of output name - number of output classes. E.g.
-                {"cellpose": {"type": 4, "cellpose": 2}, "sem": {"sem": 5}}
-            depth:
-                The depth of the encoder. I.e. Number of returned feature maps from
-                the encoder. Maximum depth = 5.
-                Defaults to 4.
-            out_channels: Out channels for each decoder stage.
-                Defaults to (256, 128, 64, 32).
-            layer_depths: The number of conv blocks at each decoder stage.
-                Defaults to (4, 4, 4, 4).
-            style_channels:
-                Number of style vector channels. If None, style vectors are ignored.
-                Defaults to 256.
-            enc_name: Name of the encoder. See timm docs for more info.
-                Defaults to "resnet50".
-            enc_pretrain: Whether to use imagenet pretrained weights in the encoder.
-                Defaults to True.
-            enc_freeze: Freeze encoder weights for training.
-                Defaults to False.
-            enc_out_indices:
-                Indices of the output features from the encoder. If None, indices are
-                set to `range(len(depth))`
-                Defaults to None.
-            upsampling:
-                The upsampling method. One of: "fixed-unpool", "bilinear", "nearest",
-                "conv_transpose", "bicubic"
-                Defaults to "fixed-unpool".
-            long_skip:
-                long skip method. One of: "unet", "unetpp", "unet3p", "unet3p-lite", None
-                Defaults to "unet".
-            merge_policy: The long skip merge policy. One of: "sum", "cat"
-                Defaults to "sum".
-            short_skip:
-                The name of the short skip method. One of: "residual", "dense", "basic"
-                Defaults to "basic".
-            normalization:
-                Normalization method. One of: "bn", "bcn", "gn", "in", "ln", None
-                Defaults to "bn".
-            activation:
-                Activation method. One of: "mish", "swish", "relu", "relu6", "rrelu",
-                "selu", "celu", "gelu", "glu", "tanh", "sigmoid", "silu", "prelu",
-                "leaky-relu", "elu", "hardshrink", "tanhshrink", "hardsigmoid"
-                Defaults to "relu".
-            convolution:
-                The convolution method. One of: "conv", "wsconv", "scaled_wsconv"
-                Defaults to "conv".
-            preactivate: If True, normalization will be applied before convolution.
-                Defaults to True.
-            attention: Attention method. One of: "se", "scse", "gc", "eca", None
-                Defaults to None.
-            preattend:
-                If True, Attention is applied at the beginning of forward pass.
-                Defaults to False.
-            out_size:
-                If specified, the output size of the model will be (out_size, out_size).
-                I.e. the outputs will be interpolated to this size.
-                Defaults to None.
-            encoder_kws:
-                Extra keyword arguments for the encoder. See timm docs for more info.
-                Defaults to None.
-            skip_kws: Extra keyword arguments for the skip-connection module.
-                Defaults to None.
-            stem_skip_kws:
-                Extra keyword arguments for the stem skip-connection module.
-                Defaults to None.
-            inst_key: The key for the model output that will be used in the instance
-                segmentation post-processing pipeline as the binary segmentation result.
-                Defaults to "type".
+            decoders: Names of decoder branches. Each name must have an entry in heads.
+            heads: Output names and channel counts grouped by decoder. For example,
+                {"type": {"nuc_cellpose": 2, "nuc_type": 3}} for CellPose.
+                Head names must match the chosen family and output type.
+            depth: Number of decoder stages; align stage settings and encoder features.
+            out_channels: Channel counts at each decoder stage, from deepest to shallowest.
+            layer_depths: Number of convolution blocks at each decoder stage.
+            style_channels: Size of the vector describing image appearance. None disables its use.
+            enc_name: timm encoder name. Access it through network[network.enc_name].
+            enc_pretrain: Load pretrained encoder weights; may download on first use.
+            enc_freeze: Disable encoder weight gradients; does not keep it in evaluation mode.
+            enc_out_indices: Encoder feature indices. None selects range(depth).
+            upsampling: Method for increasing feature resolution between decoder stages.
+            long_skip: Connections from encoder features to decoder stages, such as "unet".
+            merge_policy: Combine connected features by "sum" or "cat" (concatenation).
+            short_skip: Connections within decoder blocks: "basic", "residual" or "dense".
+            normalization: Feature normalization, such as "bn" (batch normalization), or None.
+            activation: Activation function used within decoder blocks, such as "relu".
+            convolution: Convolution implementation: "conv", "wsconv" or "scaled_wsconv".
+            preactivate: Apply normalization and activation before the convolution.
+            attention: Channel attention method, or None to disable it.
+            preattend: Apply configured attention before the convolution block.
+            out_size: Optional square output size in pixels. None keeps the decoder output size.
+            encoder_kws: Additional keyword arguments passed to the timm encoder.
+            skip_kws: Additional settings for the selected skip-connection implementation.
+            stem_skip_kws: Additional settings for the connection from the input image to the decoder.
+            inst_key: Output kind used to identify the instance foreground head.
+            **kwargs: Additional keyword arguments; do not use this to override explicit arguments.
         """
         super().__init__()
         self.inst_key = inst_key
@@ -201,24 +156,22 @@ class CellPoseUnet(nn.ModuleDict):
         self.name = f"CellPoseUnet-{enc_name}"
 
     def forward(self, x: torch.Tensor, return_pred_only: bool = True) -> Dict[str, Any]:
-        """Forward pass of Cellpose U-net.
-
-            x (torch.Tensor):
-                Input image batch. Shape: (B, C, H, W).
-            return_pred_only (bool, default=True):
-                If True, only the dense prediction maps are returned. If False, the
-                encoder features and decoder features are also returned.
-
+        """Compute raw CellPose prediction maps for training or inference.
 
         Args:
-            Returns (Dict[str, Any]):
-                The output of the model. The keys of the dict are:
-                    - "nuc": SoftInstanceOutput(type_map, aux_map, Optional[binary_map]).
-                    - "cyto": SoftInstanceOutput(type_map, aux_map, Optional[binary_map]).
-                    - "tissue": SoftSemanticOutput(type_map, Optional[binary_map]).
-                    - "enc_feats": List[torch.Tensor].
-                    - "dec_feats": Dict[str, List[torch.Tensor]].
-                    - "enc_out": torch.Tensor.
+            x: Floating-point RGB batch with shape (B, 3, H, W), on the network's
+                device and dtype. B is batch size, H height and W width. Apply the
+                normalization used during training before calling the network.
+            return_pred_only: False also includes encoder/decoder features and
+                encoder output under ``enc_feats``, ``dec_feats`` and ``enc_out``.
+
+        Returns:
+            Dictionary with ``nuc``, ``cyto`` and ``tissue`` entries; unused outputs
+            are None. Instance outputs contain raw class scores (logits) in
+            ``type_map``, maps for separating objects in ``aux_map``, and optionally
+            foreground values in ``binary_map``. Map shape is (B, channels, H, W),
+            using the configured output size. Maps keep the network device, dtype
+            and gradients for training. Features are included only when requested.
         """
         enc_output, feats = self[self.enc_name](x)
         dec_out: DecoderSoftOutput = self.decoder(feats, x)
@@ -238,17 +191,19 @@ class CellPoseUnet(nn.ModuleDict):
 
 
 def cellpose_nuclei(n_nuc_classes: int, **kwargs) -> nn.Module:
-    """Initialize Cellpose for nuclei segmentation.
+    """Create a CellPose network with standard nucleus heads.
 
-    Cellpose:
     - https://www.nature.com/articles/s41592-020-01018-x
 
     Args:
-        n_nuc_classes: Number of nuclei type classes.
-        **kwargs: Arbitrary key word args for the CellPoseUnet class.
+        n_nuc_classes: Number of cell-type output channels, including any background.
+        **kwargs: Network options accepted by ``CellPoseUnet``, such as
+            ``enc_name`` and ``enc_pretrain=False`` for offline construction.
+            Decoder branches and head definitions are set by this factory.
 
     Returns:
-        nn.Module: The initialized Cellpose U-net model.
+        A ``CellPoseUnet`` PyTorch module. Call it with a normalized RGB batch
+        to obtain raw output maps; it does not reconstruct individual instances.
     """
     cellpose_unet = CellPoseUnet(
         decoders=("type",),
@@ -260,17 +215,19 @@ def cellpose_nuclei(n_nuc_classes: int, **kwargs) -> nn.Module:
 
 
 def omnipose_nuclei(n_nuc_classes: int, **kwargs) -> nn.Module:
-    """Create the baseline Omnipose U-net for nuclei segmentation.
+    """Create an Omnipose network with standard nucleus heads.
 
-    Omnipose:
     - https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
 
     Args:
-        n_nuc_classes: Number of nuclei type classes.
-        **kwargs: Arbitrary key word args for the CellPoseUnet class.
+        n_nuc_classes: Number of cell-type output channels, including any background.
+        **kwargs: Network options accepted by ``CellPoseUnet``, such as
+            ``enc_name`` and ``enc_pretrain=False`` for offline construction.
+            Decoder branches and head definitions are set by this factory.
 
     Returns:
-        nn.Module: The initialized Cellpose U-net model.
+        A ``CellPoseUnet`` PyTorch module. Call it with a normalized RGB batch
+        to obtain raw output maps; it does not reconstruct individual instances.
     """
     cellpose_unet = CellPoseUnet(
         decoders=("type",),

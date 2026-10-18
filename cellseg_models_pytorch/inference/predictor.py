@@ -76,28 +76,32 @@ class BasePredictor:
         x: Union[torch.Tensor, np.ndarray, Image],
         apply_boundary_weight: bool = False,
         save_intermediate: bool = False,
-    ) -> Dict[str, torch.Tensor]:
-        """Run the input through the model.
-
-        Note:
-            No post-processing is applied.
+    ) -> _PredictionMaps | tuple[_PredictionMaps, _PredictionMaps]:
+        """Predict a single image or a batch without windowing.
 
         Args:
-            x: Input image (H, W, C) or input image batch (B, C, H, W).
-            apply_boundary_weight:
-                Whether to apply boundary weights to mitigate boundary artefacts
-                in aux predictions.
-                Defaults to True.
-            save_intermediate:
-                Whether to save intermediate results (logits). If True, the method
-                returns a tuple (final predictions, intermediate results), where the
-                intermediate results are the raw model outputs before argmax.
+            x: RGB NumPy/PIL image (H, W, C), or floating tensor (C, H, W) or
+                (B, C, H, W). B is batch size, C channels, H height and W width.
+                NumPy/PIL uint8 values are divided by 255. Other image values are
+                unchanged. Tensors must already have the correct dtype/device.
+                Apply the checkpoint's normalization before prediction.
+            apply_boundary_weight: Request a center-weighting matrix. In this
+                non-windowed path, it is constructed but not applied to predictions.
                 Defaults to False.
+            save_intermediate: Return an additional reference to the result. The
+                current implementation does not preserve a separate raw-score copy.
 
         Returns:
-            Dict[str, torch.Tensor]:
-                Dictionary containing the model predictions (probabilities).
-                Shapes: (B, C, H, W).
+            A dictionary with ``nuc``, ``cyto`` and ``tissue`` entries; unused
+            outputs are None. Instance ``type_map`` values are integer class labels
+            (B, H, W); maps for separating objects remain floating tensors (B, channels, H, W).
+            Results stay on the network device. With ``save_intermediate=True``,
+            returns the same dictionary twice. Call the network directly for raw
+            class scores.
+
+        Raises:
+            ValueError: The input is not a three- or four-dimensional tensor after
+                image conversion.
         """
         # check if the input is a tensor
         if not isinstance(x, torch.Tensor):
@@ -262,12 +266,27 @@ class BasePredictor:
 
 
 class Predictor(BasePredictor):
+    """Run a configured network on images, including overlapping windows.
+
+    This is the lower-level alternative to a model class's ``predict`` method.
+    It returns class labels and reconstruction maps, not individual objects.
+    """
+
     def __init__(
         self,
         model: nn.Module,
         mixed_precision: bool = True,
     ) -> None:
-        """Predictor-class for running inference (no post-procesing)."""
+        """Choose the network and prediction precision.
+
+        Args:
+            model: A package network that returns the ``nuc``, ``cyto`` and ``tissue``
+                map entries. Put it on the intended device and call ``eval()`` first;
+                the predictor does not change its training mode.
+            mixed_precision: Use float16 autocasting on the network's device.
+                False keeps the network's normal computation dtype; use it for
+                ordinary float32 CPU prediction.
+        """
         super().__init__(model, mixed_precision=mixed_precision)
 
     def predict_sliding_win(
@@ -279,31 +298,36 @@ class Predictor(BasePredictor):
         apply_boundary_weight: bool = True,
         save_intermediate: bool = False,
     ) -> _PredictionMaps | tuple[_PredictionMaps, _PredictionMaps]:
-        """Predict overlapping windows and restore maps to the input image grid.
+        """Predict overlapping windows and combine them at the original image size.
 
         Args:
-            x: HWC NumPy/PIL image or CHW/BCHW tensor, preprocessed for the
-                checkpoint. Tensor inputs must already be on the model device.
-            window_size: Height and width of the window size.
-            stride: The amount of stride for sliding window.
-            padding: Minimum total padding per axis, split between both sides.
-                Extra padding completes the windows. None uses the default, 20.
-            apply_boundary_weight:
-                Downweight auxiliary and binary instance maps at window edges
-                before averaging overlaps.
-                Defaults to True.
-            save_intermediate:
-                Also return the intermediate output dictionary.
-                Defaults to False.
+            x: RGB NumPy/PIL image (H, W, C), or floating tensor (C, H, W) or
+                (B, C, H, W). B is batch size, C channels, H height and W width.
+                NumPy/PIL uint8 values are divided by 255. Other image values are
+                unchanged. Tensors must already have the correct dtype/device.
+                Apply the checkpoint's normalization before prediction.
+            window_size: Window (height, width). Each dimension must be positive and
+                compatible with the network's encoder and decoder.
+            stride: Positive step in pixels, no larger than either window dimension.
+            padding: Extra coverage used to build the window grid. None uses 20.
+                Reflection padding is used where possible, otherwise edge replication.
+                Padding is removed from the returned maps.
+            apply_boundary_weight: Reduce the influence of window edges on maps used
+                to separate objects and foreground maps. Class probabilities are averaged before
+                selecting class labels.
+            save_intermediate: Return an additional reference to the result; it does
+                not keep a separate copy of the raw class scores.
 
         Returns:
-            Full-image maps grouped by head. Type maps contain class IDs with
-            shape BHW; auxiliary and binary maps retain their BCHW channels.
-            With save_intermediate=True, returns a pair of output dictionaries.
+            A dictionary with ``nuc``, ``cyto`` and ``tissue`` entries; unused
+            outputs are None. Instance ``type_map`` values are integer class labels
+            (B, H, W); maps for separating objects remain floating tensors (B, channels, H, W).
+            Results stay on the network device. With ``save_intermediate=True``,
+            returns the same dictionary twice. Call the network directly for raw
+            class scores.
 
         Raises:
-            ValueError: Window dimensions or stride are nonpositive, stride leaves
-                gaps, padding is negative, or the input image has invalid dimensions.
+            ValueError: Window sizes, stride, padding or image dimensions are invalid.
         """
         if len(window_size) != 2 or any(size <= 0 for size in window_size):
             raise ValueError("window_size must contain two positive dimensions.")

@@ -11,6 +11,12 @@ __all__ = ["CellVit"]
 
 
 class CellVit(BaseModelInst):
+    """Find nuclei and predict their cell types with a CellVit network.
+
+    Use ``model`` for training. Call ``set_inference_mode`` before ``predict``
+    and ``post_process`` to enable image inference.
+    """
+
     model_name = "cellvit"
 
     def __init__(
@@ -22,21 +28,22 @@ class CellVit(BaseModelInst):
         device: torch.device = torch.device("cuda"),
         model_kwargs: Dict[str, Any] = {},
     ) -> None:
-        """CellViT model for nuclei segmentation.
+        """Configure the network and move it to the requested device.
 
-        CellVit:
         - https://arxiv.org/abs/2306.15350
 
         Args:
-            n_nuc_classes: Number of nuclei type classes.
-            enc_name: Name of the pytorch-image-models encoder.
-                Defaults to "samvit_base_patch16".
-            enc_pretrain: Whether to use pretrained weights in the encoder.
-                Defaults to True.
-            enc_freeze: Freeze encoder weights for training.
-                Defaults to False.
-            device: Device to run the model on. Default is "cuda".
-                Defaults to torch.device("cuda").
+            n_nuc_classes: Number of cell-type output channels, including any background
+                class in the training label mapping.
+            enc_name: Encoder name supported by timm (PyTorch Image Models).
+            enc_pretrain: Load pretrained encoder weights, downloading if needed.
+                Segmentation layers still need training or a segmentation checkpoint.
+            enc_freeze: Disable encoder weight updates. Training mode still controls
+                its normalization layers.
+            device: Network device. Pass ``torch.device("cpu")`` for CPU use;
+                the default requires CUDA.
+            model_kwargs: Additional ``CellVitSamUnet`` options. Use the same architecture
+                settings as the checkpoint when loading existing weights.
         """
         super().__init__()
         self.model = cellvit_nuclei(
@@ -51,7 +58,19 @@ class CellVit(BaseModelInst):
         self.model.to(device)
 
     def set_inference_mode(self, mixed_precision: bool = True) -> None:
-        """Set to inference mode."""
+        """Prepare image prediction and instance reconstruction.
+
+        Sets the network to evaluation mode and replaces its predictor and
+        post-processor. This affects later training; call ``model.train()`` on the
+        underlying network when returning to training.
+
+        Configures HoVer-Net reconstruction for the horizontal/vertical maps.
+
+        Args:
+            mixed_precision: Use float16 autocasting during prediction. Choose False
+                for ordinary float32 inference, especially on CPU. Reconstruction
+                has its own device settings.
+        """
         self.model.eval()
         self.predictor = Predictor(
             model=self.model,

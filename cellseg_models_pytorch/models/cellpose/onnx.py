@@ -74,8 +74,9 @@ def export_cellpose_onnx(
     Args:
         model: A high-level ``CellPose`` instance or its underlying ``.model``
             module.
-        output_path: Destination ``.onnx`` file.
-        input_shape: Example BCHW tensor shape used while exporting the model.
+        output_path: Destination ``.onnx`` file. Parent folders are created; an existing
+                file may be overwritten.
+        input_shape: Example (batch, channels, height, width) input shape.
             Spatial dimensions are fixed in the exported graph. With dynamic batches,
             the tracing batch is at least two to avoid specializing batch one.
             Defaults to ``(1, 3, 256, 256)``.
@@ -86,6 +87,23 @@ def export_cellpose_onnx(
 
     Returns:
         Path to the exported ONNX model.
+
+    Raises:
+        ValueError: input_shape does not contain four positive integer dimensions.
+        TypeError: model is not the expected wrapper or a PyTorch module.
+        ImportError: onnx or onnxscript is unavailable.
+        RuntimeError: The PyTorch version is too old or export fails.
+
+    Note:
+        Requires onnx and onnxscript, in addition to the package dependencies.
+        The exporter checks for PyTorch 2.7 or later; the package's own minimum
+        PyTorch version still applies. Training/evaluation state of every network
+        module is restored on success or failure. Example inputs use the network's
+        device and floating dtype; exporting does not move the model.
+
+        The input is named ``image``; outputs are ``flow_map`` and ``type_map``.
+        Outputs have batch, channel, height and width axes. Cell-type outputs
+        are raw logits. Preprocessing and Python reconstruction are not exported.
     """
     if len(input_shape) != 4 or any(
         not isinstance(dim, int) or isinstance(dim, bool) or dim <= 0
