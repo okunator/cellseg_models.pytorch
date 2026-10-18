@@ -28,7 +28,7 @@
 ## Features
 
 - High level API to define cell/nuclei instance segmentation models.
-- 6 cell/nuclei instance segmentation model architectures
+- 7 cell/nuclei instance segmentation model architectures
 - Flexibility to modify the components of the model architectures.
 - Sliding window inference for large images.
 
@@ -57,6 +57,7 @@ installing this library.
 | [[4](#Citation)] Stardist  | https://arxiv.org/abs/1806.03535                                               |
 | [[5](#Citation)] CellVit-SAM  | https://arxiv.org/abs/2306.15350                                               |
 | [[6](#Citation)] CPP-Net  | https://arxiv.org/abs/2102.06867                                               |
+| [[10](#References)] InstanSeg | https://arxiv.org/abs/2408.15954                                            |
 
 ## Datasets
 
@@ -114,6 +115,7 @@ out = model.post_process(prob)
 - [7] Gamper, J., Koohbanani, N., Benet, K., Khuram, A., & Rajpoot, N. (2019) PanNuke: an open pan-cancer histology dataset for nuclei instance segmentation and classification. In European Congress on Digital Pathology (pp. 11-19).
 - [8] Gamper, J., Koohbanani, N., Graham, S., Jahanifar, M., Khurram, S., Azam, A.,Hewitt, K., & Rajpoot, N. (2020). PanNuke Dataset Extension, Insights and Baselines. arXiv preprint arXiv:2003.10778.
 - [9] Graham, S., Jahanifar, M., Azam, A., Nimir, M., Tsang, Y.W., Dodd, K., Hero, E., Sahota, H., Tank, A., Benes, K., & others (2021). Lizard: A Large-Scale Dataset for Colonic Nuclear Instance Segmentation and Classification. In Proceedings of the IEEE/CVF International Conference on Computer Vision (pp. 684-693).
+- [10] Goldsborough, T., et al. (2024). InstanSeg: an embedding-based instance segmentation algorithm optimized for accurate, efficient and portable cell segmentation. arXiv. https://arxiv.org/abs/2408.15954.
 
 ## Citation
 
