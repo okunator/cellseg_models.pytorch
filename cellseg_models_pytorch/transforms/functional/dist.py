@@ -35,18 +35,17 @@ __all__ = ["gen_dist_maps"]
 def gen_dist_maps(
     inst_map: np.ndarray, normalize: bool = True, euclidean: bool = True
 ) -> np.ndarray:
-    """Compute distance transforms for every labelled object.
+    """Generate a distance-to-boundary map for each object.
 
     Args:
-        inst_map: Instance labelled mask. Shape (H, W).
-        normalize: Normalize the distance maps to [0, 1].
-            Defaults to True.
-        euclidean:
-            If True, uses the euclidean transformation. Else, the chessboard one.
-            Defaults to True.
+        inst_map: Integer NumPy mask (H, W). Zero is background and positive
+            IDs identify individual objects. H is height and W width.
+        normalize: Rescale distances separately within each object to 0–1.
+        euclidean: True uses straight-line distance; False uses chessboard distance.
 
     Returns:
-        Distance map of the labelled objects. Shape (H, W).
+        Float64 distance map (H, W). Background and empty masks are zero.
+        Tiny regions with a spatial dimension below two pixels are skipped.
     """
     dist = np.zeros_like(inst_map, dtype=np.float64)
 

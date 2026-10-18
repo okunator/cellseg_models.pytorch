@@ -5,6 +5,11 @@ from .criterions import SEG_LOSS_LOOKUP
 
 
 class Loss(nn.Module):
+    """Select a loss by its registered name.
+
+    Use a loss class directly when you need its specific options or target format.
+    """
+
     def __init__(
         self,
         name: str,
@@ -15,26 +20,25 @@ class Loss(nn.Module):
         class_weights: torch.Tensor = None,
         **kwargs,
     ) -> None:
-        """Loss wrapper class.
+        """Choose a loss and its settings.
 
         Args:
-            name: Name of the loss function.
-            apply_sd:
-                If True, Spectral decoupling regularization will be applied  to the
-                loss matrix.
-                Defaults to False.
-            apply_ls: If True, Label smoothing will be applied to the target.
-                Defaults to False.
-            apply_svls:
-                If True, spatially varying label smoothing will be applied to the target
-                Defaults to False.
-            edge_weight: Weight that is added to object borders.
-                Defaults to none.
-            class_weights: Class weights. A tensor of shape (n_classes,).
-                Defaults to None.
+            name: ce, bce, dice, focal, mse, mae, ssim, msssim or sce. iou and
+                tversky also remain accepted, but their calculations across classes
+                need correction before use. The registered instanseg route
+                currently rejects these forwarded options; construct InstanSegCriterion
+                directly and call it with pred and target.
+            apply_sd: Add a squared-prediction penalty for losses supporting it.
+            apply_ls: Uniformly smooth targets for losses supporting it.
+            apply_svls: Smooth targets using neighboring pixels where supported.
+            edge_weight: Multiply pixel losses by edge_weight ** target_weight.
+                None disables this weighting.
+            class_weights: Per-class weights for losses that support class weighting.
+            **kwargs: Other constructor settings for the selected loss. Supported settings
+                vary by loss; see its own entry.
 
         Raises:
-            ValueError: if the loss function name is illegal.
+            ValueError: The name is unknown. Errors from the selected loss are passed through.
         """
         super().__init__()
 
@@ -60,7 +64,18 @@ class Loss(nn.Module):
         target_weight: torch.Tensor = None,
         **kwargs,
     ) -> torch.Tensor:
-        """Forward pass for the loss function."""
+        """Compute the selected loss.
+
+        Args:
+            yhat: Prediction tensor with the shape and values required by the selected loss.
+            target: Matching class labels or regression targets.
+            target_weight: Optional per-pixel exponents for edge weighting.
+            **kwargs: Additional forward arguments accepted by the selected loss.
+
+        Returns:
+            The loss on the prediction device; normally a single tensor value.
+            SSIM can return a pair when return_cs is enabled.
+        """
         return self.loss(
             yhat=yhat, target=target, target_weight=target_weight, **kwargs
         )

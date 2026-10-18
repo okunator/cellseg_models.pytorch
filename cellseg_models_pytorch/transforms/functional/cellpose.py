@@ -30,6 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
+
 import numpy as np
 import scipy.ndimage as ndi
 from numba import njit
@@ -80,24 +81,24 @@ def _extend_centers(
 
 
 def gen_flow_maps(inst_map: np.ndarray, pad: int = 1) -> np.ndarray:
-    """Generate flow maps from inst maps like in CellPose.
+    """Generate vertical and horizontal CellPose flow targets.
 
-    I.e. take the x- and y- derivates from a time-independent heat
-    diffusion map of the instances.
-
-    Stringer, C., Wang, T., Michaelos, M. et al. Cellpose:
-    a generalist algorithm for cellular segmentation. Nat Methods 18,
-    100-106 (2021). https://doi.org/10.1038/s41592-020-01018-x
-
-    https://www.nature.com/articles/s41592-020-01018-x
 
     Args:
-        inst_map: Instance labelled mask. Shape (H, W).
-        pad: Number of pixels for constant padding.
-            Defaults to 1.
+        inst_map: Integer NumPy mask (H, W). Zero is background and positive
+            IDs identify individual objects. H is height and W width.
+        pad: Constant padding around each object while generating its flows.
 
     Returns:
-        Y and X- flows in this order. Shape (2, H, W). Dtype: float64
+        Float64 array (2, H, W), vertical then horizontal flow. Background
+        and empty masks are zero.
+
+    Notes:
+        Stringer, C., Wang, T., Michaelos, M. et al. Cellpose:
+        a generalist algorithm for cellular segmentation. Nat Methods 18,
+        100-106 (2021). https://doi.org/10.1038/s41592-020-01018-x
+
+        https://www.nature.com/articles/s41592-020-01018-x
     """
     H, W = inst_map.shape
     mu = np.zeros((2, H, W), np.float64)

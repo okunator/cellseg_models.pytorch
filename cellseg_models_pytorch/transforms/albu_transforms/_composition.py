@@ -25,6 +25,16 @@ class OnlyInstMapTransform:
 
 
 class ApplyEach(A.BaseCompose):
+    """Generate several training targets independently from the same instance mask.
+
+    This is not a sequence of spatial augmentations. Apply joint image/mask
+    augmentation first, then derive all targets from the resulting instance mask.
+
+    Attributes:
+        names: Target names in the configured transform order.
+        out_channels: Channel count corresponding to each name.
+    """
+
     def __init__(
         self,
         transforms: List[OnlyInstMapTransform],
@@ -32,16 +42,15 @@ class ApplyEach(A.BaseCompose):
         as_list: bool = False,
         **kwargs,
     ) -> None:
-        """Apply each transform to the input non-sequentially.
-
-        Returns outputs for each transform.
+        """Choose target generators and the output layout.
 
         Args:
-            transforms (List[Any]): List of transforms to apply.
-            p: Probability of applying the transform.
-                Defaults to 1.0.
-            as_list: Return the outputs as list with shapes (H, W, C).
-                Defaults to False.
+            transforms: Configured instance-mask transforms, such as CellposeTransform.
+            p: Retained composition probability; this implementation always calls
+                each configured target generator.
+            as_list: Return HWC arrays in a list, as expected by the training datasets.
+                False returns a dictionary instead.
+            **kwargs: Additional Albumentations BaseCompose options.
         """
         super().__init__(transforms, p, **kwargs)
         self.names = [t.name for t in transforms]
@@ -49,6 +58,19 @@ class ApplyEach(A.BaseCompose):
         self.as_list = as_list
 
     def __call__(self, **data):
+        """Generate every configured target for each supplied mask.
+
+        Args:
+            **data: Named integer HW instance masks, such as ``inst=mask``. Zero is
+                background and positive labels identify objects.
+
+        Returns:
+            With as_list=False, a dictionary keyed as ``input-name``, for example
+            ``inst-cellpose``; vector targets are CHW and scalar targets HW.
+            With as_list=True, a list of HWC arrays, adding a singleton channel for
+            scalar targets. Ordering is by transform, then input keyword order.
+        """
+
         res = {}
         for t in self.transforms:
             for k, d in data.items():

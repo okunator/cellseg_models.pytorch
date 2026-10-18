@@ -5,26 +5,24 @@ import torch.nn as nn
 
 
 class JointLoss(nn.ModuleDict):
+    """Sum several losses for the same prediction and target."""
+
     def __init__(
         self,
         losses: List[nn.Module],
         weights: List[float] = None,
     ) -> None:
-        """Joint loss function.
-
-        Takes in a list of nn.Module losses and computes the loss for
-        each loss in the list and at the end sums the outputs together
-        as one joint loss.
+        """Choose losses and their weights.
 
         Args:
-            losses: List of initialized nn.Module losses.
-            weights: List of weights for each loss.
-                Defaults to None.
+            losses: Nonempty list of configured PyTorch loss modules. They must accept
+                the same keyword inputs used when calling this object.
+            weights: One number in [0, 1] per loss. None uses 1 for every loss.
+                Supply exactly one per loss; mismatched lengths are not validated
+                and unmatched entries would be ignored. Weights need not sum to one.
 
         Raises:
-            ValueError:
-                If more than 4 losses are given as input.
-                If given weights are not between [0, 1].
+            ValueError: losses is not a list or a supplied weight is outside [0, 1].
         """
         super().__init__()
 
@@ -41,11 +39,15 @@ class JointLoss(nn.ModuleDict):
             self.add_module(f"loss{i + 1}", losses[i])
 
     def forward(self, **kwargs) -> torch.Tensor:
-        """Compute the joint-loss.
+        """Add the weighted losses.
+
+        Args:
+            **kwargs: Passed to every loss, typically yhat, target and optional
+                target_weight/mask tensors. Each loss must accept these inputs.
 
         Returns:
-            torch.Tensor:
-                The computed joint loss.
+            Sum of the weighted losses. For ordinary scalar losses, the result stays
+            on the prediction device and keeps gradients for training.
         """
         lw = zip(self.values(), self.weights)
         losses = torch.stack([loss(**kwargs) * weight for loss, weight in lw])

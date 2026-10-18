@@ -21,6 +21,13 @@ ALLOWED_KEYS = ("inst", "type", "cyto_inst", "cyto_type", "sem")
 
 
 class TrainDatasetFolder(Dataset):
+    """Load aligned RGB images and MATLAB label masks for training.
+
+    Image and label files are sorted separately and paired by position, not matched
+    by filename. Keep both folders in the same order with no unrelated files.
+    Spatial augmentation runs jointly before auxiliary targets are generated.
+    """
+
     def __init__(
         self,
         path_img: str,
@@ -30,28 +37,27 @@ class TrainDatasetFolder(Dataset):
         inst_transforms: ApplyEach,
         map_out_keys: Dict[str, str] = None,
     ) -> None:
-        """Folder train dataset for cell/panoptic segmentation models.
+        """Choose folders, labels and training transforms.
 
         Args:
-            path_img: Path to the image folder.
-            path_label: Path to the label folder.
-            mask_keys: Tuple of keys to be read from the .mat file.
-            transforms: Albumentations compose object for image and mask transforms.
-            inst_transforms: ApplyEach object for instance transforms.
-            map_out_keys:
-                A dictionary to map the default output keys to new output keys. .
-                Useful if you want to match the output keys with model output keys.
-                e.g. {"inst": "decoder1-inst", "inst-cellpose": decoder2-cellpose}.
-                The default output keys are any of 'image', 'inst', 'type', 'cyto_inst',
-                'cyto_type', 'sem' & inst-{transform.name}, cyto_inst-{transform.name}.
-                Defaults to None.
+            path_img: Folder of RGB images supported by the image reader.
+            path_label: Folder of .mat files, one per image in the same sorted order.
+            mask_keys: Label arrays to read: inst, type, cyto_inst, cyto_type or sem.
+                Must include inst. Masks use height, width axes; instance 0 is background
+                and positive labels identify objects. Class meanings come from your data.
+            transforms: Albumentations Compose receiving image and a list of masks.
+                Include the normalization expected by the model.
+            inst_transforms: ApplyEach with as_list=True, deriving targets from the
+                augmented instance masks. Vector targets are converted to CHW tensors.
+            map_out_keys: Optional dictionary selecting and renaming output entries.
+                Only listed existing keys are retained. To keep the image, include
+                image explicitly. Auxiliary keys are transform_name_instance_key,
+                such as cellpose_inst.
 
         Raises:
-            ModuleNotFoundError: If albumentations or tables is not installed.
-            ModuleNotFoundError: If tables is not installed.
-            ValueError: If invalid keys are provided.
-            ValueError: If 'image' key is not present in input_keys.
-            ValueError: If 'inst' key is not present in input_keys.
+            ModuleNotFoundError: Albumentations is unavailable.
+            ValueError: mask_keys contains unsupported keys or omits inst. Length
+                access also rejects unequal image/label file counts.
         """
         try:
             import_module("albumentations")
@@ -87,17 +93,31 @@ class TrainDatasetFolder(Dataset):
         self.map_out_keys = map_out_keys
 
     def __len__(self) -> int:
-        """Return the number of items in the db."""
+        """Return the paired sample count.
+
+        Raises:
+            ValueError: Image and label folders contain different numbers of files.
+        """
         if len(self.img_files) != len(self.label_files):
             raise ValueError("The number of images and labels must be the same.")
         return len(self.img_files)
 
     def __getitem__(self, ix: int) -> dict[str, torch.Tensor]:
-        """Read CHW float32 images, HW labels and CHW auxiliary targets.
+        """Read one augmented training sample.
 
-        Auxiliary targets describe the augmented instance geometry. Label and
-        auxiliary dtypes follow the configured transforms; choose training dtypes
-        explicitly when consuming the sample.
+        Args:
+            ix: Position in the separately sorted image and label lists.
+
+        Returns:
+            Dictionary of CPU tensors: image is CHW float32, selected labels are HW,
+            and generated targets are CHW (for example cellpose_inst). Use
+            map_out_keys to select or rename entries. H is height, W width and
+            C channels.
+
+            Label and target dtypes depend on the transforms. Convert class labels
+            to long and flow/distance targets to float before computing losses.
+            A spatial dimension of size one may be removed from labels; use
+            patches with both spatial dimensions greater than one.
         """
         img = {"image": FileHandler.read_img(self.img_files[ix])}
         masks = FileHandler.read_mat(self.label_files[ix])

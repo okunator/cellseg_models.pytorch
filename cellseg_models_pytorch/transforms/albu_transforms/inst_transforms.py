@@ -29,16 +29,23 @@ __all__ = [
 
 
 class CellposeTransform(OnlyInstMapTransform):
-    def __init__(self, deduplicate: bool = True) -> None:
-        """Generate flows from a heat diffused label mask.
+    """Generate two flow channels that guide pixels toward each object.
 
-        https://www.nature.com/articles/s41592-020-01018-x
+    Call on an integer instance mask: 0 is background and positive labels identify
+    objects. Use with ``ApplyEach`` after joint image/mask augmentation.
+
+    Attributes:
+        name: Target-key suffix, ``cellpose``.
+        out_channels: Number of target channels, 2. Scalar maps are HW;
+            ``ApplyEach(as_list=True)`` adds their final singleton channel.
+    """
+
+    def __init__(self, deduplicate: bool = True) -> None:
+        """Generate two flow channels that guide pixels toward each object.
 
         Args:
-            deduplicate:
-                Whether to fix duplicate values in the mask before transforming.
-                This adds overhead, so use only if you know that the mask has duplicates.
-                Defaults to True.
+            deduplicate: Retained for compatibility; this class currently does not apply
+                duplicate-label correction.
         """
         super().__init__()
         self.name = "cellpose"
@@ -46,31 +53,38 @@ class CellposeTransform(OnlyInstMapTransform):
         self.deduplicate = deduplicate
 
     def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
-        """Fix duplicate values and generate flows.
+        """Generate this target from one instance mask.
 
         Args:
-            inst: Instance labelled mask. Shape (H, W).
+            inst: Integer NumPy mask (H, W). Zero is background; positive IDs identify
+                individual objects. The input mask is not modified.
+            **kwargs: Extra call arguments are accepted for composition and ignored.
 
         Returns:
-            np.ndarray:
-                Horizontal and vertical flows of objects.
-                Shape: (2, H, W). Dtype: float64.
+            Floating flow map (2, H, W), with vertical then horizontal channels. H is height and W is width.
         """
 
         return gen_flow_maps(inst)
 
 
 class HoverNetTransform(OnlyInstMapTransform):
-    def __init__(self, deduplicate: bool = True) -> None:
-        """Generate horizontal and vertical gradients from a label mask.
+    """Generate horizontal and vertical position maps inside each object.
 
-        https://www.sciencedirect.com/science/article/pii/S1361841519301045
+    Call on an integer instance mask: 0 is background and positive labels identify
+    objects. Use with ``ApplyEach`` after joint image/mask augmentation.
+
+    Attributes:
+        name: Target-key suffix, ``hovernet``.
+        out_channels: Number of target channels, 2. Scalar maps are HW;
+            ``ApplyEach(as_list=True)`` adds their final singleton channel.
+    """
+
+    def __init__(self, deduplicate: bool = True) -> None:
+        """Generate horizontal and vertical position maps inside each object.
 
         Args:
-            deduplicate:
-                Whether to fix duplicate values in the mask before transforming.
-                This adds overhead, so use only if you know that the mask has duplicates.
-                Defaults to True.
+            deduplicate: Give disconnected objects separate labels before target generation.
+                Enable when the same ID may identify disconnected objects.
         """
         super().__init__()
         self.name = "hovernet"
@@ -78,15 +92,15 @@ class HoverNetTransform(OnlyInstMapTransform):
         self.deduplicate = deduplicate
 
     def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
-        """Fix duplicate values and generate gradients.
+        """Generate this target from one instance mask.
 
         Args:
-            inst: Instance labelled mask. Shape (H, W).
+            inst: Integer NumPy mask (H, W). Zero is background; positive IDs identify
+                individual objects. The input mask is not modified.
+            **kwargs: Extra call arguments are accepted for composition and ignored.
 
         Returns:
-            np.ndarray:
-                Horizontal and vertical gradients of objects.
-                Shape: (2, H, W). Dtype: float64.
+            Floating position maps (2, H, W), vertical then horizontal. H is height and W is width.
         """
         if self.deduplicate:
             inst = fix_duplicates(inst)
@@ -94,16 +108,23 @@ class HoverNetTransform(OnlyInstMapTransform):
 
 
 class OmniposeTransform(OnlyInstMapTransform):
-    def __init__(self, deduplicate: bool = True) -> None:
-        """Generate horizontal and vertical eikonal flows from a label mask.
+    """Generate two flow channels from smooth distances inside each object.
 
-        https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
+    Call on an integer instance mask: 0 is background and positive labels identify
+    objects. Use with ``ApplyEach`` after joint image/mask augmentation.
+
+    Attributes:
+        name: Target-key suffix, ``omnipose``.
+        out_channels: Number of target channels, 2. Scalar maps are HW;
+            ``ApplyEach(as_list=True)`` adds their final singleton channel.
+    """
+
+    def __init__(self, deduplicate: bool = True) -> None:
+        """Generate two flow channels from smooth distances inside each object.
 
         Args:
-            deduplicate:
-                Whether to fix duplicate values in the mask before transforming.
-                This adds overhead, so use only if you know that the mask has duplicates.
-                Defaults to True.
+            deduplicate: Give disconnected objects separate labels before target generation.
+                Enable when the same ID may identify disconnected objects.
         """
         super().__init__()
         self.name = "omnipose"
@@ -111,15 +132,15 @@ class OmniposeTransform(OnlyInstMapTransform):
         self.deduplicate = deduplicate
 
     def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
-        """Fix duplicate values and generate eikonal flows.
+        """Generate this target from one instance mask.
 
         Args:
-            inst: Instance labelled mask. Shape (H, W).
+            inst: Integer NumPy mask (H, W). Zero is background; positive IDs identify
+                individual objects. The input mask is not modified.
+            **kwargs: Extra call arguments are accepted for composition and ignored.
 
         Returns:
-            np.ndarray:
-                Horizontal and vertical gradients of objects.
-                Shape: (2, H, W). Dtype: float64.
+            Floating flow map (2, H, W), with vertical then horizontal channels. H is height and W is width.
         """
         if self.deduplicate:
             inst = fix_duplicates(inst)
@@ -127,18 +148,25 @@ class OmniposeTransform(OnlyInstMapTransform):
 
 
 class StardistTransform(OnlyInstMapTransform):
-    def __init__(self, n_rays: int = 32, deduplicate: bool = True, **kwargs):
-        """Generate radial distance maps from a label mask.
+    """Generate radial distances from each object pixel to its boundary.
 
-        https://arxiv.org/abs/1806.03535
+    Call on an integer instance mask: 0 is background and positive labels identify
+    objects. Use with ``ApplyEach`` after joint image/mask augmentation.
+
+    Attributes:
+        name: Target-key suffix, ``stardist``.
+        out_channels: Number of target channels, n_rays. Scalar maps are HW;
+            ``ApplyEach(as_list=True)`` adds their final singleton channel.
+    """
+
+    def __init__(self, n_rays: int = 32, deduplicate: bool = True, **kwargs):
+        """Generate radial distances from each object pixel to its boundary.
 
         Args:
-            n_rays: Number of rays used for computing distance maps.
-                Defaults to 32.
-            deduplicate:
-                Whether to fix duplicate values in the mask before transforming.
-                This adds overhead, so use only if you know that the mask has duplicates.
-                Defaults to True.
+            n_rays: Number of ray directions; match the network output channels.
+            deduplicate: Give disconnected objects separate labels before target generation.
+                Enable when the same ID may identify disconnected objects.
+            **kwargs: Additional arguments are accepted but unused.
         """
         super().__init__()
         self.name = "stardist"
@@ -147,16 +175,15 @@ class StardistTransform(OnlyInstMapTransform):
         self.deduplicate = deduplicate
 
     def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
-        """Fix duplicate values and generate radial distance maps.
+        """Generate this target from one instance mask.
 
-        Parameters
-            inst (np.ndarray):
-                Instance labelled mask. Shape (H, W).
+        Args:
+            inst: Integer NumPy mask (H, W). Zero is background; positive IDs identify
+                individual objects. The input mask is not modified.
+            **kwargs: Extra call arguments are accepted for composition and ignored.
 
-        Returns
-            np.ndarray:
-                Pixelwise radial distance maps.
-                Shape: (n_rays, H, W). Dtype: float64.
+        Returns:
+            Floating ray-distance map (n_rays, H, W), in pixels. H is height and W is width.
         """
         if self.deduplicate:
             inst = fix_duplicates(inst)
@@ -164,16 +191,23 @@ class StardistTransform(OnlyInstMapTransform):
 
 
 class SmoothDistTransform(OnlyInstMapTransform):
-    def __init__(self, deduplicate: bool = True):
-        """Generate FIM distance transforms from a label mask.
+    """Generate a smooth distance-to-boundary target inside each object.
 
-        https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
+    Call on an integer instance mask: 0 is background and positive labels identify
+    objects. Use with ``ApplyEach`` after joint image/mask augmentation.
+
+    Attributes:
+        name: Target-key suffix, ``smoothdist``.
+        out_channels: Number of target channels, 1. Scalar maps are HW;
+            ``ApplyEach(as_list=True)`` adds their final singleton channel.
+    """
+
+    def __init__(self, deduplicate: bool = True):
+        """Generate a smooth distance-to-boundary target inside each object.
 
         Args:
-            deduplicate:
-                Whether to fix duplicate values in the mask before transforming.
-                This adds overhead, so use only if you know that the mask has duplicates.
-                Defaults to True.
+            deduplicate: Give disconnected objects separate labels before target generation.
+                Enable when the same ID may identify disconnected objects.
         """
         super().__init__()
         self.name = "smoothdist"
@@ -181,16 +215,15 @@ class SmoothDistTransform(OnlyInstMapTransform):
         self.deduplicate = deduplicate
 
     def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
-        """Generate smooth distance transforms.
+        """Generate this target from one instance mask.
 
-        Parameters
-            inst (np.ndarray):
-                Instance labelled mask. Shape (H, W).
+        Args:
+            inst: Integer NumPy mask (H, W). Zero is background; positive IDs identify
+                individual objects. The input mask is not modified.
+            **kwargs: Extra call arguments are accepted for composition and ignored.
 
         Returns:
-            np.ndarray:
-                Smooth distance transforms of objects.
-                Shape: (H, W). Dtype: float64.
+            Floating smooth-distance map (H, W). H is height and W is width.
         """
         if self.deduplicate:
             inst = fix_duplicates(inst)
@@ -198,14 +231,23 @@ class SmoothDistTransform(OnlyInstMapTransform):
 
 
 class DistTransform(OnlyInstMapTransform):
+    """Generate a distance-to-boundary target inside each object.
+
+    Call on an integer instance mask: 0 is background and positive labels identify
+    objects. Use with ``ApplyEach`` after joint image/mask augmentation.
+
+    Attributes:
+        name: Target-key suffix, ``dist``.
+        out_channels: Number of target channels, 1. Scalar maps are HW;
+            ``ApplyEach(as_list=True)`` adds their final singleton channel.
+    """
+
     def __init__(self, deduplicate: bool = True) -> None:
-        """Generate distance transforms from a label mask.
+        """Generate a distance-to-boundary target inside each object.
 
         Args:
-            deduplicate:
-                Whether to fix duplicate values in the mask before transforming.
-                This adds overhead, so use only if you know that the mask has duplicates.
-                Defaults to True.
+            deduplicate: Give disconnected objects separate labels before target generation.
+                Enable when the same ID may identify disconnected objects.
         """
         super().__init__()
         self.name = "dist"
@@ -213,16 +255,15 @@ class DistTransform(OnlyInstMapTransform):
         self.deduplicate = deduplicate
 
     def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
-        """Generate distance transforms.
+        """Generate this target from one instance mask.
 
-        Parameters
-            inst (np.ndarray):
-                Instance labelled mask. Shape: (H, W).
+        Args:
+            inst: Integer NumPy mask (H, W). Zero is background; positive IDs identify
+                individual objects. The input mask is not modified.
+            **kwargs: Extra call arguments are accepted for composition and ignored.
 
         Returns:
-            np.ndarray:
-                Distance transforms of objects.
-                Shape: (H, W). Dtype: float64.
+            Floating distance map (H, W), using the functional generator defaults. H is height and W is width.
         """
         if self.deduplicate:
             inst = fix_duplicates(inst)
@@ -230,14 +271,23 @@ class DistTransform(OnlyInstMapTransform):
 
 
 class ContourTransform(OnlyInstMapTransform):
+    """Mark the boundaries of objects in an instance mask.
+
+    Call on an integer instance mask: 0 is background and positive labels identify
+    objects. Use with ``ApplyEach`` after joint image/mask augmentation.
+
+    Attributes:
+        name: Target-key suffix, ``contour``.
+        out_channels: Number of target channels, 1. Scalar maps are HW;
+            ``ApplyEach(as_list=True)`` adds their final singleton channel.
+    """
+
     def __init__(self, deduplicate: bool = True):
-        """Generate contour map from a label mask.
+        """Mark the boundaries of objects in an instance mask.
 
         Args:
-            deduplicate:
-                Whether to fix duplicate values in the mask before transforming.
-                This adds overhead, so use only if you know that the mask has duplicates.
-                Defaults to True.
+            deduplicate: Give disconnected objects separate labels before target generation.
+                Enable when the same ID may identify disconnected objects.
         """
         super().__init__()
         self.name = "contour"
@@ -245,15 +295,15 @@ class ContourTransform(OnlyInstMapTransform):
         self.deduplicate = deduplicate
 
     def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
-        """Generate contour transforms.
+        """Generate this target from one instance mask.
 
-        Parameters
-            inst (np.ndarray):
-                Instance labelled mask. Shape (H, W).
+        Args:
+            inst: Integer NumPy mask (H, W). Zero is background; positive IDs identify
+                individual objects. The input mask is not modified.
+            **kwargs: Extra call arguments are accepted for composition and ignored.
 
         Returns:
-            np.ndarray:
-                Contour of objects. Shape: (H, W). Dtype: float64
+            Floating contour map (H, W), with boundary pixels marked. H is height and W is width.
         """
         if self.deduplicate:
             inst = fix_duplicates(inst)
@@ -261,14 +311,23 @@ class ContourTransform(OnlyInstMapTransform):
 
 
 class EdgeWeightTransform(OnlyInstMapTransform):
+    """Assign larger loss weights to gaps between nearby objects.
+
+    Call on an integer instance mask: 0 is background and positive labels identify
+    objects. Use with ``ApplyEach`` after joint image/mask augmentation.
+
+    Attributes:
+        name: Target-key suffix, ``edgeweight``.
+        out_channels: Number of target channels, 1. Scalar maps are HW;
+            ``ApplyEach(as_list=True)`` adds their final singleton channel.
+    """
+
     def __init__(self, deduplicate: bool = True) -> None:
-        """Generate weight maps for object boundaries.
+        """Assign larger loss weights to gaps between nearby objects.
 
         Args:
-            deduplicate:
-                Whether to fix duplicate values in the mask before transforming.
-                This adds overhead, so use only if you know that the mask has duplicates.
-                Defaults to True.
+            deduplicate: Give disconnected objects separate labels before target generation.
+                Enable when the same ID may identify disconnected objects.
         """
         super().__init__()
         self.name = "edgeweight"
@@ -276,15 +335,15 @@ class EdgeWeightTransform(OnlyInstMapTransform):
         self.deduplicate = deduplicate
 
     def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
-        """Generate edge weight transforms.
+        """Generate this target from one instance mask.
 
-        Parameters
-            inst (np.ndarray):
-                Instance labelled mask. Shape (H, W).
+        Args:
+            inst: Integer NumPy mask (H, W). Zero is background; positive IDs identify
+                individual objects. The input mask is not modified.
+            **kwargs: Extra call arguments are accepted for composition and ignored.
 
         Returns:
-            np.ndarray:
-                Contour of objects. Shape: (H, W). Dtype: float64
+            Float64 boundary-weight map (H, W), not a contour label mask. H is height and W is width.
         """
         if self.deduplicate:
             inst = fix_duplicates(inst)
@@ -292,20 +351,32 @@ class EdgeWeightTransform(OnlyInstMapTransform):
 
 
 class BinarizeTransform(OnlyInstMapTransform):
+    """Convert instance labels to foreground and background.
+
+    Call on an integer instance mask: 0 is background and positive labels identify
+    objects. Use with ``ApplyEach`` after joint image/mask augmentation.
+
+    Attributes:
+        name: Target-key suffix, ``binary``.
+        out_channels: Number of target channels, 1. Scalar maps are HW;
+            ``ApplyEach(as_list=True)`` adds their final singleton channel.
+    """
+
     def __init__(self):
-        """Binarize instance labelled mask."""
+        """Configure binary target generation."""
         super().__init__()
         self.name = "binary"
         self.out_channels = 1
 
     def __call__(self, inst: np.ndarray, **kwargs) -> np.ndarray:
-        """Generate a binary mask from instance labelled mask.
+        """Generate this target from one instance mask.
 
         Args:
-            inst: Instance labelled mask. Shape (H, W).
+            inst: Integer NumPy mask (H, W). Zero is background; positive IDs identify
+                individual objects. The input mask is not modified.
+            **kwargs: Extra call arguments are accepted for composition and ignored.
 
         Returns:
-            np.ndarray:
-                Binary mask. Shape: (H, W). Dtype: uint8
+            Uint8 mask (H, W): 0 for background and 1 for foreground. H is height and W is width.
         """
         return binarize(inst)

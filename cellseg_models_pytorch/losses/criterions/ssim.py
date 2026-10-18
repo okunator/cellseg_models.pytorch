@@ -74,19 +74,21 @@ def ssim(
 
 
 class SSIM(nn.Module):
+    """Compare local image structure using SSIM dissimilarity.
+
+    Supply comparable floating maps on the same device and value scale; these
+    losses do not convert raw class scores to probabilities.
+    """
+
     def __init__(
         self, window_size: int = 11, return_cs: bool = False, **kwargs
     ) -> None:
-        """Structural similarity index loss.
-
-        I.e. the dissimilarity:
-        (1 - SSIM(x, y)) / 2
+        """Choose the local comparison window.
 
         Args:
-            window_size: Size of the gaussian kernel.
-                Defaults to 11.
-            return_cs: Return also the the contrast sensitivity coeff.
-                Defaults to False.
+            window_size: Gaussian comparison window width, normally an odd positive integer.
+            return_cs: Also return the single contrast-difference value.
+            **kwargs: Additional constructor arguments are accepted but unused.
         """
         super().__init__()
         self.window_size = window_size
@@ -94,20 +96,19 @@ class SSIM(nn.Module):
 
     def forward(
         self, yhat: torch.Tensor, target: torch.Tensor, **kwargs
-    ) -> torch.Tensor:
-        """Compute the SSIM loss.
+    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        """Compare one batch of maps.
 
-        Parameters
-            yhat (torch.Tensor):
-                The prediction map. Shape (B, C, H, W).
-            target (torch.Tensor):
-                the ground truth annotations. Shape (B, H, W).
-            target_weight (torch.Tensor, default=None):
-                The edge weight map. Shape (B, H, W).
+        Args:
+            yhat: Floating BCHW maps. B is batch size, C channels, H height and W width.
+            target: Comparable BCHW floating map. BHW labels are one-hot encoded when
+                possible; otherwise a channel axis is added.
+            **kwargs: Additional call arguments are accepted but unused.
 
         Returns:
-            torch.Tensor:
-                Computed SSIM loss (scalar).
+            A scalar in [0, 0.5] computed as clamp(1 - mean_similarity, 0, 1) / 2.
+            With return_cs=True, returns (loss, contrast_dissimilarity); the latter
+            lies in [0, 1]. Results stay on the prediction device with gradients.
         """
         # if target is label mask shaped (B, H, W) then one hot
         if len(target.shape) == 3:
@@ -129,16 +130,18 @@ class SSIM(nn.Module):
 
 
 class MSSSIM(nn.Module):
+    """Combine the package's SSIM dissimilarities across five image scales.
+
+    Supply comparable floating maps on the same device and value scale; these
+    losses do not convert raw class scores to probabilities.
+    """
+
     def __init__(self, window_size: int = 11, **kwargs) -> None:
-        """Multi-scale SSIM loss (MS-SSIM).
+        """Choose the local comparison window.
 
-        UNET3+ https://arxiv.org/pdf/2004.08790.pdf
-
-        penalizes fuzzy boundaries
-
-        Parameters
-            window_size (int, default=11):
-                Size of the gaussian kernel.
+        Args:
+            window_size: Gaussian comparison window width, normally an odd positive integer.
+            **kwargs: Additional constructor arguments are accepted but unused.
         """
         super().__init__()
         self.window_size = window_size
@@ -147,15 +150,18 @@ class MSSSIM(nn.Module):
     def forward(
         self, yhat: torch.Tensor, target: torch.Tensor, **kwargs
     ) -> torch.Tensor:
-        """Compute the MS-SSIM loss.
+        """Compare one batch of maps.
 
         Args:
-            yhat: The prediction map. Shape (B, C, H, W).
-            target: the ground truth annotations. Shape (B, H, W).
+            yhat: Floating BCHW maps. B is batch size, C channels, H height and W width.
+            target: Comparable BCHW floating map. Use spatial dimensions at least 32
+                for the five pooling steps; BHW class labels are not supported by this path.
+            **kwargs: Additional call arguments are accepted but unused.
 
         Returns:
-            torch.Tensor:
-                Computed MS-SSIM loss (scalar).
+            Scalar from the existing weighted five-scale dissimilarity calculation.
+            This is not a conventional 1 - MS-SSIM score; identical inputs do not
+            necessarily produce zero loss. Results stay on the prediction device with gradients.
         """
         weights = torch.tensor(
             [0.0448, 0.2856, 0.3001, 0.2363, 0.1333], device=yhat.device

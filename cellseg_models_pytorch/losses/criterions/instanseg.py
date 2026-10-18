@@ -6,12 +6,41 @@ __all__ = ["InstanSegCriterion"]
 
 
 class InstanSegCriterion(nn.Module):
-    def __init__(self, w_seed: float = 1.0, w_coord: float = 1.0):
+    """Train InstanSeg seed scores and object-center offsets.
+
+    Call this criterion directly with pred and target; the generic Loss and
+    MultiTaskLoss wrappers use yhat rather than pred and cannot call it unchanged.
+    """
+
+    def __init__(self, w_seed: float = 1.0, w_coord: float = 1.0) -> None:
+        """Choose the contributions of seed and coordinate losses.
+
+        Args:
+            w_seed: Multiplier on binary seed classification loss.
+            w_coord: Multiplier on mean squared coordinate-offset loss.
+        """
+
         super().__init__()
         self.w_seed = w_seed
         self.w_coord = w_coord
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        """Compare InstanSeg reconstruction maps with instance labels.
+
+        Args:
+            pred: Floating (B, 4, H, W) maps on the target device. Channels 0 and 1
+                encode x/y center offsets and channel 3 supplies seed logits.
+                Channel 2 does not contribute to this criterion.
+            target: Integer (B, H, W) instance labels. Zero is background; positive
+                IDs identify objects. Objects below five pixels get zero coordinate
+                targets. The coordinate mean includes background pixels as well.
+
+        Returns:
+            Weighted sum of the mean seed and coordinate losses, a differentiable
+            scalar on the prediction device. Center offsets are measured relative
+            to width/height; this is not a cell-type classification loss.
+        """
+
         B, C, H, W = pred.shape
         seed_map = pred[:, 3]
         coord_pred = pred[:, :2]

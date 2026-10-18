@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Union
 
 import numpy as np
-import torch
 from torch.utils.data import Dataset
 
 from cellseg_models_pytorch.utils import FileHandler
@@ -14,6 +13,12 @@ __all__ = ["FolderDatasetInfer"]
 
 
 class FolderDatasetInfer(Dataset):
+    """Load RGB images from a folder for inference.
+
+    Samples contain ``image`` and ``name``. Without a transform, images are
+    uint8 NumPy arrays with height, width, channels axes and no normalization.
+    """
+
     def __init__(
         self,
         path: Union[str, Path],
@@ -21,21 +26,20 @@ class FolderDatasetInfer(Dataset):
         transform: Optional[Callable[[np.ndarray], Any]] = None,
         n_images: int = None,
     ) -> None:
-        """Folder dataset that can be used during inference for loading images.
-
-        NOTE: loads only images.
+        """Select images and an optional image transform.
 
         Args:
-            path (str | Path): Path to the folder containing image files.
-            pattern:
-                File pattern for filtering only the files that contain the pattern.
-                Defaults to "*".
-            transform (Callable): Transform to be applied to the images.
-            n_images: First n-number of images used from the folder.
+            path: Existing folder containing images.
+            pattern: Glob pattern evaluated inside the folder. Every selected entry
+                must have a lowercase .jpeg, .jpg or .png suffix.
+            transform: Callable receiving an image positionally. Its return value
+                becomes the sample's image. For Albumentations Compose, adapt the call
+                to supply image by keyword and extract its image result.
+            n_images: Optional limit applied after sorting paths, before suffix checks.
 
         Raises:
-            ValueError: if `path` does not exist.
-            ValueError: if `path` is not a folder.
+            ValueError: The path is missing/not a directory, or a selected suffix
+                is unsupported.
         """
         super().__init__()
 
@@ -60,11 +64,19 @@ class FolderDatasetInfer(Dataset):
         self.transform = transform
 
     def __len__(self) -> int:
-        """Length of folder."""
+        """Return the number of selected image files."""
         return len(self.fnames)
 
-    def __getitem__(self, ix: int) -> torch.Tensor:
-        """Read image."""
+    def __getitem__(self, ix: int) -> dict[str, Any]:
+        """Read one selected image.
+
+        Args:
+            ix: Index in the sorted, optionally limited file list.
+
+        Returns:
+            Dictionary with ``image`` (RGB HWC NumPy array, or the transform's
+            return value) and ``name`` (filename stem without extension).
+        """
         fn = self.fnames[ix]
         im = FileHandler.read_img(fn.as_posix())
         if self.transform is not None:

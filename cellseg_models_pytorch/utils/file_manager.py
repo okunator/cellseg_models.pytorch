@@ -11,7 +11,7 @@ from .mask_utils import bounding_box, get_inst_centroid, get_inst_types
 
 try:
     import tables as tb
-    from tables import File
+    from tables import File as File  # Keep the existing optional import alias.
 
     _has_tb = True
 except ModuleNotFoundError:
@@ -186,31 +186,40 @@ class H5Handler:
 
 
 class FileHandler:
-    """Class for handling file I/O."""
+    """Read RGB images, label arrays and selected vector output formats.
+
+    Methods are static; call them on FileHandler without constructing an instance.
+    They do not create output directories or guarantee exclusive file creation.
+    """
 
     @staticmethod
     def read_img(path: Union[str, Path]) -> np.ndarray:
-        """Read an image & convert from bgr to rgb. (cv2 reads imgs in bgr).
+        """Read an image as RGB pixel values.
 
         Args:
-            path (str or Path): Path to the image file.
+            path: Image file readable by OpenCV.
 
         Returns:
-            The image. Shape (H, W, 3).
+            NumPy array (height, width, 3) in RGB channel order, normally uint8
+            with values 0–255. OpenCV's default colour read discards alpha.
+            No model normalization is applied. Decode failures raise OpenCV errors.
         """
         path = Path(path)
         return cv2.cvtColor(cv2.imread(path.as_posix()), cv2.COLOR_BGR2RGB)
 
     @staticmethod
     def read_mat(path: Union[str, Path]) -> Dict[str, np.ndarray]:
-        """Read a .mat file.
+        """Read arrays and metadata from a MATLAB file.
 
         Args:
-            path (str or Path): Path to the .mat file.
+            path: MATLAB file supported by scipy.io.loadmat; HDF5-based MATLAB v7.3
+                files are not supported by this reader.
 
         Returns:
-            Dict[str, np.ndarray]:
-                A dictionary of numpy arrays.
+            Dictionary from scipy.io.loadmat, including stored arrays and metadata
+            keys such as __header__, __version__ and __globals__. Shapes and dtypes
+            are retained. Select your label keys explicitly, for example inst/type;
+            class mappings are not inferred or remapped.
         """
         path = Path(path)
         return sio.loadmat(path.as_posix())
@@ -219,21 +228,23 @@ class FileHandler:
     def read_h5(
         path: Union[Path, str], ix: int, keys: Tuple[str, ...]
     ) -> Dict[str, np.ndarray]:
-        """Read img & mask patches at index `ix` from a hdf5 db.
+        """Read one sample from selected root-level HDF5 arrays.
 
         Args:
-            path (Path or str): Path to the h5-db.
-            ix: Index for the hdf5 db-arrays.
-            keys: Keys/Names of the arrays to be read.
+            path: Existing HDF5 file readable by PyTables.
+            ix: Index on each selected array's first axis.
+            keys: Root node names to read. Each must support node[ix, ...]; scalar
+                metadata nodes are not sample arrays.
 
         Returns:
-            Dict[str, np.ndarray]:
-                A Dict of numpy matrices. Img shape: (H, W, 3), mask shapes: (H, W).
-                keys of the dict are: "im", "inst", "type", "cyto_inst", "cyto_type",
-                "sem", "fname", "coords".
+            Dictionary with exactly the requested keys and their NumPy sample values.
+            Image nodes commonly contain HWC images and masks HW arrays, but this
+            reader preserves stored shapes, dtypes, values and key names.
 
         Raises:
-            IOError: If a mask that does not exist in the db is being read.
+            ModuleNotFoundError: PyTables is unavailable.
+            IOError: A requested node cannot be read. This wrapper reports missing
+                nodes, invalid indices and other per-node reader failures this way.
         """
         if not _has_tb:
             raise ModuleNotFoundError(
@@ -254,11 +265,18 @@ class FileHandler:
 
     @staticmethod
     def write_img(path: Union[str, Path], img: np.ndarray) -> None:
-        """Write an image.
+        """Write an RGB image using OpenCV.
 
         Args:
-            path (str or Path): Path to the image file.
-            img: The image to be written.
+            path: Destination path; its suffix selects the codec. The parent folder
+                must already exist and an existing file may be overwritten.
+            img: NumPy RGB image (height, width, 3), normally uint8 with values 0–255.
+                Convert model-normalized floats to an appropriate image range first.
+
+        Returns:
+            None. This wrapper does not check OpenCV's success flag, so a failed
+            write is not always reported as an exception. Verify output creation
+            when the surrounding workflow needs a confirmed saved file.
         """
         path = Path(path)
         cv2.imwrite(path.as_posix(), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
@@ -267,24 +285,21 @@ class FileHandler:
     def gdf_to_file(
         gdf: gpd.GeoDataFrame, path: str, silence_warnings: bool = True
     ) -> None:
-        """Write a GeoDataFrame to a file.
-
-        Following formats are supported:
-        - .feather
-        - .parquet
-        - .geojson
+        """Save a nonempty GeoDataFrame in a supported vector format.
 
         Args:
-            gdf: The GeoDataFrame to be written.
-            path (str or Path): The output filename.
-            silence_warnings: If True, warnings are silenced.
-                Defaults to True.
+            gdf: GeoDataFrame containing geometries and their attributes. Coordinate
+                units and coordinate reference system are preserved as supplied.
+            path: Destination ending in .parquet, .feather or .geojson. Parent folders
+                must exist; existing-file behavior follows the format writer.
+            silence_warnings: Suppress the warning when an empty frame is skipped.
+
+        Returns:
+            None. Empty frames and unsupported suffixes produce no file. The method
+            does not validate unsupported suffixes or signal this skip through a result.
 
         Raises:
-                ValueError: If an invalid format is given.
-
-            Warnings:
-                If the input GeoDataFrame is empty, a warning is raised.
+            ModuleNotFoundError: GeoPandas is unavailable. Format-writer errors propagate.
         """
         if not _has_gpd:
             raise ModuleNotFoundError(
@@ -316,28 +331,26 @@ class FileHandler:
         compute_bboxes: bool = False,
         compute_type_array: bool = False,
     ) -> None:
-        """Save masks to a .mat file.
-
-        Note:
-            Additonal computed arrays are saved if the corresponding flags are set:
-            - centroids: The centroids of the instance masks. Shape (N, 2).
-            - bbox: The bounding boxes of the instance masks. Shape (N, 4).
-            - inst_type: The type array from the instance array. Shape (N, 1).
+        """Save selected segmentation masks in a MATLAB file.
 
         Args:
-            masks:
-                The masks to be saved. E.g. {"inst": np.ndarray, "type": np.ndarray}.
-            path (str or Path): The output path.
-            coords:
-                The XYWH-coordinates of the image patch. (x0, y0, width, height).
-                Defaults to None.
-            compute_centroids: Compute the centroids of the instance masks.
-                Defaults to False.
-            compute_bboxes: Compute the bounding boxes of the instance masks.
-                Defaults to False.
-            comute_type_array (bool):
-                Compute the type array from the instance array. Shape (1, N).
-                Defaults to False.
+            masks: Dictionary of NumPy label arrays. Recognized keys are inst, type,
+                sem and cyto; unrecognized keys, including cyto_inst/cyto_type, are
+                ignored. Masks normally have HW axes. Instance 0 is background.
+            path: Output filename; the suffix is replaced by .mat. Parent folders
+                must exist and an existing file may be overwritten.
+            coords: Optional (x, y, width, height) metadata, saved under coords.
+                It does not shift mask pixels or derived measurements.
+            compute_centroids: Add centroid as (x, y) pixel coordinates, in sorted
+                instance-ID order. Assumes zero background is present.
+            compute_bboxes: Add bbox from the inst mask. Assumes a background label
+                is present, as the first sorted label is skipped.
+            compute_type_array: Add inst_type when inst and type are provided.
+                Uses the smallest class ID within each instance, not a majority vote.
+
+        Returns:
+            None. Saves recognized masks plus requested derived arrays. An input
+            without recognized masks can still write a metadata-only or empty file.
         """
         fname = Path(path)
         res = {}

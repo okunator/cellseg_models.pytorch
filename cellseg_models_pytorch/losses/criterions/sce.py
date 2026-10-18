@@ -7,6 +7,11 @@ __all__ = ["SCELoss"]
 
 
 class SCELoss(WeightedBaseLoss):
+    """Combine forward and reverse multiclass cross-entropy.
+
+    Inputs must share a device. B is batch size, C channels, H height and W width.
+    """
+
     def __init__(
         self,
         alpha: float = 0.5,
@@ -19,31 +24,24 @@ class SCELoss(WeightedBaseLoss):
         class_weights: torch.Tensor = None,
         **kwargs,
     ) -> None:
-        """Symmetric Cross Entropy loss.
+        """Combine forward and reverse multiclass cross-entropy.
 
         https://arxiv.org/abs/1908.06112
 
         Args:
-            alpha: Weight factor b/w [0,1].
-                Defaults to 0.5.
-            beta: Weight factor b/w [0,1].
-                Defaults to 1.0.
-            apply_sd:
-                If True, Spectral decoupling regularization will be applied  to the
-                loss matrix.
-                Defaults to False.
-            apply_ls: If True, Label smoothing will be applied to the target.
-                Defaults to False.
-            apply_svls:
-                If True, spatially varying label smoothing will be applied to the target
-                Defaults to False.
-            apply_mask:
-                If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
-                Defaults to False.
-            edge_weight: Weight that is added to object borders.
-                Defaults to none.
-            class_weights: Class weights. A tensor of shape (n_classes,).
-                Defaults to None.
+            alpha: Scale on the forward cross-entropy term.
+            beta: Scale on the reverse cross-entropy term.
+            apply_sd: Add 0.005 times the mean squared prediction across channels to
+                the per-pixel loss.
+            apply_ls: Mix the target with a uniform class distribution.
+            apply_svls: Smooth targets using neighboring pixels.
+            apply_mask: Multiply pixel losses by the supplied mask. The average still
+                includes all pixels, including those with zero mask weight.
+            edge_weight: Multiply pixel losses by edge_weight ** target_weight.
+                Supply that map when enabled; None disables this weighting.
+            class_weights: Per-class multiplier tensor of shape (C,), on the prediction device.
+                Use with integer class labels.
+            **kwargs: Additional constructor arguments are accepted but unused.
         """
         super().__init__(
             apply_sd, apply_ls, apply_svls, apply_mask, class_weights, edge_weight
@@ -60,19 +58,25 @@ class SCELoss(WeightedBaseLoss):
         mask: torch.Tensor = None,
         **kwargs,
     ) -> torch.Tensor:
-        """Compute the symmetric cross entropy loss.
+        """Compute the loss for one batch.
+
+        Masking multiplies per-pixel losses before the full-image mean; it does
+        not divide by the number of included pixels.
 
         Args:
-            yhat: The prediction map. Shape (B, C, H, W).
-            target: the ground truth annotations. Shape (B, H, W).
-            target_weight: The edge weight map. Shape (B, H, W).
-                Defaults to None.
-            mask: The mask map. Shape (B, H, W).
-                Defaults to None.
+            yhat: Floating BCHW class logits.
+            target: Integer BHW class IDs in [0, C). Default unsmoothed one-hot targets
+                contain zeros, so reverse log terms can produce infinity. Uniform
+                label smoothing can make targets positive; do not assume finite
+                default results.
+            target_weight: Optional BHW edge exponents when edge weighting is enabled.
+            mask: Optional BHW inclusion weights, used only with apply_mask=True.
+            **kwargs: Forward options for enabled smoothing methods, such as
+                label_smoothing, kernel_size and sigma; unused otherwise.
 
         Returns:
-            torch.Tensor:
-                Computed SCE loss (scalar).
+            A single loss value on the prediction device, with gradients for training.
+            Combine channel errors first, then average across images and pixels.
         """
         n_classes = yhat.shape[1]
         target_one_hot = F.one_hot(target.long(), n_classes).permute(0, 3, 1, 2)

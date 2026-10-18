@@ -30,6 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
+
 import numpy as np
 import scipy.ndimage as ndi
 import torch
@@ -42,21 +43,20 @@ __all__ = ["smooth_distance", "gen_omni_flow_maps"]
 def smooth_distance(
     inst_map: np.ndarray, device: str = "cpu", pad: int = 1
 ) -> np.ndarray:
-    """Smooth FIM (Fast Iterative Method) based distance transform.
-
-    Avoids boundary pixellation that can cause artefacts in flows.
+    """Generate smooth distance targets inside labelled objects.
 
     https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
 
     Args:
-        inst_map: Instance labelled mask. Shape (H, W).
-            device str : default="cpu"
-                One of "cuda" or "cpu".
-        pad: The number of pixels padded around the input.
-            Defaults to 1.
+        inst_map: Integer NumPy mask (H, W). Zero is background and positive
+            IDs identify individual objects. H is height and W width.
+        device: Torch computation device, normally "cpu". A CUDA device is
+            optional; the input and returned array still use CPU NumPy memory.
+        pad: Constant border padding; use at least one pixel for neighbor access.
 
     Returns:
-        Smooth distance transform. Shape: (H, W).
+        Float64 NumPy distance map (H, W), with zero background. Empty masks
+        return zeros. GPU computation transfers intermediate data to/from the device.
     """
     dists = ndi.distance_transform_edt(inst_map)
     inst_map = np.pad(inst_map, pad)
@@ -113,25 +113,25 @@ def smooth_distance(
 # Adapted from
 # https://github.com/MouseLand/cellpose/blob/master/cellpose/omnipose/core.py
 def gen_omni_flow_maps(inst_map: np.ndarray, pad: int = 1) -> np.ndarray:
-    """Generate eikonal flow maps from inst maps like in OmniPose.
+    """Generate Omnipose flow targets from smooth object distances.
 
-    I.e. take the first order x- and -y derivatives of eikonal distance
-    transfroms of the cell masks.
-
-    Omnipose: a high-precision morphology-independent solution for
-    bacterial cell segmentation Kevin J. Cutler, Carsen Stringer,
-    Paul A. Wiggins, Joseph D. Mougous bioRxiv 2021.11.03.467199;
-    doi: https://doi.org/10.1101/2021.11.03.467199
-
-    https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
 
     Args:
-        inst_map: Instance labelled mask. Shape (H, W).
-        pad: number of pixels for constant padding
-            Defaults to 1.
+        inst_map: Integer NumPy mask (H, W). Zero is background and positive
+            IDs identify individual objects. H is height and W width.
+        pad: Constant padding around each object during flow generation.
 
     Returns:
-        Y and X- flows in this order. Shape (2, H, W). Dtype: float64.
+        Float64 array (2, H, W), vertical then horizontal flow. Background
+        and empty masks are zero.
+
+    Notes:
+        Omnipose: a high-precisionmorphology-independent solution for
+        bacterial cell segmentation Kevin J. Cutler, Carsen Stringer,
+        Paul A. Wiggins, Joseph D. Mougous bioRxiv 2021.11.03.467199;
+        doi: https://doi.org/10.1101/2021.11.03.467199
+
+        https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2
     """
     # FMI euclidean distance transform
     dists = smooth_distance(inst_map)

@@ -6,6 +6,11 @@ __all__ = ["MAE"]
 
 
 class MAE(WeightedBaseLoss):
+    """Compare raw maps using mean absolute error.
+
+    Inputs must share a device. B is batch size, C channels, H height and W width.
+    """
+
     def __init__(
         self,
         alpha: float = 1e-4,
@@ -14,27 +19,19 @@ class MAE(WeightedBaseLoss):
         edge_weight: float = None,
         **kwargs,
     ) -> None:
-        """Compute the MAE loss. Used in the stardist method.
+        """Compare raw maps using mean absolute error.
 
-        Stardist:
             https://arxiv.org/pdf/1806.03535.pdf
 
-        Note:
-            additionally apply spectral decoupling and edge weights to the loss matrix.
-
         Args:
-            alpha:
-                Weight regulizer b/w [0,1]. In stardist repo, this is the parameter
-                'train_background_reg'.
-                Defaults to 1e-4.
-            apply_sd:
-                If True, applies Spectral decoupling regularization to the loss matrix.
-                Defaults to False.
-            apply_mask:
-                If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
-                Defaults to False.
-            edge_weight: Weight that is added to object borders.
-                Defaults to none.
+            alpha: Penalty on absolute predictions outside the mask when masking is enabled.
+            apply_sd: Add 0.005 times the mean squared prediction across channels to
+                the per-pixel loss.
+            apply_mask: Multiply pixel losses by the supplied mask and divide by
+                its mean weight. alpha also controls a penalty outside the mask.
+            edge_weight: Multiply pixel losses by edge_weight ** target_weight.
+                Supply that map when enabled; None disables this weighting.
+            **kwargs: Additional constructor arguments are accepted but unused.
         """
         super().__init__(apply_sd, False, False, apply_mask, None, edge_weight)
         self.alpha = alpha
@@ -48,19 +45,22 @@ class MAE(WeightedBaseLoss):
         mask: torch.Tensor = None,
         **kwargs,
     ) -> torch.Tensor:
-        """Compute the masked MAE loss.
+        """Compute the loss for one batch.
+
+        The masked sum is normalized by mean mask weight; alpha can also
+        penalize predictions outside the mask.
 
         Args:
-            yhat: The prediction map. Shape (B, C, H, W).
-            target: the ground truth annotations. Shape (B, H, W).
-            target_weight: The edge weight map. Shape (B, H, W).
-                Defaults to None.
-            mask: The mask map. Shape (B, H, W).
-                Defaults to None.
+            yhat: Floating BCHW maps; no activation is applied.
+            target: Floating targets matching BCHW, or BHW replicated across channels.
+            target_weight: Optional BHW edge exponents when edge weighting is enabled.
+            mask: Optional BHW inclusion weights, used only with apply_mask=True.
+            **kwargs: Forward options for enabled smoothing methods, such as
+                label_smoothing, kernel_size and sigma; unused otherwise.
 
         Returns:
-            torch.Tensor:
-                Computed MAE loss (scalar).
+            A single loss value on the prediction device, with gradients for training.
+            Combine channel errors first, then average across images and pixels.
         """
         n_classes = yhat.shape[1]
         if target.size() != yhat.size():

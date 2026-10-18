@@ -18,6 +18,12 @@ __all__ = ["TrainDatasetH5"]
 
 
 class TrainDatasetH5(Dataset):
+    """Load images and aligned masks from an existing HDF5 file for training.
+
+    Requires PyTables and Albumentations. Configured nodes must be arrays with
+    matching first-axis sample counts. Other metadata nodes are ignored.
+    """
+
     def __init__(
         self,
         path: str,
@@ -27,21 +33,23 @@ class TrainDatasetH5(Dataset):
         transforms: A.Compose,
         inst_transforms: ApplyEach,
     ) -> None:
-        """HDF5 train dataset for cell/panoptic segmentation models.
+        """Choose HDF5 arrays and training transforms.
 
         Args:
-            path: Path to the h5 file.
-            img_key: Key for the image data in the h5 file.
-            inst_keys:
-                Key for the instance data in the h5 file. This will be transformed
-            mask_keys: Keys for the semantic masks in the h5 file.
-            transforms: Albumentations compose object for image and mask transforms.
-            inst_transforms: ApplyEach object with as_list=True for instance transforms.
+            path: Existing HDF5 file readable by PyTables.
+            img_key: Root image node name, containing (N, H, W, C) RGB images.
+            inst_keys: Root instance nodes, each (N, H, W), used to generate targets.
+                Zero is background; positive labels identify individual objects.
+            mask_keys: Root label nodes retained in the returned sample, each
+                (N, H, W). Include an instance node here if you also need its labels.
+            transforms: Albumentations Compose for joint image/mask augmentation
+                and checkpoint-specific image normalization.
+            inst_transforms: ApplyEach with as_list=True, applied after augmentation.
 
         Raises:
-            ModuleNotFoundError: If albumentations or tables is not installed.
-            ValueError: If configured arrays have no sample axis or different
-                numbers of samples. Unselected metadata arrays are ignored.
+            ModuleNotFoundError: Albumentations or PyTables is unavailable.
+            ValueError: A selected array has no sample axis or has a different count
+                from img_key. Missing files/nodes raise the underlying reader error.
         """
         try:
             import_module("albumentations")
@@ -84,15 +92,22 @@ class TrainDatasetH5(Dataset):
                     )
 
     def __len__(self) -> int:
-        """Return the number of items in the db."""
+        """Return the shared sample count of the selected arrays."""
         return self.n_items
 
     def __getitem__(self, ix: int) -> dict[str, torch.Tensor]:
-        """Read aligned image, integer masks and float32 auxiliary targets.
+        """Read one aligned, augmented HDF5 training sample.
 
-        Images and auxiliary maps are CHW tensors; integer masks are HW tensors.
-        Auxiliary keys retain the format ``{instance_key}_{transform_name}``.
-        Targets are generated from the augmented instance geometry.
+        Args:
+            ix: Index on the arrays' shared sample axis.
+
+        Returns:
+            CPU tensor dictionary. The image uses img_key, CHW axes and float32 dtype.
+            Labels use mask_keys and int64 dtype; HW labels are squeezed, including
+            any size-one spatial axes. Auxiliary targets use CHW float32 tensors
+            named instance_key_transform_name, such as inst_cellpose. This naming
+            order differs from TrainDatasetFolder. N is sample count, H height,
+            W width and C channels. Values follow the configured transforms.
         """
         data = FileHandler.read_h5(self.path, ix, keys=self.keys)
 

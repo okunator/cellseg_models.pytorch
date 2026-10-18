@@ -82,6 +82,17 @@ class StrongAugTransform(ImageOnlyTransform):
 
 
 class AlbuStrongAugment(BaseCompose):
+    """Apply a random selection of image appearance augmentations.
+
+    Use in ``albumentations.Compose`` before normalization. It expects an RGB
+    NumPy image in the uint8 range 0–255 and leaves supplied masks unchanged.
+    Call with ``image=image`` and optionally ``masks=[mask, ...]``. Returns a
+    dictionary containing the image and any supplied masks.
+
+    The policy follows StrongAugment, described in
+    https://arxiv.org/abs/2206.15274.
+    """
+
     def __init__(
         self,
         augment_space: Dict[str, tuple] = AUGMENT_SPACE,
@@ -90,24 +101,22 @@ class AlbuStrongAugment(BaseCompose):
         seed: Optional[int] = None,
         p=1.0,
     ) -> None:
-        """Strong augment augmentation policy albumentations wrapper.
-
-        Augment like there's no tomorrow: Consistently performing neural networks for
-        medical imaging: https://arxiv.org/abs/2206.15274
+        """Choose augmentation operations and how many to apply per image.
 
         Args:
-            augment_space: Augmentation space to sample operations from.
-                Defaults to AUGMENT_SPACE.
-            operations: Number of operations to apply. If None, sample from
-                [1, len(augment_space)].
-                Defaults to [3, 4, 5]..
-            probabilites: Probabilities of sampling operations. If None, sample from
-                the uniform distribution.
-                Defaults to [0.2, 0.3, 0.5].
-            seed: Random seed.
-                Defaults to None.
-            p (float): Probability of applying the transform.
-                Defaults to 1.0.
+            augment_space: Dictionary mapping operation names to magnitude bounds.
+                The default supplies the package's supported appearance operations.
+            operations: Candidate numbers of distinct operations per image. Each
+                count must fit the number of configured operations.
+            probabilites: Sampling probabilities for those counts, in the same order.
+                This spelling is the current public parameter name.
+            seed: Seed for selecting operations and magnitudes. Operation count and
+                application probability also use NumPy's global random state.
+            p: Probability of applying the sampled operations.
+
+        Raises:
+            ValueError: Operation names/bounds are invalid or the operations and
+                probabilites lengths differ. NumPy also validates sampling arguments.
         """
         if not HAS_ALBU:
             raise ModuleNotFoundError(
@@ -131,7 +140,18 @@ class AlbuStrongAugment(BaseCompose):
         super().__init__(transforms, p=p)
 
     def __call__(self, *args, force_apply: bool = False, **data) -> Dict[str, Any]:
-        """Apply the StrongAugment transformation pipeline."""
+        """Augment one image while retaining its masks.
+
+        Args:
+            *args: Use keyword inputs; positional values are not used.
+            force_apply: Apply sampled operations regardless of p.
+            **data: ``image`` as an HWC uint8 RGB array, optionally ``masks`` as a list
+                of aligned HW masks. Other keys are not retained.
+
+        Returns:
+            Dictionary containing ``image`` and any supplied ``masks``. Image shape
+            and dtype are preserved; masks keep their labels and geometry.
+        """
         image = data["image"].copy()
 
         masks = None

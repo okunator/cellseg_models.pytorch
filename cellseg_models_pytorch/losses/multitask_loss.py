@@ -7,28 +7,27 @@ from .joint_loss import JointLoss
 
 
 class MultiTaskLoss(nn.ModuleDict):
+    """Sum losses for several named model outputs."""
+
     def __init__(
         self,
         head_losses: Dict[str, JointLoss],
         loss_weights: Dict[str, float] = None,
         **kwargs,
     ) -> None:
-        """Multi-task loss wrapper.
-
-        Combines losses from different heades to one loss function.
+        """Assign a loss to each model output.
 
         Args:
-            head_losses (Dict[str, nn.Module]):
-                Dictionary of head names mapped to a loss module.
-                e.g. {"inst": JointLoss(MSE(), Dice()), "type": Dice()}.
-            loss_weights: Dictionary of head names mapped to the weight used for
-                that head loss.
-                Defaults to None.
+            head_losses: Dictionary mapping output names to callable loss modules,
+                usually JointLoss objects. Names are the training dictionaries' keys,
+                for example cellpose and type_mask; extract tensors from network
+                output containers before calling this loss.
+            loss_weights: Optional weights with exactly the same keys as head_losses.
+                None uses 1 for each output. Weights need not sum to one.
+            **kwargs: Additional constructor arguments are accepted but unused.
 
         Raises:
-            ValueError:
-                If the input arguments have different lengths.
-                If the input arguments have mismatching keys.
+            ValueError: Weight keys or counts differ from head_losses.
         """
         super().__init__()
 
@@ -56,19 +55,25 @@ class MultiTaskLoss(nn.ModuleDict):
         targets: Dict[str, torch.Tensor],
         mask: torch.Tensor = None,
         **kwargs,
-    ) -> torch.Tensor:
-        """Compute the joint loss of the multi-task network.
+    ) -> torch.Tensor | float:
+        """Compute and add the weighted losses for the configured outputs.
 
         Args:
-            yhats: Dictionary of head names mapped to the predicted masks.
-                e.g. {"inst": (B, C, H, W), "type": (B, C, H, W)}.
-            targets: Dictionary of head names mapped to the GT masks.
-                e.g. {"inst": (B, C, H, W), "type": (B, C, H, W)}.
-            mask: The mask for masked losses. Shape (B, H, W).
-                Defaults to None.
+            yhats: Dictionary of prediction tensors. Keys must exactly match targets
+                and include every configured output; extra matching keys are not evaluated.
+            targets: Dictionary of matching class-label or regression tensors. An
+                edgeweight entry supplies spatial weights to all losses that enable
+                edge weighting; it must also be present in yhats for the key check.
+            mask: Optional BHW inclusion mask passed to each output's loss.
+            **kwargs: Additional call arguments are accepted but unused.
 
         Returns:
-            torch.Tensor: Computed multi-task loss (Scalar).
+            Weighted sum, normally a scalar tensor on the prediction device with
+            gradients. With no configured outputs, returns the number 0.0.
+
+        Raises:
+            ValueError: Prediction and target dictionary keys differ. A missing
+                configured output raises KeyError.
         """
         if yhats.keys() != targets.keys():
             raise ValueError(

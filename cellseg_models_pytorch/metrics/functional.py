@@ -27,32 +27,24 @@ def pairwise_pixel_stats(
     num_classes: int | None = None,
     metric_func: Callable[[np.ndarray, np.ndarray, np.ndarray], float] | None = None,
 ) -> list[np.ndarray]:
-    """Compute the # of TP, FP, FN pixels for each object in a labelled/semantic mask.
-
-    Optionally a binary metric can be computed instead of the satistics.
-    Atleast 2x faster than computing with `np.histogram2d`.
+    """Build overlap statistics for ground-truth and prediction label pairs.
 
     Args:
-        true: Ground truth integer semantic or instance mask. Shape (H, W).
-        pred: Predicted integer semantic or instance mask. Shape (H, W).
-            In instance mode, zero is background and IDs need not be contiguous.
-        num_classes:
-            Number of classes in the dataset. If None, stats are computed for instances.
-            If not None stats are computed for classes i.e. semantic segmentation masks.
-        metric_func: A binary metric function. e.g. `iou_score` or `dice`.
+        true: Integer HW NumPy mask. In instance mode, 0 is background and
+            positive IDs identify objects; IDs need not be consecutive.
+        pred: Same-shaped integer prediction mask.
+        num_classes: None compares sorted nonzero instance IDs. An integer
+            compares class IDs 0 through num_classes-1, including class 0.
+        metric_func: Optional function accepting tp, fp, fn pixel indicators,
+            for example iou_score, to produce one value per overlapping pair.
 
     Returns:
-        A list of 2D arrays (i, j) where i corresponds to a ground
-            truth label and j corresponds to a predicted label. Each value
-            of the matrix is the computed statistic or metric at pos (i, j).
-            By default, returns the tp, fp, and fn matrices. Returns an empty
-            list if either instance mask has no foreground labels.
-
-            If stats computed for instances:
-                Shape: (n_labels_gt, n_labels_pred). Dtype. float64.
-                Rows and columns follow sorted nonzero IDs in true and pred.
-            If stats computed for classes:
-                Shape: (num_classes, num_classes). Dtype. float64.
+        List of float64 pairwise matrices. Without metric_func, returns
+        [tp, fp, fn] counts; with it, a one-element list containing that score.
+        Rows correspond to sorted true IDs and columns to sorted predicted IDs,
+        or to all class IDs in class mode. Non-overlapping label pairs retain
+        zeros in every matrix, including fp/fn. Instance mode returns an empty
+        list if either mask has no foreground; class mode includes absent classes.
     """
     if num_classes is not None:
         true_labels = list(range(num_classes))
@@ -116,23 +108,18 @@ def pairwise_pixel_stats(
 def pairwise_object_stats(
     matches: np.ndarray, sum_reduce: bool = True
 ) -> tuple[int, int, int] | tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Count matched ground truth, unmatched predictions and unmatched ground truth.
-
-    Supply one-to-one matches when counting true-positive pairs. This helper
-    counts matched rows; it does not solve ambiguous assignments.
+    """Count detected, spurious and missed objects from a match matrix.
 
     Args:
-        matches: A pairwise boolean matrix where True values at pos (i, j)
-            indicate correctly detected objects for the corresponding
-            labels i and j. Shape: (n_labels_gt, n_labels_pred).
-        sum_reduce:
-            Reduce the boolean indice arrays by summing to get the correct
-            number of TP, FP, and FN objects.
-            Defaults to True.
+        matches: Boolean matrix (true_objects, predicted_objects). Supply
+            one-to-one matches when counting true-positive pairs; this helper
+            does not resolve ambiguous assignments.
+        sum_reduce: True returns totals. False returns the indicator arrays.
 
     Returns:
-        TP, FP and FN counts, or boolean masks when sum_reduce is False.
-        TP/FN masks index ground truth rows; FP masks index prediction columns.
+        (tp, fp, fn) integers, or boolean arrays when sum_reduce=False.
+        TP and FN arrays index ground-truth rows; FP indexes prediction columns.
+        TP counts matched rows rather than every True matrix element.
     """
     true_hits = matches.any(axis=1)
     pred_hits = matches.any(axis=0)
@@ -179,15 +166,17 @@ def panoptic_quality(
             Defaults to 1e-8.
 
     Returns:
-        Dictionary containing the detection quality (dq), segmentation
-        quality (sq) and panoptic quality (pq) values.
+        Dictionary with pq (panoptic quality), sq (mean matched-object overlap)
+        and dq (object detection F1). All three are zero if either mask has no
+        foreground. The function evaluates one mask pair without cell-type
+        classification or dataset aggregation.
 
     Raises:
         ValueError: If thresh is outside [0, 1] or not finite.
 
     Examples:
         >>> mask = np.array([[0, 1, 1]])
-        >>> round(panoptic_quality(mask, mask)["pq"], 6)
+        >>> round(float(panoptic_quality(mask, mask)["pq"]), 6)
         1.0
     """
     if not 0 <= thresh <= 1:
@@ -228,7 +217,9 @@ def average_precision(
             Defaults to 1e-8.
 
     Returns:
-        The computed precision.
+        Matched prediction fraction at this threshold. Zero if either mask has
+        no foreground. This is object precision, not TP / (TP + FP + FN),
+        and does not integrate a confidence-ranked precision-recall curve.
 
     Raises:
         ValueError: If thresh is outside [0, 1] or not finite.
@@ -254,16 +245,19 @@ def average_precision(
 
 
 def dice2(true: np.ndarray, pred: np.ndarray, eps: float = 1e-8) -> float:
-    """Compute the DICE2 metric for a labelled mask.
+    """Compute the package's pairwise instance Dice aggregate.
 
     Args:
-        true: Ground truth (labelled mask). Shape (H, W).
-        pred: Predicted (labelled mask). Shape (H, W).
-        eps: Epsilon to avoid zero div errors.
-            Defaults to 1e-8.
+        true: Integer HW instance mask; 0 is background, positive IDs are objects.
+        pred: Same-shaped prediction mask. Object IDs need not match true IDs.
+        eps: Small denominator offset.
 
     Returns:
-        The computed dice2 metric.
+        Scalar from summed pairwise intersections and fp/fn entries for
+        overlapping object pairs. This does not use one-to-one object matching;
+        objects with no overlapping pair do not contribute to these matrices.
+        Returns zero if either mask has no foreground. Do not interpret it as
+        ordinary binary Dice on the two foreground masks.
     """
     dice2 = 0.0
     stats = pairwise_pixel_stats(true, pred)
@@ -281,18 +275,21 @@ def dice2(true: np.ndarray, pred: np.ndarray, eps: float = 1e-8) -> float:
 def aggregated_jaccard_index(
     true: np.ndarray, pred: np.ndarray, thresh: float = 0.5, eps: float = 1e-8
 ) -> float:
-    """Compute the aggregated jaccard index (AJI) for a labelled mask.
+    """Aggregate instance overlap using each true object's largest intersection.
 
     Args:
-        true: Ground truth (labelled mask). Shape (H, W).
-        pred: Predicted (labelled mask). Shape (H, W).
-        thresh: Threshold for the iou to include the prediction as TP
-            Defaults to 0.5.
-        eps: Epsilon to avoid zero div errors.
-            Defaults to 1e-8.
+        true: Integer HW instance mask; 0 is background and positive IDs are objects.
+        pred: Same-shaped prediction mask. IDs may be nonconsecutive and unrelated
+            to true IDs.
+        thresh: Retained argument, currently unused. It does not filter matches.
+        eps: Small denominator offset.
 
     Returns:
-        The computed aji.
+        Scalar intersection/union aggregate. Matching uses largest intersection
+        area per true object, not largest IoU. Ties can select several predictions
+        and the same prediction can be selected for several true objects.
+        Unmatched objects contribute their area to the denominator. Returns zero
+        if either mask has no foreground. This is not unique AJI+ matching.
     """
     aji = 0.0
     stats = pairwise_pixel_stats(true, pred)
@@ -340,21 +337,25 @@ def iou_multiclass(
     eps: float = 1e-8,
     clamp_absent: bool = True,
 ) -> np.ndarray:
-    """Compute multi-class intersection over union for semantic segmentation masks.
+    """Compute intersection over union (IoU) for each class in a pair of masks.
+
+    Known limitation: if a class has no correctly overlapping pixels, the
+    underlying pairwise counts are all zero, even when that class appears in
+    either mask. Missed and extra pixels can therefore be left out. In particular,
+    accuracy can incorrectly return 1. Check this limit before using the scores.
 
     Args:
-        true: Ground truth semantic mask. Shape (H, W).
-        pred: Predicted semantic mask. Shape (H, W).
-        num_classes: Number of classes in the training dataset.
-        eps: Epsilon to avoid zero div errors.
-            Defaults to 1e-8.
-        clamp_absent:
-            If a class is not present in either true or pred, the value of that ix
-            in the result array will be clamped to -1.0.
-            Defaults to True.
+        true: Integer HW class mask with IDs from 0 to num_classes-1.
+        pred: Same-shaped predicted class IDs, not probabilities or instance IDs.
+        num_classes: Total class count, including class 0 if it is background.
+        eps: Small offset added to the denominator.
+        clamp_absent: Mark a class absent from both masks as -1. False retains
+            the computed value. Absent-class markers must be excluded from means.
 
     Returns:
-        Per class IoU-metrics. Shape: (num_classes,).
+        Float64 array (num_classes,), ordered by class ID, including class 0.
+        Uses TP / (TP + FP + FN) from the current pairwise statistics. No batch or
+        dataset mean is calculated. H is height and W width.
     """
     tp, fp, fn = pairwise_pixel_stats(true, pred, num_classes=num_classes)
     tp = tp.diagonal()
@@ -377,20 +378,25 @@ def accuracy_multiclass(
     eps: float = 1e-8,
     clamp_absent: bool = True,
 ) -> np.ndarray:
-    """Compute multi-class accuracy for semantic segmentation masks.
+    """Compute pixel accuracy for each class against all other classes.
+
+    Known limitation: if a class has no correctly overlapping pixels, the
+    underlying pairwise counts are all zero, even when that class appears in
+    either mask. Missed and extra pixels can therefore be left out. In particular,
+    accuracy can incorrectly return 1. Check this limit before using the scores.
 
     Args:
-        true: Ground truth semantic mask. Shape (H, W).
-        pred: Predicted semantic mask. Shape (H, W).
-        num_classes: Number of classes in the training dataset.
-        eps: Epsilon to avoid zero div errors.
-            Defaults to 1e-8.
-        clamp_absent (bool = True):
-            If a class is not present in either true or pred, the value of that ix
-            in the result array will be clamped to -1.0.
+        true: Integer HW class mask with IDs from 0 to num_classes-1.
+        pred: Same-shaped predicted class IDs, not probabilities or instance IDs.
+        num_classes: Total class count, including class 0 if it is background.
+        eps: Small offset added to the denominator.
+        clamp_absent: Mark a class absent from both masks as -1. False retains
+            the computed value. Absent-class markers must be excluded from means.
 
     Returns:
-        Per class accuracy-metrics. Shape: (num_classes,).
+        Float64 array (num_classes,), ordered by class ID, including class 0.
+        Uses (TP + TN) / pixel_count from the current pairwise statistics. No batch or
+        dataset mean is calculated. H is height and W width.
     """
     tp, fp, fn = pairwise_pixel_stats(true, pred, num_classes=num_classes)
     tp = tp.diagonal()
@@ -414,20 +420,25 @@ def f1score_multiclass(
     eps: float = 1e-8,
     clamp_absent: bool = True,
 ) -> np.ndarray:
-    """Compute multi-class f1-score for semantic segmentation masks.
+    """Compute F1 for each class in a pair of class masks.
+
+    Known limitation: if a class has no correctly overlapping pixels, the
+    underlying pairwise counts are all zero, even when that class appears in
+    either mask. Missed and extra pixels can therefore be left out. In particular,
+    accuracy can incorrectly return 1. Check this limit before using the scores.
 
     Args:
-        true: Ground truth semantic mask. Shape (H, W).
-        pred: Predicted semantic mask. Shape (H, W).
-        num_classes: Number of classes in the training dataset.
-        eps: Epsilon to avoid zero div errors.
-            Defaults to 1e-8.
-        clamp_absent (bool = True):
-            If a class is not present in either true or pred, the value of that ix
-            in the result array will be clamped to -1.0.
+        true: Integer HW class mask with IDs from 0 to num_classes-1.
+        pred: Same-shaped predicted class IDs, not probabilities or instance IDs.
+        num_classes: Total class count, including class 0 if it is background.
+        eps: Small offset added to the denominator.
+        clamp_absent: Mark a class absent from both masks as -1. False retains
+            the computed value. Absent-class markers must be excluded from means.
 
     Returns:
-        Per class f1score-metrics. Shape: (num_classes,).
+        Float64 array (num_classes,), ordered by class ID, including class 0.
+        Uses TP / (TP + 0.5 * FP + 0.5 * FN) from the current pairwise statistics. No batch or
+        dataset mean is calculated. H is height and W width.
     """
     tp, fp, fn = pairwise_pixel_stats(true, pred, num_classes=num_classes)
     tp = tp.diagonal()
@@ -450,20 +461,25 @@ def dice_multiclass(
     eps: float = 1e-8,
     clamp_absent: bool = True,
 ) -> np.ndarray:
-    """Compute multi-class dice for semantic segmentation masks.
+    """Compute Dice overlap for each class in a pair of class masks.
+
+    Known limitation: if a class has no correctly overlapping pixels, the
+    underlying pairwise counts are all zero, even when that class appears in
+    either mask. Missed and extra pixels can therefore be left out. In particular,
+    accuracy can incorrectly return 1. Check this limit before using the scores.
 
     Args:
-        true: Ground truth semantic mask. Shape (H, W).
-        pred: Predicted semantic mask. Shape (H, W).
-        num_classes: Number of classes in the training dataset.
-        eps: Epsilon to avoid zero div errors.
-            Defaults to 1e-8.
-        clamp_absent (bool = True):
-            If a class is not present in either true or pred, the value of that ix
-            in the result array will be clamped to -1.0.
+        true: Integer HW class mask with IDs from 0 to num_classes-1.
+        pred: Same-shaped predicted class IDs, not probabilities or instance IDs.
+        num_classes: Total class count, including class 0 if it is background.
+        eps: Small offset added to the denominator.
+        clamp_absent: Mark a class absent from both masks as -1. False retains
+            the computed value. Absent-class markers must be excluded from means.
 
     Returns:
-        Per class dice-metrics. Shape: (num_classes,).
+        Float64 array (num_classes,), ordered by class ID, including class 0.
+        Uses 2 * TP / (2 * TP + FP + FN) from the current pairwise statistics. No batch or
+        dataset mean is calculated. H is height and W width.
     """
     tp, fp, fn = pairwise_pixel_stats(true, pred, num_classes=num_classes)
     tp = tp.diagonal()
@@ -486,20 +502,25 @@ def sensitivity_multiclass(
     eps: float = 1e-8,
     clamp_absent: bool = True,
 ) -> np.ndarray:
-    """Compute multi-class sensitivity for semantic segmentation masks.
+    """Compute sensitivity (recall) for each class in a pair of class masks.
+
+    Known limitation: if a class has no correctly overlapping pixels, the
+    underlying pairwise counts are all zero, even when that class appears in
+    either mask. Missed and extra pixels can therefore be left out. In particular,
+    accuracy can incorrectly return 1. Check this limit before using the scores.
 
     Args:
-        true: Ground truth semantic mask. Shape (H, W).
-        pred: Predicted semantic mask. Shape (H, W).
-        num_classes: Number of classes in the training dataset.
-        eps: Epsilon to avoid zero div errors.
-            Defaults to 1e-8.
-        clamp_absent (bool = True):
-            If a class is not present in either true or pred, the value of that ix
-            in the result array will be clamped to -1.0.
+        true: Integer HW class mask with IDs from 0 to num_classes-1.
+        pred: Same-shaped predicted class IDs, not probabilities or instance IDs.
+        num_classes: Total class count, including class 0 if it is background.
+        eps: Small offset added to the denominator.
+        clamp_absent: Mark a class absent from both masks as -1. False retains
+            the computed value. Absent-class markers must be excluded from means.
 
     Returns:
-        Per class sensitivity-metrics. Shape: (num_classes,).
+        Float64 array (num_classes,), ordered by class ID, including class 0.
+        Uses TP / (TP + FN) from the current pairwise statistics. No batch or
+        dataset mean is calculated. H is height and W width.
     """
     tp, fp, fn = pairwise_pixel_stats(true, pred, num_classes=num_classes)
     tp = tp.diagonal()
@@ -522,20 +543,28 @@ def specificity_multiclass(
     eps: float = 1e-8,
     clamp_absent: bool = True,
 ) -> np.ndarray:
-    """Compute multi-class specificity for semantic segmentation masks.
+    """Return per-class precision under the legacy specificity name.
+
+    This function currently calculates precision, TP / (TP + FP). Do not
+    use it to measure specificity, which is TN / (TN + FP).
+
+    Known limitation: if a class has no correctly overlapping pixels, the
+    underlying pairwise counts are all zero, even when that class appears in
+    either mask. Missed and extra pixels can therefore be left out. In particular,
+    accuracy can incorrectly return 1. Check this limit before using the scores.
 
     Args:
-        true: Ground truth semantic mask. Shape (H, W).
-        pred: Predicted semantic mask. Shape (H, W).
-        num_classes: Number of classes in the training dataset.
-        eps: Epsilon to avoid zero div errors.
-            Defaults to 1e-8.
-        clamp_absent (bool = True):
-            If a class is not present in either true or pred, the value of that ix
-            in the result array will be clamped to -1.0.
+        true: Integer HW class mask with IDs from 0 to num_classes-1.
+        pred: Same-shaped predicted class IDs, not probabilities or instance IDs.
+        num_classes: Total class count, including class 0 if it is background.
+        eps: Small offset added to the denominator.
+        clamp_absent: Mark a class absent from both masks as -1. False retains
+            the computed value. Absent-class markers must be excluded from means.
 
     Returns:
-        Per class specificity-metrics. Shape: (num_classes,).
+        Float64 array (num_classes,), ordered by class ID, including class 0.
+        Uses TP / (TP + FP) from the current pairwise statistics. No batch or
+        dataset mean is calculated. H is height and W width.
     """
     tp, fp, fn = pairwise_pixel_stats(true, pred, num_classes=num_classes)
     tp = tp.diagonal()

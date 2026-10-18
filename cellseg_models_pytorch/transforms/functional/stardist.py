@@ -42,18 +42,20 @@ __all__ = ["gen_stardist_maps"]
 
 @njit
 def gen_stardist_maps(inst_map: np.ndarray, n_rays: int) -> np.ndarray:
-    """Compute radial distances for each non-zero pixel in a label mask.
+    """Measure radial distances from object pixels to their boundaries.
 
-    NOTE: Adapted from
-    - https://github.com/stardist/stardist/blob/master/stardist/geometry/geom2d.py
+    Adapted from https://github.com/stardist/stardist/blob/master/stardist/geometry/geom2d.py
 
     Args:
-        inst_map: Instance labelled mask. Shape (H, W).
-        n_rays: Number of rays.
-            Defaults to 32.
+        inst_map: Integer NumPy mask (H, W). Zero is background and positive
+            IDs identify individual objects. H is height and W width.
+        n_rays: Required positive number of ray directions. Match the network
+            and training targets; this function has no default ray count.
 
     Returns:
-        The radial distance maps. Shape (n_rays, H, W). Dtype: float32
+        Float32 radial distances (n_rays, H, W), in pixels, with zero background.
+        Empty masks return zeros. Ray 0 points along increasing columns; later
+        rays rotate toward increasing rows (clockwise in image coordinates).
     """
     n_rays = int(n_rays)
     dist = np.empty(inst_map.shape + (n_rays,), np.float32)

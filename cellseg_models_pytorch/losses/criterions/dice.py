@@ -7,6 +7,12 @@ __all__ = ["DiceLoss"]
 
 
 class DiceLoss(WeightedBaseLoss):
+    """Compare predicted and target class regions using spatial Dice overlap.
+
+    The forward method documents which image/class pairs contribute to the mean.
+    Inputs are raw logits, not class IDs or reconstructed instance labels.
+    """
+
     def __init__(
         self,
         apply_sd: bool = False,
@@ -17,11 +23,11 @@ class DiceLoss(WeightedBaseLoss):
         class_weights: torch.Tensor | None = None,
         **kwargs,
     ) -> None:
-        """Configure multiclass spatial Sørensen-Dice loss.
+        """Configure Dice loss for class masks.
 
         Args:
-            apply_sd: Add positive spectral-decoupling regularization.
-            apply_ls: Smooth one-hot targets uniformly.
+            apply_sd: Add a penalty on large prediction scores (spectral decoupling).
+            apply_ls: Soften target labels by sharing a small weight across all classes.
             apply_svls: Smooth targets using neighboring pixels.
             apply_mask: Exclude pixels with zero mask weight.
             edge_weight: Base raised to each target_weight exponent; weights
@@ -44,8 +50,8 @@ class DiceLoss(WeightedBaseLoss):
     ) -> torch.Tensor:
         """Compute spatial soft Dice loss from multiclass logits.
 
-        Reduce over H and W separately for each image and class, then average
-        losses over image/class pairs present in the target (including background).
+        Calculate overlap separately for each image and class, then average the
+        losses for classes present in each target image (including background).
         Absent target classes are excluded; their probabilities still compete
         with present classes through softmax. Class weights scale losses without
         renormalizing their mean. Mask and edge weights weight overlap and volume

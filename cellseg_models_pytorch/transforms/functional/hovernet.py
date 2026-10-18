@@ -35,24 +35,21 @@ __all__ = ["gen_hv_maps"]
 
 
 def gen_hv_maps(inst_map: np.ndarray, min_size: int = 5) -> np.ndarray:
-    """Generate horizontal and vertical gradient maps from label mask.
+    """Generate vertical and horizontal position targets inside objects.
 
-    Hover-Net: Simultaneous segmentation and classification of nuclei in multi-tissue
-    histology images, Simon Graham, Quoc Dang Vu, Shan E Ahmed Raza, Ayesha Azam,
-    Yee Wah Tsang, Jin Tae Kwak, Nasir Rajpoot, Medical Image Analysis, Volume 58,
-    2019, 101563, ISSN 1361-8415, doi: https://doi.org/10.1016/j.media.2019.101563.
-
-    https://www.sciencedirect.com/science/article/pii/S1361841519301045
 
     Args:
-        inst_map: Instance labelled mask. Shape (H, W).
-        min_size: Min size for objects. Objects less than this many pixels
-            are removed.
-            Defaults to 5.
+        inst_map: Integer NumPy mask (H, W). Zero is background and positive
+            IDs identify individual objects. H is height and W width.
+        min_size: Remove objects smaller than this pixel count from target generation.
 
     Returns:
-        The Y- and X-gradient maps in this order. Shape (2, H, W).
-        Dtype: float64.
+        Float64 array (2, H, W), vertical then horizontal positions normalized
+        to [-1, 1] within each object. Background and empty masks are zero.
+
+    Notes:
+        Based on `HoVer-Net (Graham et al., 2019)
+        <https://doi.org/10.1016/j.media.2019.101563>`_.
     """
     x_map = np.zeros_like(inst_map, dtype=np.float64)
     y_map = np.zeros_like(inst_map, dtype=np.float64)

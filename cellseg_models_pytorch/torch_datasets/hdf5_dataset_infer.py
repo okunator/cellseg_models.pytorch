@@ -18,17 +18,25 @@ __all__ = ["HDF5DatasetInfer"]
 
 
 class HDF5DatasetInfer(Dataset, FileHandler):
-    def __init__(self, path: Union[str, Path], n_images: int = None, **kwargs) -> None:
-        """Folder dataset that can be used during inference for loading images.
+    """Load image tensors and filenames from an existing HDF5 file.
 
-        NOTE: loads only images.
+    This reader expects root nodes imgs and fnames. It does not use the configurable
+    training schema or apply image normalization.
+    """
+
+    def __init__(self, path: Union[str, Path], n_images: int = None, **kwargs) -> None:
+        """Choose an HDF5 image file and optional sample limit.
 
         Args:
-            path (str | Path): Path to the folder containing image files.
-            n_images: First n-number of images used from the folder.
+            path: .h5 or .hdf5 file with imgs shaped (N, H, W, C) and UTF-8 byte
+                filenames in fnames, in matching order.
+            n_images: Optional limit on the stored filename list and dataset length.
+            **kwargs: Additional keyword arguments are accepted but unused.
 
         Raises:
-            ValueError: if the input path has incorrect suffix.
+            ImportError: PyTables is unavailable.
+            ValueError: The file suffix is unsupported. Missing files/nodes raise
+                the underlying PyTables error.
         """
         if not HAS_TABLES:
             raise ImportError(
@@ -52,11 +60,20 @@ class HDF5DatasetInfer(Dataset, FileHandler):
                 self.fnames = h5.root.fnames[:]
 
     def __len__(self) -> int:
-        """Return the number of items in the db."""
+        """Return the number of selected stored filenames."""
         return len(self.fnames)
 
-    def __getitem__(self, ix: int) -> torch.Tensor:
-        """Read image."""
+    def __getitem__(self, ix: int) -> dict[str, torch.Tensor | str]:
+        """Read one HDF5 image and its basename.
+
+        Args:
+            ix: Sample index.
+
+        Returns:
+            Dictionary with ``im`` as a CHW CPU tensor retaining the stored dtype
+            and pixel values, and ``file`` as a decoded filename including extension.
+            These keys differ from FolderDatasetInfer's image/name keys.
+        """
         fn = self.fnames[ix]
 
         with tb.open_file(self.path.as_posix(), "r") as h5:

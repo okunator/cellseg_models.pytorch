@@ -7,6 +7,11 @@ __all__ = ["BCELoss"]
 
 
 class BCELoss(WeightedBaseLoss):
+    """Compute the package's binary cross-entropy variant.
+
+    Inputs must share a device. B is batch size, C channels, H height and W width.
+    """
+
     def __init__(
         self,
         apply_sd: bool = False,
@@ -17,22 +22,20 @@ class BCELoss(WeightedBaseLoss):
         class_weights: torch.Tensor = None,
         **kwargs,
     ) -> None:
-        """Binary cross entropy loss with weighting and other tricks.
+        """Compute the package's binary cross-entropy variant.
 
-        Parameters
-            apply_sd (bool, default=False):
-                If True, Spectral decoupling regularization will be applied  to the
-                loss matrix.
-            apply_ls (bool, default=False):
-                If True, Label smoothing will be applied to the target.
-            apply_svls (bool, default=False):
-                If True, spatially varying label smoothing will be applied to the target
-            apply_mask (bool, default=False):
-                If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
-            edge_weight (float, default=None):
-                Weight that is added to object borders.
-            class_weights (torch.Tensor, default=None):
-                Class weights. A tensor of shape (n_classes,).
+        Args:
+            apply_sd: Add 0.005 times the mean squared prediction across channels to
+                the per-pixel loss.
+            apply_ls: Mix the target with a uniform class distribution.
+            apply_svls: Smooth targets using neighboring pixels.
+            apply_mask: Multiply pixel losses by the supplied mask. The average still
+                includes all pixels, including those with zero mask weight.
+            edge_weight: Multiply pixel losses by edge_weight ** target_weight.
+                Supply that map when enabled; None disables this weighting.
+            class_weights: Per-class multiplier tensor of shape (C,), on the prediction device.
+                Use with integer class labels.
+            **kwargs: Additional constructor arguments are accepted but unused.
         """
         super().__init__(
             apply_sd, apply_ls, apply_svls, apply_mask, class_weights, edge_weight
@@ -47,19 +50,24 @@ class BCELoss(WeightedBaseLoss):
         mask: torch.Tensor = None,
         **kwargs,
     ) -> torch.Tensor:
-        """Compute binary cross entropy loss.
+        """Compute the loss for one batch.
+
+        Masking multiplies per-pixel losses before the full-image mean; it does
+        not divide by the number of included pixels.
 
         Args:
-            yhat: The prediction map. Shape (B, C, H, W).
-            target: the ground truth annotations. Shape (B, H, W).
-            target_weight: The edge weight map. Shape (B, H, W).
-                Defaults to None.
-            mask: The mask map. Shape (B, H, W).
-                Defaults to None.
+            yhat: Floating BCHW predictions; currently clipped to [1e-8, 1-1e-8]
+                before binary_cross_entropy_with_logits is called. This differs from
+                standard BCE-with-logits and limits its response to large logits.
+            target: Binary targets matching BCHW, or BHW replicated across channels.
+            target_weight: Optional BHW edge exponents when edge weighting is enabled.
+            mask: Optional BHW inclusion weights, used only with apply_mask=True.
+            **kwargs: Forward options for enabled smoothing methods, such as
+                label_smoothing, kernel_size and sigma; unused otherwise.
 
         Returns:
-            torch.Tensor:
-                Computed BCE loss (scalar).
+            A single loss value on the prediction device, with gradients for training.
+            Combine channel errors first, then average across images and pixels.
         """
         num_classes = yhat.shape[1]
         yhat = torch.clip(yhat, self.eps, 1.0 - self.eps)

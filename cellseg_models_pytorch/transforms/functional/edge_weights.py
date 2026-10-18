@@ -33,15 +33,17 @@ __all__ = ["gen_weight_maps"]
 def gen_weight_maps(
     inst_map: np.ndarray, sigma: float = 5.0, w0: float = 10.0
 ) -> np.ndarray:
-    """Generate a weight map like in U-Net paper.
+    """Generate larger loss weights in gaps between nearby objects.
 
     Args:
-        inst_map: Instance labelled mask. Shape (H, W).
-        sigma: Sigma factor.
-        w0: Weight multiplied to the penalty map.
+        inst_map: Integer NumPy mask (H, W). Zero is background and positive
+            IDs identify individual objects. H is height and W width.
+        sigma: Positive distance scale in pixels; larger values spread weighting farther.
+        w0: Multiplier for the boundary penalty.
 
     Returns:
-        Object boundary boundary weight map. Shape (H, W).
+        Float64 weight map (H, W). Object interiors have weight zero. Zero
+        or one object returns all zeros; this is not a binary contour mask.
     """
     inst_list = list(np.unique(inst_map))
     if 0 in inst_list:

@@ -31,15 +31,17 @@ __all__ = ["gen_contour_maps"]
 
 
 def gen_contour_maps(inst_map: np.ndarray, thickness: int = 1) -> np.ndarray:
-    """Compute contours for every label object.
+    """Mark the contours of labelled objects.
 
     Args:
-        inst_map: Instance labelled mask. Shape (H, W).
-        thickness: Thicnkness of the contour line.
-            Defaults to 1.
+        inst_map: Integer NumPy mask (H, W). Zero is background and positive
+            IDs identify individual objects. H is height and W width.
+        thickness: Disk radius in pixels for erosion/dilation. The resulting
+            boundary band extends inside and outside each object.
 
     Returns:
-        Contours of the labelled objects. Shape (H, W).
+        Float64 contour mask (H, W), with boundary pixels marked by 1 and
+        other pixels 0. An empty mask returns zeros.
     """
     contour_map = np.zeros_like(inst_map, np.uint8)
     disk = morph.disk(thickness)
