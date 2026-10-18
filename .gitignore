@@ -76,6 +76,9 @@ instance/
 docs/_build/
 /data/panoptils/
 /data/panoptils-nuclei/
+/data/pannuke-source/
+/data/pannuke-parquet/
+/tools/pannuke/
 /docs/tutorials/training-checkpoints/
 /docs/tutorials/finetuning-checkpoints/
 /docs/tutorials/finetuned-panoptils.pt

@@ -25,6 +25,10 @@
 
 **cellseg-models.pytorch** is a library built upon [PyTorch](https://pytorch.org/) that contains multi-task encoder-decoder architectures along with dedicated post-processing methods for segmenting cell/nuclei instances. As the name might suggest, this library is heavily inspired by [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch) library for semantic segmentation.
 
+For panoptic segmentation and downstream spatial analysis of whole-slide images,
+see [Histolytics](https://hautaniemilab.github.io/histolytics/). Histolytics uses
+cellseg-models.pytorch for its segmentation models.
+
 ## Features
 
 - High level API to define cell/nuclei instance segmentation models.
@@ -38,33 +42,27 @@
 pip install cellseg-models-pytorch
 ```
 
-The upcoming maintenance release requires Python 3.10 or newer, PyTorch 2.13 or
-newer, and timm 1.0.30 or newer. These dependency minimums include upstream
-security fixes; the currently published release retains its own requirements.
-Python 3.14.1 is excluded by the required torchvision releases. The tested
-Python versions remain 3.10, 3.11, and 3.12.
-For GPU use, install a PyTorch build compatible with your GPU and driver using
-[PyTorch's installation guide](https://pytorch.org/get-started/locally/) before
-installing this library.
-
 ## Models
+
+Find pretrained checkpoints on [csmp-hub on Hugging Face](https://huggingface.co/csmp-hub).
 
 | Model                      | Paper                                                                          |
 | -------------------------- | ------------------------------------------------------------------------------ |
-| [[1](#Citation)] HoVer-Net | https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub |
-| [[2](#Citation)] Cellpose  | https://www.nature.com/articles/s41592-020-01018-x                             |
-| [[3](#Citation)] Omnipose  | https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2                    |
-| [[4](#Citation)] Stardist  | https://arxiv.org/abs/1806.03535                                               |
-| [[5](#Citation)] CellVit-SAM  | https://arxiv.org/abs/2306.15350                                               |
-| [[6](#Citation)] CPP-Net  | https://arxiv.org/abs/2102.06867                                               |
-| [[10](#References)] InstanSeg | https://arxiv.org/abs/2408.15954                                            |
+| [[1](#references)] HoVer-Net | https://www.sciencedirect.com/science/article/pii/S1361841519301045?via%3Dihub |
+| [[2](#references)] Cellpose  | https://www.nature.com/articles/s41592-020-01018-x                             |
+| [[3](#references)] Omnipose  | https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2                    |
+| [[4](#references)] Stardist  | https://arxiv.org/abs/1806.03535                                               |
+| [[5](#references)] CellVit-SAM  | https://arxiv.org/abs/2306.15350                                               |
+| [[6](#references)] CPP-Net  | https://arxiv.org/abs/2102.06867                                               |
+| [[7](#references)] InstanSeg | https://arxiv.org/abs/2408.15954                                            |
 
 ## Datasets
 
 | Dataset                       | Paper                                                                                            |
 | ----------------------------- | ------------------------------------------------------------------------------------------------ |
-| [[7, 8](#References)] Pannuke | https://arxiv.org/abs/2003.10778 , https://link.springer.com/chapter/10.1007/978-3-030-23937-4_2 |
+| [[8, 9](#references)] [PanNuke](https://huggingface.co/datasets/csmp-hub/pannuke) | https://arxiv.org/abs/2003.10778 , https://link.springer.com/chapter/10.1007/978-3-030-23937-4_2 |
 
+PanNuke is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) for noncommercial use.
 
 ## Quick Start
 
@@ -112,10 +110,9 @@ out = model.post_process(prob)
 - [4] Uwe Schmidt, Martin Weigert, Coleman Broaddus, & Gene Myers (2018). Cell Detection with Star-Convex Polygons. In Medical Image Computing and Computer Assisted Intervention - MICCAI 2018 - 21st International Conference, Granada, Spain, September 16-20, 2018, Proceedings, Part II (pp. 265–273).
 - [5] Hörst, F., Rempe, M., Heine, L., Seibold, C., Keyl, J., Baldini, G., Ugurel, S., Siveke, J., Grünwald, B., Egger, J., & Kleesiek, J. (2023). CellViT: Vision Transformers for Precise Cell Segmentation and Classification (Version 1). arXiv. https://doi.org/10.48550/ARXIV.2306.15350.
 - [6] Chen, S., Ding, C., Liu, M., Cheng, J., & Tao, D. (2023). CPP-Net: Context-Aware Polygon Proposal Network for Nucleus Segmentation. In IEEE Transactions on Image Processing (Vol. 32, pp. 980–994). Institute of Electrical and Electronics Engineers (IEEE). https://doi.org/10.1109/tip.2023.3237013
-- [7] Gamper, J., Koohbanani, N., Benet, K., Khuram, A., & Rajpoot, N. (2019) PanNuke: an open pan-cancer histology dataset for nuclei instance segmentation and classification. In European Congress on Digital Pathology (pp. 11-19).
-- [8] Gamper, J., Koohbanani, N., Graham, S., Jahanifar, M., Khurram, S., Azam, A.,Hewitt, K., & Rajpoot, N. (2020). PanNuke Dataset Extension, Insights and Baselines. arXiv preprint arXiv:2003.10778.
-- [9] Graham, S., Jahanifar, M., Azam, A., Nimir, M., Tsang, Y.W., Dodd, K., Hero, E., Sahota, H., Tank, A., Benes, K., & others (2021). Lizard: A Large-Scale Dataset for Colonic Nuclear Instance Segmentation and Classification. In Proceedings of the IEEE/CVF International Conference on Computer Vision (pp. 684-693).
-- [10] Goldsborough, T., et al. (2024). InstanSeg: an embedding-based instance segmentation algorithm optimized for accurate, efficient and portable cell segmentation. arXiv. https://arxiv.org/abs/2408.15954.
+- [7] Goldsborough, T., et al. (2024). InstanSeg: an embedding-based instance segmentation algorithm optimized for accurate, efficient and portable cell segmentation. arXiv. https://arxiv.org/abs/2408.15954.
+- [8] Gamper, J., Koohbanani, N., Benet, K., Khuram, A., & Rajpoot, N. (2019) PanNuke: an open pan-cancer histology dataset for nuclei instance segmentation and classification. In European Congress on Digital Pathology (pp. 11-19).
+- [9] Gamper, J., Koohbanani, N., Graham, S., Jahanifar, M., Khurram, S., Azam, A.,Hewitt, K., & Rajpoot, N. (2020). PanNuke Dataset Extension, Insights and Baselines. arXiv preprint arXiv:2003.10778.
 
 ## Citation
 
