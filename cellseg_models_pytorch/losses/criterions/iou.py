@@ -1,3 +1,5 @@
+from typing import Any
+
 import torch
 import torch.nn.functional as F
 
@@ -7,37 +9,30 @@ __all__ = ["IoULoss"]
 
 
 class IoULoss(WeightedBaseLoss):
+    """Compare predicted and target class regions using spatial soft IoU."""
+
     def __init__(
         self,
         apply_sd: bool = False,
         apply_ls: bool = False,
         apply_svls: bool = False,
         apply_mask: bool = False,
-        edge_weight: float = None,
-        class_weights: torch.Tensor = None,
-        **kwargs,
+        edge_weight: float | None = None,
+        class_weights: torch.Tensor | None = None,
+        **kwargs: Any,
     ) -> None:
-        """Intersection over union loss.
-
-        Optionally applies weights at the object edges and classes.
+        """Configure IoU loss for class masks.
 
         Args:
-            apply_sd:
-                If True, Spectral decoupling regularization will be applied  to the
-                loss matrix.
-                Defaults to False.
-            apply_ls: If True, Label smoothing will be applied to the target.
-                Defaults to False.
-            apply_svls:
-                If True, spatially varying label smoothing will be applied to the target
-                Defaults to False.
-            apply_mask:
-                If True, a mask will be applied to the loss matrix. Mask shape: (B, H, W)
-                Defaults to False.
-            edge_weight: Weight that is added to object borders.
-                Defaults to none.
-            class_weights: Class weights. A tensor of shape (n_classes,).
-                Defaults to None.
+            apply_sd: Add 0.005 times the mask-weighted mean squared logit
+                (spectral decoupling), independently of class and edge weights.
+            apply_ls: Soften target labels by sharing a small weight across all classes.
+            apply_svls: Smooth targets using neighboring pixels.
+            apply_mask: Exclude pixels with zero mask weight.
+            edge_weight: Base raised to each target_weight exponent; weights
+                spatial intersection and union at object borders.
+            class_weights: Nonnegative C-element weights scaling class losses.
+            **kwargs: Reserved for compatibility with the loss factory.
         """
         super().__init__(
             apply_sd, apply_ls, apply_svls, apply_mask, class_weights, edge_weight
@@ -48,56 +43,95 @@ class IoULoss(WeightedBaseLoss):
         self,
         yhat: torch.Tensor,
         target: torch.Tensor,
-        target_weight: torch.Tensor = None,
-        mask: torch.Tensor = None,
-        **kwargs,
+        target_weight: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None,
+        **kwargs: Any,
     ) -> torch.Tensor:
-        """Compute the IoU loss.
+        """Compute spatial soft IoU loss from multiclass logits.
 
-        Parameters
-            yhat (torch.Tensor):
-                The prediction map. Shape (B, C, H, W).
-            target (torch.Tensor):
-                the ground truth annotations. Shape (B, H, W).
-            target_weight (torch.Tensor, default=None):
-                The edge weight map. Shape (B, H, W).
-            mask (torch.Tensor, default=None):
-                The mask map. Shape (B, H, W).
+        Calculate soft intersection over union separately for each image and class,
+        then average target-present image/class pairs, including background.
+        Absent target classes are excluded; their probabilities still compete
+        with present classes through softmax. Class weights scale losses without
+        renormalizing their mean. Mask and edge weights apply once to both
+        intersection and union. A fully masked batch contributes zero, including
+        regularization.
+
+        Args:
+            yhat: Floating BCHW logits on the same device as the target.
+            target: BHW integer class labels in [0, C).
+            target_weight: BHW edge exponents when edge weighting is enabled.
+            mask: BHW nonnegative inclusion weights when masking is enabled.
+            **kwargs: Arguments for the selected target smoothing method.
 
         Returns:
-            torch.Tensor:
-                Computed IoU loss (scalar).
+            Scalar differentiable loss on the logits' device. Half-precision logits
+            use float32 overlap accumulation.
+
+        Raises:
+            ValueError: Shapes disagree or enabled edge weighting has no map.
+
+        Examples:
+            >>> logits = torch.zeros(1, 2, 1, 2)
+            >>> target = torch.tensor([[[0, 1]]])
+            >>> round(IoULoss()(logits, target).item(), 6)
+            0.666667
         """
-        yhat_soft = F.softmax(yhat, dim=1)
+        # Accumulate low-precision overlaps in float32 to avoid spatial-sum overflow.
+        dtype = (
+            torch.float32
+            if yhat.dtype in (torch.float16, torch.bfloat16)
+            else yhat.dtype
+        )
+        probabilities = F.softmax(yhat, dim=1, dtype=dtype)
         n_classes = yhat.shape[1]
         target_one_hot = F.one_hot(target.long(), n_classes).permute(0, 3, 1, 2)
+        if target_one_hot.shape != yhat.shape:
+            raise ValueError(
+                "IoU logits and one-hot targets must have matching BCHW shapes."
+            )
 
-        assert target_one_hot.shape == yhat.shape
+        pixel_weights = torch.ones_like(target, dtype=probabilities.dtype)
+        if self.apply_mask and mask is not None:
+            if mask.shape != target.shape:
+                raise ValueError("IoU mask must have the target's BHW shape.")
+            pixel_weights = pixel_weights * mask
+
+        if self.edge_weight is not None:
+            if target_weight is None or target_weight.shape != target.shape:
+                raise ValueError("IoU edge weighting requires a BHW target_weight map.")
+            pixel_weights = self.apply_edge_weights(pixel_weights, target_weight)
+        present = (target_one_hot * pixel_weights.unsqueeze(1)).sum((2, 3)) > 0
 
         if self.apply_svls:
             target_one_hot = self.apply_svls_to_target(
                 target_one_hot, n_classes, **kwargs
             )
-
         if self.apply_ls:
             target_one_hot = self.apply_ls_to_target(
                 target_one_hot, n_classes, **kwargs
             )
 
-        intersection = torch.sum(yhat_soft * target_one_hot, 1)  # to (B, H, W)
-        union = torch.sum(yhat_soft + target_one_hot, 1)  # to (B, H, W)
-        iou = intersection / union.clamp_min(self.eps)
-
-        if self.apply_mask and mask is not None:
-            iou = self.apply_mask_weight(iou, mask, norm=False)  # (B, H, W)
+        weights = pixel_weights.unsqueeze(1)
+        intersection = (probabilities * target_one_hot * weights).sum((2, 3))
+        union = ((probabilities + target_one_hot) * weights).sum((2, 3)) - intersection
+        losses = 1 - intersection / union.clamp_min(self.eps)
+        if self.class_weights is not None:
+            if self.class_weights.shape != (n_classes,):
+                raise ValueError("IoU class_weights must have shape (C,).")
+            losses = losses * self.class_weights
+        loss = (losses * present).sum() / present.sum().clamp_min(1)
 
         if self.apply_sd:
-            iou = self.apply_spectral_decouple(iou, yhat)
-
-        if self.class_weights is not None:
-            iou = self.apply_class_weights(iou, target)
-
-        if self.edge_weight is not None:
-            iou = self.apply_edge_weights(iou, target_weight)
-
-        return torch.mean(1.0 - iou)
+            regularization = self.apply_spectral_decouple(
+                torch.zeros_like(target), yhat.to(dtype=dtype)
+            )
+            inclusion = (
+                mask.to(dtype=dtype)
+                if self.apply_mask and mask is not None
+                else torch.ones_like(target)
+            )
+            loss = loss + (
+                regularization * inclusion
+            ).sum() / inclusion.sum().clamp_min(self.eps)
+        return loss

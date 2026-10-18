@@ -23,16 +23,16 @@ class Loss(nn.Module):
         """Choose a loss and its settings.
 
         Args:
-            name: ce, bce, dice, focal, mse, mae, ssim, msssim or sce. iou and
-                tversky also remain accepted, but their calculations across classes
-                need correction before use. The registered instanseg route
+            name: ce, bce, dice, iou, focal, mse, mae, ssim, msssim or sce.
+                tversky remains accepted, but its calculation across classes
+                needs correction before use. The registered instanseg route
                 currently rejects these forwarded options; construct InstanSegCriterion
                 directly and call it with pred and target.
             apply_sd: Add a squared-prediction penalty for losses supporting it.
             apply_ls: Uniformly smooth targets for losses supporting it.
             apply_svls: Smooth targets using neighboring pixels where supported.
-            edge_weight: Multiply pixel losses by edge_weight ** target_weight.
-                None disables this weighting.
+            edge_weight: Use edge_weight ** target_weight as per-pixel weights
+                where supported. None disables this weighting.
             class_weights: Per-class weights for losses that support class weighting.
             **kwargs: Other constructor settings for the selected loss. Supported settings
                 vary by loss; see its own entry.

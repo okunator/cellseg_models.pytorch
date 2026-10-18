@@ -22,6 +22,13 @@
 
 ## Fixes
 
+- Correct `IoULoss` to use per-image, per-class spatial intersection over union
+  and average target-present image/class pairs, including background. Apply mask
+  and edge weights to intersection and union, scale class losses, and add positive
+  spectral regularization. Fully masked inputs return zero loss and gradients;
+  half-precision spatial sums accumulate in float32. Training objectives change;
+  existing model checkpoints remain loadable.
+
 - Correct `SpotCoordinates` annotations to describe a list of bounds and iteration
   over bounds only. Returned data is unchanged.
 

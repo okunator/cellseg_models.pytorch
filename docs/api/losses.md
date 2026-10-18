@@ -14,6 +14,7 @@ maps.
 | --- | --- | --- |
 | `CELoss` | BCHW logits; BHW class IDs | Mean multiclass cross-entropy |
 | `DiceLoss` | BCHW logits; BHW class IDs | Dice loss, averaged over classes present in each target image |
+| `IoULoss` | BCHW logits; BHW class IDs | Soft IoU loss, averaged over target-present image/class pairs |
 | `FocalLoss` | BCHW logits; BHW class IDs | Cross-entropy that gives more weight to poorly predicted pixels |
 | `MSE` | BCHW raw maps; matching floating targets | Mean squared error; useful for predicting flow maps |
 | `MAE` | BCHW raw maps; matching floating targets | Mean absolute error; masking changes how errors are averaged |
@@ -23,7 +24,7 @@ maps.
 | `MSSSIM` | Comparable BCHW maps, at least 32 pixels per axis | Compares structure at five scales; differs from standard MS-SSIM |
 | `InstanSegCriterion` | B4HW maps; BHW instance IDs | Seed and center-offset losses; call directly with `pred` |
 
-`IoULoss` and `TverskyLoss` need corrections before use and are not covered here.
+`TverskyLoss` needs correction before use and is not covered here.
 Check the limitations above before choosing `BCELoss`, `SCELoss` or `MSSSIM`.
 
 ## Combine losses for a model output
@@ -86,7 +87,8 @@ Options vary by loss; check its parameters below.
 - `apply_sd` penalizes large prediction values.
 - `apply_ls` softens class labels; `apply_svls` also uses neighboring pixels.
 - `class_weights` weights classes when targets contain class IDs.
-- `edge_weight` scales each pixel's loss by `edge_weight ** target_weight`.
+- `edge_weight` sets per-pixel weights as `edge_weight ** target_weight`; how
+  these enter the calculation depends on the loss.
 - `apply_mask=True` enables masking. Masked averages differ by loss; see each
   loss's description before comparing their values.
 
@@ -99,6 +101,11 @@ Options vary by loss; check its parameters below.
 
 ```{eval-rst}
 .. autoclass:: cellseg_models_pytorch.losses.DiceLoss
+   :members: forward
+```
+
+```{eval-rst}
+.. autoclass:: cellseg_models_pytorch.losses.IoULoss
    :members: forward
 ```
 
