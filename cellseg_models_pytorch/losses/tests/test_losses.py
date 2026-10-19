@@ -66,7 +66,6 @@ def _get_dummy_class_weights(n_classes: int) -> torch.Tensor:
         "mae",
         "mse",
         "ssim",
-        "msssim",
         "dice",
         "iou",
         "focal",

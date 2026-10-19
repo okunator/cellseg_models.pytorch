@@ -22,10 +22,12 @@ maps.
 | `BCELoss` | BCHW logits; BCHW binary/soft targets, or a shared BHW binary map | Independent binary cross-entropy per output channel |
 | `SCELoss` | BCHW logits; BHW class IDs | Weighted forward and reverse multiclass cross-entropy |
 | `SSIM` | Comparable floating image/maps | Compares local image patterns; can also return a contrast difference |
-| `MSSSIM` | Comparable BCHW maps, at least 32 pixels per axis | Compares structure at five scales; differs from standard MS-SSIM |
+| `MSSSIM` | Matching floating BCHW maps, at least 161 pixels per axis with the default window | 1 minus five-scale MS-SSIM, averaged over images and channels |
 | `InstanSegCriterion` | B4HW maps; BHW instance IDs | Seed and center-offset losses; call directly with `pred` |
 
-`MSSSIM` differs from the standard definition; check its description before use.
+For `MSSSIM`, supply maps in [0, 1], or set `data_range=255` for floating images
+in [0, 255]. It does not convert logits to probabilities. Masking, weighting and
+smoothing options are unused.
 
 ## Combine losses for a model output
 

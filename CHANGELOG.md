@@ -31,6 +31,13 @@
 
 ## Fixes
 
+- Correct `MSSSIM` to compute 1 minus MS-SSIM, combining each scale once before
+  averaging image/channel scores. Identical maps now have zero loss. Use matching
+  floating BCHW maps and a fixed `data_range` (default 1); the default Gaussian
+  window requires at least 161 pixels per axis. Half-precision inputs compute in
+  float32. This changes the training objective; model checkpoints and standalone
+  `SSIM` behavior remain unchanged.
+
 - Apply `Predictor.predict(apply_boundary_weight=True)` to instance reconstruction
   and foreground maps, giving more weight to the image center and less to its
   edges. Class labels and default predictions are unchanged.

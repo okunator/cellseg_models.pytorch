@@ -1,3 +1,5 @@
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -129,66 +131,130 @@ class SSIM(nn.Module):
         return loss
 
 
-class MSSSIM(nn.Module):
-    """Combine the package's SSIM dissimilarities across five image scales.
+def _ssim_per_channel(
+    img1: torch.Tensor,
+    img2: torch.Tensor,
+    kernel: torch.Tensor,
+    data_range: float,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return raw SSIM and contrast similarities per image/channel.
 
-    Supply comparable floating maps on the same device and value scale; these
-    losses do not convert raw class scores to probabilities.
+    Inputs are matching floating BCHW maps and a same-device/dtype Gaussian
+    kernel. Valid convolution excludes image borders; both outputs have shape BC.
+    """
+    channels = img1.shape[1]
+    mu1 = F.conv2d(img1, kernel, groups=channels)
+    mu2 = F.conv2d(img2, kernel, groups=channels)
+    variance1 = F.conv2d(img1.square(), kernel, groups=channels) - mu1.square()
+    variance2 = F.conv2d(img2.square(), kernel, groups=channels) - mu2.square()
+    covariance = F.conv2d(img1 * img2, kernel, groups=channels) - mu1 * mu2
+
+    c1 = (0.01 * data_range) ** 2
+    c2 = (0.03 * data_range) ** 2
+    contrast = (2 * covariance + c2) / (variance1 + variance2 + c2)
+    similarity = (2 * mu1 * mu2 + c1) / (mu1.square() + mu2.square() + c1)
+    return (similarity * contrast).mean((2, 3)), contrast.mean((2, 3))
+
+
+class MSSSIM(nn.Module):
+    """Compare floating maps using 1 minus five-scale MS-SSIM.
+
+    Contrast is compared at each scale; brightness is compared only at the
+    coarsest scale. Image/channel scores are combined before averaging.
+    Inputs are not normalized or converted from logits or class labels.
     """
 
-    def __init__(self, window_size: int = 11, **kwargs) -> None:
-        """Choose the local comparison window.
+    def __init__(
+        self, window_size: int = 11, data_range: float = 1.0, **kwargs: object
+    ) -> None:
+        """Choose the Gaussian window and fixed input range.
 
         Args:
-            window_size: Gaussian comparison window width, normally an odd positive integer.
-            **kwargs: Additional constructor arguments are accepted but unused.
+            window_size: Positive odd Gaussian window width; sigma is 1.5.
+            data_range: Positive finite input range, normally 1 for maps in [0, 1]
+                or 255 for floating images in [0, 255]. Defaults to 1.
+            **kwargs: Accepted but unused, including weighting and smoothing options.
+
+        Raises:
+            ValueError: The window size or data range is invalid.
         """
         super().__init__()
+        if (
+            not isinstance(window_size, int)
+            or isinstance(window_size, bool)
+            or window_size < 1
+            or window_size % 2 == 0
+        ):
+            raise ValueError("window_size must be a positive odd integer.")
+        if not math.isfinite(data_range) or data_range <= 0:
+            raise ValueError("data_range must be positive and finite.")
         self.window_size = window_size
-        self.ssim = SSIM(window_size=window_size, return_cs=True)
+        self.data_range = data_range
 
     def forward(
-        self, yhat: torch.Tensor, target: torch.Tensor, **kwargs
+        self, yhat: torch.Tensor, target: torch.Tensor, **kwargs: object
     ) -> torch.Tensor:
-        """Compare one batch of maps.
+        """Compare one batch of maps on their existing device.
 
         Args:
-            yhat: Floating BCHW maps. B is batch size, C channels, H height and W width.
-            target: Comparable BCHW floating map. Use spatial dimensions at least 32
-                for the five pooling steps; BHW class labels are not supported by this path.
-            **kwargs: Additional call arguments are accepted but unused.
+            yhat: Floating BCHW maps in [0, data_range]. B is batch size, C
+                channels, H height and W width. Each spatial axis must be at least
+                max(16, 16 * (window_size - 1) + 1): 161 for the default window.
+            target: Matching BCHW maps with the same dtype, device and value range.
+            **kwargs: Accepted but unused, including masks and pixel weights.
 
         Returns:
-            Scalar from the existing weighted five-scale dissimilarity calculation.
-            This is not a conventional 1 - MS-SSIM score; identical inputs do not
-            necessarily produce zero loss. Results stay on the prediction device with gradients.
+            Scalar loss in [0, 1], zero for identical maps, with gradients on the
+            input device. Float16/bfloat16 compute in float32, including under
+            autocast; float32/float64 retain their dtype.
+
+        Raises:
+            ValueError: Input shapes, devices or dtypes differ, a batch/channel
+                axis is empty, or spatial axes are too small.
+            TypeError: Inputs are not floating tensors.
+
+        Examples:
+            >>> maps = torch.zeros(1, 1, 161, 161)
+            >>> MSSSIM()(maps, maps).item()
+            0.0
         """
-        weights = torch.tensor(
-            [0.0448, 0.2856, 0.3001, 0.2363, 0.1333], device=yhat.device
-        )
+        if yhat.ndim != 4 or yhat.shape != target.shape:
+            raise ValueError("MSSSIM requires matching BCHW maps.")
+        if yhat.device != target.device or yhat.dtype != target.dtype:
+            raise ValueError("MSSSIM inputs must have the same device and dtype.")
+        if not yhat.is_floating_point():
+            raise TypeError("MSSSIM requires floating maps, not class labels.")
+        minimum_size = max(16, 16 * (self.window_size - 1) + 1)
+        if min(yhat.shape[:2]) < 1 or min(yhat.shape[2:]) < minimum_size:
+            raise ValueError(
+                f"MSSSIM requires nonempty batches/channels and spatial axes "
+                f"of at least {minimum_size} pixels for window_size={self.window_size}."
+            )
 
-        levels = weights.size()[0]
-        msssim = []
-        mcs = []
+        # Convolution must also avoid low-precision autocast, not just its inputs.
+        with torch.autocast(device_type=yhat.device.type, enabled=False):
+            if yhat.dtype in (torch.float16, torch.bfloat16):
+                yhat, target = yhat.float(), target.float()
+            kernel = gaussian_kernel2d(
+                self.window_size,
+                sigma=1.5,
+                n_channels=yhat.shape[1],
+                device=yhat.device,
+                dtype=yhat.dtype,
+            )
+            weights = yhat.new_tensor([0.0448, 0.2856, 0.3001, 0.2363, 0.1333])
+            components = []
+            for level in range(5):
+                similarity, contrast = _ssim_per_channel(
+                    yhat, target, kernel, self.data_range
+                )
+                components.append(contrast if level < 4 else similarity)
+                if level < 4:
+                    # Symmetric zero padding preserves odd axes when downsampling.
+                    padding = (yhat.shape[2] % 2, yhat.shape[3] % 2)
+                    yhat = F.avg_pool2d(yhat, 2, padding=padding)
+                    target = F.avg_pool2d(target, 2, padding=padding)
 
-        for _ in range(levels):
-            sim, cs = self.ssim(yhat, target)
-            msssim.append(sim)
-            mcs.append(cs)
-
-            yhat = F.avg_pool2d(yhat, (2, 2))
-            target = F.avg_pool2d(target.float(), (2, 2))
-
-        msssim = torch.stack(msssim)
-        mcs = torch.stack(mcs)
-
-        # Normalize to avoid NaNs during training unstable models,
-        # not compliant with original definition
-        msssim = (msssim + 1) / 2
-        mcs = (mcs + 1) / 2
-
-        pow1 = mcs**weights
-        pow2 = msssim**weights
-
-        loss = torch.prod(pow1[:-1] * pow2[-1])
-        return loss
+            # ReLU keeps negative similarities safe under fractional powers.
+            scores = torch.stack(components).relu().clamp_max(1)
+            return 1 - (scores ** weights[:, None, None]).prod(0).mean()
