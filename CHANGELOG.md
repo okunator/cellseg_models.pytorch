@@ -45,6 +45,9 @@
 
 ## Fixes
 
+- Keep zero-mean style vectors and their gradients finite, including blank-input
+  CellPose predictions, while retaining unit-length normalization for nonzero vectors.
+
 - Match fixed-unpooling's saved matrix to the feature dtype during computation,
   allowing CPU bfloat16 autocast training without changing checkpoint buffers.
 

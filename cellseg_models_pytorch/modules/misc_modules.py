@@ -148,12 +148,23 @@ class StyleReshape(nn.Module):
             )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward style-block."""
+        """Average feature maps into normalized style vectors.
+
+        Args:
+            x: Floating BCHW features, with C matching in_channels.
+
+        Returns:
+            B-by-style_channels vectors on the feature device, following the
+            projection and autocast dtype. Nonzero vectors have unit length;
+            zero vectors remain zero, with unscaled normalization gradients.
+        """
         if self.downsample is not None:
             x = self.downsample(x)
 
         style = x.mean((2, 3), keepdim=True)
         style = self.flatten(style)
-        style = style / torch.sum(style**2, axis=1, keepdim=True) ** 0.5
+        norm = torch.linalg.vector_norm(style, dim=1, keepdim=True)
+        # A zero vector has no direction; leave it unchanged without dividing by zero.
+        style = style / norm.masked_fill(norm == 0, 1)
 
         return style
