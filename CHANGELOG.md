@@ -45,6 +45,14 @@
 
 ## Fixes
 
+- Train InstanSeg nucleus membership with the model's shared pixel classifier,
+  seed BCE and per-instance Lovász hinge instead of normalized coordinate MSE.
+  Share spatial units and crop features with reconstruction, interpret seed logits
+  as probabilities for thresholding, and repair Loss/JointLoss/MultiTaskLoss routing.
+  Pass `pixel_classifier=network.probability_net`; `w_coord` is deprecated in favor
+  of `w_inst`. Checkpoint shapes/names are unchanged, but affected models need
+  retraining. Generic weighting/smoothing options are rejected explicitly.
+
 - Correct height/width scale ordering for slide regions, tissue-mask filtering,
   spot coordinates and thumbnail rectangles when the two axes scale differently.
 

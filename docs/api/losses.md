@@ -23,7 +23,7 @@ maps.
 | `SCELoss` | BCHW logits; BHW class IDs | Weighted forward and reverse multiclass cross-entropy |
 | `SSIM` | Comparable floating image/maps | Compares local image patterns; can also return a contrast difference |
 | `MSSSIM` | Matching floating BCHW maps, at least 161 pixels per axis with the default window | 1 minus five-scale MS-SSIM, averaged over images and channels |
-| `InstanSegCriterion` | B4HW maps; BHW instance IDs | Seed and center-offset losses; call directly with `pred` |
+| `InstanSegCriterion` | B4HW maps; BHW instance IDs | Seed BCE and per-nucleus membership loss, using the model's pixel classifier |
 
 For `SSIM`, set `data_range=1` for normalized maps or `data_range=255` for
 floating images in [0, 255]. The default `None` retains prediction-only range
@@ -70,8 +70,8 @@ per loss. With SSIM, use `return_cs=False` so it returns a single tensor.
 
 Prediction and target dictionaries must have the same keys, including every
 configured output. If you supply `edgeweight`, include it in both dictionaries.
-Call `InstanSegCriterion` directly with `pred`; the composed loss helpers do not
-support it.
+InstanSeg supports these helpers when given the network's pixel classifier;
+see [InstanSeg loss](#instanseg-loss).
 
 ```{eval-rst}
 .. autoclass:: cellseg_models_pytorch.losses.JointLoss
@@ -181,7 +181,43 @@ masked input can still contribute a penalty.
    :members: forward
 ```
 
+(instanseg-loss)=
 ## InstanSeg loss
+
+Pass the network's existing `probability_net` so training and reconstruction use
+the same learned classifier. Optimize the network parameters, which include it:
+
+```python
+from cellseg_models_pytorch.losses import Loss
+from cellseg_models_pytorch.models.instanseg import instanseg_nuclei
+
+network = instanseg_nuclei(3, enc_name="resnet18", enc_pretrain=False)
+instance_criterion = Loss(
+    "instanseg", pixel_classifier=network.probability_net,
+)
+optimizer = torch.optim.AdamW(network.parameters(), lr=1e-4)
+```
+
+Apply this criterion to `network(images)["nuc"].aux_map` and BHW **instance IDs**,
+not cell-type labels. Train the cell-type head separately with a classification
+loss. Direct calls accept `pred` or `yhat`; `JointLoss` and `MultiTaskLoss` use
+`yhat` automatically.
+
+The objective follows [upstream InstanSeg](https://github.com/instanseg/instanseg/blob/414fbc9e8039c1d049cc27871d66409084ded21c/instanseg/utils/loss/instanseg_loss.py):
+seed binary cross-entropy plus per-crop Lovász hinge for nucleus membership.
+Match `window_size` and `peak_distance` to reconstruction. At most 50 seed crops
+per image are sampled by default. Images without a foreground seed above 0.5
+have only seed loss. Negative labels mark unannotated pixels; an optional binary
+`mask` excludes additional pixels from both losses and seed selection. Fully
+excluded images contribute zero to the batch average.
+
+Generic smoothing, spectral decoupling, class weights and edge weights are
+unsupported. The mask is applied when supplied, without `apply_mask=True`.
+The old coordinate MSE is replaced by membership training; `w_coord` is a
+deprecated alias for `w_inst`. Reconstruction thresholds seed **probabilities**
+after sigmoid, while the input maps remain raw logits. Existing checkpoint
+shapes and parameter names are unchanged; the corrected objective requires
+retraining models trained only with the old criterion.
 
 ```{eval-rst}
 .. autoclass:: cellseg_models_pytorch.losses.criterions.instanseg.InstanSegCriterion

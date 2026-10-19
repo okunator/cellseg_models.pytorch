@@ -16,17 +16,16 @@ class Loss(nn.Module):
         apply_sd: bool = False,
         apply_ls: bool = False,
         apply_svls: bool = False,
-        edge_weight: float = None,
-        class_weights: torch.Tensor = None,
-        **kwargs,
+        edge_weight: float | None = None,
+        class_weights: torch.Tensor | None = None,
+        **kwargs: object,
     ) -> None:
         """Choose a loss and its settings.
 
         Args:
-            name: ce, bce, dice, iou, tversky, focal, mse, mae, ssim, msssim or sce.
-                The registered instanseg route
-                currently rejects these forwarded options; construct InstanSegCriterion
-                directly and call it with pred and target.
+            name: ce, bce, dice, iou, tversky, focal, mse, mae, ssim, msssim, sce,
+                or instanseg. InstanSeg requires the network's probability_net
+                as pixel_classifier and does not support the generic options below.
             apply_sd: Add a squared-prediction penalty for losses supporting it.
             apply_ls: Uniformly smooth targets for losses supporting it.
             apply_svls: Smooth targets using neighboring pixels where supported.
@@ -47,14 +46,27 @@ class Loss(nn.Module):
                 f"Illegal loss function given. Allowed: {allowed}. Got: '{name}'"
             )
 
-        self.loss = SEG_LOSS_LOOKUP[name](
-            apply_sd=apply_sd,
-            apply_ls=apply_ls,
-            apply_svls=apply_svls,
-            edge_weight=edge_weight,
-            class_weights=class_weights,
-            **kwargs,
-        )
+        if name == "instanseg":
+            if (
+                apply_sd
+                or apply_ls
+                or apply_svls
+                or edge_weight is not None
+                or class_weights is not None
+            ):
+                raise ValueError(
+                    "InstanSeg does not support generic smoothing, regularization or weighting options"
+                )
+            self.loss = SEG_LOSS_LOOKUP[name](**kwargs)
+        else:
+            self.loss = SEG_LOSS_LOOKUP[name](
+                apply_sd=apply_sd,
+                apply_ls=apply_ls,
+                apply_svls=apply_svls,
+                edge_weight=edge_weight,
+                class_weights=class_weights,
+                **kwargs,
+            )
 
     def forward(
         self,
