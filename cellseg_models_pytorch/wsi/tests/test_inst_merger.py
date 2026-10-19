@@ -1,4 +1,5 @@
 import geopandas as gpd
+import numpy as np
 import pytest
 from shapely import distance
 from shapely.geometry import box
@@ -796,3 +797,51 @@ def test_view_ties_use_retained_rows_after_excluding_fragments():
         actual.geometry.to_wkb().tolist()
         == source.geometry.iloc[[1, 3, 4]].to_wkb().tolist()
     )
+
+
+def test_tile_clearance_uses_nearest_edge_and_handles_empty_tiles(coordinate_offset):
+    dx, dy = coordinate_offset
+    source = gpd.GeoDataFrame(
+        geometry=[
+            box(2, 30, 10, 40),
+            box(30, 3, 40, 10),
+            box(90, 30, 96, 40),
+            box(30, 60, 40, 75),
+            box(0, 20, 10, 30),
+            box(-2, 20, 10, 30),
+            box(110, 20, 120, 30),
+        ]
+    )
+    source.geometry = source.geometry.translate(xoff=dx, yoff=dy)
+    original = source.geometry.to_wkb().tolist()
+    merger = InstMerger(
+        source,
+        [(dx, dy, 100, 80), (200 + dx, dy, 100, 80)],
+        tile_indices=[0] * len(source),
+    )
+    rows, clearance, partial = merger._tile_detections(source.geometry.to_numpy())
+
+    # The last two contours cross the tile edge or lie entirely outside it.
+    np.testing.assert_array_equal(clearance, [2, 3, 4, 5, 0, 0, 10])
+    assert clearance.dtype == np.float64
+    np.testing.assert_array_equal(partial, [False, False, False, False, True, True, False])
+    np.testing.assert_array_equal(rows[0], np.arange(len(source)))
+    assert len(rows) == 2 and rows[1].size == 0
+    assert source.geometry.to_wkb().tolist() == original
+
+
+def test_tile_choice_uses_least_clear_nucleus_not_average_clearance(union_backend):
+    geometries = np.array([box(0, 0, 10, 10), box(20, 0, 30, 10)] * 2)
+    views = {np.intp(0): [0, 1], np.intp(1): [2, 3]}
+    clearance = np.array([1.0, 100.0, 2.0, 3.0])
+    flags = np.zeros(4, dtype=bool)
+
+    selected_tile, selected_rows, footprints = inst_merger._choose_tile(
+        views, geometries, clearance, flags, flags, coordinate_tolerance=1e-9
+    )
+
+    # Both views cover the same area; tile 1 keeps every nucleus farther from an edge.
+    assert selected_tile == 1
+    assert selected_rows == {2, 3}
+    assert footprints[0].equals(footprints[1])
+    np.testing.assert_array_equal(clearance, [1, 100, 2, 3])

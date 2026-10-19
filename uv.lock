@@ -283,7 +283,7 @@ requires-dist = [
     { name = "mpire", extras = ["dill"], specifier = ">=2.10.2,<3" },
     { name = "networkx", specifier = ">=3.4.2,<4" },
     { name = "numba", specifier = ">=0.68.0,<0.69" },
-    { name = "numpy", specifier = ">=2.2.6,<2.6" },
+    { name = "numpy", specifier = ">=2.2.6" },
     { name = "opencv-python-headless", specifier = ">=4.14.0,<5" },
     { name = "pandas", specifier = ">=2.3.1,<4" },
     { name = "pillow", specifier = ">=12.3.0,<13" },

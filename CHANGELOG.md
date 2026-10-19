@@ -45,6 +45,9 @@
 
 ## Fixes
 
+- Remove the direct NumPy upper bound while retaining the 2.2.6 minimum.
+  Keep WSI merger reductions compatible with NumPy 2.5 typing.
+
 - Count missed and extra class pixels even without same-class overlap, and
   compute multiclass specificity from true negatives instead of precision.
   Preserve instance matching and the absent-class marker.

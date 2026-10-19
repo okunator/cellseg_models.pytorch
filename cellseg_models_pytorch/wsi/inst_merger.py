@@ -192,7 +192,7 @@ def _choose_tile(
         if len(supported) == 1:
             break
         if priority == "clearance":
-            values = {tile: clearance[whole_views[tile]].min() for tile in supported}
+            values = {tile: np.min(clearance[whole_views[tile]]) for tile in supported}
             tolerance = coordinate_tolerance
         else:
             values = footprint_areas
@@ -383,13 +383,14 @@ class InstMerger:
             tile_rows, tiles, bounds(tiles)
         ):
             edges = bounds(geometries[rows])
-            clearance = np.minimum.reduce(
+            clearance = np.min(
                 (
                     edges[:, 0] - minx,
                     edges[:, 1] - miny,
                     maxx - edges[:, 2],
                     maxy - edges[:, 3],
-                )
+                ),
+                axis=0,
             )
             outside = clearance < 0
             if outside.any():

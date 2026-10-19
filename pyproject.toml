@@ -8,7 +8,7 @@ authors = [{name = "Okunator", email = "oskari.lehtonen@helsinki.fi"}]
 requires-python = ">=3.10,<4.0,!=3.14.1"
 keywords = ["cell segmentation", "nuclei segmentation", "pytorch", "pytorch-lightning"]
 dependencies = [
-    "numpy>=2.2.6,<2.6",
+    "numpy>=2.2.6",
     "timm>=1.0.30,<2",
     "numba>=0.68.0,<0.69",
     "torch>=2.13.0,<3.0.0",
