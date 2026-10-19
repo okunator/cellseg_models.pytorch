@@ -157,3 +157,10 @@ lightning_logs
 /data/panoptils-refined-splits/
 /data/cytonuke-source/
 /data/cytonuke-parquet/
+
+# Local torch.compile experiments and generated benchmark artifacts
+/.local/torch-compile-20261019/
+/tools/compile-benchmark-results-*/
+
+# Local archive of retired test diagnostics and unused assets
+/.local/test-suite-audit-20261019/

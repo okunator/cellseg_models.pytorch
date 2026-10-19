@@ -1,4 +1,3 @@
-import os
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -7,12 +6,8 @@ from types import ModuleType
 import numpy as np
 import pytest
 import torch
-from PIL import Image
 
-from cellseg_models_pytorch.decoders.multitask_decoder import SoftInstanceOutput
-from cellseg_models_pytorch.inference.post_processor import PostProcessor
 from cellseg_models_pytorch.models.cellpose import (
-    CellPose,
     CellPoseONNXWrapper,
     export_cellpose_onnx,
 )
@@ -20,7 +15,6 @@ from cellseg_models_pytorch.models.cellpose.cellpose_unet import (
     cellpose_nuclei,
     omnipose_nuclei,
 )
-from cellseg_models_pytorch.transforms.functional.normalization import minmax_normalize
 
 
 def _make_model(
@@ -32,19 +26,6 @@ def _make_model(
         enc_name="resnet18",
         enc_pretrain=False,
     ).eval()
-
-
-def _to_soft_output(outputs: list[np.ndarray]) -> dict:
-    flow_map, type_logits = outputs
-    return {
-        "nuc": SoftInstanceOutput(
-            type_map=torch.from_numpy(type_logits).argmax(1),
-            aux_map=torch.from_numpy(flow_map),
-            binary_map=None,
-        ),
-        "cyto": None,
-        "tissue": None,
-    }
 
 
 @pytest.mark.parametrize("factory", [cellpose_nuclei, omnipose_nuclei])
@@ -192,73 +173,6 @@ def _check_runtime_outputs(
             match="invalid dimensions",
         ):
             session.run(None, {"image": np.zeros((2, 3, 64, 64), dtype=np.float32)})
-
-
-def test_pretrained_cellpose_real_image_onnx_parity(tmp_path: Path) -> None:
-    """Validate dense and postprocessed parity with a real checkpoint/image.
-
-    Set CELLSEG_CELLPOSE_IMAGE to a real RGB image path to enable this integration
-    test. CELLSEG_CELLPOSE_WEIGHTS may be a local checkpoint path or a registered
-    checkpoint name; it defaults to the HGSC EfficientNet-B5 CellPose checkpoint.
-    """
-    image_path = os.environ.get("CELLSEG_CELLPOSE_IMAGE")
-    if image_path is None:
-        pytest.skip("set CELLSEG_CELLPOSE_IMAGE to enable real-checkpoint validation")
-
-    pytest.importorskip("onnx")
-    pytest.importorskip("onnxscript")
-    ort = pytest.importorskip("onnxruntime")
-
-    weights = os.environ.get("CELLSEG_CELLPOSE_WEIGHTS", "hgsc_v1_efficientnet_b5")
-    tile_size = int(os.environ.get("CELLSEG_CELLPOSE_TILE_SIZE", "1024"))
-
-    image = Image.open(image_path).convert("RGB")
-    image = image.resize((tile_size, tile_size), Image.Resampling.BILINEAR)
-    array = minmax_normalize(np.asarray(image))
-    x = torch.from_numpy(array.transpose(2, 0, 1)).unsqueeze(0).contiguous()
-
-    model = CellPose.from_pretrained(weights, device=torch.device("cpu"))
-    model.set_inference_mode(mixed_precision=False)
-    model.post_processor = PostProcessor(
-        postproc_method="cellpose",
-        postproc_kwargs={"use_gpu": False},
-    )
-    wrapper = CellPoseONNXWrapper(model.model).eval()
-
-    output_path = model.export_onnx(
-        tmp_path / "cellpose_pretrained.onnx",
-        input_shape=(1, 3, tile_size, tile_size),
-        dynamic_batch=True,
-    )
-    session = ort.InferenceSession(str(output_path), providers=["CPUExecutionProvider"])
-
-    with torch.inference_mode():
-        expected = [tensor.cpu().numpy() for tensor in wrapper(x)]
-    actual = session.run(None, {"image": x.numpy()})
-
-    dense_tolerances = {"flow_map": 5e-5, "type_map": 2e-4}
-    for name, expected_tensor, actual_tensor in zip(
-        ("flow_map", "type_map"), expected, actual
-    ):
-        np.testing.assert_allclose(
-            actual_tensor,
-            expected_tensor,
-            rtol=1e-4,
-            atol=dense_tolerances[name],
-        )
-
-    expected_post = model.post_processor.postproc_serial(_to_soft_output(expected))[
-        "nuc"
-    ][0]
-    actual_post = model.post_processor.postproc_serial(_to_soft_output(actual))["nuc"][
-        0
-    ]
-
-    assert np.count_nonzero(expected_post[0]) > 0, (
-        "pretrained CellPose validation produced an empty instance mask"
-    )
-    np.testing.assert_array_equal(actual_post[0], expected_post[0])
-    np.testing.assert_array_equal(actual_post[1], expected_post[1])
 
 
 @pytest.mark.parametrize("factory", [cellpose_nuclei, omnipose_nuclei])

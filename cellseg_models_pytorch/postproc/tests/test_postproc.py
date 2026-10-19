@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import torch
 
 from cellseg_models_pytorch.postproc import (
     fill_holes_and_remove_small_masks,
@@ -62,7 +63,9 @@ def test_postproc_cellpose(inst_map, return_flows, interp):
 
 
 @pytest.mark.parametrize("return_flows", [True, False])
-def test_postproc_omnipose(inst_map, return_flows):
+def test_postproc_omnipose(inst_map, return_flows, monkeypatch):
+    # Keep ordinary reconstruction checks on CPU even when CUDA is available.
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
     flows = gen_flow_maps(inst_map)
 
     if not return_flows:
@@ -127,7 +130,7 @@ def test_postproc_dcan(inst_map):
 
 
 def test_postproc_stardist(mask_patch_dir):
-    mask_path = sorted(mask_patch_dir.glob("*"))[0]
+    mask_path = mask_patch_dir / "patch1.mat"
     inst_map = FileHandler.read_mat(mask_path)["inst_map"]
     stardist = gen_stardist_maps(inst_map, 32)
     dist = gen_dist_maps(inst_map)

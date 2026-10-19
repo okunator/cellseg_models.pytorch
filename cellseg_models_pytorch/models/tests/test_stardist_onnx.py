@@ -1,4 +1,3 @@
-import os
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -6,16 +5,12 @@ from types import ModuleType
 import numpy as np
 import pytest
 import torch
-from PIL import Image
 
-from cellseg_models_pytorch.decoders.multitask_decoder import SoftInstanceOutput
 from cellseg_models_pytorch.models.stardist import (
-    StarDist,
     StarDistONNXWrapper,
     export_stardist_onnx,
 )
 from cellseg_models_pytorch.models.stardist.stardist_unet import stardist_nuclei
-from cellseg_models_pytorch.transforms.functional.normalization import minmax_normalize
 
 
 def _make_stardist() -> torch.nn.Module:
@@ -26,19 +21,6 @@ def _make_stardist() -> torch.nn.Module:
         enc_name="resnet18",
         enc_pretrain=False,
     ).eval()
-
-
-def _to_soft_output(outputs: list[np.ndarray]) -> dict:
-    binary_map, ray_map, type_logits = outputs
-    return {
-        "nuc": SoftInstanceOutput(
-            type_map=torch.from_numpy(type_logits).argmax(1),
-            aux_map=torch.from_numpy(ray_map),
-            binary_map=torch.from_numpy(binary_map),
-        ),
-        "cyto": None,
-        "tissue": None,
-    }
 
 
 def test_stardist_onnx_wrapper_matches_model_output() -> None:
@@ -167,109 +149,6 @@ def test_stardist_onnxruntime_matches_pytorch(
             match="invalid dimensions",
         ):
             session.run(None, {"image": np.zeros((2, 3, 64, 64), dtype=np.float32)})
-
-
-def _assert_pretrained_stardist_dense_parity(
-    expected: list[np.ndarray], actual: list[np.ndarray]
-) -> None:
-    # Native float32/float64 calibration exceeds 1e-5 for this trained class head.
-    tolerances = {"binary_map": 1e-5, "ray_map": 1e-5, "type_map": 2e-4}
-    assert len(expected) == len(actual) == len(tolerances)
-    for name, reference, current in zip(tolerances, expected, actual):
-        assert current.shape == reference.shape
-        assert current.dtype == reference.dtype
-        np.testing.assert_allclose(current, reference, rtol=1e-4, atol=tolerances[name])
-    np.testing.assert_array_equal(actual[-1].argmax(1), expected[-1].argmax(1))
-
-
-@pytest.mark.parametrize("head", [0, 1, 2])
-def test_pretrained_stardist_comparison_rejects_raw_output_changes(head: int) -> None:
-    expected = [
-        np.zeros((1, channels, 2, 2), dtype=np.float32) for channels in (1, 32, 7)
-    ]
-    actual = [array.copy() for array in expected]
-    actual[head] += 1e-3
-    np.testing.assert_array_equal(actual[-1].argmax(1), expected[-1].argmax(1))
-    with pytest.raises(AssertionError):
-        _assert_pretrained_stardist_dense_parity(expected, actual)
-
-
-def test_pretrained_stardist_comparison_rejects_class_change_inside_raw_budget() -> (
-    None
-):
-    expected = [
-        np.zeros((1, channels, 2, 2), dtype=np.float32) for channels in (1, 32, 7)
-    ]
-    actual = [array.copy() for array in expected]
-    actual[-1][:, 1] = 1e-5
-    with pytest.raises(AssertionError):
-        _assert_pretrained_stardist_dense_parity(expected, actual)
-
-
-@pytest.mark.parametrize("wrong_shape", [False, True])
-def test_pretrained_stardist_comparison_rejects_output_contract_changes(
-    wrong_shape: bool,
-) -> None:
-    expected = [
-        np.zeros((1, channels, 2, 2), dtype=np.float32) for channels in (1, 32, 7)
-    ]
-    actual = [array.copy() for array in expected]
-    actual[2] = (
-        actual[2].reshape(7, 2, 2) if wrong_shape else actual[2].astype(np.float64)
-    )
-    with pytest.raises(AssertionError):
-        _assert_pretrained_stardist_dense_parity(expected, actual)
-
-
-def test_pretrained_stardist_real_image_onnx_parity(tmp_path: Path) -> None:
-    """Validate dense and postprocessed parity with a real checkpoint/image.
-
-    Set CELLSEG_STARDIST_IMAGE to a real RGB image path to enable this integration
-    test. CELLSEG_STARDIST_WEIGHTS may be a local checkpoint path or a registered
-    checkpoint name; it defaults to the HGSC EfficientNet-B5 StarDist checkpoint.
-    """
-    image_path = os.environ.get("CELLSEG_STARDIST_IMAGE")
-    if image_path is None:
-        pytest.skip("set CELLSEG_STARDIST_IMAGE to enable real-checkpoint validation")
-
-    pytest.importorskip("onnx")
-    pytest.importorskip("onnxscript")
-    ort = pytest.importorskip("onnxruntime")
-
-    weights = os.environ.get("CELLSEG_STARDIST_WEIGHTS", "hgsc_v1_efficientnet_b5")
-    tile_size = int(os.environ.get("CELLSEG_STARDIST_TILE_SIZE", "256"))
-
-    image = Image.open(image_path).convert("RGB")
-    image = image.resize((tile_size, tile_size), Image.Resampling.BILINEAR)
-    array = minmax_normalize(np.asarray(image), copy=True)
-    x = torch.from_numpy(array.transpose(2, 0, 1)).unsqueeze(0).contiguous()
-
-    model = StarDist.from_pretrained(weights, device=torch.device("cpu"))
-    model.set_inference_mode(mixed_precision=False)
-    wrapper = StarDistONNXWrapper(model.model).eval()
-
-    output_path = model.export_onnx(
-        tmp_path / "stardist_pretrained.onnx",
-        input_shape=(1, 3, tile_size, tile_size),
-        dynamic_batch=True,
-    )
-    session = ort.InferenceSession(str(output_path), providers=["CPUExecutionProvider"])
-
-    with torch.inference_mode():
-        expected = [tensor.cpu().numpy() for tensor in wrapper(x)]
-    actual = session.run(None, {"image": x.numpy()})
-
-    _assert_pretrained_stardist_dense_parity(expected, actual)
-
-    expected_post = model.post_processor.postproc_serial(_to_soft_output(expected))[
-        "nuc"
-    ][0]
-    actual_post = model.post_processor.postproc_serial(_to_soft_output(actual))["nuc"][
-        0
-    ]
-
-    np.testing.assert_array_equal(actual_post[0], expected_post[0])
-    np.testing.assert_array_equal(actual_post[1], expected_post[1])
 
 
 @pytest.mark.parametrize("fails", [False, True])

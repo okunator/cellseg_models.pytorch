@@ -70,54 +70,26 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(scope="package")
-def img_dir() -> Path:
-    """Return a path to directory with a few test images."""
-    path = Path().resolve()
-    return path / "cellseg_models_pytorch/inference/tests/data"
-
-
-@pytest.fixture(scope="package")
 def img_patch_dir() -> Path:
     """Return a path to directory with a few test images."""
-    path = Path().resolve()
+    path = Path(__file__).resolve().parent
     return path / "cellseg_models_pytorch/utils/tests/data/imgs"
 
 
 @pytest.fixture(scope="package")
 def mask_patch_dir() -> Path:
     """Return a path to directory with a few test images."""
-    path = Path().resolve()
+    path = Path(__file__).resolve().parent
     dir = path / "cellseg_models_pytorch/utils/tests/data/masks"
     assert dir.exists(), f"Directory does not exist: {dir}"
     assert dir.is_dir(), f"Path is not a directory: {dir}"
-    return dir 
+    return dir
 
 @pytest.fixture(scope="package")
 def img_sample() -> np.ndarray:
     """Read in test RGB img."""
-    path = Path().resolve()
+    path = Path(__file__).resolve().parent
     return FileHandler.read_img(path / "cellseg_models_pytorch/utils/tests/data/HE.png")
-
-
-@pytest.fixture(scope="package")
-def img_sample512() -> np.ndarray:
-    """Read in test RGB img."""
-    path = Path().resolve()
-    return FileHandler.read_img(path / "cellseg_models_pytorch/inference/tests/data/test1.png")
-@pytest.fixture(scope="package")
-
-
-def img_sample256() -> np.ndarray:
-    """Read in test RGB img."""
-    path = Path().resolve()
-    return FileHandler.read_img(path / "cellseg_models_pytorch/utils/tests/data/imgs/patch2.png")
-
-
-@pytest.fixture(scope="package")
-def hdf5db() -> Path:
-    """Read in test RGB img."""
-    path = Path().resolve()
-    return path / "cellseg_models_pytorch/utils/tests/data/tiny_test.h5"
 
 
 @pytest.fixture(scope="package")

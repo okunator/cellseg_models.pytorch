@@ -352,8 +352,8 @@ def test_label_semantic(sem_map):
     ],
 )
 def test_conoturs(img_patch_dir, mask_patch_dir, func, fill_contours, classes, colors):
-    im_path = sorted(img_patch_dir.glob("*"))[0]
-    mask_path = sorted(mask_patch_dir.glob("*"))[0]
+    im_path = img_patch_dir / "patch1.png"
+    mask_path = mask_patch_dir / "patch1.mat"
 
     img = FileHandler.read_img(im_path)
     masks = FileHandler.read_mat(mask_path)
