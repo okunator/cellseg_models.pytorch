@@ -301,12 +301,16 @@ def test_api_export_example(local_checkpoint):
 
     network = omnipose_nuclei(3, enc_name="resnet18", enc_pretrain=False)
     torch.save(network.state_dict(), "checkpoints/omnipose.pt")
+    from cellseg_models_pytorch.models.cellvit import CellVit
     from cellseg_models_pytorch.models.hovernet import HoverNet
     from cellseg_models_pytorch.models.instanseg import InstanSeg
 
-    for model_cls in (HoverNet, InstanSeg):
+    for model_cls in (HoverNet, InstanSeg, CellVit):
         source = model_cls(
-            3, enc_name="resnet18", enc_pretrain=False, device=torch.device("cpu")
+            3,
+            enc_name="samvit_base_patch16_224" if model_cls is CellVit else "resnet18",
+            enc_pretrain=False,
+            device=torch.device("cpu"),
         )
         torch.save(source.model.state_dict(), f"checkpoints/{source.model_name}.pt")
         del source
@@ -316,21 +320,25 @@ def test_api_export_example(local_checkpoint):
         (ns["omnipose_path"], ns["network"]),
         (ns["hovernet_path"], ns["hovernet"].model),
         (ns["instanseg_path"], ns["instanseg"].model),
+        (ns["cellvit_path"], ns["cellvit"].model),
     ):
         onnx.checker.check_model(onnx.load(path))
         session = runtime.InferenceSession(
             str(path), providers=["CPUExecutionProvider"]
         )
-        map_name = {"hovernet": "hv_map", "instanseg": "instanseg_map"}.get(
-            path.stem, "flow_map"
-        )
+        map_name = {
+            "hovernet": "hv_map",
+            "instanseg": "instanseg_map",
+            "cellvit": "hv_map",
+        }.get(path.stem, "flow_map")
         assert [output.name for output in session.get_outputs()] == [
             map_name,
             "type_map",
         ]
         model.eval()
         for batch in (1, 2):
-            image = torch.rand(batch, 3, 256, 256)
+            size = 224 if path.stem == "cellvit" else 256
+            image = torch.rand(batch, 3, size, size)
             with torch.inference_mode():
                 expected = model(image)["nuc"]
             actual = session.run(None, {"image": image.numpy()})

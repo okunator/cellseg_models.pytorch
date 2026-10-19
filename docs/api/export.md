@@ -1,6 +1,6 @@
 # ONNX export
 
-Export CellPose, Omnipose, StarDist, HoverNet or InstanSeg prediction maps to ONNX.
+Export CellPose, Omnipose, StarDist, HoverNet, InstanSeg or CellVit prediction maps to ONNX.
 Install `onnx` and
 `onnxscript` to export, and an ONNX runtime to run the file.
 
@@ -15,6 +15,7 @@ width are fixed; batch size can vary.
 | StarDist | `image`: floating `(B, 3, H, W)` | `binary_map`: foreground values `(B, 1, H, W)`; `ray_map`: `(B, n_rays, H, W)`; `type_map`: raw logits `(B, classes, H, W)` |
 | HoverNet | `image`: floating `(B, 3, H, W)` | `hv_map`: horizontal/vertical distances `(B, 2, H, W)`; `type_map`: raw logits `(B, classes, H, W)` |
 | InstanSeg | `image`: floating `(B, 3, H, W)` | `instanseg_map`: reconstruction values `(B, 4, H, W)`; `type_map`: raw logits `(B, classes, H, W)` |
+| CellVit | `image`: floating `(B, 3, H, W)` | `hv_map`: horizontal/vertical distances `(B, 2, H, W)`; `type_map`: raw logits `(B, classes, H, W)` |
 
 B is batch size, H height and W width. `out_size` can change the output dimensions.
 The exporter uses the network's device and dtype, even inside autocast, and restores
@@ -106,4 +107,27 @@ instanseg_path = instanseg.export_onnx(Path("exports/instanseg.onnx"))
 .. autofunction:: cellseg_models_pytorch.models.instanseg.export_instanseg_onnx
 
 .. automethod:: cellseg_models_pytorch.models.instanseg.InstanSeg.export_onnx
+```
+
+## CellVit
+
+Use the SAM encoder and image size from training. Export is tested with
+`samvit_base_patch16_224` at 224 × 224 pixels. Other SAM encoders and image sizes
+need separate runtime checks.
+
+```python
+from cellseg_models_pytorch.models.cellvit import CellVit
+
+cellvit = CellVit.from_pretrained(
+    Path("checkpoints/cellvit.pt"), device=torch.device("cpu")
+)
+cellvit_path = cellvit.export_onnx(
+    Path("exports/cellvit.onnx"), input_shape=(1, 3, 224, 224)
+)
+```
+
+```{eval-rst}
+.. autofunction:: cellseg_models_pytorch.models.cellvit.export_cellvit_onnx
+
+.. automethod:: cellseg_models_pytorch.models.cellvit.CellVit.export_onnx
 ```

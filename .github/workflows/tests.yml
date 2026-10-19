@@ -152,7 +152,7 @@ jobs:
           cases = [case for report in ("onnx-results.xml", "optional-onnx-results.xml")
                    for case in ET.parse(report).findall(".//testcase")]
           assert cases and not any(case.find("skipped") is not None for case in cases)
-          for family in ("cellpose", "omnipose", "stardist", "hovernet", "instanseg"):
+          for family in ("cellpose", "omnipose", "stardist", "hovernet", "instanseg", "cellvit"):
               assert sum(case.attrib["name"].startswith(f"test_{family}_onnxruntime_matches_pytorch") for case in cases) == 2
           PY
 

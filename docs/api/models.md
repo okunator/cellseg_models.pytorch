@@ -218,6 +218,8 @@ from cellseg_models_pytorch.models.cppnet import CPPNet
 
 ## CellVit
 
+ONNX export: {py:meth}`~cellseg_models_pytorch.models.cellvit.CellVit.export_onnx` in the [export reference](export.md).
+
 Use a supported `samvit_*` encoder. Loading a checkpoint selects the encoder
 stored in its weights, which can differ from the constructor default.
 
