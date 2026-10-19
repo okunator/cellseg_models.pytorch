@@ -8,9 +8,28 @@ import torch
 from safetensors.torch import save_model
 
 from cellseg_models_pytorch.models.cellpose import CellPose
+from cellseg_models_pytorch.models.cellvit import CellVit
 from cellseg_models_pytorch.models.base import PRETRAINED
 from cellseg_models_pytorch.models.cppnet import CPPNet
 from cellseg_models_pytorch.models.stardist import StarDist
+
+
+@pytest.mark.parametrize(
+    "name", ["hgsc_v1_samvit_base_patch16", "hgsc_v1_efficientnet_b5"]
+)
+def test_cellvit_checkpoint_names_resolve_same_weights(
+    monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    download = Mock(side_effect=ConnectionError("offline test"))
+    monkeypatch.setattr(
+        "cellseg_models_pytorch.models.base._base_model_inst.hf_hub_download", download
+    )
+    with pytest.raises(ConnectionError, match="offline test"):
+        CellVit.from_pretrained(name, device=torch.device("cpu"))
+    download.assert_called_once_with(
+        repo_id="csmp-hub/cellvit-histo-hgsc-nuc-v1",
+        filename="cellvit_hgsc_v1_efficientnet_b5.safetensors",
+    )
 
 
 @pytest.mark.parametrize("model_cls", [StarDist, CPPNet])

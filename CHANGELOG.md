@@ -45,6 +45,9 @@
 
 ## Fixes
 
+- Name the CellVit HGSC checkpoint `hgsc_v1_samvit_base_patch16` to match its
+  encoder. Keep `hgsc_v1_efficientnet_b5` as an alias for existing code.
+
 - Remove the direct NumPy upper bound while retaining the 2.2.6 minimum.
   Keep WSI merger reductions compatible with NumPy 2.5 typing.
 

@@ -14,7 +14,7 @@ PRETRAINED = {
         },
     },
     "cellvit": {
-        "hgsc_v1_efficientnet_b5": {
+        "hgsc_v1_samvit_base_patch16": {
             "repo_id": "csmp-hub/cellvit-histo-hgsc-nuc-v1",
             "filename": "cellvit_hgsc_v1_efficientnet_b5.safetensors",
         },
@@ -33,3 +33,8 @@ PRETRAINED = {
     },
     "instanseg": {},
 }
+
+# Keep the original checkpoint name working with the existing Hub file.
+PRETRAINED["cellvit"]["hgsc_v1_efficientnet_b5"] = PRETRAINED["cellvit"][
+    "hgsc_v1_samvit_base_patch16"
+]

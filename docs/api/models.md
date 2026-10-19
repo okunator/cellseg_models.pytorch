@@ -12,12 +12,14 @@ or [image inference guide](../tutorials/inference.ipynb).
 | StarDist | `hgsc_v1_efficientnet_b5` | `cin2_v1_efficientnet_b5` |
 | HoverNet | `hgsc_v1_efficientnet_b5` | `cin2_v1_efficientnet_b5` |
 | CPPNet | `hgsc_v1_efficientnet_b5` | `cin2_v1_efficientnet_b5` |
-| CellVit | `hgsc_v1_efficientnet_b5` | `cin2_v1_samvit_base_patch16` |
+| CellVit | `hgsc_v1_samvit_base_patch16` | `cin2_v1_samvit_base_patch16` |
 | InstanSeg | Use local weights | — |
 
 Load pretrained weights by checkpoint name, or pass a local path to load your own.
 Named checkpoints may download weights from Hugging Face. Use the normalization
 and class labels supplied with the weights.
+
+CellVit's former name, `hgsc_v1_efficientnet_b5`, still loads the same weights.
 
 CIN2 repositories currently contain model cards only; weights cannot yet be
 loaded by name. Load any compatible local CIN2 weights by path.
