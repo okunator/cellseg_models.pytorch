@@ -281,8 +281,8 @@ class SlideReader:
 
         Args:
             width: Tile width in level-zero pixels; no larger than the slide width.
-            tissue_mask: 2D tissue mask spanning the full slide, scaled equally
-                along both axes. Pass None explicitly to disable background filtering.
+            tissue_mask: 2D tissue mask spanning the full slide. Height and width
+                may use different scales. Pass None to disable background filtering.
             height: Tile height in level-zero pixels. None uses width.
             overlap: Fraction shared by neighboring tiles, in [0, 1).
             max_background: Largest allowed background fraction. Ignored without
@@ -337,8 +337,9 @@ class SlideReader:
         """Find tissue microarray spots from a tissue mask.
 
         Args:
-            tissue_mask: 2D uint8 full-slide mask, scaled equally along both axes.
-                Use 1 for tissue and 0 for background. Remove artifacts first.
+            tissue_mask: 2D uint8 full-slide mask; height and width may use
+                different scales. Use 1 for tissue and 0 for background.
+                Remove artifacts first.
             min_area_pixel: Smallest contour area in mask pixels.
             max_area_pixel: Largest contour area in mask pixels, or None for no limit.
             min_area_relative: Smallest area as a fraction of the median area after
@@ -381,7 +382,7 @@ class SlideReader:
         """Draw tile or spot rectangles on a slide overview.
 
         Args:
-            image: RGB uint8 NumPy overview with the slide's aspect ratio.
+            image: RGB uint8 NumPy overview spanning the full slide.
             coordinates: Level-zero bounds, as a TileCoordinates, SpotCoordinates
                 or a list of (x, y, width, height) tuples.
             linewidth: Rectangle line width in overview pixels.

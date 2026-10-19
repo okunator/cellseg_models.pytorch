@@ -45,6 +45,9 @@
 
 ## Fixes
 
+- Correct height/width scale ordering for slide regions, tissue-mask filtering,
+  spot coordinates and thumbnail rectangles when the two axes scale differently.
+
 - Reject mismatched `JointLoss` weight counts and empty loss lists when configured,
   and detect count changes during use. Valid weighted sums and gradients are unchanged.
 

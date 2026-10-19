@@ -42,7 +42,8 @@ properties = tiles.get_properties(
 ```
 
 This assumes at least one tissue tile is found. Pass `tissue_mask=None` to keep
-background tiles. Use a mask scaled equally along both axes.
+background tiles. Use a mask spanning the full slide; height and width may use
+different scales.
 
 Dimensions use **(height, width)**. Region bounds use **(x, y, width, height)**
 in full-resolution pixels, with (0, 0) at the top left. Reading another level

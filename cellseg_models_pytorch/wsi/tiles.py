@@ -125,7 +125,8 @@ def get_region_from_array(
     Args:
         image: Input image.
         xywh (tuple[int, int, int, int]): Region coordinates.
-        downsample (float, tuple[float, float]): Downsample for coordinates.
+        downsample: Scale from original coordinates to image pixels, as a scalar
+            or (height, width) pair.
         fill: Fill value for out of bounds areas.
             Defaults to 0.
 
@@ -155,7 +156,8 @@ def get_background_percentages(
     Args:
         tile_coordinates: List of xywh-coordinates.
         tissue_mask: Tissue mask.
-        downsample (float, tuple[float, float]): Downsample of the tissue mask.
+        downsample: Scale from slide pixels to mask pixels, as a scalar or
+            (height, width) pair.
 
     Returns:
         List of background percentages for each tile.
@@ -259,10 +261,10 @@ def _get_allowed_dimensions(
 def _divide_xywh(
     xywh: tuple[int, int, int, int], divisor: Union[float, tuple[float, float]]
 ) -> tuple[int, int, int, int]:
-    """Divide xywh-coordinates with a divisor."""
+    """Divide (x, y, width, height) by a scalar or (height, width) factors."""
     if not isinstance(divisor, (tuple, list)):
         divisor = (divisor, divisor)
-    w_div, h_div = divisor
+    h_div, w_div = divisor
     x, y, w, h = xywh
     return round(x / w_div), round(y / h_div), round(w / w_div), round(h / h_div)
 
@@ -270,10 +272,10 @@ def _divide_xywh(
 def _multiply_xywh(
     xywh: tuple[int, int, int, int], multiplier: Union[float, tuple[float, float]]
 ) -> tuple[int, int, int, int]:
-    """Divide xywh-coordinates with divisor(s)."""
+    """Multiply (x, y, width, height) by a scalar or (height, width) factors."""
     if not isinstance(multiplier, (tuple, list)):
         multiplier = (multiplier, multiplier)
-    w_mult, h_mult = multiplier
+    h_mult, w_mult = multiplier
     x, y, w, h = xywh
     return round(x * w_mult), round(y * h_mult), round(w * w_mult), round(h * h_mult)
 
