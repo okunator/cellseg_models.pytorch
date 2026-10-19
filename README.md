@@ -96,27 +96,52 @@ Find pretrained checkpoints on [csmp-hub on Hugging Face](https://huggingface.co
 
 ## Datasets
 
-| Dataset                       | Paper                                                                                            |
-| ----------------------------- | ------------------------------------------------------------------------------------------------ |
-| [[8, 9](#references)] [PanNuke](https://huggingface.co/datasets/csmp-hub/pannuke) | https://arxiv.org/abs/2003.10778 , https://link.springer.com/chapter/10.1007/978-3-030-23937-4_2 |
+Download prepared datasets from CSMP Hub. Each Parquet row contains an RGB image
+(`image`), nucleus instances (`inst`) and nucleus classes (`type`) as PNG bytes.
+PanopTILs Refined and PUMA also include tissue classes (`sem`).
 
-PanNuke is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) for noncommercial use.
+| Dataset | Images | Splits | License |
+| --- | ---: | --- | --- |
+| [[8, 9](#references)] [PanNuke](https://huggingface.co/datasets/csmp-hub/pannuke) | 7,901 | `fold1`, `fold2`, `fold3` | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (noncommercial) |
+| [[10](#references)] [PanopTILs Refined](https://huggingface.co/datasets/csmp-hub/panoptils_refined) | 1,349 | Patient-separated `train`, `val`, `test` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| [[11](#references)] [PUMA](https://huggingface.co/datasets/csmp-hub/puma) | 206 | Public challenge `train` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
 
-Download all three folds:
+For example, download the PanopTILs Refined training split with
+[`hf_hub_download`](https://huggingface.co/docs/huggingface_hub/package_reference/file_download#huggingface_hub.hf_hub_download)
+and read one sample with
+[`ParquetFile.iter_batches`](https://arrow.apache.org/docs/python/generated/pyarrow.parquet.ParquetFile.html#pyarrow.parquet.ParquetFile.iter_batches):
 
 ```python
-from huggingface_hub import snapshot_download
+from io import BytesIO
 
-snapshot_download(
-    repo_id="csmp-hub/pannuke",
+import numpy as np
+import pyarrow.parquet as pq
+from huggingface_hub import hf_hub_download
+from PIL import Image
+
+
+def read_png(data: bytes) -> np.ndarray:
+    """Decode RGB pixels or integer labels without reducing mask bit depth."""
+    with Image.open(BytesIO(data)) as image:
+        return np.array(image)
+
+
+path = hf_hub_download(
+    repo_id="csmp-hub/panoptils_refined",
     repo_type="dataset",
-    local_dir="data/pannuke-parquet",
-    allow_patterns="*.parquet",
+    filename="train.parquet",
 )
+row = next(pq.ParquetFile(path).iter_batches(batch_size=1)).to_pylist()[0]
+image = read_png(row["image"])
+instances = read_png(row["inst"])
+cell_types = read_png(row["type"])
+tissue_types = read_png(row["sem"])
 ```
 
-See the [dataset card](https://huggingface.co/datasets/csmp-hub/pannuke#read-a-sample)
-for examples of reading the images and masks.
+Images use HWC RGB order; masks use HW axes and integer labels. The decoder also
+works for PanNuke and PUMA; PanNuke has no `sem` field. Each linked dataset card
+lists its filenames, class mappings, split protocol, attribution and plotting
+examples. Class numbers and tissue-background conventions are dataset-specific.
 
 ## References
 
@@ -129,6 +154,8 @@ for examples of reading the images and masks.
 - [7] Goldsborough, T., et al. (2024). InstanSeg: an embedding-based instance segmentation algorithm optimized for accurate, efficient and portable cell segmentation. arXiv. https://arxiv.org/abs/2408.15954.
 - [8] Gamper, J., Koohbanani, N., Benet, K., Khuram, A., & Rajpoot, N. (2019) PanNuke: an open pan-cancer histology dataset for nuclei instance segmentation and classification. In European Congress on Digital Pathology (pp. 11-19).
 - [9] Gamper, J., Koohbanani, N., Graham, S., Jahanifar, M., Khurram, S., Azam, A.,Hewitt, K., & Rajpoot, N. (2020). PanNuke Dataset Extension, Insights and Baselines. arXiv preprint arXiv:2003.10778.
+- [10] Liu, S., Amgad, M., Rathore, M. A., Salgado, R., & Cooper, L. A. (2022). A panoptic segmentation approach for tumor-infiltrating lymphocyte assessment: development of the MuTILs model and PanopTILs dataset. medRxiv. https://doi.org/10.1101/2022.01.08.22268814.
+- [11] Schuiveling, M., et al. (2025). A novel dataset for nuclei and tissue segmentation in melanoma with baseline nuclei segmentation and tissue segmentation benchmarks. GigaScience, 14, giaf011. https://doi.org/10.1093/gigascience/giaf011.
 
 ## Citation
 

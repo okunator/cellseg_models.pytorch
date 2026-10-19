@@ -3,6 +3,7 @@
 import json
 import random
 import re
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -123,6 +124,46 @@ def test_readme_quickstart_minmax(monkeypatch, img_sample, dtype, image_kind):
     if image_kind == "constant":
         np.testing.assert_array_equal(actual, np.zeros_like(actual))
     model.post_process.assert_called_once_with(model.predict.return_value)
+
+
+def test_readme_dataset_loading_preserves_rgb_and_label_precision(tmp_path, monkeypatch):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    arrays = {
+        "image": np.full((2, 2, 3), [17, 89, 221], dtype=np.uint8),
+        "inst": np.array([[0, 300], [1, 2]], dtype=np.uint16),
+        "type": np.array([[0, 6], [4, 1]], dtype=np.uint8),
+        "sem": np.array([[6, 0], [3, 5]], dtype=np.uint8),
+    }
+    row = {}
+    for key, array in arrays.items():
+        buffer = BytesIO()
+        Image.fromarray(array).save(buffer, format="PNG")
+        row[key] = buffer.getvalue()
+    path = tmp_path / "train.parquet"
+    pq.write_table(pa.Table.from_pylist([row]), path)
+    download = Mock(return_value=str(path))
+    monkeypatch.setattr("huggingface_hub.hf_hub_download", download)
+    readme = (TUTORIALS.parents[1] / "README.md").read_text()
+    section = readme.split("## Datasets\n", 1)[1].split("\n## References", 1)[0]
+    examples = re.findall(r"```python\n(.*?)```", section, re.S)
+    assert len(examples) == 1
+    namespace = {}
+    exec(examples[0], namespace)
+    download.assert_called_once_with(
+        repo_id="csmp-hub/panoptils_refined",
+        repo_type="dataset",
+        filename="train.parquet",
+    )
+    for variable, key in [
+        ("image", "image"),
+        ("instances", "inst"),
+        ("cell_types", "type"),
+        ("tissue_types", "sem"),
+    ]:
+        np.testing.assert_array_equal(namespace[variable], arrays[key])
+        assert namespace[variable].dtype == arrays[key].dtype
 
 
 @pytest.mark.parametrize(

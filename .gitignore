@@ -147,3 +147,11 @@ launch.json
 
 # other
 lightning_logs
+
+# Local panoptic dataset preparation and research plan
+/tools/panoptic/
+/data/puma-source/
+/data/puma-parquet/
+/data/panoptils-refined-copy/
+/docs/panoptic-dataset-plan.md
+/data/panoptils-refined-splits/
