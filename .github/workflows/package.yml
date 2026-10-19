@@ -43,6 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Release and manual runs check fresh installs on every supported Python.
         python-version: >-
           ${{ fromJSON(
             (github.event_name == 'release' || github.event_name == 'workflow_dispatch')
