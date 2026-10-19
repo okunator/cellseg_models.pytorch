@@ -166,6 +166,8 @@ lightning_logs
 /data/human-tonsil-parquet/
 /data/lizard-mitosis-source/
 /data/lizard-mitosis-parquet/
+/data/human-lung-source/
+/data/human-lung-parquet/
 
 # Local torch.compile experiments and generated benchmark artifacts
 /.local/torch-compile-20261019/

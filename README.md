@@ -96,10 +96,12 @@ Find pretrained checkpoints on [csmp-hub on Hugging Face](https://huggingface.co
 
 ## Datasets
 
-Download prepared datasets from CSMP Hub. Each Parquet row contains an RGB image
-(`image`), nucleus instances (`inst`) and nucleus classes (`type`) as PNG bytes.
-PanopTILs Refined and PUMA also include tissue classes (`sem`).
-CytoNuke, HeLaCytoNuc and AIR-LEISH include separate whole-cell instances
+Download prepared datasets from CSMP Hub. Each Parquet row contains an image
+(`image`), nucleus instances (`inst`) and nucleus classes (`type`). Masks use PNG
+bytes; images use RGB PNG bytes except Human Lung, which keeps four float32
+channels as TIFF bytes. PanopTILs Refined, PUMA and Human Lung also include
+semantic labels (`sem`) for tissue and other regions.
+CytoNuke, HeLaCytoNuc, AIR-LEISH and Human Lung include separate whole-cell instances
 (`inst_cell`) and inferred nucleus-to-cell links (`pairs`). AIR-LEISH also
 includes parasite instances (`inst_parasite`) and full masks for overlapping objects.
 
@@ -112,6 +114,7 @@ includes parasite instances (`inst_parasite`) and full masks for overlapping obj
 | [[13](#references)] [HeLaCytoNuc](https://huggingface.co/datasets/csmp-hub/helacytonuke) | 2,676 | Original `train`, `val` (automatic labels), `test` (manual labels) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | [[14](#references)] [AIR-LEISH](https://huggingface.co/datasets/csmp-hub/air-leish) | 180 | `train` only; no independent evaluation split | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | [[15, 16](#references)] [Lizard-Mitosis](https://huggingface.co/datasets/csmp-hub/lizard-mitosis) | 4,981 | Original `train`, `val`, `test`; train/val overlap | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (noncommercial) |
+| [[17](#references)] [Human Lung](https://huggingface.co/datasets/csmp-hub/human-lung) | 68 | Original `train` (51), `val` (7), `test` (10); patient independence unverified | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (noncommercial) |
 
 For example, download the PanopTILs Refined training split with
 [`hf_hub_download`](https://huggingface.co/docs/huggingface_hub/package_reference/file_download#huggingface_hub.hf_hub_download)
@@ -145,10 +148,12 @@ cell_types = read_png(row["type"])
 tissue_types = read_png(row["sem"])
 ```
 
-Images use HWC RGB order; masks use HW axes and integer labels. The PNG decoder
+RGB images use HWC order; masks use HW axes and integer labels. The PNG decoder
 also works for PanNuke, PUMA, CytoNuke, HeLaCytoNuc, AIR-LEISH and Lizard-Mitosis.
-Only PanopTILs Refined and PUMA have a `sem` field. Each linked dataset card lists
-its filenames, class mappings, split protocol, attribution and plotting examples.
+Human Lung images use CYX order (channel, height, width); its card shows how to
+read the four-channel TIFFs. PanopTILs Refined, PUMA and Human Lung have a `sem`
+field. Each linked dataset card lists its filenames, class mappings, split
+protocol, attribution and plotting examples.
 Class numbers and tissue-background conventions are dataset-specific.
 
 ## References
@@ -169,6 +174,7 @@ Class numbers and tissue-background conventions are dataset-specific.
 - [14] Oualha, R., Fekih-Romdhane, N., Driss, D., Abdelkrim, Y. Z., Guizani, I., & Harigua-Souiai, E. (2026). AIR-LEISH: A Dataset of Giemsa-Stained Microscopy Images for AI-based Leishmania amastigotes Detection. Scientific Data, 13, 328. https://doi.org/10.1038/s41597-026-06676-8.
 - [15] Baumann, E., Dislich, B., Rumberger, J. L., Nagtegaal, I. D., Martínez Rodríguez, M., & Zlobec, I. (2024). HoVer-NeXt: A Fast Nuclei Segmentation and Classification Pipeline for Next Generation Histopathology — Datasets. Version 2. Zenodo. https://doi.org/10.5281/zenodo.11657620.
 - [16] Graham, S., Jahanifar, M., Azam, A., et al. (2021). Lizard: A Large-Scale Dataset for Colonic Nuclear Instance Segmentation and Classification. ICCV Workshops, pp. 684–693. https://arxiv.org/abs/2108.11195.
+- [17] Dohmen, M., Mittermaier, M., & Hocke, A. (2024). Human Lung Tissue Microscopy (DIC, Fluorescence, Cell and Nuclei Semantic Instance Annotations). Version v1. Zenodo. https://doi.org/10.5281/zenodo.10669918.
 
 ## Citation
 
