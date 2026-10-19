@@ -87,13 +87,12 @@ foreground_iou = iou_score(tp, fp, fn)
 ## Class-mask evaluation
 
 Use 2D class masks with labels from 0 to `num_classes - 1`. Results contain one
-score per class, including class 0. With `clamp_absent=True`, an absent class gets
--1; leave those values out of averages.
+score per class, including class 0. With `clamp_absent=True`, a class absent
+from both masks gets -1; leave those values out of averages. Classes present in
+only one mask are still evaluated.
 
-These functions have known limits: missing same-class overlap leaves some counts
-at zero, so `accuracy_multiclass` can incorrectly return 1.
-`specificity_multiclass` currently computes precision instead of specificity.
-Check these limits before using the scores.
+`specificity_multiclass` measures how often pixels outside a reference class
+are correctly excluded from that predicted class: TN / (TN + FP).
 
 ```{eval-rst}
 .. autofunction:: cellseg_models_pytorch.metrics.iou_multiclass
@@ -121,9 +120,10 @@ Check these limits before using the scores.
 
 ## Pairwise statistics
 
-Use these helpers for counts between object or class pairs. Pixel counts cover
-only overlapping pairs. Object counts need a match matrix with at most one match
-per object; the helper does not choose matches.
+Use these helpers for counts between object or class pairs. Class-mode pixel
+counts include missed and extra pixels even when a class has no correct overlap.
+Instance mode covers only overlapping object pairs. Object counts need a match
+matrix with at most one match per object; the helper does not choose matches.
 
 ```{eval-rst}
 .. autofunction:: cellseg_models_pytorch.metrics.pairwise_pixel_stats

@@ -45,6 +45,10 @@
 
 ## Fixes
 
+- Count missed and extra class pixels even without same-class overlap, and
+  compute multiclass specificity from true negatives instead of precision.
+  Preserve instance matching and the absent-class marker.
+
 - Keep zero-mean style vectors and their gradients finite, including blank-input
   CellPose predictions, while retaining unit-length normalization for nonzero vectors.
 

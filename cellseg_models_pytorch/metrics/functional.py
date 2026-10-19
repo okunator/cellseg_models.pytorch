@@ -36,15 +36,17 @@ def pairwise_pixel_stats(
         num_classes: None compares sorted nonzero instance IDs. An integer
             compares class IDs 0 through num_classes-1, including class 0.
         metric_func: Optional function accepting tp, fp, fn pixel indicators,
-            for example iou_score, to produce one value per overlapping pair.
+            for example iou_score, to produce one value per class pair or
+            overlapping instance pair.
 
     Returns:
         List of float64 pairwise matrices. Without metric_func, returns
         [tp, fp, fn] counts; with it, a one-element list containing that score.
         Rows correspond to sorted true IDs and columns to sorted predicted IDs,
-        or to all class IDs in class mode. Non-overlapping label pairs retain
-        zeros in every matrix, including fp/fn. Instance mode returns an empty
-        list if either mask has no foreground; class mode includes absent classes.
+        or to all class IDs in class mode. Class mode counts fp/fn even for
+        non-overlapping pairs, including absent classes. Instance mode leaves
+        non-overlapping pairs at zero and returns an empty list if either mask
+        has no foreground.
     """
     if num_classes is not None:
         true_labels = list(range(num_classes))
@@ -81,9 +83,11 @@ def pairwise_pixel_stats(
     for true_label in true_labels:
         true_obj = true_objects[true_label]
 
-        overlap = pred[true_obj > 0]
-        overlap_label = np.unique(overlap)
-        for pred_label in overlap_label:
+        # Classes need missed and extra pixel counts even when they never overlap.
+        compared_labels = (
+            pred_labels if num_classes is not None else np.unique(pred[true_obj > 0])
+        )
+        for pred_label in compared_labels:
             # ignore bg and empty preds in instance mode
             if pred_label == 0 and num_classes is None:
                 continue
@@ -339,11 +343,6 @@ def iou_multiclass(
 ) -> np.ndarray:
     """Compute intersection over union (IoU) for each class in a pair of masks.
 
-    Known limitation: if a class has no correctly overlapping pixels, the
-    underlying pairwise counts are all zero, even when that class appears in
-    either mask. Missed and extra pixels can therefore be left out. In particular,
-    accuracy can incorrectly return 1. Check this limit before using the scores.
-
     Args:
         true: Integer HW class mask with IDs from 0 to num_classes-1.
         pred: Same-shaped predicted class IDs, not probabilities or instance IDs.
@@ -379,11 +378,6 @@ def accuracy_multiclass(
     clamp_absent: bool = True,
 ) -> np.ndarray:
     """Compute pixel accuracy for each class against all other classes.
-
-    Known limitation: if a class has no correctly overlapping pixels, the
-    underlying pairwise counts are all zero, even when that class appears in
-    either mask. Missed and extra pixels can therefore be left out. In particular,
-    accuracy can incorrectly return 1. Check this limit before using the scores.
 
     Args:
         true: Integer HW class mask with IDs from 0 to num_classes-1.
@@ -422,11 +416,6 @@ def f1score_multiclass(
 ) -> np.ndarray:
     """Compute F1 for each class in a pair of class masks.
 
-    Known limitation: if a class has no correctly overlapping pixels, the
-    underlying pairwise counts are all zero, even when that class appears in
-    either mask. Missed and extra pixels can therefore be left out. In particular,
-    accuracy can incorrectly return 1. Check this limit before using the scores.
-
     Args:
         true: Integer HW class mask with IDs from 0 to num_classes-1.
         pred: Same-shaped predicted class IDs, not probabilities or instance IDs.
@@ -462,11 +451,6 @@ def dice_multiclass(
     clamp_absent: bool = True,
 ) -> np.ndarray:
     """Compute Dice overlap for each class in a pair of class masks.
-
-    Known limitation: if a class has no correctly overlapping pixels, the
-    underlying pairwise counts are all zero, even when that class appears in
-    either mask. Missed and extra pixels can therefore be left out. In particular,
-    accuracy can incorrectly return 1. Check this limit before using the scores.
 
     Args:
         true: Integer HW class mask with IDs from 0 to num_classes-1.
@@ -504,11 +488,6 @@ def sensitivity_multiclass(
 ) -> np.ndarray:
     """Compute sensitivity (recall) for each class in a pair of class masks.
 
-    Known limitation: if a class has no correctly overlapping pixels, the
-    underlying pairwise counts are all zero, even when that class appears in
-    either mask. Missed and extra pixels can therefore be left out. In particular,
-    accuracy can incorrectly return 1. Check this limit before using the scores.
-
     Args:
         true: Integer HW class mask with IDs from 0 to num_classes-1.
         pred: Same-shaped predicted class IDs, not probabilities or instance IDs.
@@ -543,15 +522,7 @@ def specificity_multiclass(
     eps: float = 1e-8,
     clamp_absent: bool = True,
 ) -> np.ndarray:
-    """Return per-class precision under the legacy specificity name.
-
-    This function currently calculates precision, TP / (TP + FP). Do not
-    use it to measure specificity, which is TN / (TN + FP).
-
-    Known limitation: if a class has no correctly overlapping pixels, the
-    underlying pairwise counts are all zero, even when that class appears in
-    either mask. Missed and extra pixels can therefore be left out. In particular,
-    accuracy can incorrectly return 1. Check this limit before using the scores.
+    """Compute specificity for each class against all other classes.
 
     Args:
         true: Integer HW class mask with IDs from 0 to num_classes-1.
@@ -563,7 +534,7 @@ def specificity_multiclass(
 
     Returns:
         Float64 array (num_classes,), ordered by class ID, including class 0.
-        Uses TP / (TP + FP) from the current pairwise statistics. No batch or
+        Uses TN / (TN + FP) from the pairwise statistics. No batch or
         dataset mean is calculated. H is height and W width.
     """
     tp, fp, fn = pairwise_pixel_stats(true, pred, num_classes=num_classes)
@@ -571,7 +542,9 @@ def specificity_multiclass(
     fp = fp.diagonal()
     fn = fn.diagonal()
 
-    specificity = tp / (tp + fp + eps)
+    # Pixels outside both class masks are true negatives for this class.
+    tn = true.size - (tp + fp + fn)
+    specificity = tn / (tn + fp + eps)
 
     if clamp_absent:
         not_pres = _absent_inds(true, pred, num_classes)
