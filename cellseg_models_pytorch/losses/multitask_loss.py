@@ -1,9 +1,5 @@
-from typing import Dict
-
 import torch
 import torch.nn as nn
-
-from .joint_loss import JointLoss
 
 
 class MultiTaskLoss(nn.ModuleDict):
@@ -11,9 +7,9 @@ class MultiTaskLoss(nn.ModuleDict):
 
     def __init__(
         self,
-        head_losses: Dict[str, JointLoss],
-        loss_weights: Dict[str, float] = None,
-        **kwargs,
+        head_losses: dict[str, nn.Module],
+        loss_weights: dict[str, float] | None = None,
+        **kwargs: object,
     ) -> None:
         """Assign a loss to each model output.
 
@@ -21,15 +17,20 @@ class MultiTaskLoss(nn.ModuleDict):
             head_losses: Dictionary mapping output names to callable loss modules,
                 usually JointLoss objects. Names are the training dictionaries' keys,
                 for example cellpose and type_mask; extract tensors from network
-                output containers before calling this loss.
+                output containers before calling this loss. edgeweight is reserved
+                for target metadata rather than a prediction head.
             loss_weights: Optional weights with exactly the same keys as head_losses.
                 None uses 1 for each output. Weights need not sum to one.
             **kwargs: Additional constructor arguments are accepted but unused.
 
         Raises:
-            ValueError: Weight keys or counts differ from head_losses.
+            ValueError: Weight keys or counts differ from head_losses, or a head
+                uses the reserved edgeweight name.
         """
         super().__init__()
+
+        if "edgeweight" in head_losses:
+            raise ValueError("edgeweight is reserved for target metadata")
 
         self.weights = {k: 1.0 for k in head_losses.keys()}
         if loss_weights is not None:
@@ -51,19 +52,21 @@ class MultiTaskLoss(nn.ModuleDict):
 
     def forward(
         self,
-        yhats: Dict[str, torch.Tensor],
-        targets: Dict[str, torch.Tensor],
-        mask: torch.Tensor = None,
-        **kwargs,
+        yhats: dict[str, torch.Tensor],
+        targets: dict[str, torch.Tensor],
+        mask: torch.Tensor | None = None,
+        **kwargs: object,
     ) -> torch.Tensor | float:
         """Compute and add the weighted losses for the configured outputs.
 
         Args:
-            yhats: Dictionary of prediction tensors. Keys must exactly match targets
-                and include every configured output; extra matching keys are not evaluated.
+            yhats: Dictionary of prediction tensors. Head keys must match targets
+                and include every configured output; extra matching heads are not
+                evaluated. A legacy dummy edgeweight entry is accepted when the
+                real map is supplied in targets.
             targets: Dictionary of matching class-label or regression tensors. An
-                edgeweight entry supplies spatial weights to all losses that enable
-                edge weighting; it must also be present in yhats for the key check.
+                edgeweight entry supplies spatial weights to the child losses;
+                no dummy prediction is needed. Each child must accept target_weight.
             mask: Optional BHW inclusion mask passed to each output's loss.
             **kwargs: Additional call arguments are accepted but unused.
 
@@ -72,14 +75,26 @@ class MultiTaskLoss(nn.ModuleDict):
             gradients. With no configured outputs, returns the number 0.0.
 
         Raises:
-            ValueError: Prediction and target dictionary keys differ. A missing
-                configured output raises KeyError.
+            ValueError: Prediction/target head keys or configured weight keys
+                disagree. A missing configured output raises KeyError before
+                any child loss runs.
         """
-        if yhats.keys() != targets.keys():
+        if self.weights.keys() != self.keys():
+            raise ValueError("loss weight keys must match the configured heads")
+        if "edgeweight" in yhats and "edgeweight" not in targets:
+            raise ValueError("edgeweight must be supplied in targets")
+        # Edge weights describe the targets, not an additional model output.
+        prediction_heads = yhats.keys() - {"edgeweight"}
+        target_heads = targets.keys() - {"edgeweight"}
+        if prediction_heads != target_heads:
             raise ValueError(
                 "Mismatching keys in `yhats` and `targets`"
                 f"Got {list(yhats.keys())} and {list(targets.keys())}"
             )
+
+        missing = self.keys() - prediction_heads
+        if missing:
+            raise KeyError(f"Missing configured loss heads: {sorted(missing)}")
 
         weight_map = None
         if "edgeweight" in targets.keys():
@@ -93,7 +108,8 @@ class MultiTaskLoss(nn.ModuleDict):
                 target_weight=weight_map,
                 mask=mask,
             )
-            multitask_loss += head_loss * self.weights[head]
+            # Out-of-place addition preserves precision when head dtypes differ.
+            multitask_loss = multitask_loss + head_loss * self.weights[head]
 
         return multitask_loss
 

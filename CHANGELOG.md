@@ -45,6 +45,11 @@
 
 ## Fixes
 
+- Allow `MultiTaskLoss` edge-weight maps in targets without a dummy prediction,
+  preserve mixed-head sum precision, and validate configured head/weight keys
+  before evaluating losses. Retain existing mask reductions, head multipliers,
+  extra matching outputs and legacy dummy edge-weight entries.
+
 - Train InstanSeg nucleus membership with the model's shared pixel classifier,
   seed BCE and per-instance Lovász hinge instead of normalized coordinate MSE.
   Share spatial units and crop features with reconstruction, interpret seed logits

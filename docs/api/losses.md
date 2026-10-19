@@ -68,8 +68,11 @@ loss.backward()
 outputs. Weights multiply each loss and need not sum to one. Supply one weight
 per loss. With SSIM, use `return_cs=False` so it returns a single tensor.
 
-Prediction and target dictionaries must have the same keys, including every
-configured output. If you supply `edgeweight`, include it in both dictionaries.
+Prediction and target head keys must match and include every configured output.
+Supply an optional shared `edgeweight` map in the **targets** dictionary; it needs
+no prediction entry. Existing dummy prediction entries remain accepted. Child
+losses must accept the forwarded `target_weight` and `mask`; each loss controls
+whether and how they affect its calculation. Extra matching heads remain unused.
 InstanSeg supports these helpers when given the network's pixel classifier;
 see [InstanSeg loss](#instanseg-loss).
 
