@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from cellseg_models_pytorch.utils.convolve import filter2D, gaussian_kernel2d
+from cellseg_models_pytorch.utils.convolve import filter2D
 
 
 class WeightedBaseLoss(nn.Module):
@@ -112,21 +112,32 @@ class WeightedBaseLoss(nn.Module):
         Returns:
             Smoothed BCHW targets on the input device, in float32 even under
             autocast. The center and its neighbors each supply half the weight
-            when neighbors exist.
+            when neighbors exist. A one-pixel window returns the input in float32.
         """
         # Build targets in float32 so mixed precision does not change the labels.
         with torch.autocast(device_type=target.device.type, enabled=False):
+            if kernel_size == 1:
+                return target.float()
             my, mx = kernel_size // 2, kernel_size // 2
-            gaussian_kernel = gaussian_kernel2d(
-                kernel_size, sigma, n_classes, device=target.device
+            offsets = (
+                torch.arange(kernel_size, device=target.device, dtype=torch.float32)
+                - (kernel_size - 1) / 2
             )
-            neighborsum = (1 - gaussian_kernel[..., my, mx]) + 1e-16
-            gaussian_kernel = gaussian_kernel.clone()
-            # Balance the center pixel against the combined weight of its neighbors.
-            gaussian_kernel[..., my, mx] = neighborsum
-            svls_kernel = gaussian_kernel / neighborsum[0]
+            log_weights = -(offsets.square()[:, None] + offsets.square()[None, :]) / (
+                2 * sigma**2
+            )
+            # Normalize neighbors separately so narrow Gaussians do not lose their weight.
+            log_weights[my, mx] = -torch.inf
+            neighbors = (
+                log_weights.flatten().softmax(0).reshape(kernel_size, kernel_size)
+            )
+            # The center and all neighbors together each contribute half the target.
+            neighbors[my, mx] = 1
+            svls_kernel = (
+                neighbors[None, None].expand(n_classes, 1, kernel_size, kernel_size) / 2
+            )
 
-            return filter2D(target.float(), svls_kernel) / svls_kernel[0].sum()
+            return filter2D(target.float(), svls_kernel)
 
     def apply_class_weights(
         self, loss_matrix: torch.Tensor, target: torch.Tensor

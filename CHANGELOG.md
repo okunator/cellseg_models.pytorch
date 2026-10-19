@@ -45,6 +45,10 @@
 
 ## Fixes
 
+- Keep spatial smoothing's center and neighbor weights balanced for narrow
+  Gaussian windows, and allow IoULoss to combine spatial and uniform smoothing
+  with custom window settings.
+
 - Allow `MultiTaskLoss` edge-weight maps in targets without a dummy prediction,
   preserve mixed-head sum precision, and validate configured head/weight keys
   before evaluating losses. Retain existing mask reductions, head multipliers,

@@ -110,7 +110,9 @@ class IoULoss(WeightedBaseLoss):
             )
         if self.apply_ls:
             target_one_hot = self.apply_ls_to_target(
-                target_one_hot, n_classes, **kwargs
+                target_one_hot,
+                n_classes,
+                label_smoothing=kwargs.get("label_smoothing", 0.1),
             )
 
         # Weight overlap and total area equally, then compare each image/class pair.
