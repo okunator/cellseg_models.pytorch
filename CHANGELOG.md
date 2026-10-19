@@ -45,6 +45,9 @@
 
 ## Fixes
 
+- Reject mismatched `JointLoss` weight counts and empty loss lists when configured,
+  and detect count changes during use. Valid weighted sums and gradients are unchanged.
+
 - Scale whole-slide prediction polygons back to level-zero slide coordinates
   before saving and merging. Use the reader's height/width pixel scales and
   account for prediction maps whose dimensions differ from the input tile.

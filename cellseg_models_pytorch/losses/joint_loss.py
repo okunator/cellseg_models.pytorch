@@ -1,5 +1,3 @@
-from typing import List
-
 import torch
 import torch.nn as nn
 
@@ -9,8 +7,8 @@ class JointLoss(nn.ModuleDict):
 
     def __init__(
         self,
-        losses: List[nn.Module],
-        weights: List[float] = None,
+        losses: list[nn.Module],
+        weights: list[float] | None = None,
     ) -> None:
         """Choose losses and their weights.
 
@@ -18,19 +16,24 @@ class JointLoss(nn.ModuleDict):
             losses: Nonempty list of configured PyTorch loss modules. They must accept
                 the same keyword inputs used when calling this object.
             weights: One number in [0, 1] per loss. None uses 1 for every loss.
-                Supply exactly one per loss; mismatched lengths are not validated
-                and unmatched entries would be ignored. Weights need not sum to one.
+                Supply exactly one per loss. Weights need not sum to one.
 
         Raises:
-            ValueError: losses is not a list or a supplied weight is outside [0, 1].
+            ValueError: losses is not a nonempty list, the weight count differs,
+                or a supplied weight is outside [0, 1].
         """
         super().__init__()
 
-        if not isinstance(losses, list):
-            raise ValueError("`losses` arg must be a list.")
+        if not isinstance(losses, list) or not losses:
+            raise ValueError("`losses` must be a nonempty list.")
 
         self.weights = [1.0] * len(losses)
         if weights is not None:
+            # An ordinary zip would silently omit losses when these counts differ.
+            if len(weights) != len(losses):
+                raise ValueError(
+                    f"Expected one weight per loss ({len(losses)}); got {len(weights)}."
+                )
             if not all(0 <= val <= 1.0 for val in weights):
                 raise ValueError(f"Weights need to be 0 <= weight <= 1. Got: {weights}")
             self.weights = weights
@@ -38,7 +41,7 @@ class JointLoss(nn.ModuleDict):
         for i in range(len(losses)):
             self.add_module(f"loss{i + 1}", losses[i])
 
-    def forward(self, **kwargs) -> torch.Tensor:
+    def forward(self, **kwargs: object) -> torch.Tensor:
         """Add the weighted losses.
 
         Args:
@@ -48,8 +51,12 @@ class JointLoss(nn.ModuleDict):
         Returns:
             Sum of the weighted losses. For ordinary scalar losses, the result stays
             on the prediction device and keeps gradients for training.
+
+        Raises:
+            ValueError: Loss and weight counts differ after construction.
         """
-        lw = zip(self.values(), self.weights)
+        # Keep the count check active if callers later edit the losses or weights.
+        lw = zip(self.values(), self.weights, strict=True)
         losses = torch.stack([loss(**kwargs) * weight for loss, weight in lw])
         return torch.sum(losses)
 
