@@ -45,6 +45,9 @@
 
 ## Fixes
 
+- Refresh dependency minimums and remove package upper bounds, retaining Python
+  3.10 and PyTorch 2.13 support. Refresh the development lockfile.
+
 - Convert bfloat16 prediction maps to float32 on CPU before NumPy reconstruction,
   preserving existing float16, float32 and integer conversion behavior.
 
