@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+type: software
+title: cellseg_models.pytorch
+authors:
+  - family-names: Lehtonen
+    given-names: Oskari
+doi: 10.5281/zenodo.7064616
+repository-code: "https://github.com/okunator/cellseg_models.pytorch"
+license: MIT

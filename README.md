@@ -132,15 +132,18 @@ for examples of reading the images and masks.
 
 ## Citation
 
+Please cite the version you used. [CITATION.cff](CITATION.cff) provides citation
+metadata for the software as a whole. The example below cites version 0.1.30.
+
 ```bibtex
-@misc{https://doi.org/10.5281/zenodo.15357070,
-  doi = {10.5281/ZENODO.15357070},
-  url = {https://zenodo.org/doi/10.5281/zenodo.15357070},
-  author = {Okunator,  },
-  title = {okunator/cellseg_models.pytorch: v0.1.26},
+@misc{lehtonen_cellseg_models_2025,
+  doi = {10.5281/zenodo.17608242},
+  url = {https://doi.org/10.5281/zenodo.17608242},
+  author = {Lehtonen, Oskari},
+  title = {{cellseg_models.pytorch}},
+  version = {0.1.30},
   publisher = {Zenodo},
-  year = {2025},
-  copyright = {MIT License}
+  year = {2025}
 }
 ```
 
