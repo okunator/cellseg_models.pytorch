@@ -23,10 +23,20 @@ class FixedUnpool(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Fixed-unpooling forward pass."""
+        """Expand each feature pixel into a fixed spatial block.
+
+        Args:
+            x: Floating BCHW features on the same device as this layer.
+
+        Returns:
+            Features shaped (B, C, H * scale_factor, W * scale_factor) on the
+            input device. Preserves input dtype outside autocast; autocast can
+            reduce the output precision.
+        """
         in_shape = list(x.shape)
-        x = x.unsqueeze(-1)  # (B, C, H, W)
-        mat = self.unpool_mat.unsqueeze(0)  # (B, C, H, W, 1)
+        x = x.unsqueeze(-1)  # (B, C, H, W, 1)
+        # Autocast can change feature dtype without changing the saved buffer.
+        mat = self.unpool_mat.to(dtype=x.dtype).unsqueeze(0)
         ret = torch.tensordot(x, mat, dims=1)  # (B, C, H, W, SH, SW)
         ret = ret.permute(0, 1, 2, 4, 3, 5)
         ret = ret.reshape(

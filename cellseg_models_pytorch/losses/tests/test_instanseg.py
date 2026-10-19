@@ -431,6 +431,7 @@ def test_flipped_numpy_maps_match_contiguous_reconstruction(device, axes):
     "device,autocast",
     [
         ("cpu", False),
+        ("cpu", True),
         pytest.param("cuda", False, marks=pytest.mark.cuda),
         pytest.param("cuda", True, marks=pytest.mark.cuda),
     ],

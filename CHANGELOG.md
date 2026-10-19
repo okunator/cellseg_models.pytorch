@@ -45,6 +45,9 @@
 
 ## Fixes
 
+- Match fixed-unpooling's saved matrix to the feature dtype during computation,
+  allowing CPU bfloat16 autocast training without changing checkpoint buffers.
+
 - Keep spatial smoothing's center and neighbor weights balanced for narrow
   Gaussian windows, and allow IoULoss to combine spatial and uniform smoothing
   with custom window settings.
