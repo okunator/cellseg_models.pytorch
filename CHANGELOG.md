@@ -31,6 +31,10 @@
 
 ## Fixes
 
+- Apply `Predictor.predict(apply_boundary_weight=True)` to instance reconstruction
+  and foreground maps, giving more weight to the image center and less to its
+  edges. Class labels and default predictions are unchanged.
+
 - Correct `TverskyLoss` to sum overlap across spatial axes per image and class,
   with `alpha` weighting false positives and `beta` weighting false negatives.
   Average target-present pairs, weight overlap terms consistently, scale class

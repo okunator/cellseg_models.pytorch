@@ -85,9 +85,9 @@ class BasePredictor:
                 NumPy/PIL uint8 values are divided by 255. Other image values are
                 unchanged. Tensors must already have the correct dtype/device.
                 Apply the checkpoint's normalization before prediction.
-            apply_boundary_weight: Request a center-weighting matrix. In this
-                non-windowed path, it is constructed but not applied to predictions.
-                Defaults to False.
+            apply_boundary_weight: Give more weight to the image center and less
+                to its edges in nucleus and cytoplasm reconstruction and foreground
+                maps. Class labels and tissue maps are unchanged. Defaults to False.
             save_intermediate: Return an additional reference to the result. The
                 current implementation does not preserve a separate raw-score copy.
 
@@ -130,12 +130,14 @@ class BasePredictor:
         with torch.no_grad():
             if self.mixed_precision:
                 with torch.autocast(self.device.type, dtype=torch.float16):
-                    probs = self._predict(x)
+                    probs = self._predict(
+                        x, apply_boundary_weight=apply_boundary_weight
+                    )
                     if save_intermediate:
                         intermediate = probs
                     probs = self._argmax(probs)
             else:
-                probs = self._predict(x)
+                probs = self._predict(x, apply_boundary_weight=apply_boundary_weight)
                 if save_intermediate:
                     intermediate = probs
                 probs = self._argmax(probs)

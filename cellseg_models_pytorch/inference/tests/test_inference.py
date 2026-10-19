@@ -1,4 +1,4 @@
-"""Check in-memory window prediction against a model with known pixel outputs."""
+"""Check image prediction against a model with known pixel outputs."""
 
 import numpy as np
 import pytest
@@ -46,6 +46,66 @@ class PixelModel(torch.nn.Module):
                 binary_map=foreground + 12,
             )
         return outputs
+
+
+@pytest.mark.parametrize("mixed_precision", [False, True])
+@pytest.mark.parametrize("optional_heads", [False, True])
+def test_direct_prediction_applies_boundary_weights(
+    mixed_precision: bool, optional_heads: bool
+) -> None:
+    image = torch.linspace(0, 1, 2 * 3 * 3 * 5).reshape(2, 3, 3, 5)
+    original = image.clone()
+    model = PixelModel(optional_heads=optional_heads).eval()
+    predictor = Predictor(model, mixed_precision=mixed_precision)
+
+    # Hand-calculated center/edge distance ratios for a 3-by-5 image.
+    edge = 0.5**0.5
+    corner = edge / (5**0.5 + edge)
+    top_middle = edge / (1 + edge)
+    side_middle = edge / (2 + edge)
+    inner = 2.5**0.5 / (1 + 2.5**0.5)
+    weights = torch.tensor(
+        [
+            [corner, 1 / 3, top_middle, 1 / 3, corner],
+            [side_middle, inner, 1, inner, side_middle],
+            [corner, 1 / 3, top_middle, 1 / 3, corner],
+        ]
+    )
+    weights = weights / weights.mean()
+    foreground = image[:, :1]
+
+    weighted = predictor.predict(image, apply_boundary_weight=True)
+    # Reusing the predictor must not apply its cached weights when disabled.
+    unweighted = predictor.predict(image, apply_boundary_weight=False)
+    default = predictor.predict(image)
+
+    for head, offset in (("nuc", 0), ("cyto", 6)):
+        if head == "cyto" and not optional_heads:
+            assert weighted[head] is unweighted[head] is default[head] is None
+            continue
+        auxiliary = torch.cat((foreground + offset, foreground + offset + 2), dim=1)
+        for result, weight in ((weighted, weights), (unweighted, 1), (default, 1)):
+            torch.testing.assert_close(result[head].aux_map, auxiliary * weight)
+            torch.testing.assert_close(
+                result[head].type_map, (foreground[:, 0] > 0.5).long()
+            )
+            assert not result[head].aux_map.requires_grad
+            if optional_heads:
+                torch.testing.assert_close(
+                    result[head].binary_map, (foreground + offset + 4) * weight
+                )
+            else:
+                assert result[head].binary_map is None
+    for result in (weighted, unweighted, default):
+        if optional_heads:
+            torch.testing.assert_close(
+                result["tissue"].type_map, torch.ones((2, 3, 5), dtype=torch.long)
+            )
+            torch.testing.assert_close(result["tissue"].binary_map, foreground + 12)
+        else:
+            assert result["tissue"] is None
+    torch.testing.assert_close(image, original)
+    assert not model.training
 
 
 @pytest.mark.parametrize("shape", [(64, 80), (65, 79), (13, 17), (1, 1)])
