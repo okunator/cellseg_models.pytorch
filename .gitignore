@@ -162,6 +162,10 @@ lightning_logs
 /data/helacytonuke-parquet/
 /data/air-leish-source/
 /data/air-leish-parquet/
+/data/human-tonsil-source/
+/data/human-tonsil-parquet/
+/data/lizard-mitosis-source/
+/data/lizard-mitosis-parquet/
 
 # Local torch.compile experiments and generated benchmark artifacts
 /.local/torch-compile-20261019/

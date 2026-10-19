@@ -111,6 +111,7 @@ includes parasite instances (`inst_parasite`) and full masks for overlapping obj
 | [[12](#references)] [CytoNuke](https://huggingface.co/datasets/csmp-hub/cytonuke) | 83 | New patient-separated `train`, `val`, `test` | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (CPTAC images: [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)) |
 | [[13](#references)] [HeLaCytoNuc](https://huggingface.co/datasets/csmp-hub/helacytonuke) | 2,676 | Original `train`, `val` (automatic labels), `test` (manual labels) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | [[14](#references)] [AIR-LEISH](https://huggingface.co/datasets/csmp-hub/air-leish) | 180 | `train` only; no independent evaluation split | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| [[15, 16](#references)] [Lizard-Mitosis](https://huggingface.co/datasets/csmp-hub/lizard-mitosis) | 4,981 | Original `train`, `val`, `test`; train/val overlap | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (noncommercial) |
 
 For example, download the PanopTILs Refined training split with
 [`hf_hub_download`](https://huggingface.co/docs/huggingface_hub/package_reference/file_download#huggingface_hub.hf_hub_download)
@@ -145,10 +146,10 @@ tissue_types = read_png(row["sem"])
 ```
 
 Images use HWC RGB order; masks use HW axes and integer labels. The PNG decoder
-also works for PanNuke, PUMA, CytoNuke, HeLaCytoNuc and AIR-LEISH. Only PanopTILs
-Refined and PUMA have a `sem` field. Each linked dataset card lists its filenames,
-class mappings, split protocol, attribution and plotting examples. Class numbers
-and tissue-background conventions are dataset-specific.
+also works for PanNuke, PUMA, CytoNuke, HeLaCytoNuc, AIR-LEISH and Lizard-Mitosis.
+Only PanopTILs Refined and PUMA have a `sem` field. Each linked dataset card lists
+its filenames, class mappings, split protocol, attribution and plotting examples.
+Class numbers and tissue-background conventions are dataset-specific.
 
 ## References
 
@@ -166,6 +167,8 @@ and tissue-background conventions are dataset-specific.
 - [12] Raufeisen, J., et al. (2024). Cyto R-CNN and CytoNuke Dataset: Towards reliable whole-cell segmentation in bright-field histological images. Computer Methods and Programs in Biomedicine, 252, 108215. https://doi.org/10.1016/j.cmpb.2024.108215.
 - [13] De, T.; Urbanski, A.; Thangamani, S.; Wyrzykowska, M.; Yakimovich, A. (2024). HeLaCytoNuc: fluorescence microscopy dataset with segmentation masks for cell nuclei and cytoplasm. Version 1. RODARE. https://doi.org/10.14278/rodare.3001.
 - [14] Oualha, R., Fekih-Romdhane, N., Driss, D., Abdelkrim, Y. Z., Guizani, I., & Harigua-Souiai, E. (2026). AIR-LEISH: A Dataset of Giemsa-Stained Microscopy Images for AI-based Leishmania amastigotes Detection. Scientific Data, 13, 328. https://doi.org/10.1038/s41597-026-06676-8.
+- [15] Baumann, E., Dislich, B., Rumberger, J. L., Nagtegaal, I. D., Martínez Rodríguez, M., & Zlobec, I. (2024). HoVer-NeXt: A Fast Nuclei Segmentation and Classification Pipeline for Next Generation Histopathology — Datasets. Version 2. Zenodo. https://doi.org/10.5281/zenodo.11657620.
+- [16] Graham, S., Jahanifar, M., Azam, A., et al. (2021). Lizard: A Large-Scale Dataset for Colonic Nuclear Instance Segmentation and Classification. ICCV Workshops, pp. 684–693. https://arxiv.org/abs/2108.11195.
 
 ## Citation
 
