@@ -150,6 +150,11 @@ Uniform label smoothing moves binary targets toward `0.5`.
 
 ## Losses for flow and distance maps
 
+MSE and MAE compute half-precision inputs in float32. MSE masking retains the
+full-image mean; MAE divides by the mean mask weight and can also penalize
+predictions outside the mask. Regularization is added after masking, so a fully
+masked input can still contribute a penalty.
+
 ```{eval-rst}
 .. autoclass:: cellseg_models_pytorch.losses.MSE
    :members: forward

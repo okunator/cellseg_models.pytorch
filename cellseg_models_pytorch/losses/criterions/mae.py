@@ -16,8 +16,8 @@ class MAE(WeightedBaseLoss):
         alpha: float = 1e-4,
         apply_sd: bool = False,
         apply_mask: bool = False,
-        edge_weight: float = None,
-        **kwargs,
+        edge_weight: float | None = None,
+        **kwargs: object,
     ) -> None:
         """Compare raw maps using mean absolute error.
 
@@ -41,9 +41,9 @@ class MAE(WeightedBaseLoss):
         self,
         yhat: torch.Tensor,
         target: torch.Tensor,
-        target_weight: torch.Tensor = None,
-        mask: torch.Tensor = None,
-        **kwargs,
+        target_weight: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None,
+        **kwargs: object,
     ) -> torch.Tensor:
         """Compute the loss for one batch.
 
@@ -54,38 +54,57 @@ class MAE(WeightedBaseLoss):
             yhat: Floating BCHW maps; no activation is applied.
             target: Floating targets matching BCHW, or BHW replicated across channels.
             target_weight: Optional BHW edge exponents when edge weighting is enabled.
-            mask: Optional BHW inclusion weights, used only with apply_mask=True.
-            **kwargs: Forward options for enabled smoothing methods, such as
-                label_smoothing, kernel_size and sigma; unused otherwise.
+            mask: Optional BHW inclusion weights in [0, 1], used with apply_mask=True.
+            **kwargs: Accepted but unused; smoothing and class weights are unsupported.
 
         Returns:
             A single loss value on the prediction device, with gradients for training.
             Combine channel errors first, then average across images and pixels.
+            Float16/bfloat16 inputs compute in float32; float64 is preserved.
+            Divide masked errors by mean(mask) + 1e-7. Outside-mask and spectral
+            penalties are then added, including for fully masked inputs; edge
+            weights scale all terms.
+
+        Raises:
+            ValueError: Shapes disagree or enabled edge weighting has no map.
+
+        Examples:
+            >>> prediction = torch.tensor([[[[1.0, 3.0]]]])
+            >>> MAE()(prediction, torch.zeros_like(prediction)).item()
+            2.0
         """
-        n_classes = yhat.shape[1]
-        if target.size() != yhat.size():
-            target = target.unsqueeze(1).repeat_interleave(n_classes, dim=1)
+        if yhat.ndim != 4:
+            raise ValueError("MAE predictions must have BCHW shape.")
+        pixel_shape = (yhat.shape[0], *yhat.shape[2:])
+        if target.shape not in (yhat.shape, pixel_shape):
+            raise ValueError("MAE targets must have matching BCHW or BHW shape.")
+        dtype = torch.promote_types(yhat.dtype, target.dtype)
+        if dtype in (torch.float16, torch.bfloat16):
+            dtype = torch.float32
+        prediction, target = yhat.to(dtype=dtype), target.to(dtype=dtype)
+        if target.shape == pixel_shape:
+            # Sum shared-target gradients before narrowing to the input dtype.
+            target = target.unsqueeze(1).expand_as(prediction)
 
-        if not yhat.shape == target.shape:
-            raise ValueError(
-                f"Pred and target shapes must match. Got: {yhat.shape}, {target.shape}"
-            )
-
-        # compute the MAE loss with alpha as weight
-        mae_loss = torch.mean(torch.abs(target - yhat), axis=1)  # (B, H, W)
+        # Promote before subtraction so opposite half-precision limits stay finite.
+        mae_loss = (target - prediction).abs().mean(1)
 
         if self.apply_mask and mask is not None:
+            if mask.shape != pixel_shape:
+                raise ValueError("MAE mask must have BHW shape.")
+            mask = mask.to(dtype=dtype)
             mae_loss = self.apply_mask_weight(mae_loss, mask, norm=True)  # (B, H, W)
 
-            # add the background regularization
             if self.alpha > 0:
-                reg = torch.mean(((1 - mask).unsqueeze(1)) * torch.abs(yhat), axis=1)
+                reg = ((1 - mask).unsqueeze(1) * prediction.abs()).mean(1)
                 mae_loss += self.alpha * reg
 
         if self.apply_sd:
-            mae_loss = self.apply_spectral_decouple(mae_loss, yhat)
+            mae_loss = self.apply_spectral_decouple(mae_loss, prediction)
 
         if self.edge_weight is not None:
+            if target_weight is None or target_weight.shape != pixel_shape:
+                raise ValueError("MAE edge weighting requires a BHW target_weight map.")
             mae_loss = self.apply_edge_weights(mae_loss, target_weight)
 
         return mae_loss.mean()

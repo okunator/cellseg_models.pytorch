@@ -94,37 +94,37 @@ class WeightedBaseLoss(nn.Module):
         target: torch.Tensor,
         n_classes: int,
         kernel_size: int = 5,
-        sigma: int = 3,
-        **kwargs,
+        sigma: float = 3.0,
+        **kwargs: object,
     ) -> torch.Tensor:
-        """Apply spatially varying label smoothihng to target map.
+        """Smooth targets using their neighboring pixels.
 
-        https://arxiv.org/abs/2104.05788
-
-            target (torch.Tensor):
-                The target one hot tensor. Shape (B, C, H, W). Dtype: Int64.
-            n_classes (int):
-                Number of classes in the data.
-            kernel_size (int, default=3):
-                Size of a square kernel.
-            sigma (int, default=3):
-                The std of the gaussian.
-
+        See https://arxiv.org/abs/2104.05788 for spatially varying label smoothing.
 
         Args:
-            Retrurns: Torch.Tensor:
-                    Label smoothed target. Same shape as input.
-        """
-        my, mx = kernel_size // 2, kernel_size // 2
-        gaussian_kernel = gaussian_kernel2d(
-            kernel_size, sigma, n_classes, device=target.device
-        )
-        neighborsum = (1 - gaussian_kernel[..., my, mx]) + 1e-16
-        gaussian_kernel = gaussian_kernel.clone()
-        gaussian_kernel[..., my, mx] = neighborsum
-        svls_kernel = gaussian_kernel / neighborsum[0]
+            target: BCHW class maps, normally one-hot encoded labels.
+            n_classes: Number of channels C.
+            kernel_size: Square Gaussian smoothing window width.
+            sigma: Gaussian standard deviation.
+            **kwargs: Accepted but unused, including uniform smoothing options.
 
-        return filter2D(target.float(), svls_kernel) / svls_kernel[0].sum()
+        Returns:
+            Smoothed BCHW targets on the input device, in float32 even under
+            autocast. The center and its neighbors each supply half the weight
+            when neighbors exist.
+        """
+        # Target construction must not inherit the model's low-precision convolution.
+        with torch.autocast(device_type=target.device.type, enabled=False):
+            my, mx = kernel_size // 2, kernel_size // 2
+            gaussian_kernel = gaussian_kernel2d(
+                kernel_size, sigma, n_classes, device=target.device
+            )
+            neighborsum = (1 - gaussian_kernel[..., my, mx]) + 1e-16
+            gaussian_kernel = gaussian_kernel.clone()
+            gaussian_kernel[..., my, mx] = neighborsum
+            svls_kernel = gaussian_kernel / neighborsum[0]
+
+            return filter2D(target.float(), svls_kernel) / svls_kernel[0].sum()
 
     def apply_class_weights(
         self, loss_matrix: torch.Tensor, target: torch.Tensor
@@ -150,21 +150,17 @@ class WeightedBaseLoss(nn.Module):
     def apply_edge_weights(
         self, loss_matrix: torch.Tensor, weight_map: torch.Tensor
     ) -> torch.Tensor:
-        """Apply weights to the object boundaries.
-
-        Basically just computes `edge_weight`**`weight_map`.
+        """Scale pixel losses by edge_weight raised to each edge exponent.
 
         Args:
-            loss_matrix: Pixelwise losses. A tensor of shape (B, H, W).
-            weight_map: Map that points to the pixels that will be weighted.
-                Shape (B, H, W).
+            loss_matrix: Floating BHW or BCHW pixel losses.
+            weight_map: Edge exponents broadcastable to the loss shape, on its
+                device. Powers use the loss dtype to avoid half-precision overflow.
 
         Returns:
-            torch.Tensor:
-                The loss matrix scaled with the nuclear boundary weights.
-                Shape (B, H, W).
+            Weighted pixel losses with the input shape, on the input device.
         """
-        return loss_matrix * self.edge_weight**weight_map
+        return loss_matrix * self.edge_weight ** weight_map.to(dtype=loss_matrix.dtype)
 
     def apply_mask_weight(
         self, loss_matrix: torch.Tensor, mask: torch.Tensor, norm: bool = True
@@ -184,7 +180,7 @@ class WeightedBaseLoss(nn.Module):
         """
         loss_matrix *= mask
         if norm:
-            norm_mask = torch.mean(mask.float()) + 1e-7
+            norm_mask = mask.to(dtype=loss_matrix.dtype).mean() + 1e-7
             loss_matrix /= norm_mask
 
         return loss_matrix

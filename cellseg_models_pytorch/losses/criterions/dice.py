@@ -21,7 +21,7 @@ class DiceLoss(WeightedBaseLoss):
         apply_mask: bool = False,
         edge_weight: float | None = None,
         class_weights: torch.Tensor | None = None,
-        **kwargs,
+        **kwargs: object,
     ) -> None:
         """Configure Dice loss for class masks.
 
@@ -46,7 +46,7 @@ class DiceLoss(WeightedBaseLoss):
         target: torch.Tensor,
         target_weight: torch.Tensor | None = None,
         mask: torch.Tensor | None = None,
-        **kwargs,
+        **kwargs: float | int,
     ) -> torch.Tensor:
         """Compute spatial soft Dice loss from multiclass logits.
 
@@ -105,7 +105,9 @@ class DiceLoss(WeightedBaseLoss):
             )
         if self.apply_ls:
             target_one_hot = self.apply_ls_to_target(
-                target_one_hot, n_classes, **kwargs
+                target_one_hot,
+                n_classes,
+                label_smoothing=kwargs.get("label_smoothing", 0.1),
             )
 
         weights = pixel_weights.unsqueeze(1)

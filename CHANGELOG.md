@@ -34,6 +34,14 @@
 
 ## Fixes
 
+- Compute MSE/MAE errors and regularization in float32 for half-precision inputs,
+  preserving their distinct mask reductions and outside-mask penalties. Support
+  shared floating MSE targets across dtypes and retain float64 mask normalization.
+  Promote shared targets before channel expansion to keep summed gradients finite.
+  Evaluate edge powers in the loss dtype to avoid premature overflow. Fix combined
+  spatial/uniform smoothing in MSE and Dice, and keep smoothed targets in float32
+  under autocast. Existing model checkpoints remain compatible.
+
 - Read the StarDist and CPPNet ray count from checkpoint weights when loading a
   model. Checkpoints with custom ray counts now load without changing the default
   32-ray behavior for newly constructed models.
