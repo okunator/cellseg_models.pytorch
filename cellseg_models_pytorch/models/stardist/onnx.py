@@ -4,6 +4,8 @@ from typing import Tuple, Union
 import torch
 import torch.nn as nn
 
+from cellseg_models_pytorch.models.base._onnx import _export_onnx
+
 from cellseg_models_pytorch.models.stardist.stardist import StarDist
 
 __all__ = ["StarDistONNXWrapper", "export_stardist_onnx"]
@@ -25,42 +27,6 @@ class StarDistONNXWrapper(nn.Module):
             raise RuntimeError("StarDist export requires a nuclei binary output head.")
 
         return nuc.binary_map, nuc.aux_map, nuc.type_map
-
-
-def _check_torch_export_version() -> None:
-    """Require the validated torch.export-based ONNX exporter (PyTorch 2.7)."""
-    try:
-        major, minor = (
-            int(part) for part in torch.__version__.split("+", 1)[0].split(".")[:2]
-        )
-    except (TypeError, ValueError):
-        raise RuntimeError(
-            f"Unable to determine PyTorch version from {torch.__version__!r}."
-        ) from None
-
-    if (major, minor) < (2, 7):
-        raise RuntimeError("StarDist ONNX export requires PyTorch >= 2.7.")
-
-
-def _check_onnx_export_dependencies() -> None:
-    """Raise an actionable error when PyTorch ONNX dependencies are missing."""
-    missing = []
-    try:
-        import onnx  # noqa: F401
-    except ImportError:
-        missing.append("onnx")
-
-    try:
-        import onnxscript  # noqa: F401
-    except ImportError:
-        missing.append("onnxscript")
-
-    if missing:
-        packages = " ".join(missing)
-        raise ImportError(
-            "ONNX export requires additional packages. "
-            f"Install them with `pip install {packages}`."
-        )
 
 
 def export_stardist_onnx(
@@ -110,58 +76,13 @@ def export_stardist_onnx(
         Outputs have batch, channel, height and width axes. Cell-type outputs
         are raw logits. Preprocessing and Python reconstruction are not exported.
     """
-    if len(input_shape) != 4 or any(
-        not isinstance(dim, int) or isinstance(dim, bool) or dim <= 0
-        for dim in input_shape
-    ):
-        raise ValueError("input_shape must contain four positive BCHW dimensions.")
-
-    _check_torch_export_version()
-    _check_onnx_export_dependencies()
-
     network = model.model if isinstance(model, StarDist) else model
-    if not isinstance(network, nn.Module):
-        raise TypeError("model must be a StarDist instance or torch.nn.Module.")
-
-    output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    reference = next(network.parameters(), None)
-    if reference is None:
-        reference = next(network.buffers(), None)
-    device = reference.device if reference is not None else torch.device("cpu")
-    dtype = (
-        reference.dtype
-        if reference is not None and reference.is_floating_point()
-        else torch.get_default_dtype()
+    return _export_onnx(
+        network,
+        StarDistONNXWrapper,
+        ("binary_map", "ray_map", "type_map"),
+        output_path,
+        input_shape,
+        opset_version,
+        dynamic_batch,
     )
-
-    # Batch-one examples are specialized by torch.export even with a dynamic Dim.
-    example_shape = (
-        (max(2, input_shape[0]), *input_shape[1:]) if dynamic_batch else input_shape
-    )
-    example = torch.zeros(example_shape, dtype=dtype, device=device)
-    dynamic_shapes = None
-    if dynamic_batch:
-        dynamic_shapes = {"x": {0: torch.export.Dim("batch")}}
-
-    wrapper = StarDistONNXWrapper(network)
-    training_states = [(module, module.training) for module in network.modules()]
-    try:
-        wrapper.eval()
-        with torch.inference_mode():
-            torch.onnx.export(
-                wrapper,
-                (example,),
-                str(output_path),
-                input_names=["image"],
-                output_names=["binary_map", "ray_map", "type_map"],
-                dynamo=True,
-                dynamic_shapes=dynamic_shapes,
-                opset_version=opset_version,
-            )
-    finally:
-        for module, training in training_states:
-            module.training = training
-
-    return output_path

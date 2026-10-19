@@ -11,6 +11,13 @@
 
 ## Features
 
+- Add HoverNet and InstanSeg ONNX exports for reconstruction maps and class logits,
+  with fixed image sizes and optional variable batch sizes. Instance reconstruction,
+  including InstanSeg's pixel classifier, remains in Python. Share export validation
+  and state restoration with the existing CellPose/StarDist exporters.
+  Export in the network's dtype inside autocast, restoring the caller's autocast
+  state after success or failure.
+
 - Document Omnipose ONNX export through `export_cellpose_onnx`, with flow maps
   and class logits. Add ONNX Runtime comparisons for fixed and variable batches.
 

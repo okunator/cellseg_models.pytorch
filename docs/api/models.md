@@ -170,6 +170,8 @@ from cellseg_models_pytorch.models.hovernet import HoverNet
 
 ```
 
+ONNX export: {py:meth}`~cellseg_models_pytorch.models.hovernet.HoverNet.export_onnx` in the [export reference](export.md).
+
 ## CPPNet
 
 `from_pretrained` reads the ray count from the saved weights.
@@ -300,3 +302,5 @@ from cellseg_models_pytorch.models.instanseg import InstanSeg
    Post-processor created by ``set_inference_mode``. Replace it to change reconstruction settings.
 
 ```
+
+ONNX export: {py:meth}`~cellseg_models_pytorch.models.instanseg.InstanSeg.export_onnx` in the [export reference](export.md).

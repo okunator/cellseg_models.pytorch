@@ -1,6 +1,7 @@
 # ONNX export
 
-Export a trained CellPose, Omnipose or StarDist network to ONNX. Install `onnx` and
+Export CellPose, Omnipose, StarDist, HoverNet or InstanSeg prediction maps to ONNX.
+Install `onnx` and
 `onnxscript` to export, and an ONNX runtime to run the file.
 
 The file contains prediction maps. Convert them to classes and instance masks
@@ -12,10 +13,12 @@ width are fixed; batch size can vary.
 | CellPose | `image`: floating `(B, 3, H, W)` | `flow_map`: `(B, 2, H, W)`; `type_map`: raw logits `(B, classes, H, W)` |
 | Omnipose | `image`: floating `(B, 3, H, W)` | `flow_map`: `(B, 2, H, W)`; `type_map`: raw logits `(B, classes, H, W)` |
 | StarDist | `image`: floating `(B, 3, H, W)` | `binary_map`: foreground values `(B, 1, H, W)`; `ray_map`: `(B, n_rays, H, W)`; `type_map`: raw logits `(B, classes, H, W)` |
+| HoverNet | `image`: floating `(B, 3, H, W)` | `hv_map`: horizontal/vertical distances `(B, 2, H, W)`; `type_map`: raw logits `(B, classes, H, W)` |
+| InstanSeg | `image`: floating `(B, 3, H, W)` | `instanseg_map`: reconstruction values `(B, 4, H, W)`; `type_map`: raw logits `(B, classes, H, W)` |
 
 B is batch size, H height and W width. `out_size` can change the output dimensions.
-The exporter uses the network's device and dtype and restores its training mode
-afterward. It creates output folders and may overwrite the destination file.
+The exporter uses the network's device and dtype, even inside autocast, and restores
+its training mode afterward. It creates output folders and may overwrite the destination file.
 
 ```python
 from pathlib import Path
@@ -63,4 +66,44 @@ omnipose_path = export_cellpose_onnx(network, Path("exports/omnipose.onnx"))
 
 ```{eval-rst}
 .. automethod:: cellseg_models_pytorch.models.stardist.StarDist.export_onnx
+```
+
+## HoverNet
+
+Load your trained checkpoint, then export its prediction maps:
+
+```python
+from cellseg_models_pytorch.models.hovernet import HoverNet
+
+hovernet = HoverNet.from_pretrained(
+    Path("checkpoints/hovernet.pt"), device=torch.device("cpu")
+)
+hovernet_path = hovernet.export_onnx(Path("exports/hovernet.onnx"))
+```
+
+```{eval-rst}
+.. autofunction:: cellseg_models_pytorch.models.hovernet.export_hovernet_onnx
+
+.. automethod:: cellseg_models_pytorch.models.hovernet.HoverNet.export_onnx
+```
+
+## InstanSeg
+
+The four reconstruction channels contain two coordinate values, a scale value
+and a seed value. They are raw network outputs. InstanSeg's pixel classifier stays
+in Python; keep its trained weights with the model used for reconstruction.
+
+```python
+from cellseg_models_pytorch.models.instanseg import InstanSeg
+
+instanseg = InstanSeg.from_pretrained(
+    Path("checkpoints/instanseg.pt"), device=torch.device("cpu")
+)
+instanseg_path = instanseg.export_onnx(Path("exports/instanseg.onnx"))
+```
+
+```{eval-rst}
+.. autofunction:: cellseg_models_pytorch.models.instanseg.export_instanseg_onnx
+
+.. automethod:: cellseg_models_pytorch.models.instanseg.InstanSeg.export_onnx
 ```

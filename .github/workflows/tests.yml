@@ -145,14 +145,14 @@ jobs:
           OMP_NUM_THREADS: "2"
         run: |
           uv run --no-sync python -c "import onnx, onnxscript, onnxruntime"
-          uv run --no-sync pytest cellseg_models_pytorch/models/tests/test_cellpose_onnx.py cellseg_models_pytorch/models/tests/test_stardist_onnx.py -k 'not pretrained' -m 'not optional' --junitxml=onnx-results.xml
-          uv run --no-sync pytest --optional cellseg_models_pytorch/models/tests/test_cellpose_onnx.py -k 'omnipose_onnxruntime_matches_pytorch' --junitxml=omnipose-onnx-results.xml
+          uv run --no-sync pytest cellseg_models_pytorch/models/tests/test_cellpose_onnx.py cellseg_models_pytorch/models/tests/test_stardist_onnx.py cellseg_models_pytorch/models/tests/test_dense_onnx.py -k 'not pretrained' -m 'not optional' --junitxml=onnx-results.xml
+          uv run --no-sync pytest --optional cellseg_models_pytorch/models/tests/test_cellpose_onnx.py cellseg_models_pytorch/models/tests/test_dense_onnx.py -k 'onnxruntime_matches_pytorch' -m optional --junitxml=optional-onnx-results.xml
           uv run --no-sync python - <<'PY'
           import xml.etree.ElementTree as ET
-          cases = [case for report in ("onnx-results.xml", "omnipose-onnx-results.xml")
+          cases = [case for report in ("onnx-results.xml", "optional-onnx-results.xml")
                    for case in ET.parse(report).findall(".//testcase")]
           assert cases and not any(case.find("skipped") is not None for case in cases)
-          for family in ("cellpose", "omnipose", "stardist"):
+          for family in ("cellpose", "omnipose", "stardist", "hovernet", "instanseg"):
               assert sum(case.attrib["name"].startswith(f"test_{family}_onnxruntime_matches_pytorch") for case in cases) == 2
           PY
 
@@ -163,7 +163,7 @@ jobs:
           name: onnx-reports-${{ matrix.torch-version }}
           path: |
             onnx-results.xml
-            omnipose-onnx-results.xml
+            optional-onnx-results.xml
           if-no-files-found: warn
 
   developer_checks:

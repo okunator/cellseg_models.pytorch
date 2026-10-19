@@ -301,17 +301,31 @@ def test_api_export_example(local_checkpoint):
 
     network = omnipose_nuclei(3, enc_name="resnet18", enc_pretrain=False)
     torch.save(network.state_dict(), "checkpoints/omnipose.pt")
+    from cellseg_models_pytorch.models.hovernet import HoverNet
+    from cellseg_models_pytorch.models.instanseg import InstanSeg
+
+    for model_cls in (HoverNet, InstanSeg):
+        source = model_cls(
+            3, enc_name="resnet18", enc_pretrain=False, device=torch.device("cpu")
+        )
+        torch.save(source.model.state_dict(), f"checkpoints/{source.model_name}.pt")
+        del source
     ns = _run_page("export")
     for path, model in (
         (ns["output_path"], local_checkpoint.model),
         (ns["omnipose_path"], ns["network"]),
+        (ns["hovernet_path"], ns["hovernet"].model),
+        (ns["instanseg_path"], ns["instanseg"].model),
     ):
         onnx.checker.check_model(onnx.load(path))
         session = runtime.InferenceSession(
             str(path), providers=["CPUExecutionProvider"]
         )
+        map_name = {"hovernet": "hv_map", "instanseg": "instanseg_map"}.get(
+            path.stem, "flow_map"
+        )
         assert [output.name for output in session.get_outputs()] == [
-            "flow_map",
+            map_name,
             "type_map",
         ]
         model.eval()
