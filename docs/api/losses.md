@@ -25,6 +25,12 @@ maps.
 | `MSSSIM` | Matching floating BCHW maps, at least 161 pixels per axis with the default window | 1 minus five-scale MS-SSIM, averaged over images and channels |
 | `InstanSegCriterion` | B4HW maps; BHW instance IDs | Seed and center-offset losses; call directly with `pred` |
 
+For `SSIM`, set `data_range=1` for normalized maps or `data_range=255` for
+floating images in [0, 255]. The default `None` retains prediction-only range
+guessing and can change with batch contents. Floating BHW targets are shared
+across channels; integer BHW targets are class IDs converted to one-hot maps.
+The loss retains its cap at 0.5, so negative similarities have zero gradient.
+
 For `MSSSIM`, supply maps in [0, 1], or set `data_range=255` for floating images
 in [0, 255]. It does not convert logits to probabilities. Masking, weighting and
 smoothing options are unused.

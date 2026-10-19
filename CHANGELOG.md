@@ -45,6 +45,14 @@
 
 ## Fixes
 
+- Stabilize standalone `SSIM` moments and gradients in mixed precision, preserve
+  float64, and set CUDA convolution precision per operation without changing
+  caller settings or precision-policy inheritance.
+  Floating BHW targets are shared maps rather than truncated class IDs; integer
+  BHW targets remain one-hot class labels. Reject mismatched shapes/devices and
+  add explicit `data_range` control. Its default retains legacy range guessing;
+  padding, adaptive windows, loss cap and return values remain unchanged.
+
 - Compute MSE/MAE errors and regularization in float32 for half-precision inputs,
   preserving their distinct mask reductions and outside-mask penalties. Support
   shared floating MSE targets across dtypes and retain float64 mask normalization.
