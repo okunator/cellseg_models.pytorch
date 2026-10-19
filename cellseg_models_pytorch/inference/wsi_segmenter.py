@@ -10,8 +10,11 @@ from tqdm import tqdm
 
 from cellseg_models_pytorch.models.base._base_model_inst import BaseModelInst
 from cellseg_models_pytorch.torch_datasets import WSIDatasetInfer
+from cellseg_models_pytorch.utils import FileHandler
+from cellseg_models_pytorch.utils.vectorize import gaussian_smooth, inst2gdf
 from cellseg_models_pytorch.wsi import SlideReader
 from cellseg_models_pytorch.wsi.inst_merger import InstMerger
+from cellseg_models_pytorch.wsi.tiles import format_level
 
 __all__ = ["WsiSegmenter"]
 
@@ -37,14 +40,15 @@ class WsiSegmenter:
             reader: SlideReader used to read the tiles.
             model: Model with set_inference_mode already called. Use the normalization
                 and class mapping supplied with its checkpoint.
-            level: Read level. Use 0 for slide-wide polygons: higher levels reduce
-                tile images, but saved polygon sizes are not scaled back to level zero.
+            level: Slide level to read; 0 gives full resolution. Saved polygons
+                always use level-zero slide coordinates.
             coordinates: List of level-zero (x, y, width, height) bounds. Pass
                 TileCoordinates.coordinates when using reader-generated tiles.
                 Read tiles in a batch must have matching image sizes.
             batch_size: Number of tiles predicted together.
             normalization: Callable receiving image=tile and returning a dictionary
-                with an HWC image. For CUDA reads, accept and return a tensor.
+                with an HWC image. Keep its size and pixel positions unchanged.
+                For CUDA reads, accept and return a tensor.
             read_device: None reads CPU tiles. A CUDA device requires CUCIM and
                 keeps tiles on GPU through normalization. Reconstruction and
                 polygon saving still use CPU data.
@@ -83,12 +87,19 @@ class WsiSegmenter:
         Note:
             Tiles are processed in batches as float32 tensors on the model device.
             Uint8 images are divided by 255; other values are kept as supplied.
+            Saved polygons use the reader's level-zero pixel scale along each axis,
+            including when the model returns smaller or larger prediction maps.
             Empty tiles produce no file. Failed runs keep completed tile files;
             merging is enabled only after every batch succeeds.
         """
         self._has_processed = False
         if maptype != "amap":
             raise ValueError("Only maptype='amap' (GeoParquet) is supported")
+        down_y, down_x = 1.0, 1.0
+        if self.dataset.level != 0:
+            downsamples = self.dataset.reader.level_downsamples
+            level = format_level(self.dataset.level, available=list(downsamples))
+            down_y, down_x = downsamples[level]
         save_dir = Path(save_dir)
         save_dir.mkdir(parents=True, exist_ok=True)
 
@@ -119,12 +130,25 @@ class WsiSegmenter:
                     # predict
                     probs = self.model.predict(im)
 
-                    # post-process
-                    self.model.post_process(
-                        probs,
-                        save_paths_nuc=save_paths,
-                        coords=coords,
-                    )
+                    # Reconstruct at prediction resolution before placing slide polygons.
+                    masks = self.model.post_process(probs)
+                    for (instances, classes), path, (x, y, _, _) in zip(
+                        masks["nuc"], save_paths, coords
+                    ):
+                        polygons = inst2gdf(
+                            instances,
+                            classes,
+                            xoff=x,
+                            yoff=y,
+                            smooth_func=gaussian_smooth,
+                        )
+                        xscale = down_x * im.shape[-1] / instances.shape[1]
+                        yscale = down_y * im.shape[-2] / instances.shape[0]
+                        if xscale != 1 or yscale != 1:
+                            polygons.geometry = polygons.geometry.scale(
+                                xfact=xscale, yfact=yscale, origin=(x, y)
+                            )
+                        FileHandler.gdf_to_file(polygons, path, silence_warnings=True)
 
         self._has_processed = True
 

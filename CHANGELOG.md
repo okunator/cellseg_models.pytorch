@@ -45,6 +45,10 @@
 
 ## Fixes
 
+- Scale whole-slide prediction polygons back to level-zero slide coordinates
+  before saving and merging. Use the reader's height/width pixel scales and
+  account for prediction maps whose dimensions differ from the input tile.
+
 - Stabilize standalone `SSIM` moments and gradients in mixed precision, preserve
   float64, and set CUDA convolution precision per operation without changing
   caller settings or precision-policy inheritance.

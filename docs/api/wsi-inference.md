@@ -51,7 +51,9 @@ nuclei = gpd.read_parquet("outputs/slide-nuclei.parquet")
 
 Use your checkpoint's normalization. Choose new output paths for each run.
 Empty tiles produce no file; saved filenames identify the source tile for merging.
-Use `level=0`: higher-level predictions are not yet scaled back to slide coordinates.
+Saved polygons always use full-resolution (level-zero) slide coordinates, even
+when reading a lower-resolution level. Choose a level that matches your checkpoint’s
+training resolution.
 
 `nuclei` contains one row per object, with its polygon, class and slide-wide `uid`.
 Coordinates remain in pixels. See [metrics](metrics.md) to evaluate masks and the
