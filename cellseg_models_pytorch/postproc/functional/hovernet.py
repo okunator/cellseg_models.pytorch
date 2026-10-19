@@ -41,21 +41,24 @@ __all__ = ["post_proc_hovernet"]
 
 
 def post_proc_hovernet(
-    inst_map: np.ndarray, hover_map: np.ndarray, enhance: bool = True, **kwargs
+    inst_map: np.ndarray, hover_map: np.ndarray, enhance: bool = True, **kwargs: object
 ) -> np.ndarray:
-    """HoVer-Net post processing pipeline.
+    """Separate nuclei using their foreground mask and position maps.
 
     Args:
-        inst_map: Instance labelled or binary mask. Shape (H, W).
-        hover_map:
-            Regressed horizontal and vertical gradients. Shape: (2, H, W).
-        enhance: Normalizes hover-maps to the 0-99 percentiles and clamps the
-            values to min=-1 and max=1.
-            Defaults to True.
+        inst_map: Binary or labeled mask (H, W). Zero is background; all positive
+            labels are treated as foreground. The input is not modified.
+        hover_map: Floating vertical then horizontal position maps (2, H, W),
+            on the same pixel grid as inst_map.
+        enhance: Rescale position maps using their 0–99 percentiles and clamp
+            values to [-1, 1]. Defaults to True.
+        **kwargs: Additional arguments are accepted but unused.
 
     Returns:
-        Post-processed inst map. Shape (H, W). Dtype: int32
+        An int32 mask (H, W). Zero is background; positive IDs identify nuclei.
+        Cell-type voting is handled separately by PostProcessor.
     """
+    inst_map = (inst_map > 0).astype(np.int32)
     v_dir = cv2.normalize(
         hover_map[0],
         None,

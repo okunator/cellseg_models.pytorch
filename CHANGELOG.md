@@ -45,6 +45,11 @@
 
 ## Fixes
 
+- Separate HoverNet and CellVit nuclei using binary foreground, so cell-type
+  numbers no longer change object boundaries. Keep the original classes for voting.
+  Existing checkpoints can produce different instance masks; network outputs stay
+  unchanged.
+
 - Name the CellVit HGSC checkpoint `hgsc_v1_samvit_base_patch16` to match its
   encoder. Keep `hgsc_v1_efficientnet_b5` as an alias for existing code.
 
