@@ -155,3 +155,5 @@ lightning_logs
 /data/panoptils-refined-copy/
 /docs/panoptic-dataset-plan.md
 /data/panoptils-refined-splits/
+/data/cytonuke-source/
+/data/cytonuke-parquet/

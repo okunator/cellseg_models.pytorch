@@ -99,12 +99,15 @@ Find pretrained checkpoints on [csmp-hub on Hugging Face](https://huggingface.co
 Download prepared datasets from CSMP Hub. Each Parquet row contains an RGB image
 (`image`), nucleus instances (`inst`) and nucleus classes (`type`) as PNG bytes.
 PanopTILs Refined and PUMA also include tissue classes (`sem`).
+CytoNuke includes separate whole-cell instances (`inst_cell`) and inferred
+nucleus-to-cell links (`pairs`).
 
 | Dataset | Images | Splits | License |
 | --- | ---: | --- | --- |
 | [[8, 9](#references)] [PanNuke](https://huggingface.co/datasets/csmp-hub/pannuke) | 7,901 | `fold1`, `fold2`, `fold3` | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (noncommercial) |
 | [[10](#references)] [PanopTILs Refined](https://huggingface.co/datasets/csmp-hub/panoptils_refined) | 1,349 | Patient-separated `train`, `val`, `test` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
 | [[11](#references)] [PUMA](https://huggingface.co/datasets/csmp-hub/puma) | 206 | Public challenge `train` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| [[12](#references)] [CytoNuke](https://huggingface.co/datasets/csmp-hub/cytonuke) | 83 | New patient-separated `train`, `val`, `test` | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (CPTAC images: [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)) |
 
 For example, download the PanopTILs Refined training split with
 [`hf_hub_download`](https://huggingface.co/docs/huggingface_hub/package_reference/file_download#huggingface_hub.hf_hub_download)
@@ -139,9 +142,10 @@ tissue_types = read_png(row["sem"])
 ```
 
 Images use HWC RGB order; masks use HW axes and integer labels. The decoder also
-works for PanNuke and PUMA; PanNuke has no `sem` field. Each linked dataset card
-lists its filenames, class mappings, split protocol, attribution and plotting
-examples. Class numbers and tissue-background conventions are dataset-specific.
+works for PanNuke, PUMA and CytoNuke; PanNuke and CytoNuke have no `sem` field.
+Each linked dataset card lists its filenames, class mappings, split protocol,
+attribution and plotting examples. Class numbers and tissue-background
+conventions are dataset-specific.
 
 ## References
 
@@ -156,6 +160,7 @@ examples. Class numbers and tissue-background conventions are dataset-specific.
 - [9] Gamper, J., Koohbanani, N., Graham, S., Jahanifar, M., Khurram, S., Azam, A.,Hewitt, K., & Rajpoot, N. (2020). PanNuke Dataset Extension, Insights and Baselines. arXiv preprint arXiv:2003.10778.
 - [10] Liu, S., Amgad, M., Rathore, M. A., Salgado, R., & Cooper, L. A. (2022). A panoptic segmentation approach for tumor-infiltrating lymphocyte assessment: development of the MuTILs model and PanopTILs dataset. medRxiv. https://doi.org/10.1101/2022.01.08.22268814.
 - [11] Schuiveling, M., et al. (2025). A novel dataset for nuclei and tissue segmentation in melanoma with baseline nuclei segmentation and tissue segmentation benchmarks. GigaScience, 14, giaf011. https://doi.org/10.1093/gigascience/giaf011.
+- [12] Raufeisen, J., et al. (2024). Cyto R-CNN and CytoNuke Dataset: Towards reliable whole-cell segmentation in bright-field histological images. Computer Methods and Programs in Biomedicine, 252, 108215. https://doi.org/10.1016/j.cmpb.2024.108215.
 
 ## Citation
 
