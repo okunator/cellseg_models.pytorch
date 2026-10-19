@@ -11,6 +11,9 @@
 
 ## Features
 
+- Document Omnipose ONNX export through `export_cellpose_onnx`, with flow maps
+  and class logits. Add ONNX Runtime comparisons for fixed and variable batches.
+
 - Expose calibrated level-zero pixel size through `SlideReader.pixel_size` in
   `(height, width)` micrometers, retaining anisotropic axes and rejecting missing
   calibration. cuCIM also reads Aperio MPP metadata. Optional CUDA tile reads and

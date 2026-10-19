@@ -1,5 +1,6 @@
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
 
@@ -15,13 +16,18 @@ from cellseg_models_pytorch.models.cellpose import (
     CellPoseONNXWrapper,
     export_cellpose_onnx,
 )
-from cellseg_models_pytorch.models.cellpose.cellpose_unet import cellpose_nuclei
+from cellseg_models_pytorch.models.cellpose.cellpose_unet import (
+    cellpose_nuclei,
+    omnipose_nuclei,
+)
 from cellseg_models_pytorch.transforms.functional.normalization import minmax_normalize
 
 
-def _make_cellpose() -> torch.nn.Module:
+def _make_model(
+    factory: Callable[..., torch.nn.Module] = cellpose_nuclei,
+) -> torch.nn.Module:
     torch.manual_seed(0)
-    return cellpose_nuclei(
+    return factory(
         n_nuc_classes=3,
         enc_name="resnet18",
         enc_pretrain=False,
@@ -41,8 +47,11 @@ def _to_soft_output(outputs: list[np.ndarray]) -> dict:
     }
 
 
-def test_cellpose_onnx_wrapper_matches_model_output() -> None:
-    model = _make_cellpose()
+@pytest.mark.parametrize("factory", [cellpose_nuclei, omnipose_nuclei])
+def test_cellpose_onnx_wrapper_matches_model_output(
+    factory: Callable[..., torch.nn.Module],
+) -> None:
+    model = _make_model(factory)
     wrapper = CellPoseONNXWrapper(model).eval()
     x = torch.rand(1, 3, 64, 64)
 
@@ -55,7 +64,7 @@ def test_cellpose_onnx_wrapper_matches_model_output() -> None:
 
 
 def test_export_cellpose_onnx_validates_input_shape(tmp_path: Path) -> None:
-    model = _make_cellpose()
+    model = _make_model()
 
     with pytest.raises(ValueError, match="four positive BCHW dimensions"):
         export_cellpose_onnx(
@@ -69,7 +78,7 @@ def test_export_cellpose_onnx_validates_input_shape(tmp_path: Path) -> None:
 def test_export_cellpose_onnx_requires_torch_2_7(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, version: str
 ) -> None:
-    model = _make_cellpose()
+    model = _make_model()
     monkeypatch.setattr(torch, "__version__", version)
 
     with pytest.raises(RuntimeError, match=r"PyTorch >= 2\.7"):
@@ -79,7 +88,7 @@ def test_export_cellpose_onnx_requires_torch_2_7(
 def test_export_cellpose_onnx_contract(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    model = _make_cellpose()
+    model = _make_model()
     model.train()
     output_path = tmp_path / "nested" / "cellpose.onnx"
     export_call = {}
@@ -116,18 +125,41 @@ def test_export_cellpose_onnx_contract(
 def test_cellpose_onnxruntime_matches_pytorch(
     tmp_path: Path, dynamic_batch: bool
 ) -> None:
+    _check_runtime_outputs(tmp_path, dynamic_batch, cellpose_nuclei)
+
+
+@pytest.mark.optional
+@pytest.mark.parametrize("dynamic_batch", [True, False])
+def test_omnipose_onnxruntime_matches_pytorch(
+    tmp_path: Path, dynamic_batch: bool
+) -> None:
+    _check_runtime_outputs(tmp_path, dynamic_batch, omnipose_nuclei)
+
+
+def _check_runtime_outputs(
+    tmp_path: Path,
+    dynamic_batch: bool,
+    factory: Callable[..., torch.nn.Module],
+) -> None:
     pytest.importorskip("onnx")
     pytest.importorskip("onnxscript")
     ort = pytest.importorskip("onnxruntime")
 
-    model = _make_cellpose()
-    wrapper = CellPoseONNXWrapper(model).eval()
+    model = _make_model(factory)
+    model.train()
+    next(
+        module for module in model.modules() if isinstance(module, torch.nn.BatchNorm2d)
+    ).eval()
+    states = [module.training for module in model.modules()]
     output_path = export_cellpose_onnx(
         model,
         tmp_path / "cellpose.onnx",
         input_shape=(1, 3, 64, 64),
         dynamic_batch=dynamic_batch,
     )
+
+    assert [module.training for module in model.modules()] == states
+    wrapper = CellPoseONNXWrapper(model).eval()
 
     session = ort.InferenceSession(str(output_path), providers=["CPUExecutionProvider"])
     assert [output.name for output in session.get_outputs()] == [
@@ -222,20 +254,26 @@ def test_pretrained_cellpose_real_image_onnx_parity(tmp_path: Path) -> None:
         0
     ]
 
-    assert (
-        np.count_nonzero(expected_post[0]) > 0
-    ), "pretrained CellPose validation produced an empty instance mask"
+    assert np.count_nonzero(expected_post[0]) > 0, (
+        "pretrained CellPose validation produced an empty instance mask"
+    )
     np.testing.assert_array_equal(actual_post[0], expected_post[0])
     np.testing.assert_array_equal(actual_post[1], expected_post[1])
 
 
+@pytest.mark.parametrize("factory", [cellpose_nuclei, omnipose_nuclei])
 @pytest.mark.parametrize("fails", [False, True])
 def test_export_cellpose_onnx_preserves_child_modes(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fails: bool
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    fails: bool,
+    factory: Callable[..., torch.nn.Module],
 ) -> None:
-    model = torch.nn.Sequential(torch.nn.Conv2d(3, 3, 1), torch.nn.BatchNorm2d(3))
+    model = _make_model(factory)
     model.train()
-    model[1].eval()
+    next(
+        module for module in model.modules() if isinstance(module, torch.nn.BatchNorm2d)
+    ).eval()
     before = [module.training for module in model.modules()]
     monkeypatch.setitem(sys.modules, "onnx", ModuleType("onnx"))
     monkeypatch.setitem(sys.modules, "onnxscript", ModuleType("onnxscript"))
@@ -256,20 +294,25 @@ def test_export_cellpose_onnx_preserves_child_modes(
     assert [module.training for module in model.modules()] == before
 
 
+@pytest.mark.parametrize("factory", [cellpose_nuclei, omnipose_nuclei])
 @pytest.mark.parametrize("dtype", [torch.float16, torch.float64])
 def test_export_cellpose_onnx_matches_dtype(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, dtype: torch.dtype
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    dtype: torch.dtype,
+    factory: Callable[..., torch.nn.Module],
 ) -> None:
-    model = torch.nn.Conv2d(3, 3, 1).to(dtype=dtype)
+    model = _make_model(factory).to(dtype=dtype)
     monkeypatch.setitem(sys.modules, "onnx", ModuleType("onnx"))
     monkeypatch.setitem(sys.modules, "onnxscript", ModuleType("onnxscript"))
 
     def fake_export(wrapper, args, *extra, **kwargs):
         assert args[0].dtype == dtype
-        assert args[0].device == model.weight.device
+        assert args[0].device == next(model.parameters()).device
 
     monkeypatch.setattr(torch.onnx, "export", fake_export)
     export_cellpose_onnx(model, tmp_path / "model.onnx", input_shape=(1, 3, 8, 8))
+    assert all(parameter.dtype == dtype for parameter in model.parameters())
 
 
 def test_export_cellpose_onnx_preserves_modes_on_input_failure(

@@ -10,7 +10,7 @@ __all__ = ["CellPoseONNXWrapper", "export_cellpose_onnx"]
 
 
 class CellPoseONNXWrapper(nn.Module):
-    """Flatten CellPose's structured output into ONNX-friendly tensors."""
+    """Return CellPose or Omnipose flow maps and class scores as two tensors."""
 
     def __init__(self, model: nn.Module) -> None:
         super().__init__()
@@ -65,15 +65,15 @@ def export_cellpose_onnx(
     opset_version: int = 18,
     dynamic_batch: bool = True,
 ) -> Path:
-    """Export the CellPose neural-network forward pass to ONNX.
+    """Export CellPose or Omnipose prediction maps to ONNX.
 
     The exported graph contains only the dense neural-network prediction stage.
     Flow integration and instance reconstruction remain in the existing Python
     post-processing pipeline.
 
     Args:
-        model: A high-level ``CellPose`` instance or its underlying ``.model``
-            module.
+        model: A ``CellPose`` instance, its underlying network, or an Omnipose
+            network created with ``omnipose_nuclei``. Load trained weights first.
         output_path: Destination ``.onnx`` file. Parent folders are created; an existing
                 file may be overwritten.
         input_shape: Example (batch, channels, height, width) input shape.

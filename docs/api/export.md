@@ -1,6 +1,6 @@
 # ONNX export
 
-Export a trained CellPose or StarDist network to ONNX. Install `onnx` and
+Export a trained CellPose, Omnipose or StarDist network to ONNX. Install `onnx` and
 `onnxscript` to export, and an ONNX runtime to run the file.
 
 The file contains prediction maps. Convert them to classes and instance masks
@@ -10,6 +10,7 @@ width are fixed; batch size can vary.
 | Family | Input | Outputs, in order |
 | --- | --- | --- |
 | CellPose | `image`: floating `(B, 3, H, W)` | `flow_map`: `(B, 2, H, W)`; `type_map`: raw logits `(B, classes, H, W)` |
+| Omnipose | `image`: floating `(B, 3, H, W)` | `flow_map`: `(B, 2, H, W)`; `type_map`: raw logits `(B, classes, H, W)` |
 | StarDist | `image`: floating `(B, 3, H, W)` | `binary_map`: foreground values `(B, 1, H, W)`; `ray_map`: `(B, n_rays, H, W)`; `type_map`: raw logits `(B, classes, H, W)` |
 
 B is batch size, H height and W width. `out_size` can change the output dimensions.
@@ -29,7 +30,21 @@ model = CellPose.from_pretrained(
 output_path = model.export_onnx(Path("exports/cellpose.onnx"))
 ```
 
-## CellPose
+## CellPose and Omnipose
+
+Omnipose uses `export_cellpose_onnx` too. Build its network with the same
+architecture and class count as the training run, then load your weights:
+
+```python
+from cellseg_models_pytorch.models.cellpose import export_cellpose_onnx
+from cellseg_models_pytorch.models.cellpose.cellpose_unet import omnipose_nuclei
+
+network = omnipose_nuclei(3, enc_name="resnet18", enc_pretrain=False)
+network.load_state_dict(
+    torch.load("checkpoints/omnipose.pt", map_location="cpu", weights_only=True)
+)
+omnipose_path = export_cellpose_onnx(network, Path("exports/omnipose.onnx"))
+```
 
 ```{eval-rst}
 .. autofunction:: cellseg_models_pytorch.models.cellpose.export_cellpose_onnx

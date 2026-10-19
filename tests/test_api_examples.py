@@ -297,19 +297,34 @@ def test_api_export_example(local_checkpoint):
     onnx = pytest.importorskip("onnx")
     pytest.importorskip("onnxscript")
     runtime = pytest.importorskip("onnxruntime")
+    from cellseg_models_pytorch.models.cellpose.cellpose_unet import omnipose_nuclei
+
+    network = omnipose_nuclei(3, enc_name="resnet18", enc_pretrain=False)
+    torch.save(network.state_dict(), "checkpoints/omnipose.pt")
     ns = _run_page("export")
-    path = ns["output_path"]
-    onnx.checker.check_model(onnx.load(path))
-    session = runtime.InferenceSession(str(path), providers=["CPUExecutionProvider"])
-    assert [output.name for output in session.get_outputs()] == ["flow_map", "type_map"]
-    image = torch.rand(1, 3, 256, 256)
-    local_checkpoint.model.eval()
-    with torch.inference_mode():
-        expected = local_checkpoint.model(image)["nuc"]
-    actual = session.run(None, {"image": image.numpy()})
-    for result, reference in zip(actual, (expected.aux_map, expected.type_map)):
-        assert np.isfinite(result).all()
-        np.testing.assert_allclose(result, reference.numpy(), rtol=2e-4, atol=5e-5)
+    for path, model in (
+        (ns["output_path"], local_checkpoint.model),
+        (ns["omnipose_path"], ns["network"]),
+    ):
+        onnx.checker.check_model(onnx.load(path))
+        session = runtime.InferenceSession(
+            str(path), providers=["CPUExecutionProvider"]
+        )
+        assert [output.name for output in session.get_outputs()] == [
+            "flow_map",
+            "type_map",
+        ]
+        model.eval()
+        for batch in (1, 2):
+            image = torch.rand(batch, 3, 256, 256)
+            with torch.inference_mode():
+                expected = model(image)["nuc"]
+            actual = session.run(None, {"image": image.numpy()})
+            for result, reference in zip(actual, (expected.aux_map, expected.type_map)):
+                assert np.isfinite(result).all()
+                np.testing.assert_allclose(
+                    result, reference.numpy(), rtol=2e-4, atol=5e-5
+                )
 
 
 def test_api_docstring_examples(local_checkpoint):
