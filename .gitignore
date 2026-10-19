@@ -157,6 +157,11 @@ lightning_logs
 /data/panoptils-refined-splits/
 /data/cytonuke-source/
 /data/cytonuke-parquet/
+/data/cpdmi-source/
+/data/helacytonuke-source/
+/data/helacytonuke-parquet/
+/data/air-leish-source/
+/data/air-leish-parquet/
 
 # Local torch.compile experiments and generated benchmark artifacts
 /.local/torch-compile-20261019/
