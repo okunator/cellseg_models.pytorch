@@ -37,8 +37,8 @@ class StarDist(BaseModelInst):
         Args:
             n_nuc_classes: Number of cell-type output channels, including any background
                 class in the training label mapping.
-            n_rays: Number of radial distances per pixel. Match the training targets
-                and checkpoint; loading weights does not infer this setting.
+            n_rays: Number of radial distances per pixel. Match the training targets.
+                ``from_pretrained`` reads this count from the checkpoint.
             enc_name: Encoder name supported by timm (PyTorch Image Models).
             enc_pretrain: Load pretrained encoder weights, downloading if needed.
                 Segmentation layers still need training or a segmentation checkpoint.

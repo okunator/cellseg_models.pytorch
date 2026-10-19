@@ -33,8 +33,9 @@ class BaseModelInst:
         """Create a model from saved segmentation weights.
 
         The checkpoint determines the encoder name and number of cell-type
-        output channels. Use the same preprocessing and class mapping as the
-        training run. Call ``set_inference_mode`` before predicting images.
+        output channels, plus the ray count for StarDist and CPPNet. Use the same
+        preprocessing and class mapping as the training run. Call
+        ``set_inference_mode`` before predicting images.
 
         Args:
             weights: Path to a local checkpoint, or a registered checkpoint name
@@ -44,8 +45,8 @@ class BaseModelInst:
             device: Device on which to load the weights and create the network.
                 Pass ``torch.device("cpu")`` for CPU use; the default requires CUDA.
             model_kwargs: Additional network options needed to reproduce the
-                checkpoint's architecture. Encoder name and class count are
-                inferred from the weights rather than supplied here.
+                checkpoint's architecture. Encoder name, class count and
+                StarDist/CPPNet ray count are read from the weights.
 
         Returns:
             An instance of the model class used to call this method, with loaded
@@ -95,6 +96,28 @@ class BaseModelInst:
             weights_path, device=device
         )
 
+        inferred_kwargs: dict[str, int] = {}
+        if cls.model_name in ("stardist", "cppnet"):
+            ray_head_key = next(
+                (
+                    key
+                    for key in state_dict
+                    if key.endswith("nuc_stardist_head.head.weight")
+                ),
+                None,
+            )
+            if ray_head_key is None:
+                raise RuntimeError(
+                    "Checkpoint is missing the nucleus ray-head weights."
+                )
+            ray_weights = state_dict[ray_head_key]
+            if ray_weights.ndim != 4 or ray_weights.shape[0] <= 0:
+                raise RuntimeError(
+                    "Checkpoint nucleus ray-head weights must have shape "
+                    "(n_rays, channels, height, width) with n_rays > 0."
+                )
+            inferred_kwargs["n_rays"] = ray_weights.shape[0]
+
         model_inst = cls(
             n_nuc_classes=n_nuc_classes,
             enc_name=enc_name,
@@ -102,6 +125,7 @@ class BaseModelInst:
             enc_freeze=False,
             device=device,
             model_kwargs=model_kwargs,
+            **inferred_kwargs,
         )
 
         if weights_path.suffix == ".safetensors":

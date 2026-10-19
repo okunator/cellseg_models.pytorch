@@ -31,6 +31,10 @@
 
 ## Fixes
 
+- Read the StarDist and CPPNet ray count from checkpoint weights when loading a
+  model. Checkpoints with custom ray counts now load without changing the default
+  32-ray behavior for newly constructed models.
+
 - Correct `MSSSIM` to compute 1 minus MS-SSIM, combining each scale once before
   averaging image/channel scores. Identical maps now have zero loss. Use matching
   floating BCHW maps and a fixed `data_range` (default 1); the default Gaussian

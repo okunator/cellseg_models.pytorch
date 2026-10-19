@@ -84,7 +84,7 @@ ONNX export: {py:meth}`~cellseg_models_pytorch.models.cellpose.CellPose.export_o
 
 ## StarDist
 
-Checkpoint loading currently requires 32 rays.
+`from_pretrained` reads the ray count from the saved weights.
 
 ```python
 from cellseg_models_pytorch.models.stardist import StarDist
@@ -172,7 +172,7 @@ from cellseg_models_pytorch.models.hovernet import HoverNet
 
 ## CPPNet
 
-Checkpoint loading currently requires 32 rays.
+`from_pretrained` reads the ray count from the saved weights.
 
 ```python
 from cellseg_models_pytorch.models.cppnet import CPPNet
