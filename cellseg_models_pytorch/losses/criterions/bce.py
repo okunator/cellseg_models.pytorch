@@ -86,6 +86,7 @@ class BCELoss(WeightedBaseLoss):
             raise ValueError("BCE logits must have BCHW shape.")
         num_classes = yhat.shape[1]
         pixel_shape = (yhat.shape[0], *yhat.shape[2:])
+        # Large scores and their squared penalty need more range than float16 offers.
         dtype = (
             torch.float32
             if yhat.dtype in (torch.float16, torch.bfloat16)
@@ -103,10 +104,12 @@ class BCELoss(WeightedBaseLoss):
             target = self.apply_svls_to_target(target, num_classes, **kwargs)
 
         if self.apply_ls:
+            # Each channel is a separate yes/no task, so smooth toward 0.5.
             target = self.apply_ls_to_target(
                 target, 2, label_smoothing=kwargs.get("label_smoothing", 0.1)
             )
 
+        # Combining sigmoid and cross-entropy avoids logs of rounded 0/1 probabilities.
         bce = F.binary_cross_entropy_with_logits(
             logits, target.to(dtype=dtype), reduction="none"
         )  # (B, C, H, W)
@@ -117,7 +120,7 @@ class BCELoss(WeightedBaseLoss):
             bce = self.apply_mask_weight(bce, mask.unsqueeze(1), norm=False)
 
         if self.apply_sd:
-            # Keep regularization per channel so channel weights apply consistently.
+            # Keep the penalty per channel so each channel weight scales its own term.
             bce = bce + 0.005 * logits.square()
 
         if self.class_weights is not None:

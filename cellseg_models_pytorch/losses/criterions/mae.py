@@ -78,24 +78,27 @@ class MAE(WeightedBaseLoss):
         pixel_shape = (yhat.shape[0], *yhat.shape[2:])
         if target.shape not in (yhat.shape, pixel_shape):
             raise ValueError("MAE targets must have matching BCHW or BHW shape.")
+        # Preserve the more precise input and keep differences within float32 range.
         dtype = torch.promote_types(yhat.dtype, target.dtype)
         if dtype in (torch.float16, torch.bfloat16):
             dtype = torch.float32
         prediction, target = yhat.to(dtype=dtype), target.to(dtype=dtype)
         if target.shape == pixel_shape:
-            # Sum shared-target gradients before narrowing to the input dtype.
+            # Convert before sharing so channel gradients add up before rounding.
             target = target.unsqueeze(1).expand_as(prediction)
 
-        # Promote before subtraction so opposite half-precision limits stay finite.
+        # Opposite large values can overflow if subtracted while still in float16.
         mae_loss = (target - prediction).abs().mean(1)
 
         if self.apply_mask and mask is not None:
             if mask.shape != pixel_shape:
                 raise ValueError("MAE mask must have BHW shape.")
             mask = mask.to(dtype=dtype)
+            # Normalize by the mask so excluded pixels do not dilute the average error.
             mae_loss = self.apply_mask_weight(mae_loss, mask, norm=True)  # (B, H, W)
 
             if self.alpha > 0:
+                # Outside the mask, discourage nonzero predictions instead of matching targets.
                 reg = ((1 - mask).unsqueeze(1) * prediction.abs()).mean(1)
                 mae_loss += self.alpha * reg
 

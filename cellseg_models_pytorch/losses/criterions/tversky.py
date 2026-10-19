@@ -86,6 +86,7 @@ class TverskyLoss(WeightedBaseLoss):
             >>> round(TverskyLoss()(logits, target).item(), 6)
             0.5
         """
+        # Pixel counts can overflow float16 on large images; sum them in float32.
         dtype = (
             torch.float32
             if yhat.dtype in (torch.float16, torch.bfloat16)
@@ -110,6 +111,7 @@ class TverskyLoss(WeightedBaseLoss):
                     "Tversky edge weighting requires a BHW target_weight map."
                 )
             pixel_weights = self.apply_edge_weights(pixel_weights, target_weight)
+        # Decide which classes are present before smoothing spreads their labels.
         present = (target_one_hot * pixel_weights.unsqueeze(1)).sum((2, 3)) > 0
 
         if self.apply_svls:
@@ -126,18 +128,22 @@ class TverskyLoss(WeightedBaseLoss):
 
         target_one_hot = target_one_hot.to(dtype=dtype)
         weights = pixel_weights.unsqueeze(1)
+        # Count overlap, extra predictions and missed targets across each whole image.
         intersection = (probabilities * target_one_hot * weights).sum((2, 3))
         fps = (probabilities * (1 - target_one_hot) * weights).sum((2, 3))
         fns = ((1 - probabilities) * target_one_hot * weights).sum((2, 3))
+        # Alpha penalizes extra predictions; beta penalizes missed target pixels.
         denom = intersection + self.alpha * fps + self.beta * fns
         losses = 1 - intersection / denom.clamp_min(self.eps)
         if self.class_weights is not None:
             if self.class_weights.shape != (n_classes,):
                 raise ValueError("Tversky class_weights must have shape (C,).")
             losses = losses * self.class_weights
+        # Average only included classes; a fully masked batch contributes zero.
         loss = (losses * present).sum() / present.sum().clamp_min(1)
 
         if self.apply_sd:
+            # Mask this penalty too, while keeping it separate from class/edge weights.
             regularization = self.apply_spectral_decouple(
                 torch.zeros_like(target), yhat.to(dtype=dtype)
             )

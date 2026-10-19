@@ -71,12 +71,13 @@ class CELoss(WeightedBaseLoss):
             Combine channel errors first, then average across images and pixels.
             Float16 and bfloat16 logits use float32 loss and regularization arithmetic.
         """
-        # Keep log-probabilities and regularization finite for low-precision logits.
+        # Keep large scores and their squared penalty from overflowing float16.
         dtype = (
             torch.float32
             if yhat.dtype in (torch.float16, torch.bfloat16)
             else yhat.dtype
         )
+        # Taking log(softmax(scores)) separately can round small probabilities to zero.
         log_probabilities = F.log_softmax(yhat, dim=1, dtype=dtype)
         n_classes = yhat.shape[1]
         target_one_hot = F.one_hot(target.long(), n_classes).permute(0, 3, 1, 2)
@@ -100,6 +101,7 @@ class CELoss(WeightedBaseLoss):
             loss = self.apply_mask_weight(loss, mask, norm=False)  # (B, H, W)
 
         if self.apply_sd:
+            # This penalty also applies outside the mask, before class/edge weighting.
             loss = self.apply_spectral_decouple(loss, yhat.to(dtype=dtype))
 
         if self.class_weights is not None:

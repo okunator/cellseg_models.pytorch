@@ -77,7 +77,7 @@ class IoULoss(WeightedBaseLoss):
             >>> round(IoULoss()(logits, target).item(), 6)
             0.666667
         """
-        # Accumulate low-precision overlaps in float32 to avoid spatial-sum overflow.
+        # Pixel counts can overflow float16 on large images; sum them in float32.
         dtype = (
             torch.float32
             if yhat.dtype in (torch.float16, torch.bfloat16)
@@ -101,6 +101,7 @@ class IoULoss(WeightedBaseLoss):
             if target_weight is None or target_weight.shape != target.shape:
                 raise ValueError("IoU edge weighting requires a BHW target_weight map.")
             pixel_weights = self.apply_edge_weights(pixel_weights, target_weight)
+        # Smoothing must not make an absent class count as present in the target.
         present = (target_one_hot * pixel_weights.unsqueeze(1)).sum((2, 3)) > 0
 
         if self.apply_svls:
@@ -112,6 +113,7 @@ class IoULoss(WeightedBaseLoss):
                 target_one_hot, n_classes, **kwargs
             )
 
+        # Weight overlap and total area equally, then compare each image/class pair.
         weights = pixel_weights.unsqueeze(1)
         intersection = (probabilities * target_one_hot * weights).sum((2, 3))
         union = ((probabilities + target_one_hot) * weights).sum((2, 3)) - intersection
@@ -120,9 +122,11 @@ class IoULoss(WeightedBaseLoss):
             if self.class_weights.shape != (n_classes,):
                 raise ValueError("IoU class_weights must have shape (C,).")
             losses = losses * self.class_weights
+        # Average only included classes; a fully masked batch contributes zero.
         loss = (losses * present).sum() / present.sum().clamp_min(1)
 
         if self.apply_sd:
+            # Mask this penalty too, while keeping it separate from class/edge weights.
             regularization = self.apply_spectral_decouple(
                 torch.zeros_like(target), yhat.to(dtype=dtype)
             )

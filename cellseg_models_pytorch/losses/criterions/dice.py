@@ -71,7 +71,7 @@ class DiceLoss(WeightedBaseLoss):
         Raises:
             ValueError: Shapes disagree or enabled edge weighting has no map.
         """
-        # Accumulate low-precision overlaps in float32 to avoid spatial-sum overflow.
+        # Pixel counts can overflow float16 on large images; sum them in float32.
         dtype = (
             torch.float32
             if yhat.dtype in (torch.float16, torch.bfloat16)
@@ -97,6 +97,7 @@ class DiceLoss(WeightedBaseLoss):
                     "Dice edge weighting requires a BHW target_weight map."
                 )
             pixel_weights = self.apply_edge_weights(pixel_weights, target_weight)
+        # Smoothing must not make an absent class count as present in the target.
         present = (target_one_hot * pixel_weights.unsqueeze(1)).sum((2, 3)) > 0
 
         if self.apply_svls:
@@ -110,6 +111,7 @@ class DiceLoss(WeightedBaseLoss):
                 label_smoothing=kwargs.get("label_smoothing", 0.1),
             )
 
+        # Use the same pixel weights in the overlap and both region sizes.
         weights = pixel_weights.unsqueeze(1)
         intersection = (probabilities * target_one_hot * weights).sum((2, 3))
         volume = ((probabilities + target_one_hot) * weights).sum((2, 3))
@@ -118,9 +120,11 @@ class DiceLoss(WeightedBaseLoss):
             if self.class_weights.shape != (n_classes,):
                 raise ValueError("Dice class_weights must have shape (C,).")
             losses = losses * self.class_weights
+        # Average only included classes; a fully masked batch contributes zero.
         loss = (losses * present).sum() / present.sum().clamp_min(1)
 
         if self.apply_sd:
+            # Mask this penalty too, while keeping it separate from class/edge weights.
             regularization = self.apply_spectral_decouple(
                 torch.zeros_like(target), yhat.to(dtype=dtype)
             )

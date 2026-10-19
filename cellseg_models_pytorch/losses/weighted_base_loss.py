@@ -42,6 +42,7 @@ class WeightedBaseLoss(nn.Module):
         self.apply_ls = apply_ls
         self.apply_svls = apply_svls
         self.apply_mask = apply_mask
+        # Move class weights with the loss module without adding them to checkpoints.
         self.register_buffer("class_weights", class_weights, persistent=False)
         self.edge_weight = edge_weight
 
@@ -62,7 +63,7 @@ class WeightedBaseLoss(nn.Module):
             torch.Tensor:
                 SD-regularized loss matrix. Same shape as input.
         """
-        # return loss_matrix + (lam / 2) * (yhat**2).mean() # which??
+        # Keep one penalty per pixel so masks and weights can still be applied.
         return loss_matrix + (lam / 2) * (yhat**2).mean(axis=1)
 
     def apply_ls_to_target(
@@ -113,7 +114,7 @@ class WeightedBaseLoss(nn.Module):
             autocast. The center and its neighbors each supply half the weight
             when neighbors exist.
         """
-        # Target construction must not inherit the model's low-precision convolution.
+        # Build targets in float32 so mixed precision does not change the labels.
         with torch.autocast(device_type=target.device.type, enabled=False):
             my, mx = kernel_size // 2, kernel_size // 2
             gaussian_kernel = gaussian_kernel2d(
@@ -121,6 +122,7 @@ class WeightedBaseLoss(nn.Module):
             )
             neighborsum = (1 - gaussian_kernel[..., my, mx]) + 1e-16
             gaussian_kernel = gaussian_kernel.clone()
+            # Balance the center pixel against the combined weight of its neighbors.
             gaussian_kernel[..., my, mx] = neighborsum
             svls_kernel = gaussian_kernel / neighborsum[0]
 
@@ -142,6 +144,7 @@ class WeightedBaseLoss(nn.Module):
             torch.Tensor:
                 The loss matrix scaled with the weight matrix. Shape (B, H, W).
         """
+        # Keep weights tied to original class IDs even when loss targets were smoothed.
         weight_mat = self.class_weights[target.long()].to(target.device)  # to (B, H, W)
         loss = loss_matrix * weight_mat
 
@@ -160,6 +163,7 @@ class WeightedBaseLoss(nn.Module):
         Returns:
             Weighted pixel losses with the input shape, on the input device.
         """
+        # Widen exponents before taking powers to avoid float16 overflow.
         return loss_matrix * self.edge_weight ** weight_map.to(dtype=loss_matrix.dtype)
 
     def apply_mask_weight(
@@ -180,6 +184,7 @@ class WeightedBaseLoss(nn.Module):
         """
         loss_matrix *= mask
         if norm:
+            # Remove the mask's effect on the average, leaving a weighted pixel mean.
             norm_mask = mask.to(dtype=loss_matrix.dtype).mean() + 1e-7
             loss_matrix /= norm_mask
 

@@ -87,6 +87,7 @@ class SCELoss(WeightedBaseLoss):
             >>> round(SCELoss()(logits, target).item(), 6)
             4.951744
         """
+        # Keep large scores and their squared penalty from overflowing float16.
         dtype = (
             torch.float32
             if yhat.dtype in (torch.float16, torch.bfloat16)
@@ -111,8 +112,9 @@ class SCELoss(WeightedBaseLoss):
             )
 
         target_one_hot = target_one_hot.to(dtype=dtype)
-        # A zero target contributes zero even when its log-probability is -inf.
+        # Ignore zero target entries before multiplying, since 0 * -inf would be NaN.
         forward = target_one_hot * log_probabilities.masked_fill(target_one_hot == 0, 0)
+        # The reverse term swaps prediction/target roles; the floor avoids log(0).
         reverse = log_probabilities.exp() * target_one_hot.clamp_min(self.eps).log()
 
         cross_entropy = -torch.sum(forward, dim=1)  # to (B, H, W)
@@ -123,6 +125,7 @@ class SCELoss(WeightedBaseLoss):
             loss = self.apply_mask_weight(loss, mask, norm=False)  # (B, H, W)
 
         if self.apply_sd:
+            # This penalty also applies outside the mask, before class/edge weighting.
             loss = self.apply_spectral_decouple(loss, logits)
 
         if self.class_weights is not None:

@@ -79,7 +79,7 @@ class FocalLoss(WeightedBaseLoss):
             Combine channel errors first, then average across images and pixels.
             Float16 and bfloat16 logits use float32 loss and regularization arithmetic.
         """
-        # Keep log-probabilities and regularization finite for low-precision logits.
+        # Keep large scores and their squared penalty from overflowing float16.
         dtype = (
             torch.float32
             if yhat.dtype in (torch.float16, torch.bfloat16)
@@ -102,8 +102,9 @@ class FocalLoss(WeightedBaseLoss):
                 label_smoothing=kwargs.get("label_smoothing", 0.1),
             )
 
-        # Avoid a singular fractional-power gradient when a probability rounds to 1.
+        # Compute 1 - probability accurately even when the probability is close to 1.
         complement = (-log_probabilities.expm1()).clamp_min(torch.finfo(dtype).tiny)
+        # The tiny floor also prevents invalid gradients for fractional gamma values.
         weight = complement**self.gamma
         focal = self.alpha * weight * log_probabilities
         focal = target_one_hot * focal
@@ -114,6 +115,7 @@ class FocalLoss(WeightedBaseLoss):
             loss = self.apply_mask_weight(loss, mask, norm=False)  # (B, H, W)
 
         if self.apply_sd:
+            # This penalty also applies outside the mask, before class/edge weighting.
             loss = self.apply_spectral_decouple(loss, yhat.to(dtype=dtype))
 
         if self.class_weights is not None:

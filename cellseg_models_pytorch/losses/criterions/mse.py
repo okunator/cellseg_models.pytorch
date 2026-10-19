@@ -83,6 +83,7 @@ class MSE(WeightedBaseLoss):
         pixel_shape = (yhat.shape[0], *yhat.shape[2:])
         if target.shape not in (yhat.shape, pixel_shape):
             raise ValueError("MSE targets must have matching BCHW or BHW shape.")
+        # Preserve the more precise input; float16 errors can overflow when squared.
         dtype = torch.promote_types(yhat.dtype, target.dtype)
         if dtype in (torch.float16, torch.bfloat16):
             dtype = torch.float32
@@ -92,11 +93,12 @@ class MSE(WeightedBaseLoss):
 
         if target.shape == pixel_shape:
             if target.is_floating_point():
-                # Sum shared-target gradients before narrowing to the input dtype.
+                # Convert before sharing so channel gradients add up before rounding.
                 target_one_hot = (
                     target.to(dtype=dtype).unsqueeze(1).expand_as(prediction)
                 )
             else:
+                # Integer targets identify classes rather than shared pixel values.
                 target_one_hot = F.one_hot(target.long(), n_classes).permute(0, 3, 1, 2)
         target_one_hot = target_one_hot.to(dtype=dtype)
 
@@ -118,9 +120,11 @@ class MSE(WeightedBaseLoss):
         if self.apply_mask and mask is not None:
             if mask.shape != pixel_shape:
                 raise ValueError("MSE mask must have BHW shape.")
+            # Masked-out pixels still count toward the final full-image average.
             mse = self.apply_mask_weight(mse, mask.to(dtype=dtype), norm=False)
 
         if self.apply_sd:
+            # This separate penalty still discourages large values outside the mask.
             mse = self.apply_spectral_decouple(mse, prediction)
 
         if self.class_weights is not None:
