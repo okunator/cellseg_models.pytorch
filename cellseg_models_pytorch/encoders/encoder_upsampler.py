@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from typing import Tuple
 
 import torch
@@ -53,9 +54,30 @@ class FeatUpsampleBlock(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.up(x)
-        x = self.conv_block(x)
-        return x
+        """Upsample BCHW features, protecting large values during float16 autocast.
+
+        Args:
+            x: BCHW encoder features on the same device as the block's weights.
+
+        Returns:
+            Upsampled BCHW features on the input device. Float32 weights compute
+            and return float32 during float16 autocast; other modes are unchanged.
+        """
+        use_float32 = (
+            torch.is_autocast_enabled(x.device.type)
+            and torch.get_autocast_dtype(x.device.type) == torch.float16
+            and self.conv_block.weight.dtype == torch.float32
+            and x.dtype in (torch.float16, torch.float32)
+        )
+        # Transformer features can exceed float16's range before decoder normalization.
+        context = (
+            torch.autocast(x.device.type, enabled=False)
+            if use_float32
+            else nullcontext()
+        )
+        with context:
+            x = self.up(x.float() if use_float32 else x)
+            return self.conv_block(x)
 
 
 class EncoderUpsampler(nn.Module):

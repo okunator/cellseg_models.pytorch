@@ -45,6 +45,10 @@
 
 ## Fixes
 
+- Keep transformer feature upsampling in float32 during float16 autocast to
+  prevent CellVit overflow before decoder normalization. Preserve ordinary
+  float32 results and existing checkpoint weights.
+
 - Separate HoverNet and CellVit nuclei using binary foreground, so cell-type
   numbers no longer change object boundaries. Keep the original classes for voting.
   Existing checkpoints can produce different instance masks; network outputs stay
