@@ -541,6 +541,10 @@ class PostProcessor:
         if tensor.is_cuda:
             tensor = tensor.cpu()
 
+        if tensor.dtype == torch.bfloat16:
+            # NumPy cannot store bfloat16; float32 preserves its values exactly.
+            return tensor.float().numpy().astype(dtype, copy=False)
+
         return tensor.numpy().astype(dtype)
 
     def _prepare_inst_maps(

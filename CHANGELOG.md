@@ -45,6 +45,9 @@
 
 ## Fixes
 
+- Convert bfloat16 prediction maps to float32 on CPU before NumPy reconstruction,
+  preserving existing float16, float32 and integer conversion behavior.
+
 - Keep transformer feature upsampling in float32 during float16 autocast to
   prevent CellVit overflow before decoder normalization. Preserve ordinary
   float32 results and existing checkpoint weights.
