@@ -1,6 +1,6 @@
 <a id='changelog-0.2.0'></a>
 
-# 0.2.0 — Unreleased
+# 0.2.0 — 2026-10-20
 
 ## Upgrade notes
 
