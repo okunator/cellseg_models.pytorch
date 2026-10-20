@@ -1,7 +1,7 @@
 # User guide
 
-Prepare PanopTILs Refined images, train a model, inspect predicted nuclei and
-cell types, and evaluate segmentation results with the examples below.
+Prepare training data, train a model, and find nuclei and cell types in images.
+The guide also covers whole-slide prediction and evaluating your results.
 
 Start with data preparation, then training. The inference example uses the saved
 training model. To use public pretrained weights with your own image, follow the

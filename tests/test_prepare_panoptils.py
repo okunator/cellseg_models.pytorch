@@ -69,10 +69,10 @@ def preparation(tmp_path, archive, notebook_cells, monkeypatch):
 
     def download(**kwargs):
         assert kwargs == {
-            "repo_id": "histolytics-hub/panoptils_refined",
+            "repo_id": "csmp-hub/panoptils_refined",
             "repo_type": "dataset",
             "filename": "panoptils_refined.parquet",
-            "revision": "d40293bc1ac0d0da8f271959fdb990aeea2d884f",
+            "revision": "21cc3a3985117c84fb399f0048920eba42fbba32",
         }
         return str(source)
 
