@@ -3,8 +3,13 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
-  # Manual runs validate the package and docs but never publish either.
+  # Manual runs never publish the package; docs deployment is opt-in.
   workflow_dispatch:
+    inputs:
+      deploy_docs:
+        description: Deploy documentation after validation (no package publication)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -39,7 +44,11 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
 
   docs:
-    if: github.event_name == 'release' && !github.event.release.prerelease
+    if: >-
+      !cancelled() && needs.validate.result == 'success' &&
+      ((github.event_name == 'release' && !github.event.release.prerelease &&
+        needs.publish.result == 'success') ||
+       (github.event_name == 'workflow_dispatch' && inputs.deploy_docs))
     needs: [validate, publish]
     concurrency:
       group: github-pages

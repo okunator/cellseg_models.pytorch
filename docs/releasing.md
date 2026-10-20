@@ -10,7 +10,13 @@ artifacts only for a published GitHub release. The existing source job also buil
 the docs once and preserves the HTML for deployment. After a stable release passes
 validation and PyPI publication, the workflow deploys those pages to GitHub Pages.
 Prereleases do not replace the stable docs. Manual dispatch validates and preserves
-artifacts without publishing the package or docs.
+artifacts without publishing the package. Docs deployment is off by default.
+
+To update documentation between releases, first push the reviewed changes to
+`main` and check CI. Run **Publish to PyPI** manually on that same commit with
+**Deploy documentation after validation** enabled. The existing validation jobs
+build and check the pages, then the docs job deploys them. The package publication
+job stays skipped; no new release or package version is needed.
 
 ## Configure PyPI trusted publishing
 
