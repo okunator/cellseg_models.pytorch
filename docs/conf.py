@@ -8,8 +8,13 @@ author = "Oskari Lehtonen"
 extensions = ["myst_nb", "sphinx.ext.autodoc", "sphinx.ext.napoleon"]
 html_theme = "pydata_sphinx_theme"
 html_title = f"{project} {release}"
+html_logo = "_static/logo.png"
+html_static_path = ["_static"]
+html_css_files = ["landing.css"]
+html_sidebars = {"quickstart": []}
 html_theme_options = {
     "github_url": "https://github.com/okunator/cellseg_models.pytorch",
+    "logo": {"alt_text": "cellseg-models.pytorch documentation home"},
 }
 exclude_patterns = [
     "_build",

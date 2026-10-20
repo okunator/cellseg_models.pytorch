@@ -181,6 +181,45 @@ def test_api_inference_example(local_checkpoint):
     assert not ns["model"].model.training
 
 
+@pytest.mark.parametrize("shape", [(64, 64), (65, 97)])
+def test_quickstart_example(local_checkpoint, monkeypatch, shape):
+    import matplotlib.pyplot as plt
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    monkeypatch.setattr(plt, "show", lambda: None)
+    original = np.arange(shape[0] * shape[1] * 3, dtype=np.uint8).reshape(*shape, 3)
+    Image.fromarray(original).save("data/image.png")
+    ns = {}
+    try:
+        for source in _python_blocks(API.parent / "quickstart.md"):
+            exec(compile(source, "quickstart.md", "exec"), ns)
+        np.testing.assert_array_equal(ns["raw_image"], original)
+        assert ns["image"].shape == (
+            shape[0] + (-shape[0] % 32),
+            shape[1] + (-shape[1] % 32),
+            3,
+        )
+        np.testing.assert_array_equal(
+            ns["image"][: shape[0], : shape[1]],
+            ns["minmax_normalize"](original, copy=True),
+        )
+        assert ns["instances"].shape == ns["classes"].shape == shape
+        assert ns["overlay"].shape == ns["instance_colours"].shape == (*shape, 3)
+        np.testing.assert_array_equal(
+            np.ma.getmaskarray(ns["class_mask"]), ns["instances"] == 0
+        )
+        for axis in ns["axes"]:
+            assert len(axis.images) == 1
+        np.testing.assert_array_equal(
+            ns["axes"][2].images[0].get_array().compressed(),
+            ns["classes"][ns["instances"] > 0],
+        )
+        rgba = ns["class_plot"].to_rgba(ns["class_mask"])
+        assert (rgba[ns["instances"] == 0, :3] == 0).all()
+    finally:
+        plt.close("all")
+
+
 @pytest.fixture
 def slide_backend(monkeypatch):
     """Use the real OpenSlide adapter with an in-memory native-reader substitute."""

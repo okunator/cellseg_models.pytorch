@@ -1,0 +1,129 @@
+/* Crop the handle to centre the cell symbol and lettering in the header. */
+.navbar-brand img.logo__image {
+  width: 160px;
+  height: 66px;
+  max-height: 66px;
+  object-fit: cover;
+  object-position: top;
+}
+
+/* Landing-page styles; reference pages keep the theme defaults. */
+#cell-segmentation-with-pytorch > h1 {
+  max-width: 18ch;
+  margin-top: 1.2rem;
+  font-size: clamp(2.3rem, 4.4vw, 3.5rem);
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+
+.csmp-intro.docutils {
+  max-width: 42rem;
+  margin: 1.3rem 0;
+  color: var(--pst-color-text-muted);
+  font-size: 1.15rem;
+  line-height: 1.65;
+}
+
+.csmp-actions > p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+.csmp-actions a {
+  padding: 0.65rem 1.1rem;
+  border: 1px solid var(--pst-color-border);
+  border-radius: 0.5rem;
+  color: var(--pst-color-text-base);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.csmp-actions a:first-child {
+  border-color: var(--pst-color-primary);
+  background: var(--pst-color-primary);
+  color: var(--pst-color-primary-text);
+}
+
+.csmp-actions a:hover {
+  border-color: var(--pst-color-primary);
+  text-decoration: underline;
+}
+
+.csmp-actions a:focus-visible,
+.csmp-path a:focus-visible {
+  outline: 3px solid var(--pst-color-primary);
+  outline-offset: 4px;
+}
+
+.csmp-example.docutils {
+  margin: 2rem 0 2.5rem;
+  padding: 0.8rem;
+  border: 1px solid var(--pst-color-border);
+  border-radius: 0.8rem;
+  background: var(--pst-color-surface);
+}
+
+.csmp-example img {
+  width: 100%;
+  border-radius: 0.3rem;
+}
+
+.csmp-example figure {
+  margin: 0;
+}
+
+.csmp-example figcaption {
+  margin: 0.8rem 0 0;
+  color: var(--pst-color-text-muted);
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.csmp-paths {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.4rem 0 2.5rem;
+}
+
+.csmp-path.docutils {
+  display: flex;
+  flex-direction: column;
+  padding: 1.3rem;
+  border: 1px solid var(--pst-color-border);
+  border-radius: 0.8rem;
+  background: var(--pst-color-surface);
+}
+
+.csmp-path > .rubric {
+  margin: 0 0 0.8rem;
+  border: 0;
+  font-size: 1.15rem;
+}
+
+.csmp-path > p:last-child {
+  margin: auto 0 0;
+  padding-top: 0.5rem;
+  font-weight: 600;
+}
+
+.csmp-resources.docutils {
+  margin-top: 2rem;
+  padding: 1.4rem 1.6rem;
+  border-left: 3px solid var(--pst-color-primary);
+  background: var(--pst-color-surface);
+}
+
+.csmp-resources > p:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 800px) {
+  .csmp-paths {
+    grid-template-columns: 1fr;
+  }
+}
