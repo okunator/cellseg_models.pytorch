@@ -10,7 +10,6 @@ from safetensors.torch import save_model
 from cellseg_models_pytorch.models.cellpose import CellPose
 from cellseg_models_pytorch.models.cellvit import CellVit
 from cellseg_models_pytorch.models.base import PRETRAINED
-from cellseg_models_pytorch.models.cppnet import CPPNet
 from cellseg_models_pytorch.models.stardist import StarDist
 
 
@@ -32,7 +31,6 @@ def test_cellvit_checkpoint_names_resolve_same_weights(
     )
 
 
-@pytest.mark.parametrize("model_cls", [StarDist, CPPNet])
 @pytest.mark.parametrize("n_rays", [8, 32, 48])
 @pytest.mark.parametrize(
     ("suffix", "registered"),
@@ -41,14 +39,13 @@ def test_cellvit_checkpoint_names_resolve_same_weights(
 def test_checkpoint_loading_infers_ray_count(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    model_cls: type[StarDist | CPPNet],
     n_rays: int,
     suffix: str,
     registered: bool,
 ) -> None:
     torch.manual_seed(0)
     options = {"out_channels": (16, 8, 4, 2)}
-    source = model_cls(
+    source = StarDist(
         3,
         n_rays=n_rays,
         enc_name="resnet18",
@@ -68,11 +65,11 @@ def test_checkpoint_loading_infers_ray_count(
         "cellseg_models_pytorch.models.base._base_model_inst.hf_hub_download", download
     )
     name = "hgsc_v1_efficientnet_b5"
-    loaded = model_cls.from_pretrained(
+    loaded = StarDist.from_pretrained(
         name if registered else path, device=torch.device("cpu"), model_kwargs=options
     )
     if registered:
-        download.assert_called_once_with(**PRETRAINED[model_cls.model_name][name])
+        download.assert_called_once_with(**PRETRAINED[StarDist.model_name][name])
     else:
         download.assert_not_called()
     path.unlink()
@@ -83,10 +80,6 @@ def test_checkpoint_loading_infers_ray_count(
         torch.testing.assert_close(
             loaded.model.state_dict()[key], expected, rtol=0, atol=0
         )
-    if model_cls is CPPNet:
-        assert loaded.model.n_rays == n_rays
-        assert loaded.model.cppnet_refine.sampling_features.n_rays == n_rays
-
     image = torch.rand(1, 3, 64, 64)
     loaded.set_inference_mode(mixed_precision=False)
     with torch.no_grad():
@@ -100,12 +93,11 @@ def test_checkpoint_loading_infers_ray_count(
     torch.testing.assert_close(prediction.type_map, expected.type_map.argmax(1))
 
 
-@pytest.mark.parametrize("model_cls", [StarDist, CPPNet])
 @pytest.mark.parametrize(
     "ray_weights", [None, torch.tensor(1), torch.empty(0, 2, 1, 1)]
 )
 def test_checkpoint_loading_rejects_invalid_ray_head(
-    tmp_path: Path, model_cls: type[StarDist | CPPNet], ray_weights: torch.Tensor | None
+    tmp_path: Path, ray_weights: torch.Tensor | None
 ) -> None:
     state = {"decoder.type-nuc_type_head.head.weight": torch.ones(3, 2, 1, 1)}
     if ray_weights is not None:
@@ -114,7 +106,7 @@ def test_checkpoint_loading_rejects_invalid_ray_head(
     torch.save(state, path)
 
     with pytest.raises(RuntimeError, match="ray-head weights"):
-        model_cls.from_pretrained(path, device=torch.device("cpu"))
+        StarDist.from_pretrained(path, device=torch.device("cpu"))
 
 
 @pytest.mark.parametrize("suffix", [".pt", ".safetensors"])

@@ -7,14 +7,11 @@ from cellseg_models_pytorch.postproc import (
     gen_flows,
     post_proc_cellpose,
     post_proc_cellpose_old,
-    post_proc_dcan,
-    post_proc_drfns,
     post_proc_hovernet,
     post_proc_omnipose,
     post_proc_stardist,
 )
 from cellseg_models_pytorch.transforms.functional import (
-    gen_contour_maps,
     gen_dist_maps,
     gen_flow_maps,
     gen_hv_maps,
@@ -96,37 +93,6 @@ def test_postproc_hovernet(inst_map, enhance):
 
     assert rebuild.shape == inst_map.shape
     assert rebuild.dtype == "int32"
-
-
-def test_postproc_drfns(inst_map):
-    dist = gen_dist_maps(inst_map)
-    rebuild = post_proc_drfns(inst_map, dist)
-
-    assert rebuild.dtype == "int32"
-    assert rebuild.shape == inst_map.shape
-    np.testing.assert_array_equal(
-        np.unique(remap_label(inst_map)), np.unique(remap_label(rebuild))
-    )
-
-
-def test_postproc_drfns_preserves_two_object_regions():
-    labels = np.zeros((64, 64), dtype=np.int32)
-    labels[8:25, 7:24] = 1
-    labels[35:54, 32:53] = 2
-
-    with np.errstate(over="raise", divide="raise", invalid="raise"):
-        actual = post_proc_drfns(labels, gen_dist_maps(labels))
-
-    assert actual.dtype == np.int32
-    np.testing.assert_array_equal(actual, labels)
-
-
-def test_postproc_dcan(inst_map):
-    cont = gen_contour_maps(inst_map)
-    rebuild = post_proc_dcan(inst_map, cont)
-
-    assert rebuild.dtype == "int32"
-    assert rebuild.shape == inst_map.shape
 
 
 def test_postproc_stardist(mask_patch_dir):

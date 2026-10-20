@@ -54,7 +54,7 @@ class Transformer2D(nn.Module):
             block_types:
                 The names/types of the SelfAttentionBlocks in the TransformerLayer.
                 Length of the tuple has to equal `n_blocks`.
-                Allowed names: ("exact", "linformer").
+                Only ``exact`` is supported.
                 Defaults to ("exact", "exact").
             computation_types:
                 The way of computing the attention matrices in the SelfAttentionBlocks
@@ -206,7 +206,7 @@ class TransformerLayer(nn.Module):
             block_types:
                 The name/type of the SelfAttentionBlocks in the TransformerLayer.
                 Length of the tuple has to equal `n_blocks`.
-                Allowed names: ("exact", "linformer").
+                Only ``exact`` is supported.
                 Defaults to ("exact", "exact").
             computation_types:
                 The way of computing the attention matrices in the SelfAttentionBlocks

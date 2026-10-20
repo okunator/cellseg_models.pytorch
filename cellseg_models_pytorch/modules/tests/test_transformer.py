@@ -4,9 +4,8 @@ import torch
 from cellseg_models_pytorch.modules import Transformer2D
 
 
-@pytest.mark.parametrize("block_type", ["exact", "linformer"])
 @pytest.mark.parametrize("computation_type", ["basic", "slice"])
-def test_transformer(block_type, computation_type):
+def test_transformer(computation_type):
     in_channels = 64
     B = 4
     H = W = 32
@@ -17,7 +16,7 @@ def test_transformer(block_type, computation_type):
         num_heads=4,
         head_dim=32,
         n_blocks=1,
-        block_types=(block_type,),
+        block_types=("exact",),
         computation_types=(computation_type,),
         biases=(False,),
         dropouts=(0.0,),

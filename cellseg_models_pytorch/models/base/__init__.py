@@ -25,12 +25,6 @@ PRETRAINED = {
             "filename": "stardist_hgsc_v1_efficientnet_b5.safetensors",
         },
     },
-    "cppnet": {
-        "hgsc_v1_efficientnet_b5": {
-            "repo_id": "csmp-hub/cppnet-histo-hgsc-nuc-v1",
-            "filename": "cppnet_hgsc_v1_efficientnet_b5.safetensors",
-        },
-    },
     "instanseg": {},
 }
 

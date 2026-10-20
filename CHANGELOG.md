@@ -2,6 +2,15 @@
 
 ## Removed
 
+- Remove CPPNet, its checkpoint registration and its unfinished ONNX export
+  because the borrowed sampling code has no established redistribution license.
+  Existing CPPNet checkpoints are no longer supported. The other six model
+  families remain available.
+
+- Remove the Linformer attention option/class and DCAN/DRFNS reconstruction
+  functions and registry entries. Remove DCAN decoder head names. Exact attention
+  and the model-family reconstruction methods remain available.
+
 - Remove `cellseg_models_pytorch.datasets.Pannuke`. Download PanNuke from
   [Hugging Face](https://huggingface.co/datasets/csmp-hub/pannuke) using the
   README example. The training loaders in `torch_datasets` remain available.
@@ -119,7 +128,7 @@
   spatial/uniform smoothing in MSE and Dice, and keep smoothed targets in float32
   under autocast. Existing model checkpoints remain compatible.
 
-- Read the StarDist and CPPNet ray count from checkpoint weights when loading a
+- Read the StarDist ray count from checkpoint weights when loading a
   model. Checkpoints with custom ray counts now load without changing the default
   32-ray behavior for newly constructed models.
 

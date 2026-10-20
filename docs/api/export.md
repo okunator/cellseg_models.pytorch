@@ -1,6 +1,6 @@
 # ONNX export
 
-Export CellPose, Omnipose, StarDist, HoverNet, InstanSeg or CellVit prediction maps to ONNX.
+Export model prediction maps to ONNX.
 Install `onnx` and
 `onnxscript` to export, and an ONNX runtime to run the file.
 
@@ -57,7 +57,6 @@ omnipose_path = export_cellpose_onnx(network, Path("exports/omnipose.onnx"))
 ```{eval-rst}
 .. automethod:: cellseg_models_pytorch.models.cellpose.CellPose.export_onnx
 ```
-
 
 ## StarDist
 

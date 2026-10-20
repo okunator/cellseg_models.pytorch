@@ -44,7 +44,6 @@ MODEL_AUX_OUT_TYPES = [
     "stardist",
     "hovernet",
     "dist",
-    "dcan",
     "dran",
     "instanseg",
 ]

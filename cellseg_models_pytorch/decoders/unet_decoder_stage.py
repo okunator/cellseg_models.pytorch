@@ -159,7 +159,7 @@ class UnetDecoderStage(nn.Module):
                 The name of the SelfAttentionBlocks in the TransformerLayer(s).
                 Allowed values: "basic", "slice", "flash". Ignored if `n_transformers`
                 is None. Length of the tuple has to equal `n_transformer_blocks`.
-                Allowed names: ("exact", "linformer").
+                Only ``exact`` is supported.
                 Defaults to (("basic",),).
             transformer_computations:
                 The way of computing the attention matrices in the SelfAttentionBlocks

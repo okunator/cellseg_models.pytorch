@@ -33,7 +33,7 @@ class BaseModelInst:
         """Create a model from saved segmentation weights.
 
         The checkpoint determines the encoder name and number of cell-type
-        output channels, plus the ray count for StarDist and CPPNet. Use the same
+        output channels, plus the ray count for StarDist. Use the same
         preprocessing and class mapping as the training run. Call
         ``set_inference_mode`` before predicting images.
 
@@ -46,7 +46,7 @@ class BaseModelInst:
                 Pass ``torch.device("cpu")`` for CPU use; the default requires CUDA.
             model_kwargs: Additional network options needed to reproduce the
                 checkpoint's architecture. Encoder name, class count and
-                StarDist/CPPNet ray count are read from the weights.
+                StarDist ray count are read from the weights.
 
         Returns:
             An instance of the model class used to call this method, with loaded
@@ -97,7 +97,7 @@ class BaseModelInst:
         )
 
         inferred_kwargs: dict[str, int] = {}
-        if cls.model_name in ("stardist", "cppnet"):
+        if cls.model_name == "stardist":
             ray_head_key = next(
                 (
                     key

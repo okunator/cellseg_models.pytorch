@@ -52,7 +52,7 @@ from cellseg_models_pytorch.inference.post_processor import PostProcessor
 ```
 
 Choose the method matching your model: `cellpose`, `omnipose`, `hovernet` for
-HoverNet/CellVit, or `stardist` for StarDist/CPPNet.
+HoverNet/CellVit, or `stardist` for StarDist.
 
 Batch methods require a `nuc` entry. Each result contains two int32 `(H, W)` masks:
 `instances` identifies objects. `classes` gives the most common predicted class

@@ -11,7 +11,6 @@ or [image inference guide](../tutorials/inference.ipynb).
 | CellPose | `hgsc_v1_efficientnet_b5` | `cin2_v1_efficientnet_b5` |
 | StarDist | `hgsc_v1_efficientnet_b5` | `cin2_v1_efficientnet_b5` |
 | HoverNet | `hgsc_v1_efficientnet_b5` | `cin2_v1_efficientnet_b5` |
-| CPPNet | `hgsc_v1_efficientnet_b5` | `cin2_v1_efficientnet_b5` |
 | CellVit | `hgsc_v1_samvit_base_patch16` | `cin2_v1_samvit_base_patch16` |
 | InstanSeg | Use local weights | — |
 
@@ -173,50 +172,6 @@ from cellseg_models_pytorch.models.hovernet import HoverNet
 ```
 
 ONNX export: {py:meth}`~cellseg_models_pytorch.models.hovernet.HoverNet.export_onnx` in the [export reference](export.md).
-
-## CPPNet
-
-`from_pretrained` reads the ray count from the saved weights.
-
-```python
-from cellseg_models_pytorch.models.cppnet import CPPNet
-```
-
-```{eval-rst}
-.. autoclass:: cellseg_models_pytorch.models.cppnet.CPPNet
-   :members: set_inference_mode
-```
-
-```{eval-rst}
-.. automethod:: cellseg_models_pytorch.models.cppnet.CPPNet.from_pretrained
-```
-
-```{eval-rst}
-.. automethod:: cellseg_models_pytorch.models.cppnet.CPPNet.predict
-```
-
-```{eval-rst}
-.. automethod:: cellseg_models_pytorch.models.cppnet.CPPNet.post_process
-```
-
-```{eval-rst}
-.. py:attribute:: cellseg_models_pytorch.models.cppnet.CPPNet.model
-
-   PyTorch network used for training.
-
-.. py:attribute:: cellseg_models_pytorch.models.cppnet.CPPNet.device
-
-   Device used by the model.
-
-.. py:attribute:: cellseg_models_pytorch.models.cppnet.CPPNet.inference_mode
-
-   Whether inference has been set up. Calling ``.model.train()`` does not reset this flag.
-
-.. py:attribute:: cellseg_models_pytorch.models.cppnet.CPPNet.post_processor
-
-   Post-processor created by ``set_inference_mode``. Replace it to change reconstruction settings.
-
-```
 
 ## CellVit
 

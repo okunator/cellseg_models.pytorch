@@ -27,7 +27,6 @@ shape `(1, 2, 64, 64)`. For image prediction and reconstruction, use a
 | `hovernet_nuclei` | `HoverNetUnet` | 2 position maps, vertical then horizontal targets | No |
 | `cellvit_nuclei` | `CellVitSamUnet` | 2 position maps, vertical then horizontal targets | No |
 | `stardist_nuclei` | `StarDistUnet` | `n_rays` radial distances | 1 channel |
-| `cppnet_nuclei` | `CPPNetUnet` | `n_rays` refined radial distances | 1 channel |
 | `instanseg_nuclei` | `InstanSegUnet` | 4 reconstruction channels | No |
 
 Outputs use {py:class}`~cellseg_models_pytorch.decoders.multitask_decoder.SoftInstanceOutput`.
@@ -125,30 +124,6 @@ from cellseg_models_pytorch.models.hovernet.hovernet_unet import (
 
 ```{eval-rst}
 .. py:attribute:: cellseg_models_pytorch.models.hovernet.hovernet_unet.HoverNetUnet.enc_name
-
-   Encoder name used for access through ``network[network.enc_name]``.
-```
-
-## CPPNet family
-
-```python
-from cellseg_models_pytorch.models.cppnet.cppnet_unet import (
-    CPPNetUnet,
-    cppnet_nuclei,
-)
-```
-
-```{eval-rst}
-.. autofunction:: cellseg_models_pytorch.models.cppnet.cppnet_unet.cppnet_nuclei
-```
-
-```{eval-rst}
-.. autoclass:: cellseg_models_pytorch.models.cppnet.cppnet_unet.CPPNetUnet
-   :members: forward
-```
-
-```{eval-rst}
-.. py:attribute:: cellseg_models_pytorch.models.cppnet.cppnet_unet.CPPNetUnet.enc_name
 
    Encoder name used for access through ``network[network.enc_name]``.
 ```

@@ -31,7 +31,6 @@ def main() -> None:
         "models.stardist",
         "models.hovernet",
         "models.cellvit",
-        "models.cppnet",
         "models.instanseg",
         "metrics",
         "losses",

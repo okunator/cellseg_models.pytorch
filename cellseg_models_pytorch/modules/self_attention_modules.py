@@ -32,7 +32,7 @@ class SelfAttention(nn.Module):
         Args:
             query_dim:
                 The number of channels in the query. Typically: num_heads*head_dim
-            name: Name of the attention method. One of ("exact", "linformer").
+            name: Name of the attention method. Only ``exact`` is supported.
             how: How to compute the self-attention matrix.
                 One of ("basic", "flash", "slice", "memeff", "slice-memeff").
                 "basic": the normal O(N^2) self attention.
@@ -204,7 +204,7 @@ class SelfAttentionBlock(nn.Module):
         Output Shape: (B, H'*W', query_dim).
 
         Args:
-            name: Name of the attention method. One of ("exact", "linformer").
+            name: Name of the attention method. Only ``exact`` is supported.
             how: How to compute the self-attention matrix.
                 One of ("basic", "flash", "slice", "memeff", "slice-memeff").
                 "basic": the normal O(N^2) self attention.

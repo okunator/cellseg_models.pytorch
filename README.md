@@ -82,7 +82,8 @@ out = model.post_process(prob)
 
 ## Models
 
-Find pretrained checkpoints on [csmp-hub on Hugging Face](https://huggingface.co/csmp-hub).
+Six model families are available. Find pretrained checkpoints on
+[csmp-hub on Hugging Face](https://huggingface.co/csmp-hub).
 
 | Model                      | Paper                                                                          |
 | -------------------------- | ------------------------------------------------------------------------------ |
@@ -91,8 +92,7 @@ Find pretrained checkpoints on [csmp-hub on Hugging Face](https://huggingface.co
 | [[3](REFERENCES.md#ref-3)] Omnipose  | https://www.biorxiv.org/content/10.1101/2021.11.03.467199v2                    |
 | [[4](REFERENCES.md#ref-4)] Stardist  | https://arxiv.org/abs/1806.03535                                               |
 | [[5](REFERENCES.md#ref-5)] CellVit-SAM  | https://arxiv.org/abs/2306.15350                                               |
-| [[6](REFERENCES.md#ref-6)] CPP-Net  | https://arxiv.org/abs/2102.06867                                               |
-| [[7](REFERENCES.md#ref-7)] InstanSeg | https://arxiv.org/abs/2408.15954                                            |
+| [[6](REFERENCES.md#ref-6)] InstanSeg | https://arxiv.org/abs/2408.15954                                            |
 
 ## Datasets
 
@@ -111,15 +111,15 @@ overlapping objects.
 
 | Dataset | Images | Splits | License |
 | --- | ---: | --- | --- |
-| [[8, 9](REFERENCES.md#ref-8)] [PanNuke](https://huggingface.co/datasets/csmp-hub/pannuke) | 7,901 | `fold1`, `fold2`, `fold3` | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (noncommercial) |
-| [[10](REFERENCES.md#ref-10)] [PanopTILs Refined](https://huggingface.co/datasets/csmp-hub/panoptils_refined) | 1,349 | Patient-separated `train`, `val`, `test` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
-| [[11](REFERENCES.md#ref-11)] [PUMA](https://huggingface.co/datasets/csmp-hub/puma) | 206 | Public challenge `train` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
-| [[12](REFERENCES.md#ref-12)] [CytoNuke](https://huggingface.co/datasets/csmp-hub/cytonuke) | 83 | New patient-separated `train`, `val`, `test` | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (CPTAC images: [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)) |
-| [[13](REFERENCES.md#ref-13)] [HeLaCytoNuc](https://huggingface.co/datasets/csmp-hub/helacytonuke) | 2,676 | Original `train`, `val` (automatic labels), `test` (manual labels) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
-| [[14](REFERENCES.md#ref-14)] [AIR-LEISH](https://huggingface.co/datasets/csmp-hub/air-leish) | 180 | `train` only; no independent evaluation split | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
-| [[15, 16](REFERENCES.md#ref-15)] [Lizard-Mitosis](https://huggingface.co/datasets/csmp-hub/lizard-mitosis) | 4,981 | Original `train`, `val`, `test`; train/val overlap | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (noncommercial) |
-| [[17](REFERENCES.md#ref-17)] [Human Lung](https://huggingface.co/datasets/csmp-hub/human-lung) | 68 | Original `train` (51), `val` (7), `test` (10); patient independence unverified | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (noncommercial) |
-| [[18, 19, 20](REFERENCES.md#ref-18)] [VitaminP ORION-CRC](https://huggingface.co/datasets/csmp-hub/vitaminp-orion-crc) | 3,337 | Original case-separated `train` (2,946), `val` (272), `test` (119) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| [[7, 8](REFERENCES.md#ref-7)] [PanNuke](https://huggingface.co/datasets/csmp-hub/pannuke) | 7,901 | `fold1`, `fold2`, `fold3` | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (noncommercial) |
+| [[9](REFERENCES.md#ref-9)] [PanopTILs Refined](https://huggingface.co/datasets/csmp-hub/panoptils_refined) | 1,349 | Patient-separated `train`, `val`, `test` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| [[10](REFERENCES.md#ref-10)] [PUMA](https://huggingface.co/datasets/csmp-hub/puma) | 206 | Public challenge `train` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| [[11](REFERENCES.md#ref-11)] [CytoNuke](https://huggingface.co/datasets/csmp-hub/cytonuke) | 83 | New patient-separated `train`, `val`, `test` | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (CPTAC images: [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)) |
+| [[12](REFERENCES.md#ref-12)] [HeLaCytoNuc](https://huggingface.co/datasets/csmp-hub/helacytonuke) | 2,676 | Original `train`, `val` (automatic labels), `test` (manual labels) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| [[13](REFERENCES.md#ref-13)] [AIR-LEISH](https://huggingface.co/datasets/csmp-hub/air-leish) | 180 | `train` only; no independent evaluation split | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| [[14, 15](REFERENCES.md#ref-14)] [Lizard-Mitosis](https://huggingface.co/datasets/csmp-hub/lizard-mitosis) | 4,981 | Original `train`, `val`, `test`; train/val overlap | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (noncommercial) |
+| [[16](REFERENCES.md#ref-16)] [Human Lung](https://huggingface.co/datasets/csmp-hub/human-lung) | 68 | Original `train` (51), `val` (7), `test` (10); patient independence unverified | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (noncommercial) |
+| [[17, 18, 19](REFERENCES.md#ref-17)] [VitaminP ORION-CRC](https://huggingface.co/datasets/csmp-hub/vitaminp-orion-crc) | 3,337 | Original case-separated `train` (2,946), `val` (272), `test` (119) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
 For example, download the PanopTILs Refined training split with
 [`hf_hub_download`](https://huggingface.co/docs/huggingface_hub/package_reference/file_download#huggingface_hub.hf_hub_download)
