@@ -31,6 +31,11 @@ dependencies = [
     "networkx>=3.4.2",
 ]
 
+[project.optional-dependencies]
+training = ["albumentations>=2.0.8", "tables>=3.10.1"]
+onnx = ["onnx>=1.23.2", "onnxscript>=0.7.2"]
+openslide = ["openslide-python>=1.4.6", "openslide-bin>=4.0.1.2"]
+
 [project.urls]
 Homepage = "https://github.com/okunator/cellseg_models.pytorch"
 Repository = "https://github.com/okunator/cellseg_models.pytorch"

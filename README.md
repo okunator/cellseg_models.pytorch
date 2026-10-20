@@ -46,6 +46,9 @@ cellseg-models.pytorch for its segmentation models.
 pip install cellseg-models-pytorch
 ```
 
+Optional training, ONNX export and OpenSlide installs are available in the source
+version. See the [installation guide](docs/installation.md#optional-features).
+
 ## Quick Start
 
 **Initialize a pre-trained model and run inference**

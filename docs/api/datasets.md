@@ -3,6 +3,8 @@
 Load training images and labels, or supply images for prediction.
 Training datasets augment images and masks together, then generate training targets.
 See the [training guide](../tutorials/training.ipynb) for a complete loop.
+From a source checkout, `uv sync --locked --extra training` installs the required
+augmentation and HDF5 packages.
 
 ## Choose the input layout
 

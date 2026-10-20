@@ -9,6 +9,32 @@ import pytest
 from tools import check_installed_package as guard
 
 
+@pytest.mark.parametrize(
+    ("extra", "installed", "error"),
+    [
+        (None, [], None),
+        ("training", ["albumentations", "tables"], None),
+        ("onnx", ["onnx", "onnxscript"], None),
+        ("openslide", ["openslide", "openslide_bin"], None),
+        ("training", ["albumentations"], "Missing optional package tables"),
+        (
+            "onnx",
+            ["onnx", "onnxscript", "tables"],
+            "Unexpected optional package tables",
+        ),
+    ],
+)
+def test_optional_install_boundaries(monkeypatch, extra, installed, error):
+    monkeypatch.setattr(
+        guard, "find_spec", lambda name: object() if name in installed else None
+    )
+    if error is None:
+        guard.check_optional_dependencies(extra)
+    else:
+        with pytest.raises(RuntimeError, match=error):
+            guard.check_optional_dependencies(extra)
+
+
 @pytest.mark.parametrize("providers", [[], ["opencv-python", "opencv-python-headless"]])
 def test_installed_gate_requires_one_opencv_provider(monkeypatch, providers):
     monkeypatch.setattr(

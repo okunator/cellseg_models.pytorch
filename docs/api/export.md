@@ -1,8 +1,8 @@
 # ONNX export
 
 Export model prediction maps to ONNX.
-Install `onnx` and
-`onnxscript` to export, and an ONNX runtime to run the file.
+From a source checkout, run `uv sync --locked --extra onnx` to install the
+export packages. Install an ONNX runtime separately to run the file.
 
 The file contains prediction maps. Convert them to classes and instance masks
 separately, using the same preprocessing as the checkpoint. Image height and

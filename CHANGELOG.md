@@ -20,6 +20,9 @@
 
 ## Features
 
+- Add `training`, `onnx` and `openslide` installation extras. Check base and
+  feature installs independently without removing existing mandatory dependencies.
+
 - Add CellVit ONNX export for horizontal/vertical maps and class logits, with
   fixed image sizes and optional variable batch sizes. CPU runtime comparisons
   cover `samvit_base_patch16_224` at 224 × 224 pixels; reconstruction stays in Python.

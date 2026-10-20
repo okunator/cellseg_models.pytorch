@@ -79,3 +79,26 @@ jobs:
           NUMBA_DISABLE_JIT: "1"
           HF_HUB_OFFLINE: "1"
         run: '"$RUNNER_TEMP/package-env/bin/python" "$GITHUB_WORKSPACE/tools/check_installed_package.py"'
+
+      - name: Check an independently installed optional feature
+        env:
+          PYTHON_VERSION: ${{ matrix.python-version }}
+          DISTRIBUTION: ${{ matrix.distribution }}
+          NUMBA_DISABLE_JIT: "1"
+          HF_HUB_OFFLINE: "1"
+          NO_ALBUMENTATIONS_UPDATE: "1"
+        run: |
+          case "$PYTHON_VERSION:$DISTRIBUTION" in
+            3.10:wheel) extra=training ;;
+            *:sdist) extra=onnx ;;
+            *) extra=openslide ;;
+          esac
+          if [ "$DISTRIBUTION" = wheel ]; then
+            artifact=(dist/*.whl)
+          else
+            artifact=(dist/*.tar.gz)
+          fi
+          "$RUNNER_TEMP/package-env/bin/python" -m pip install "${artifact[0]}[$extra]"
+          "$RUNNER_TEMP/package-env/bin/python" -m pip check
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/package-env/bin/python" "$GITHUB_WORKSPACE/tools/check_installed_package.py" --extra "$extra"
