@@ -32,10 +32,13 @@ cellseg-models.pytorch for its segmentation models.
 
 ## Features
 
-- High level API to define cell/nuclei instance segmentation models.
-- 7 cell/nuclei instance segmentation model architectures
-- Flexibility to modify the components of the model architectures.
-- Sliding window inference for large images.
+- Six model families for cell and nuclei instance segmentation.
+- Pretrained checkpoints available through [CSMP Hub](https://huggingface.co/csmp-hub).
+- Configurable encoders, decoders and prediction heads.
+- Cell-type classification and optional tissue segmentation alongside instance masks.
+- Inference on individual images, sliding windows and whole-slide images.
+- Datasets, transforms, losses and metrics for training and evaluation.
+- ONNX export for all six model families.
 
 ## Installation
 
