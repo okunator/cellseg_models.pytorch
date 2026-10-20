@@ -1,3 +1,5 @@
+# Adapted from timm activations_me.py (v0.4.12); interface and typing changed.
+# Copyright 2020 Ross Wightman. Apache-2.0; see NOTICE.md and LICENSES/Apache-2.0.txt.
 import torch
 import torch.nn as nn
 

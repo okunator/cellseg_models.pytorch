@@ -185,13 +185,9 @@ metadata for the software as a whole. The example below cites version 0.1.30.
 
 ## Licence
 
-This project is distributed under [MIT License](https://github.com/okunator/cellseg_models.pytorch/blob/main/LICENSE)
-
-The project contains code from the original cell segmentation and 3rd-party libraries that have permissive licenses:
-
-- [timm](https://github.com/rwightman/pytorch-image-models) (Apache-2)
-- [HoVer-Net](https://github.com/vqdang/hover_net) (MIT)
-- [Cellpose](https://github.com/MouseLand/cellpose) (BSD-3)
-- [Stardist](https://github.com/stardist/stardist) (BSD-3)
-
-If you find this library useful in your project, it is your responsibility to ensure you comply with the conditions of any dependent licenses. Please create an issue if you think something is missing regarding the licenses.
+Original code in this project is licensed under [MIT](LICENSE).
+Adapted third-party code retains its original terms. See
+[third-party notices](NOTICE.md) for sources and bundled license texts,
+including timm, Diffusers, Kornia, MetaFormer, HoVer-Net, Cellpose, StarDist,
+scikit-image and HistoPrep.
+Dataset and pretrained-weight licenses are documented separately in their cards.

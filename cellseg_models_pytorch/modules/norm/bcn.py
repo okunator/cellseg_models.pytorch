@@ -1,3 +1,6 @@
+# Batch-channel normalization: Qiao et al.; see NOTICE.md and LICENSES/WS-BCN.txt.
+# Matching implementation: Batch-Channel-Normalization/imagenet/models/layers.py.
+# Copyright (c) 2017 Wei Yang. MIT; adapted grouping, interface and epsilon.
 import torch
 import torch.nn as nn
 from torch.nn.parameter import Parameter

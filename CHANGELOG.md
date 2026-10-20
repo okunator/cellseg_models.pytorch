@@ -54,6 +54,9 @@
 
 ## Fixes
 
+- Bundle third-party license texts and source notices in distributions. Preserve
+  upstream copyright and clarify which code the project MIT license covers.
+
 - Refresh dependency minimums and remove package upper bounds, retaining Python
   3.10 and PyTorch 2.13 support. Refresh the development lockfile.
 

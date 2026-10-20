@@ -40,6 +40,8 @@ __all__ = [
 ]
 
 
+# MSCA is adapted from SegNeXt AttentionModule; constructor and residual handling changed.
+# Copyright 2022 SegNeXt Authors. Apache-2.0; see NOTICE.md.
 class MSCA(nn.Module):
     def __init__(self, in_channels: int, **kwargs) -> None:
         """Multi-scale convolutional attention (MSCA).

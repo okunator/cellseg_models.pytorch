@@ -2,7 +2,12 @@
 
 import importlib
 import sys
-from importlib.metadata import packages_distributions, version
+from importlib.metadata import (
+    Distribution,
+    distribution,
+    packages_distributions,
+    version,
+)
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -15,6 +20,37 @@ from cellseg_models_pytorch.models.cellpose.cellpose_unet import cellpose_nuclei
 from cellseg_models_pytorch.utils import FileHandler
 
 
+def check_license_files(package: Distribution) -> None:
+    """Require the shipped notices and full texts, including nonempty contents."""
+    for name in (
+        "LICENSE",
+        "NOTICE.md",
+        "LICENSES/Apache-2.0.txt",
+        "LICENSES/Cellpose.txt",
+        "LICENSES/HistoPrep.txt",
+        "LICENSES/HoVer-Net.txt",
+        "LICENSES/StarDist.txt",
+        "LICENSES/scikit-image.txt",
+        "LICENSES/WS-BCN.txt",
+        "LICENSES/UvA-DL.txt",
+        "LICENSES/LovaszSoftmax.txt",
+        "LICENSES/InstanSeg.txt",
+        "LICENSES/StrongAugment.txt",
+        "LICENSES/SSIM.txt",
+    ):
+        paths = [
+            package.locate_file(entry)
+            for entry in package.files or ()
+            if str(entry).endswith(f".dist-info/licenses/{name}")
+        ]
+        if (
+            len(paths) != 1
+            or not paths[0].is_file()
+            or not paths[0].read_text().strip()
+        ):
+            raise RuntimeError(f"Missing or empty installed license file: {name}")
+
+
 def main() -> None:
     """Check package identity, public imports, and a CPU forward/backward pass."""
     installed_path = Path(cellseg_models_pytorch.__file__).resolve()
@@ -25,6 +61,8 @@ def main() -> None:
     providers = packages_distributions().get("cv2", [])
     if len(providers) != 1:
         raise RuntimeError(f"Expected one OpenCV provider, got {providers}")
+
+    check_license_files(distribution("cellseg_models_pytorch"))
 
     for module in (
         "models.cellpose",

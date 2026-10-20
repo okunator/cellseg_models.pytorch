@@ -1,0 +1,31 @@
+# Third-party notices
+
+Original code in this project is covered by the root [MIT license](LICENSE).
+The adapted portions below retain their upstream terms. Existing copyright
+headers are preserved; the bundled texts supplement those headers.
+
+This list describes code included in the package. Separately installed dependencies,
+datasets and downloaded weights have their own licenses.
+
+## Retained code
+
+Paths below are relative to `cellseg_models_pytorch/`.
+
+| Source | Incorporated portions | License and notice |
+| --- | --- | --- |
+| [timm](https://github.com/huggingface/pytorch-image-models) | timm-derived attention blocks in `modules/attention_modules.py`, `modules/misc_modules.py`, `modules/conv/scaled_ws_conv.py`, `modules/norm/ln.py`, and custom activations in `modules/act/{mish,swish}.py` | Apache-2.0; Ross Wightman and upstream contributors. The attention file retains its 2019 copyright notice; Mish and Swish match timm v0.4.12, copyright 2020 Ross Wightman. [Full license](LICENSES/Apache-2.0.txt). |
+| [SegNeXt](https://github.com/Visual-Attention-Network/SegNeXt/blob/c87bcaef22ed2ad72ed3decb3727e5f879343516/mmseg/models/backbones/mscan.py) | `MSCA` in `modules/attention_modules.py` | Copyright 2022 SegNeXt Authors. Apache-2.0. Adapted `AttentionModule` constructor and residual handling. [Full license](LICENSES/Apache-2.0.txt). |
+| [Diffusers](https://github.com/huggingface/diffusers/tree/v0.7.0) | `modules/act/gated_gelu.py`; sliced attention in `modules/self_attention/attention_ops.py` | Copyright 2022 The HuggingFace Team. All rights reserved. Apache-2.0. The activation source cites v0.7.0. Adapted interfaces, typing and partial batches. [Full license](LICENSES/Apache-2.0.txt). |
+| [Kornia](https://github.com/kornia/kornia) | `_compute_padding` in `utils/convolve.py` | Apache-2.0; Kornia contributors. Adapted for this library's tensor interfaces. [Full license](LICENSES/Apache-2.0.txt). |
+| [MetaFormer](https://github.com/sail-sg/metaformer/blob/main/metaformer_baselines.py) | `StarReLU` in `modules/act/star_relu.py` | Copyright 2022 Garena Online Private Limited. Apache-2.0. Adapted constructor/interface. [Full license](LICENSES/Apache-2.0.txt). |
+| [HoVer-Net](https://github.com/vqdang/hover_net) | `postproc/functional/hovernet.py`, `transforms/functional/{hovernet,contour,dist,edge_weights}.py`, portions of `utils/mask_utils.py`, and `modules/upsample/fixed_unpool.py` | Copyright (c) 2020 vqdang. MIT. Adapted interfaces, reconstruction, target generation and numerical handling. [Original notice and license](LICENSES/HoVer-Net.txt). |
+| [Cellpose](https://github.com/MouseLand/cellpose) | `postproc/functional/cellpose/`, `postproc/functional/omnipose.py`, `transforms/functional/cellpose.py`, `transforms/functional/omnipose.py` | Copyright © 2020 Howard Hughes Medical Institute. BSD-3-Clause. Includes the older Cellpose/Omnipose sources named in the original file headers. [Original notice and license](LICENSES/Cellpose.txt). |
+| [StarDist](https://github.com/stardist/stardist) | `transforms/functional/stardist.py`, polygon rendering in `postproc/functional/stardist/stardist.py` | Copyright (c) 2018–2022 Uwe Schmidt, Martin Weigert. BSD-3-Clause. [Original notice and license](LICENSES/StarDist.txt). |
+| [scikit-image](https://github.com/scikit-image/scikit-image/blob/main/skimage/morphology/misc.py) | `remove_small_objects` in `utils/mask_utils.py` | Copyright 2009–2022 the scikit-image team. BSD-3-Clause. The copied implementation removes an upstream warning. This portion is separate from the file's HoVer-Net MIT portions. [Notice and license](LICENSES/scikit-image.txt). |
+| [HistoPrep](https://github.com/jopo666/HistoPrep) | Reader/tissue/tiling/dearraying helpers in `wsi/` with HistoPrep headers, and the source-attributed `torch_datasets/wsi_dataset_infer.py` | Copyright (c) 2023 jopo666. MIT. Original file comments are retained; interfaces were adapted for this library. [Original notice and license](LICENSES/HistoPrep.txt). |
+| [Weight Standardization / Batch-Channel Normalization](https://github.com/joe-siyuan-qiao/Batch-Channel-Normalization/blob/0244c3e99417a511b60171fd86783c904d0132c0/imagenet/models/layers.py) | `modules/conv/ws_conv.py`, `modules/norm/bcn.py` | MIT under the upstream `imagenet/LICENSE`. Copyright (c) 2017 Wei Yang. Adapted `Conv2d`/`GN` interfaces, grouping and epsilon handling. [Original notice and license](LICENSES/WS-BCN.txt). |
+| [StrongAugment](https://github.com/jopo666/StrongAugment) | `transforms/functional/generic_transforms.py` | jopo666; MIT as declared in the upstream 0.1.0 wheel metadata. Adapted augmentation operations and interfaces. [Attribution and full terms](LICENSES/StrongAugment.txt). |
+| [InstanSeg](https://github.com/instanseg/instanseg) | Shared embedding/crop helpers in `utils/instanseg.py`, `models/instanseg/probability_net.py`, `postproc/functional/instanseg/`, and adapted portions of `losses/criterions/instanseg.py` | Apache-2.0; Thibaut Goldsborough, University of Edinburgh. Adapted for this library's network, training and reconstruction interfaces. [Upstream license and notice](LICENSES/InstanSeg.txt). |
+| [Lovász-Softmax](https://github.com/bermanmaxim/LovaszSoftmax) | Binary Lovász hinge in `losses/criterions/instanseg.py`, also distributed by InstanSeg | Copyright (c) 2018 Maxim Berman. MIT. Adapted tensor interface and empty-input handling. [Original notice and license](LICENSES/LovaszSoftmax.txt). |
+| [pytorch-msssim](https://github.com/jorge-pessoa/pytorch-msssim), based on [pytorch-ssim](https://github.com/Po-Hsun-Su/pytorch-ssim) | Adapted SSIM/MS-SSIM implementation in `losses/criterions/ssim.py` | Jorge Pessoa and Po-Hsun Su. Both upstream license files declare MIT. Adapted filtering, reductions, validation and precision handling. [Attribution and full terms](LICENSES/SSIM.txt). |
+| [UvA Deep Learning / Lightning ViT tutorial](https://github.com/Lightning-AI/tutorials/blob/main/course_UvA-DL/11-vision-transformer/VT.py) | `PatchEmbed.img2patch` in `modules/patch_embeddings.py` | Copyright (c) 2020 Phillip Lippe. Original UvA notebook: MIT; Lightning tutorial distribution: Apache-2.0. Adapted as a class method with fixed flattened output. [UvA notice and license](LICENSES/UvA-DL.txt); [Apache license](LICENSES/Apache-2.0.txt). |

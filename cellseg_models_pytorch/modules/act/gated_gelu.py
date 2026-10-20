@@ -3,7 +3,7 @@ Adapted from the diffusers repo. (Added type hints).
 
 https://github.com/huggingface/diffusers/blob/v0.7.0/src/diffusers/models/attention.py
 
-Copyright [2022] [huggingface]
+Copyright 2022 The HuggingFace Team. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

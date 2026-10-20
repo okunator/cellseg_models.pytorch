@@ -1,3 +1,6 @@
+# Weight-standardized convolution: Qiao et al.; see NOTICE.md and LICENSES/WS-BCN.txt.
+# Matching implementation: Batch-Channel-Normalization/imagenet/models/layers.py.
+# Copyright (c) 2017 Wei Yang. MIT; adapted interface and epsilon handling.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -19,7 +22,7 @@ class WSConv2d(nn.Conv2d):
         groups: int = 1,
         bias: bool = True,
         eps: float = 1e-7,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Weight standardized convolution.
 

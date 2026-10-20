@@ -1,3 +1,6 @@
+# img2patch is adapted from Phillip Lippe's UvA/Lightning ViT tutorial.
+# Copyright (c) 2020 Phillip Lippe. MIT; see LICENSES/UvA-DL.txt.
+# Lightning tutorial distribution: Apache-2.0; see NOTICE.md.
 from typing import Any, Dict
 
 import torch

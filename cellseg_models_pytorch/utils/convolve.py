@@ -1,3 +1,6 @@
+# Portions adapted from Kornia (Apache-2.0) for this library.
+# See NOTICE.md for attribution and license text.
+
 from collections.abc import Sequence
 
 import torch

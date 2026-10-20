@@ -63,6 +63,7 @@ __all__ = [
 ]
 
 
+# The following function is BSD-3-Clause; see LICENSES/scikit-image.txt.
 # From https://github.com/scikit-image/scikit-image/blob/main/skimage/morphology/misc.py
 # warning removed
 def remove_small_objects(

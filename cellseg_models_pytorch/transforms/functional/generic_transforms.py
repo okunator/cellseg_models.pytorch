@@ -1,3 +1,5 @@
+# StrongAugment: jopo666, MIT as declared in the upstream 0.1.0 wheel.
+# Adapted operations and interfaces; see NOTICE.md and LICENSES/StrongAugment.txt.
 # augmentations from the StrongAugment paper: https://github.com/jopo666/StrongAugment
 
 import functools

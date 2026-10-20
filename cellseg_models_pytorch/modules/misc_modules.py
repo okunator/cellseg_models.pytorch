@@ -1,3 +1,6 @@
+# Portions adapted from timm (Apache-2.0) for this library.
+# See NOTICE.md for attribution and license text.
+
 import torch
 import torch.nn as nn
 
