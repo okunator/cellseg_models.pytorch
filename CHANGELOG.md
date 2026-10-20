@@ -1,313 +1,123 @@
-# Unreleased
+<a id='changelog-0.2.0'></a>
+
+# 0.2.0 — Unreleased
+
+## Upgrade notes
+
+- Recheck training and evaluation baselines. Corrected losses change values and
+  gradients; reconstruction and metric fixes can change masks and scores.
+  Network checkpoint shapes and names remain compatible unless noted below.
+- InstanSeg training now uses the shared classifier:
+  `Loss("instanseg", pixel_classifier=network.probability_net)`. Optimize the
+  network, including that classifier. Replace `w_coord` with `w_inst` and retrain
+  models trained only with the old coordinate-MSE loss.
+  See the [loss API](docs/api/losses.md#instanseg-loss).
+- `MSSSIM` requires matching floating BCHW maps on the same device and dtype;
+  its default window needs at least 161 pixels per axis. Set `data_range`
+  (default 1). For standalone `SSIM`, floating BHW targets are shared maps;
+  integer BHW targets are class labels. Set its range explicitly for comparisons.
+- `JointLoss` requires one weight per loss; `MultiTaskLoss` requires weight keys
+  matching configured heads. Invalid configurations now raise errors.
+- Prefer CellVit's `hgsc_v1_samvit_base_patch16` checkpoint name; the old
+  `hgsc_v1_efficientnet_b5` remains an alias. Enable the
+  [installation extras](docs/installation.md#optional-features) for training
+  datasets, ONNX export or OpenSlide.
 
 ## Removed
 
-- Remove CPPNet, its checkpoint registration and its unfinished ONNX export
-  because the borrowed sampling code has no established redistribution license.
-  Existing CPPNet checkpoints are no longer supported. The other six model
-  families remain available.
-
-- Remove the Linformer attention option/class and DCAN/DRFNS reconstruction
-  functions and registry entries. Remove DCAN decoder head names. Exact attention
-  and the model-family reconstruction methods remain available.
-
-- Remove `cellseg_models_pytorch.datasets.Pannuke`. Download PanNuke from
-  [Hugging Face](https://huggingface.co/datasets/csmp-hub/pannuke) using the
-  README example. The training loaders in `torch_datasets` remain available.
-- Remove `utils.Downloader` and `FileHandler.extract_zips_in_folder`. Use
-  Hugging Face download tools and Python's `zipfile.ZipFile` instead. Move
-  `requests` to the docs dependencies for the whole-slide tutorial.
+- Remove CPPNet and its checkpoints/export because borrowed sampling code lacks
+  an established redistribution license. Other model families remain available.
+- Remove Linformer attention and DCAN/DRFNS reconstruction, including DCAN head
+  names. Use exact attention and a supported model/reconstruction pair.
+  Changing from Linformer requires retraining, not checkpoint conversion.
+- Remove `datasets.Pannuke`, `utils.Downloader` and
+  `FileHandler.extract_zips_in_folder`. Use the README's
+  [PanNuke download example](README.md#datasets), Hugging Face tools and
+  Python's `zipfile.ZipFile`. Training loaders remain in `torch_datasets`.
 
 ## Features
 
-- Add `training`, `onnx` and `openslide` installation extras. Check base and
-  feature installs independently without removing existing mandatory dependencies.
-
-- Add CellVit ONNX export for horizontal/vertical maps and class logits, with
-  fixed image sizes and optional variable batch sizes. CPU runtime comparisons
-  cover `samvit_base_patch16_224` at 224 × 224 pixels; reconstruction stays in Python.
-
-- Add HoverNet and InstanSeg ONNX exports for reconstruction maps and class logits,
-  with fixed image sizes and optional variable batch sizes. Instance reconstruction,
-  including InstanSeg's pixel classifier, remains in Python. Share export validation
-  and state restoration with the existing CellPose/StarDist exporters.
-  Export in the network's dtype inside autocast, restoring the caller's autocast
-  state after success or failure.
-
-- Document Omnipose ONNX export through `export_cellpose_onnx`, with flow maps
-  and class logits. Add ONNX Runtime comparisons for fixed and variable batches.
-
-- Expose calibrated level-zero pixel size through `SlideReader.pixel_size` in
-  `(height, width)` micrometers, retaining anisotropic axes and rejecting missing
-  calibration. cuCIM also reads Aperio MPP metadata. Optional CUDA tile reads and
-  `WsiSegmenter(read_device="cuda")` keep decoded tiles and tensor min-max
-  normalization on the GPU through model input; CPU reads remain the default.
-  Instance reconstruction and vector export retain their CPU paths.
-
-- Add optional vector-only nucleus filtering after WSI stitching. Filtering is
-  disabled by default (`filter_level=0` or `None`); integer levels 1, 2 and 3
-  select conservative, middle and strong area/thickness limits. Enabling it
-  requires explicit physical pixel calibration.
-  Retained contours, IDs and attributes are preserved.
-
-- Add CellPose and StarDist dense-network ONNX export (contributed by
-  Ajinkya Kulkarni). Instance reconstruction remains in Python. Export requires
-  optional ONNX packages. Dynamic batches retain fixed spatial dimensions, and export
-  preserves model dtype and individual module training modes.
+- Add `training`, `onnx` and `openslide` installation extras.
+- Add ONNX export for CellPose, StarDist, HoVer-Net, CellVit and InstanSeg;
+  document Omnipose export through `export_cellpose_onnx`. Exports support fixed
+  spatial dimensions and optional variable batches; instance reconstruction stays
+  in Python. CellPose/StarDist export was contributed by Ajinkya Kulkarni.
+- Add calibrated `SlideReader.pixel_size` in `(height, width)` micrometers and
+  optional cuCIM CUDA reads with `WsiSegmenter(read_device="cuda")`. Decoded tiles
+  stay on GPU through normalization and model input; reconstruction and vector
+  export remain on CPU. CPU reads remain the default.
+- Add vector-only nucleus filtering after WSI stitching. `filter_level` 1–3
+  selects conservative, middle or strong area/thickness limits with physical
+  pixel calibration; `0` or `None` disables filtering by default.
 
 ## Fixes
 
-- Bundle third-party license texts and source notices in distributions. Preserve
-  upstream copyright and clarify which code the project MIT license covers.
+- Correct Dice, IoU and Tversky spatial overlap, masking, weighting and spectral
+  regularization. Fix CE/Focal and BCE/SCE logit stability, BCE channel weighting
+  and binary smoothing, and MSE/MAE mixed-precision arithmetic.
+- Correct MS-SSIM scale aggregation: identical maps now have zero loss. Stabilize
+  standalone SSIM precision, gradients and target handling; add range control.
+- Align InstanSeg's shared-classifier membership, seed and instance losses with
+  reconstruction. Fix loss routing, spatial/uniform smoothing and weighted
+  multi-head sums; accept target-only edge-weight maps in `MultiTaskLoss`.
+- Prevent CellVit float16 upsampling overflow, fixed-unpool bfloat16 dtype errors
+  and NaNs from zero-norm style vectors. Convert bfloat16 maps to float32 before
+  NumPy post-processing. Load StarDist ray counts from checkpoint weights.
+- Reconstruct HoVer-Net/CellVit nuclei from binary foreground rather than class
+  numbers, retaining cell types for voting.
+- Reconcile overlapping WSI polygons in vector space, preferring complete nuclei
+  from one tile while preserving unmatched detections and distinct overlapping
+  nuclei. Avoid artificial intersection objects, disconnected seam fragments and
+  coordinate-sensitive selection. Preserve IDs and attributes; reject existing
+  merge outputs and repair invalid contours after smoothing.
+- Correct slide height/width scale ordering and level-zero polygon coordinates,
+  cuCIM pyramid scaling/padding, tile inference arguments and optional output
+  handling. Preserve foreground class 0 during vector export.
 
-- Refresh dependency minimums and remove package upper bounds, retaining Python
-  3.10 and PyTorch 2.13 support. Refresh the development lockfile.
-
-- Convert bfloat16 prediction maps to float32 on CPU before NumPy reconstruction,
-  preserving existing float16, float32 and integer conversion behavior.
-
-- Keep transformer feature upsampling in float32 during float16 autocast to
-  prevent CellVit overflow before decoder normalization. Preserve ordinary
-  float32 results and existing checkpoint weights.
-
-- Separate HoverNet and CellVit nuclei using binary foreground, so cell-type
-  numbers no longer change object boundaries. Keep the original classes for voting.
-  Existing checkpoints can produce different instance masks; network outputs stay
-  unchanged.
-
-- Name the CellVit HGSC checkpoint `hgsc_v1_samvit_base_patch16` to match its
-  encoder. Keep `hgsc_v1_efficientnet_b5` as an alias for existing code.
-
-- Remove the direct NumPy upper bound while retaining the 2.2.6 minimum.
-  Keep WSI merger reductions compatible with NumPy 2.5 typing.
-
-- Count missed and extra class pixels even without same-class overlap, and
-  compute multiclass specificity from true negatives instead of precision.
-  Preserve instance matching and the absent-class marker.
-
-- Keep zero-mean style vectors and their gradients finite, including blank-input
-  CellPose predictions, while retaining unit-length normalization for nonzero vectors.
-
-- Match fixed-unpooling's saved matrix to the feature dtype during computation,
-  allowing CPU bfloat16 autocast training without changing checkpoint buffers.
-
-- Keep spatial smoothing's center and neighbor weights balanced for narrow
-  Gaussian windows, and allow IoULoss to combine spatial and uniform smoothing
-  with custom window settings.
-
-- Allow `MultiTaskLoss` edge-weight maps in targets without a dummy prediction,
-  preserve mixed-head sum precision, and validate configured head/weight keys
-  before evaluating losses. Retain existing mask reductions, head multipliers,
-  extra matching outputs and legacy dummy edge-weight entries.
-
-- Train InstanSeg nucleus membership with the model's shared pixel classifier,
-  seed BCE and per-instance Lovász hinge instead of normalized coordinate MSE.
-  Share spatial units and crop features with reconstruction, interpret seed logits
-  as probabilities for thresholding, and repair Loss/JointLoss/MultiTaskLoss routing.
-  Pass `pixel_classifier=network.probability_net`; `w_coord` is deprecated in favor
-  of `w_inst`. Checkpoint shapes/names are unchanged, but affected models need
-  retraining. Generic weighting/smoothing options are rejected explicitly.
-
-- Correct height/width scale ordering for slide regions, tissue-mask filtering,
-  spot coordinates and thumbnail rectangles when the two axes scale differently.
-
-- Reject mismatched `JointLoss` weight counts and empty loss lists when configured,
-  and detect count changes during use. Valid weighted sums and gradients are unchanged.
-
-- Scale whole-slide prediction polygons back to level-zero slide coordinates
-  before saving and merging. Use the reader's height/width pixel scales and
-  account for prediction maps whose dimensions differ from the input tile.
-
-- Stabilize standalone `SSIM` moments and gradients in mixed precision, preserve
-  float64, and set CUDA convolution precision per operation without changing
-  caller settings or precision-policy inheritance.
-  Floating BHW targets are shared maps rather than truncated class IDs; integer
-  BHW targets remain one-hot class labels. Reject mismatched shapes/devices and
-  add explicit `data_range` control. Its default retains legacy range guessing;
-  padding, adaptive windows, loss cap and return values remain unchanged.
-
-- Compute MSE/MAE errors and regularization in float32 for half-precision inputs,
-  preserving their distinct mask reductions and outside-mask penalties. Support
-  shared floating MSE targets across dtypes and retain float64 mask normalization.
-  Promote shared targets before channel expansion to keep summed gradients finite.
-  Evaluate edge powers in the loss dtype to avoid premature overflow. Fix combined
-  spatial/uniform smoothing in MSE and Dice, and keep smoothed targets in float32
-  under autocast. Existing model checkpoints remain compatible.
-
-- Read the StarDist ray count from checkpoint weights when loading a
-  model. Checkpoints with custom ray counts now load without changing the default
-  32-ray behavior for newly constructed models.
-
-- Correct `MSSSIM` to compute 1 minus MS-SSIM, combining each scale once before
-  averaging image/channel scores. Identical maps now have zero loss. Use matching
-  floating BCHW maps and a fixed `data_range` (default 1); the default Gaussian
-  window requires at least 161 pixels per axis. Half-precision inputs compute in
-  float32. This changes the training objective; model checkpoints and standalone
-  `SSIM` behavior remain unchanged.
-
-- Apply `Predictor.predict(apply_boundary_weight=True)` to instance reconstruction
-  and foreground maps, giving more weight to the image center and less to its
-  edges. Class labels and default predictions are unchanged.
-
-- Correct `TverskyLoss` to sum overlap across spatial axes per image and class,
-  with `alpha` weighting false positives and `beta` weighting false negatives.
-  Average target-present pairs, weight overlap terms consistently, scale class
-  losses and add positive masked regularization. Fully masked inputs have zero
-  loss and gradients; half-precision sums accumulate in float32. Training
-  objectives change; existing model checkpoints remain loadable.
-
-- Correct `BCELoss` to use unclipped logits, weight independent output channels,
-  and smooth binary targets toward 0.5. Stabilize `SCELoss` with direct
-  log-probabilities and a 1e-4 target floor to keep reverse terms finite for hard
-  labels. Avoid NaN from zero-target terms when an extreme log-probability
-  overflows to negative infinity. Both losses compute half-precision inputs and
-  regularization in float32 and support combined spatial/uniform smoothing. These corrections
-  change training objectives; existing model checkpoints remain loadable.
-
-- Stabilize `CELoss` and `FocalLoss` with direct log-probability calculations,
-  preserving gradients for confidently wrong predictions. Float16 and bfloat16
-  logits use float32 loss and spectral regularization arithmetic. Preserve
-  existing smoothing, mask, weight and reduction behavior, and allow custom
-  spatial kernels alongside uniform label smoothing. Extreme-logit training
-  losses change; existing model checkpoints remain loadable.
-
-- Correct `IoULoss` to use per-image, per-class spatial intersection over union
-  and average target-present image/class pairs, including background. Apply mask
-  and edge weights to intersection and union, scale class losses, and add positive
-  spectral regularization. Fully masked inputs return zero loss and gradients;
-  half-precision spatial sums accumulate in float32. Training objectives change;
-  existing model checkpoints remain loadable.
-
-- Correct `SpotCoordinates` annotations to describe a list of bounds and iteration
-  over bounds only. Returned data is unchanged.
-
-- Correct the normalization transform export list to use the existing
-  `Normalization` class name instead of the nonexistent `ImgNormalization`.
-
-- Correct in-memory sliding-window prediction for small images and asymmetric or
-  zero padding. Honor disabled boundary weighting, normalize auxiliary overlaps
-  by their weights, and preserve optional nuclear/cytoplasm/tissue maps. Reject
-  strides that leave gaps or fail to advance. Add a pretrained HoVer-Net example.
-
-- Avoid overflow when tensor min-max normalization receives extreme finite
-  float32 values, preserving the uint8 GPU tile path.
-
-- Correct cuCIM pyramid size scaling and edge padding without moving CUDA tiles
-  to the host.
-
-- Reconcile overlapping WSI predictions using source-tile identity and shared
-  polygon area, preserving unmatched detections. Record border contact before
-  smoothing and prefer complete original contours over partial detections,
-  resolving nested and one-versus-many alternatives as coherent tile observations.
-  Compare whole local partitions even when individual contour matches are weak;
-  unmatched nuclei do not decide which tile supplies a disputed group.
-  Skip redundant coverage calculations and use faster temporary polygon unions
-  where supported by GEOS, preserving the selected contours and attributes.
-  Resolve view-clearance and area ties at coordinate precision so roundoff from
-  slide-coordinate translations cannot override the next selection preference.
-  Keep distinct overlapping nuclei without creating intersection objects or
-  filling gaps between fragments.
-  Abutting fragments must actually touch to join. Preserve first/last tile nuclei,
-  unique slide-wide IDs and pixel coordinates without a geographic CRS; reject
-  existing merge outputs. Vector export retains foreground class 0 and classes in
-  tiles without background pixels, and repairs self-intersections from smoothing.
-
-- Correct DiceLoss to compute per-image, per-class spatial overlap rather than
-  soft pixel accuracy. Average over target-present classes, including background;
-  mask overlap and volume consistently, weight class losses and add positive
-  spectral regularization. Training objectives change; existing model checkpoints
-  remain loadable. Class weights now follow loss-module device/dtype moves without
-  adding checkpoint state.
-
-- Generate training auxiliary targets after image/mask augmentation, keeping flows
-  and other vector targets aligned after flips and crops in folder/HDF5 datasets.
-  Apply sampled StrongAugment operations sequentially rather than discarding all
-  but the last operation.
-
-- Use headless OpenCV for image processing, avoiding overlapping `cv2` files
-  when Albumentations is installed and training dependencies are later removed.
-
-- Exclude package-local tests and their image/HDF5 fixtures from wheels and source
-  distributions. Tests remain available in the repository checkout.
-
-- Derive HDF5 training dataset length from the configured image array and reject
-  mismatched image/mask sample counts. Preserve the correct auxiliary target for
-  each instance key when using multiple instance masks or transforms.
-
-- Match instances one-to-one for panoptic quality and object precision below
-  0.5 IoU, maximizing valid pairs and then summed IoU. Preserve strict threshold
-  comparison and the historical `average_precision` formula, TP / (TP + FP).
-  Reject nonfinite/out-of-range thresholds, correct swapped FP/FN object counts,
-  and support sparse instance IDs or masks without background pixels. AJI keeps
-  its existing matching policy.
-
-- Update the development lock's existing Soup Sieve and Pygments transitives to
-  2.10 and 2.21.0 for selector parsing and ADL lexer fixes. Their versions remain
-  governed by their parent packages in published installations.
-- Leave urllib3, IDNA, filelock, fsspec and setuptools requirements to their parent
-  packages instead of declaring transitive security minimums. Retain their updated
-  lock versions.
-
-- Honor `percentile_normalize99` clipping bounds and initialize zero-percentile
-  spans to zero before clipping. Reject reversed bounds and preserve float32
-  output and channel axes. Enhanced HoVer-Net/DCAN processing and flow
-  visualization now apply their requested clipping; this may change those outputs.
-  DRFNS handles distance-map tails and saturates byte arithmetic safely under
-  strict NumPy error settings.
-
-- Adopt NumPy 2 (2.2.6 or newer below 2.6), Numba 0.68, and newer compatible
-  SciPy, scikit-image, scikit-learn, and OpenCV 4 releases. Python 3.10 retains
-  its compatible dependency versions; newer Python versions use newer wheels.
-
-- Preserve boundary-weight generation and uint8 posterization with NumPy 2 by
-  replacing its removed infinity alias and using an unsigned eight-bit mask.
-
-- Require PyTorch 2.13 or newer for upstream security fixes, update the locked
-  PyTorch/torchvision pair to 2.14.1/0.29.1, and require timm 1.0.30 or newer.
-  Update locked fsspec and setuptools for their security fixes. Python 3.10
-  remains supported.
-  Constrain torchvision to compatible modern releases and exclude Python 3.14.1,
-  matching torchvision's upstream Python restriction.
-
-- Repair WSI tile inference device, preprocessing, and output arguments. Preserve
-  dotted slide names and reject existing or colliding tile outputs. Resolve async
-  post-processing results for optional cytoplasm and tissue heads.
-
-- Update the geometry/export dependency group, including PyArrow and GeoPandas
-  security minimums, with serialization and pixel-coordinate regression coverage.
-
-- Require Pillow 12.3.0 or newer within the 12.x series for image decoding,
-  drawing, font, and related security fixes.
-
-- Raise the Requests security minimum for downloads and update the locked HTTP
-  and cache dependencies.
-
-- Allow inference dataset and WSI segmenter imports without optional training
-  dependencies. WSI datasets accept callable transforms without Albumentations,
-  and the segmenter forwards its normalization using the correct keyword.
-
-- Declare Pillow, Hugging Face Hub, safetensors, pandas, Shapely, and NetworkX
-  as direct runtime requirements instead of relying on transitive dependencies.
-
-- Allow importing `wsi.SlideReader` without optional Matplotlib. Visualization
-  still reports its Matplotlib requirement when requested.
+- Fix in-memory sliding-window padding, overlap normalization, boundary weighting
+  and optional maps; reject strides that leave gaps. Apply requested predictor
+  boundary weights to reconstruction and foreground maps.
+  ([#69](https://github.com/okunator/cellseg_models.pytorch/issues/69))
+- Correct one-to-one instance matching below 0.5 IoU, swapped object FP/FN counts,
+  multiclass confusion counts and specificity. Support sparse IDs and masks
+  without background; retain absent-class handling and historical AJI matching
+  and `average_precision` semantics.
+  ([#73](https://github.com/okunator/cellseg_models.pytorch/issues/73))
+- Keep auxiliary training targets aligned after augmentation, apply all sampled
+  StrongAugment operations, and correct HDF5 lengths and multi-mask target routing.
+- Use built-in min-max normalization in the quick start with float32 output
+  ([#78](https://github.com/okunator/cellseg_models.pytorch/issues/78)). Honor
+  percentile clipping bounds and avoid overflow for extreme finite min-max inputs.
+  Correct the `Normalization` export.
+- Support Python 3.10–3.14, excluding 3.14.1 per torchvision. Refresh dependencies
+  with minimum-only runtime requirements, including NumPy 2.2.6+ and PyTorch
+  2.13+. Use headless OpenCV and leave transitive constraints to parent packages.
+  ([#68](https://github.com/okunator/cellseg_models.pytorch/issues/68))
+- Allow inference imports without optional training or plotting packages.
+  Bundle third-party licenses and exclude tests/fixtures from distributions.
 
 <a id='changelog-0.1.30'></a>
+
 # 0.1.30 — 2025-11-14
 
-# Feat
+## Feat
+
 Add `save_intermediate` param to .predict() method for models.
 
 <a id='changelog-0.1.29'></a>
+
 # 0.1.29 — 2025-10-21
 
-# Fixed
+## Fixed
+
 Fixed a bug in result segmentation smoothing after vectorizing.
 
 <a id='changelog-0.1.28'></a>
+
 # 0.1.28 — 2025-08-17
 
 ## Features
+
 - Added `precision` param to WSISegmenter
 
 ## Fixed
@@ -315,6 +125,7 @@ Fixed a bug in result segmentation smoothing after vectorizing.
 - `gdf2inst` fixed for empty masks.
 
 <a id='changelog-0.1.27'></a>
+
 # 0.1.27 — 2025-07-25
 
 ## Fixed
@@ -322,6 +133,7 @@ Fixed a bug in result segmentation smoothing after vectorizing.
 - Top-level key error bug in Predictor class [#75](https://github.com/okunator/cellseg_models.pytorch/issues/75)
 
 <a id='changelog-0.1.26'></a>
+
 # 0.1.26 — 2025-05-07
 
 ## Removed
@@ -370,6 +182,7 @@ Fixed a bug in result segmentation smoothing after vectorizing.
 - Move `FolderDatasetInfer`to `torch_datasets` module
 
 <a id='changelog-0.1.25'></a>
+
 # 0.1.25 — 2024-07-05
 
 ## Features
@@ -377,7 +190,8 @@ Fixed a bug in result segmentation smoothing after vectorizing.
 - Image encoders are imported now only from timm models.
 - Add `enc_out_indices` to model classes, to enable selecting which layers to use as the encoder outputs.
 
-# Removed
+## Removed
+
 - Removed SAM and DINOv2 original implementation image-encoders from this repo. These can be found from timm models these days.
 - Removed `cellseg_models_pytorch.training` module which was left unused after example notebooks were updated.
 
@@ -398,6 +212,7 @@ Fixed a bug in result segmentation smoothing after vectorizing.
 - The `self.encoder` in each model is new, thus, models with trained weights from previous versions of the package will not work with this version.
 
 <a id='changelog-0.1.24'></a>
+
 # 0.1.24 — 2023-10-13
 
 ## Style
@@ -425,6 +240,7 @@ Fixed a bug in result segmentation smoothing after vectorizing.
 - Fix resize transformation bug.
 
 <a id='changelog-0.1.23'></a>
+
 # 0.1.23 — 2023-08-28
 
 ## Features
@@ -466,6 +282,7 @@ Fixed a bug in result segmentation smoothing after vectorizing.
 - Fix Decoder, DecoderStage and long-skip modules to work with up scale factors  instead of output dimensions.
 
 <a id='changelog-0.1.22'></a>
+
 # 0.1.22 — 2023-07-10
 
 ## Features
@@ -474,6 +291,7 @@ Fixed a bug in result segmentation smoothing after vectorizing.
 - Add cell class probabilities to saved geojson files
 
 <a id='changelog-0.1.21'></a>
+
 # 0.1.21 — 2023-06-12
 
 ## Features
@@ -483,6 +301,7 @@ Fixed a bug in result segmentation smoothing after vectorizing.
 ## Fixes
 
 - Minor bug fixes
+
 <a id='changelog-0.1.20'></a>
 
 # 0.1.20 — 2023-01-13
@@ -580,7 +399,8 @@ Fixed a bug in result segmentation smoothing after vectorizing.
 ## Tests
 
 - added tests for the multiprocessing tools.
-  <a id='changelog-0.1.13'></a>
+
+<a id='changelog-0.1.13'></a>
 
 # 0.1.13 — 2022-11-25
 
@@ -591,7 +411,8 @@ Fixed a bug in result segmentation smoothing after vectorizing.
 ## Fixes
 
 - Turn the `cellpose` and `stardist` postproc dirs into modules.
-  <a id='changelog-0.1.13'></a>
+
+<a id='changelog-0.1.12'></a>
 
 # 0.1.12 — 2022-11-03
 
@@ -602,7 +423,8 @@ Fixed a bug in result segmentation smoothing after vectorizing.
 ## Fixes
 
 - Fix bug with padding in `SlidingWindowInferer`
-  <a id='changelog-0.1.11'></a>
+
+<a id='changelog-0.1.11'></a>
 
 # 0.1.11 — 2022-10-21
 
@@ -647,7 +469,8 @@ Fixed a bug in result segmentation smoothing after vectorizing.
 ## Fixes
 
 - Fix SCE loss bug.
-  <a id='changelog-0.1.6'></a>
+
+<a id='changelog-0.1.6'></a>
 
 # 0.1.6 — 2022-10-14
 
@@ -669,7 +492,8 @@ Fixed a bug in result segmentation smoothing after vectorizing.
 ## Fixes
 
 - Wandb Callback bugs fixed.
-  <a id='changelog-0.1.4'></a>
+
+<a id='changelog-0.1.4'></a>
 
 # 0.1.4 — 2022-10-06
 

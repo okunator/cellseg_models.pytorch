@@ -8,6 +8,20 @@ Install the latest published release in your Python environment:
 python -m pip install cellseg-models-pytorch
 ```
 
+### Optional features
+
+Install the features you need:
+
+| Feature | Command | Includes |
+| --- | --- | --- |
+| Training datasets and augmentation | `python -m pip install "cellseg-models-pytorch[training]"` | Albumentations and PyTables |
+| ONNX export | `python -m pip install "cellseg-models-pytorch[onnx]"` | ONNX and ONNX Script |
+| OpenSlide reading | `python -m pip install "cellseg-models-pytorch[openslide]"` | OpenSlide Python and native libraries |
+
+Combine features with commas, for example `"cellseg-models-pytorch[training,onnx]"`.
+Install ONNX Runtime separately to run exported models. cuCIM and BioIO require
+their own setup.
+
 ## From source with uv
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then download
@@ -22,24 +36,12 @@ uv sync --locked
 Run Python from this environment with `uv run python`.
 Continue with the [quick start](quickstart.md).
 
-### Optional features
+Add optional features with `uv sync --locked --extra training`, using the same
+`training`, `onnx` and `openslide` names as above. Combine flags to keep several
+features, for example `uv sync --locked --extra training --extra onnx`.
+Running `uv sync` without these flags removes the optional packages.
 
-From the source checkout, install the features you need:
-
-| Feature | Command | Includes |
-| --- | --- | --- |
-| Training datasets and augmentation | `uv sync --locked --extra training` | Albumentations and PyTables |
-| ONNX export | `uv sync --locked --extra onnx` | ONNX and ONNX Script |
-| OpenSlide reading | `uv sync --locked --extra openslide` | OpenSlide Python and native libraries |
-
-Combine flags to keep several features, for example
-`uv sync --locked --extra training --extra onnx`. Running `uv sync` without
-these flags removes the optional packages. ONNX Runtime is installed separately
-if you want to run exported files. cuCIM and BioIO still require their own setup.
-These extras are new in the source version and are not in the current PyPI release.
-
-These examples use the source version; the PyPI release may have different
-requirements and APIs. Source installations are tested on
+These pages describe version 0.2.0. Installations are tested on
 Python 3.10–3.14. Python 3.14.1 is excluded by torchvision. For an NVIDIA GPU, follow
 [PyTorch's installation guidance](https://pytorch.org/get-started/locally/)
 for your hardware. Examples use CUDA when available and otherwise use CPU.

@@ -342,7 +342,7 @@ wheels = [
 
 [[package]]
 name = "cellseg-models-pytorch"
-version = "0.1.30"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "geopandas", version = "1.1.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },

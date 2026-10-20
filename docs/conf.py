@@ -1,10 +1,13 @@
 """Sphinx configuration for the user documentation."""
 
+from cellseg_models_pytorch import __version__
+
 project = "cellseg-models.pytorch"
+release = __version__
 author = "Oskari Lehtonen"
 extensions = ["myst_nb", "sphinx.ext.autodoc", "sphinx.ext.napoleon"]
 html_theme = "pydata_sphinx_theme"
-html_title = "cellseg-models.pytorch"
+html_title = f"{project} {release}"
 html_theme_options = {
     "github_url": "https://github.com/okunator/cellseg_models.pytorch",
 }

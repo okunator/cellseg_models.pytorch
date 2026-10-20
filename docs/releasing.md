@@ -6,8 +6,11 @@ orphan: true
 
 The publication workflow builds distributions once, checks their metadata, tests
 their clean installation, and runs the source suite. It publishes those same
-artifacts only for a published GitHub release. Manual dispatch performs validation
-without uploading to PyPI.
+artifacts only for a published GitHub release. The existing source job also builds
+the docs once and preserves the HTML for deployment. After a stable release passes
+validation and PyPI publication, the workflow deploys those pages to GitHub Pages.
+Prereleases do not replace the stable docs. Manual dispatch validates and preserves
+artifacts without publishing the package or docs.
 
 ## Configure PyPI trusted publishing
 
@@ -22,7 +25,7 @@ next release. Use these values for `cellseg-models-pytorch`:
 | GitHub environment | `pypi` |
 
 Create the matching GitHub environment and choose its tag/release restrictions
-and any desired maintainer review rules. The publishing job alone receives
+and any desired maintainer review rules. The publishing job receives
 `id-token: write`; source tests and builds do not. Do not add `PYPI_TOKEN` or a
 password fallback. Remove the obsolete publishing secret after the OIDC setup
 is verified. Coverage upload configuration is separate from PyPI authentication.
@@ -30,6 +33,14 @@ is verified. Coverage upload configuration is separate from PyPI authentication.
 See [PyPI's publisher setup](https://docs.pypi.org/trusted-publishers/adding-a-publisher/)
 and [the publishing action](https://github.com/pypa/gh-action-pypi-publish).
 Workflow syntax checks and ordinary CI cannot verify the PyPI-side configuration.
+
+## Configure documentation hosting
+
+Enable GitHub Pages in the repository settings with **GitHub Actions** as its
+publishing source. The deployment job uses the `github-pages` environment and
+alone receives `pages: write`; both deployment jobs receive `id-token: write`.
+Allow release tags in that environment's deployment rules. The stable site is
+<https://okunator.github.io/cellseg_models.pytorch/>.
 
 ## Prepare and validate a release
 
@@ -45,9 +56,11 @@ Workflow syntax checks and ordinary CI cannot verify the PyPI-side configuration
 4. Use the release candidate process for dependency or compatibility changes.
    A prerelease must have its own matching prerelease package version and tag.
 5. Tag the reviewed commit with the package version, optionally prefixed by `v`.
+   Ensure that tag is allowed in both deployment environments.
    Publish its GitHub release only when the artifacts and release notes are ready.
 6. Check publication and install the released package in a clean environment.
    If publication fails, inspect the validation or publisher error before retrying.
+   If only docs deployment fails, rerun failed jobs to avoid repeating the PyPI upload.
 
 Do not replace an existing release artifact or reuse a published PyPI version.
 Resolve a regression with a reviewed fix and new version, or an explicitly

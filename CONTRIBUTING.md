@@ -6,10 +6,11 @@ small fixes can go directly to a pull request.
 
 ## Development setup
 
-CI targets Python 3.10, 3.11, and 3.12 on Linux for source tests and clean wheel
-and source-distribution installation checks. The minimum remains Python 3.10.
-Use a Python version in this matrix and uv 0.11.4 (pinned in `pyproject.toml`). From the repository
-root, install the locked development dependencies and hooks:
+Linux source and Numba JIT checks cover Python 3.10–3.14. Routine wheel and
+source-distribution install checks use Python 3.10 and 3.14; manual and release
+runs cover all five versions. The minimum remains Python 3.10.
+Use a supported Python version and uv 0.11.4 (pinned in `pyproject.toml`).
+From the repository root, install the locked development dependencies and hooks:
 
 ```sh
 python -m pip install uv==0.11.4

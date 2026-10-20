@@ -3,7 +3,7 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
-  # Manual runs validate the package but never publish it.
+  # Manual runs validate the package and docs but never publish either.
   workflow_dispatch:
 
 permissions:
@@ -37,3 +37,22 @@ jobs:
 
       - name: Publish verified distributions
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  docs:
+    if: github.event_name == 'release' && !github.event.release.prerelease
+    needs: [validate, publish]
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy verified documentation
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
