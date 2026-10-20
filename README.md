@@ -97,13 +97,17 @@ Find pretrained checkpoints on [csmp-hub on Hugging Face](https://huggingface.co
 ## Datasets
 
 Download prepared datasets from CSMP Hub. Each Parquet row contains an image
-(`image`), nucleus instances (`inst`) and nucleus classes (`type`). Masks use PNG
-bytes; images use RGB PNG bytes except Human Lung, which keeps four float32
-channels as TIFF bytes. PanopTILs Refined, PUMA and Human Lung also include
-semantic labels (`sem`) for tissue and other regions.
-CytoNuke, HeLaCytoNuc, AIR-LEISH and Human Lung include separate whole-cell instances
-(`inst_cell`) and inferred nucleus-to-cell links (`pairs`). AIR-LEISH also
-includes parasite instances (`inst_parasite`) and full masks for overlapping objects.
+(`image`), nucleus instances (`inst`) and nucleus labels (`type`). Most masks use
+PNG bytes; VitaminP ORION-CRC keeps both instance masks as uint32 TIFF bytes.
+Images use RGB PNG bytes except Human Lung, which keeps four float32 channels as
+TIFF bytes. VitaminP ORION-CRC also includes two-channel uint16 IF images
+(`image_if`); its `type` labels mark nucleus foreground.
+PanopTILs Refined, PUMA and Human Lung also include semantic labels (`sem`) for
+tissue and other regions.
+CytoNuke, HeLaCytoNuc, AIR-LEISH, Human Lung and VitaminP ORION-CRC include separate
+whole-cell instances (`inst_cell`) and inferred nucleus-to-cell links (`pairs`).
+AIR-LEISH also includes parasite instances (`inst_parasite`) and full masks for
+overlapping objects.
 
 | Dataset | Images | Splits | License |
 | --- | ---: | --- | --- |
@@ -115,6 +119,7 @@ includes parasite instances (`inst_parasite`) and full masks for overlapping obj
 | [[14](#references)] [AIR-LEISH](https://huggingface.co/datasets/csmp-hub/air-leish) | 180 | `train` only; no independent evaluation split | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | [[15, 16](#references)] [Lizard-Mitosis](https://huggingface.co/datasets/csmp-hub/lizard-mitosis) | 4,981 | Original `train`, `val`, `test`; train/val overlap | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (noncommercial) |
 | [[17](#references)] [Human Lung](https://huggingface.co/datasets/csmp-hub/human-lung) | 68 | Original `train` (51), `val` (7), `test` (10); patient independence unverified | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (noncommercial) |
+| [[18, 19, 20](#references)] [VitaminP ORION-CRC](https://huggingface.co/datasets/csmp-hub/vitaminp-orion-crc) | 3,337 | Original case-separated `train` (2,946), `val` (272), `test` (119) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
 For example, download the PanopTILs Refined training split with
 [`hf_hub_download`](https://huggingface.co/docs/huggingface_hub/package_reference/file_download#huggingface_hub.hf_hub_download)
@@ -150,8 +155,9 @@ tissue_types = read_png(row["sem"])
 
 RGB images use HWC order; masks use HW axes and integer labels. The PNG decoder
 also works for PanNuke, PUMA, CytoNuke, HeLaCytoNuc, AIR-LEISH and Lizard-Mitosis.
-Human Lung images use CYX order (channel, height, width); its card shows how to
-read the four-channel TIFFs. PanopTILs Refined, PUMA and Human Lung have a `sem`
+Human Lung images and VitaminP ORION-CRC IF images use CYX order (channel, height,
+width). Their cards show TIFF loading, including VitaminP's uint32 instance masks.
+PanopTILs Refined, PUMA and Human Lung have a `sem`
 field. Each linked dataset card lists its filenames, class mappings, split
 protocol, attribution and plotting examples.
 Class numbers and tissue-background conventions are dataset-specific.
@@ -175,6 +181,9 @@ Class numbers and tissue-background conventions are dataset-specific.
 - [15] Baumann, E., Dislich, B., Rumberger, J. L., Nagtegaal, I. D., Martínez Rodríguez, M., & Zlobec, I. (2024). HoVer-NeXt: A Fast Nuclei Segmentation and Classification Pipeline for Next Generation Histopathology — Datasets. Version 2. Zenodo. https://doi.org/10.5281/zenodo.11657620.
 - [16] Graham, S., Jahanifar, M., Azam, A., et al. (2021). Lizard: A Large-Scale Dataset for Colonic Nuclear Instance Segmentation and Classification. ICCV Workshops, pp. 684–693. https://arxiv.org/abs/2108.11195.
 - [17] Dohmen, M., Mittermaier, M., & Hocke, A. (2024). Human Lung Tissue Microscopy (DIC, Fluorescence, Cell and Nuclei Semantic Instance Annotations). Version v1. Zenodo. https://doi.org/10.5281/zenodo.10669918.
+- [18] Shokrollahi, Y. (2026). VitaminP: Processed Zarr Datasets for Cross-Modal Whole-Cell Segmentation in Histopathology. Version v1.0.0. Zenodo. https://doi.org/10.5281/zenodo.21224234.
+- [19] Shokrollahi, Y., et al. (2026). VitaminP: cross-modal learning enables whole-cell segmentation from routine histology. arXiv. https://arxiv.org/abs/2604.23799.
+- [20] Lin, J.-R., Chen, Y.-A., Campton, D., et al. (2023). High-plex immunofluorescence imaging and traditional histology of the same tissue section for discovering image-based biomarkers. Nature Cancer, 4, 1036–1052. https://doi.org/10.1038/s43018-023-00576-1.
 
 ## Citation
 

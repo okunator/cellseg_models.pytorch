@@ -168,6 +168,8 @@ lightning_logs
 /data/lizard-mitosis-parquet/
 /data/human-lung-source/
 /data/human-lung-parquet/
+/data/vitaminp-orion-crc-source/
+/data/vitaminp-orion-crc-parquet/
 
 # Local torch.compile experiments and generated benchmark artifacts
 /.local/torch-compile-20261019/
