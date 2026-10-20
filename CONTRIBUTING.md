@@ -18,8 +18,7 @@ uv run --locked pre-commit install --hook-type pre-commit --hook-type pre-push
 ```
 
 The package is currently at `cellseg_models_pytorch/`, with tests beside their
-modules. See [AGENTS.md](AGENTS.md) for the layout and development conventions,
-and [the maintenance plan](docs/maintenance-plan.md) for upcoming typing work.
+modules. See [AGENTS.md](AGENTS.md) for the layout and development conventions.
 `uv.lock` is the single project lockfile; poetry-core remains the build backend.
 Use `uv lock` after intentional dependency edits, then `uv sync --locked`.
 

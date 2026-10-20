@@ -74,6 +74,11 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+
+# Local maintenance and architecture plans
+/docs/maintenance-plan.md
+/docs/module-boundaries-draft.md
+
 /data/panoptils/
 /data/panoptils-nuclei/
 /data/pannuke-source/

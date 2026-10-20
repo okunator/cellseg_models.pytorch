@@ -33,7 +33,7 @@ Workflow syntax checks and ordinary CI cannot verify the PyPI-side configuration
 
 ## Prepare and validate a release
 
-1. Complete the relevant checks in [the maintenance plan](https://github.com/okunator/cellseg_models.pytorch/blob/main/docs/maintenance-plan.md),
+1. Complete the [relevant checks](../CONTRIBUTING.md#changes-and-checks),
    including real checkpoint and optional/device checks affected by the release.
 2. Update `[project].version` in `pyproject.toml` and
    `cellseg_models_pytorch/__init__.py` together, with release notes and any

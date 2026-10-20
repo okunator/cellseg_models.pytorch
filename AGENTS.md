@@ -2,8 +2,9 @@
 
 ## Project orientation
 
-Read this file and [the maintenance plan](docs/maintenance-plan.md) before making
-changes. This is an open-source PyTorch library for 2D cell and nuclei instance
+Read this file before making changes. If present, also read the local
+`docs/maintenance-plan.md`; planning files are deliberately not tracked.
+This is an open-source PyTorch library for 2D cell and nuclei instance
 segmentation, with pretrained checkpoints, training components, tiled inference,
 post-processing, and metrics. Preserve its public APIs and checkpoint compatibility.
 
