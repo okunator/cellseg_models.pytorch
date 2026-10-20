@@ -97,18 +97,8 @@ Six model families are available. Find pretrained checkpoints on
 
 ## Datasets
 
-Download prepared datasets from CSMP Hub. Each Parquet row contains an image
-(`image`), nucleus instances (`inst`) and nucleus labels (`type`). Most masks use
-PNG bytes; VitaminP ORION-CRC keeps both instance masks as uint32 TIFF bytes.
-Images use RGB PNG bytes except Human Lung, which keeps four float32 channels as
-TIFF bytes. VitaminP ORION-CRC also includes two-channel uint16 IF images
-(`image_if`); its `type` labels mark nucleus foreground.
-PanopTILs Refined, PUMA and Human Lung also include semantic labels (`sem`) for
-tissue and other regions.
-CytoNuke, HeLaCytoNuc, AIR-LEISH, Human Lung and VitaminP ORION-CRC include separate
-whole-cell instances (`inst_cell`) and inferred nucleus-to-cell links (`pairs`).
-AIR-LEISH also includes parasite instances (`inst_parasite`) and full masks for
-overlapping objects.
+Download prepared datasets from CSMP Hub. Each linked dataset card describes its
+format, labels, splits and license.
 
 | Dataset | Images | Splits | License |
 | --- | ---: | --- | --- |
@@ -122,10 +112,7 @@ overlapping objects.
 | [[16](REFERENCES.md#ref-16)] [Human Lung](https://huggingface.co/datasets/csmp-hub/human-lung) | 68 | Original `train` (51), `val` (7), `test` (10); patient independence unverified | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (noncommercial) |
 | [[17, 18, 19](REFERENCES.md#ref-17)] [VitaminP ORION-CRC](https://huggingface.co/datasets/csmp-hub/vitaminp-orion-crc) | 3,337 | Original case-separated `train` (2,946), `val` (272), `test` (119) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
-For example, download the PanopTILs Refined training split with
-[`hf_hub_download`](https://huggingface.co/docs/huggingface_hub/package_reference/file_download#huggingface_hub.hf_hub_download)
-and read one sample with
-[`ParquetFile.iter_batches`](https://arrow.apache.org/docs/python/generated/pyarrow.parquet.ParquetFile.html#pyarrow.parquet.ParquetFile.iter_batches):
+Load one PanopTILs Refined sample:
 
 ```python
 from io import BytesIO
@@ -153,15 +140,6 @@ instances = read_png(row["inst"])
 cell_types = read_png(row["type"])
 tissue_types = read_png(row["sem"])
 ```
-
-RGB images use HWC order; masks use HW axes and integer labels. The PNG decoder
-also works for PanNuke, PUMA, CytoNuke, HeLaCytoNuc, AIR-LEISH and Lizard-Mitosis.
-Human Lung images and VitaminP ORION-CRC IF images use CYX order (channel, height,
-width). Their cards show TIFF loading, including VitaminP's uint32 instance masks.
-PanopTILs Refined, PUMA and Human Lung have a `sem`
-field. Each linked dataset card lists its filenames, class mappings, split
-protocol, attribution and plotting examples.
-Class numbers and tissue-background conventions are dataset-specific.
 
 ## References
 
