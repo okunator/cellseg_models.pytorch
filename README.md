@@ -24,7 +24,7 @@
 
 ## Introduction
 
-**cellseg-models.pytorch** is a library built upon [PyTorch](https://pytorch.org/) that contains multi-task encoder-decoder architectures along with dedicated post-processing methods for segmenting cell/nuclei instances. As the name might suggest, this library is heavily inspired by [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch) library for semantic segmentation.
+**cellseg-models.pytorch** is a library built upon [PyTorch](https://pytorch.org/) that contains multi-task encoder-decoder architectures along with dedicated post-processing methods for segmenting cell/nuclei instances. See the [documentation](https://okunator.github.io/cellseg_models.pytorch/) for installation, user guides and the API reference. As the name might suggest, this library is heavily inspired by [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch) library for semantic segmentation.
 
 For panoptic segmentation and downstream spatial analysis of whole-slide images,
 see [Histolytics](https://hautaniemilab.github.io/histolytics/). Histolytics uses
@@ -46,8 +46,22 @@ cellseg-models.pytorch for its segmentation models.
 pip install cellseg-models-pytorch
 ```
 
-For optional training, ONNX export and OpenSlide installs, see the
-[installation guide](https://okunator.github.io/cellseg_models.pytorch/installation.html#optional-features).
+Install optional features as needed:
+
+```shell
+pip install "cellseg-models-pytorch[training]"
+pip install "cellseg-models-pytorch[onnx]"
+pip install "cellseg-models-pytorch[openslide]"
+```
+
+Combine features with commas:
+
+```shell
+pip install "cellseg-models-pytorch[training,onnx]"
+```
+
+See the [installation guide](https://okunator.github.io/cellseg_models.pytorch/installation.html#optional-features)
+for source installs and other slide readers.
 
 Read the [documentation](https://okunator.github.io/cellseg_models.pytorch/) for
 the quick start, user guides and API reference.
