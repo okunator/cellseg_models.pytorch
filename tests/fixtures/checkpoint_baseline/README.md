@@ -80,3 +80,35 @@ rounding differences, while probabilities met the existing bounds. The CPU polic
 does not alter production inference, checkpoint/reference files, or the separate
 ONNX raw-output assertions. Numerical backend equivalence is limited to the
 recorded inputs; GPU/AMP and broader datasets remain unverified.
+
+## Pinned pretrained ONNX checks
+
+[The separate pretrained ONNX checks](../../test_pretrained_onnx.py) pin the HGSC
+HoVer-Net and CellVit repository revisions and SHA256 hashes. Only those exact
+weights use class-logit absolute tolerances of `2e-5` and `4e-5`, respectively.
+Relative tolerance stays `1e-4`; reconstruction maps retain `atol=1e-5`.
+Raw logits, raw/public class decisions and exact object pixels/background and
+class masks remain checked. Only positive instance-ID permutations are allowed.
+Ordinary untrained-export tolerances and the CPU fixtures above are unchanged.
+
+These budgets follow CPU native float32/float64 calibration on eight tissue fields
+from TCGA-AC-A6IW and CMU-1, frozen before validation on four separate fields and
+two existing image controls. The native-derived two-implementation allowances
+were `1.7152e-5` and `3.3489e-5`, rounded up to `1e-5` increments. Both budgets
+passed 34 fixed/dynamic ONNX cases with exact classes/masks. Calibration used
+PyTorch 2.14.1, timm 1.0.30 and ONNX Runtime 1.31.0 on Linux ARM64; this does not
+establish budgets for other checkpoints or GPU/mixed-precision inference.
+
+The maintained integration check uses the existing HE image, OpenCV linear resize
+to 256 pixels and global float32 min-max normalization. CellVit then takes the
+native center 224 crop. It exports fresh fixed/dynamic graphs and checks batches
+one, two and three. Install `tools/onnx-requirements.txt`, then run explicitly:
+
+```sh
+HF_HUB_OFFLINE=1 NUMBA_DISABLE_JIT=1 uv run --no-sync pytest tests/test_pretrained_onnx.py
+NUMBA_DISABLE_JIT=1 uv run --no-sync pytest --optional tests/test_pretrained_onnx.py -k pinned_pretrained_onnx_parity
+```
+
+The optional command downloads only the pinned weights unless they are cached.
+Reuse `CELLSEG_BASELINE_CACHE` and add `HF_HUB_OFFLINE=1` for cached-only checks.
+No recurring checkpoint-download CI job is added; the ordinary regressions stay offline.
