@@ -110,13 +110,17 @@ class BaseModelInst:
                 raise RuntimeError(
                     "Checkpoint is missing the nucleus ray-head weights."
                 )
-            ray_weights = state_dict[ray_head_key]
-            if ray_weights.ndim != 4 or ray_weights.shape[0] <= 0:
+            ray_shape = state_dict[ray_head_key].shape
+            if len(ray_shape) != 4 or ray_shape[0] <= 0:
                 raise RuntimeError(
                     "Checkpoint nucleus ray-head weights must have shape "
                     "(n_rays, channels, height, width) with n_rays > 0."
                 )
-            inferred_kwargs["n_rays"] = ray_weights.shape[0]
+            inferred_kwargs["n_rays"] = ray_shape[0]
+
+        if weights_path.suffix == ".safetensors":
+            # Release the first checkpoint copy before creating the model.
+            del state_dict
 
         model_inst = cls(
             n_nuc_classes=n_nuc_classes,
@@ -135,7 +139,8 @@ class BaseModelInst:
                 raise ImportError(
                     "Please install `safetensors` package to load .safetensors files."
                 )
-            load_model(model_inst.model, weights_path, device.type)
+            load_device = str(device) if device.type == "cuda" else device.type
+            load_model(model_inst.model, weights_path, strict=True, device=load_device)
         else:
             model_inst.model.load_state_dict(state_dict, strict=True)
 
@@ -291,8 +296,8 @@ class BaseModelInst:
     @staticmethod
     def _get_state_dict(
         weights_path: Union[str, Path], device: torch.device = torch.device("cuda")
-    ) -> None:
-        """Load the model from pretrained weights."""
+    ) -> tuple[str | None, int, dict[str, torch.Tensor]]:
+        """Load weights and return the encoder name, nucleus class count and tensors."""
         weights_path = Path(weights_path)
         if not weights_path.exists():
             raise ValueError(f"Model weights not found at {weights_path}")
@@ -303,7 +308,9 @@ class BaseModelInst:
                 raise ImportError(
                     "Please install `safetensors` package to load .safetensors files."
                 )
-            state_dict = load_file(weights_path, device=device.type)
+            # Safetensors accepts CPU without an index; CUDA indices must be kept.
+            load_device = str(device) if device.type == "cuda" else device.type
+            state_dict = load_file(weights_path, device=load_device)
         else:
             state_dict = torch.load(weights_path, map_location=device)
 

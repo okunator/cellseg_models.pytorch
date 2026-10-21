@@ -3,6 +3,11 @@
 - Apply `majority_vote_sequential` to every instance when no background pixels
   are present, preserving tie handling, class-zero fallback and input arrays.
 
+- Preserve explicit CUDA indices when loading safetensors checkpoints and pass
+  the loading device by keyword while keeping strict weight validation enabled.
+  Support indexed CPU devices and release preliminary checkpoint tensors before
+  constructing and loading the model.
+
 - Preserve class probabilities with `save_intermediate=True` in direct and
   sliding-window inference, sharing reconstruction tensors without copying them.
 
