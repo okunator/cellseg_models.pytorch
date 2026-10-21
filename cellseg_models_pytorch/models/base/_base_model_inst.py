@@ -246,7 +246,9 @@ class BaseModelInst:
             Tissue results are class masks. Tensor maps are copied to CPU.
 
         Raises:
-            ValueError: Inference has not been enabled.
+            ValueError: Inference has not been enabled, or a coordinate/output-path
+                list does not have one entry per image. Lengths are checked before
+                reconstruction or writing.
 
         Note:
             Use ``PostProcessor`` directly for tissue saving or custom contour

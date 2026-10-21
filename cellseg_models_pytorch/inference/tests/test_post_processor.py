@@ -1,5 +1,7 @@
 """Check tensor conversion and batch reconstruction without real checkpoints."""
 
+from unittest.mock import Mock
+
 import numpy as np
 import pytest
 import torch
@@ -22,6 +24,95 @@ def reconstruct_fixture(inst_map: np.ndarray, aux_map: np.ndarray) -> np.ndarray
         aux_map, (inst_map > 0)[None] * np.array([0.25, 0.5])[:, None, None]
     )
     return label(inst_map > 0)[0]
+
+
+@pytest.fixture
+def batch_predictions():
+    foreground = torch.zeros(2, 1, 80, 80)
+    foreground[0, :, 2:8, 3:9] = 1
+    foreground[1, :, 8:14, 12:18] = 1
+    auxiliary = torch.cat((foreground * 0.25, foreground * 0.5), dim=1)
+    return {
+        "nuc": SoftInstanceOutput(None, auxiliary, foreground),
+        "cyto": SoftInstanceOutput(
+            (foreground[:, 0] * 3).long(), auxiliary, foreground
+        ),
+        "tissue": SoftSemanticOutput(torch.ones(2, 80, 80, dtype=torch.long)),
+    }
+
+
+@pytest.mark.parametrize("mode", ["serial", "parallel", "parallel_async"])
+@pytest.mark.parametrize(
+    "argument", ["coords", "save_paths_nuc", "save_paths_cyto", "save_paths_tissue"]
+)
+@pytest.mark.parametrize("length", [0, 1, 3])
+def test_batch_metadata_mismatch_rejected_before_work(
+    monkeypatch, tmp_path, batch_predictions, mode, argument, length
+):
+    metadata = {
+        "coords": [(0, 0, 80, 80)] * 2,
+        **{
+            f"save_paths_{head}": [
+                tmp_path / f"{head}-{index}.parquet" for index in range(2)
+            ]
+            for head in ("nuc", "cyto", "tissue")
+        },
+    }
+    metadata[argument] = [metadata[argument][0]] * length
+    processor = PostProcessor("hovernet")
+    reconstruct = Mock(side_effect=AssertionError("Reconstruction started"))
+    write = Mock(side_effect=AssertionError("Output writing started"))
+    workers = Mock(side_effect=AssertionError("Workers started"))
+    monkeypatch.setattr(processor, "postproc_inst", reconstruct)
+    monkeypatch.setattr(processor, "postproc_tissuemap", reconstruct)
+    monkeypatch.setattr(
+        "cellseg_models_pytorch.inference.post_processor.FileHandler.gdf_to_file", write
+    )
+    monkeypatch.setattr(
+        "cellseg_models_pytorch.inference.post_processor.WorkerPool", workers
+    )
+    kwargs = {} if mode == "serial" else {"n_jobs": 2, "start_method": "threading"}
+
+    with pytest.raises(ValueError, match=rf"{argument}.*2.*{length}"):
+        getattr(processor, f"postproc_{mode}")(batch_predictions, **kwargs, **metadata)
+
+    reconstruct.assert_not_called()
+    write.assert_not_called()
+    workers.assert_not_called()
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("mode", ["serial", "parallel", "parallel_async"])
+def test_aligned_batch_metadata_preserves_saved_instances(
+    monkeypatch, tmp_path, batch_predictions, mode
+):
+    import geopandas as gpd
+
+    monkeypatch.setitem(POSTPROC_LOOKUP, "baseline", reconstruct_fixture)
+    paths = {
+        head: [tmp_path / f"{head}-{index}.parquet" for index in range(2)]
+        for head in ("nuc", "cyto", "tissue")
+    }
+    coords = [(100, 200, 80, 80), (300, 400, 80, 80)]
+    kwargs = {} if mode == "serial" else {"n_jobs": 2, "start_method": "threading"}
+
+    result = getattr(PostProcessor("baseline"), f"postproc_{mode}")(
+        batch_predictions,
+        **kwargs,
+        **{f"save_paths_{head}": values for head, values in paths.items()},
+        coords=coords,
+        nuc_smooth_func=None,
+        cyto_smooth_func=None,
+    )
+
+    for head in ("nuc", "cyto", "tissue"):
+        assert result[head] == [None, None]
+        assert all(path.is_file() for path in paths[head])
+    for head, expected_class in (("nuc", 1), ("cyto", 3)):
+        for index, bounds in enumerate(([103, 202, 109, 208], [312, 408, 318, 414])):
+            saved = gpd.read_parquet(paths[head][index])
+            np.testing.assert_array_equal(saved.total_bounds, bounds)
+            assert saved["class_name"].tolist() == [expected_class]
 
 
 @pytest.mark.parametrize("mode", ["serial", "parallel", "parallel_async"])

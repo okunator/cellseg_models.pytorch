@@ -1,7 +1,7 @@
 import gc
 from functools import partial
 from pathlib import Path
-from typing import Callable, Dict, List, Tuple, Union
+from typing import Callable, List, Tuple, Union
 
 import numpy as np
 import torch
@@ -143,16 +143,16 @@ class PostProcessor:
         n_jobs: int = 4,
         start_method: str = "threading",
         progress_bar: bool = False,
-        save_paths_nuc: List[Union[Path, str]] = None,
-        save_paths_cyto: List[Union[Path, str]] = None,
-        save_paths_tissue: List[Union[Path, str]] = None,
-        coords: List[Tuple[int, int, int, int]] = None,
-        class_dict_nuc: Dict[int, str] = None,
-        class_dict_cyto: Dict[int, str] = None,
-        class_dict_tissue: Dict[int, str] = None,
-        nuc_smooth_func: Callable = gaussian_smooth,
-        cyto_smooth_func: Callable = gaussian_smooth,
-        tissue_smooth_func: Callable = None,
+        save_paths_nuc: list[Path | str | None] | None = None,
+        save_paths_cyto: list[Path | str | None] | None = None,
+        save_paths_tissue: list[Path | str | None] | None = None,
+        coords: list[tuple[int, int, int, int]] | None = None,
+        class_dict_nuc: dict[int, str] | None = None,
+        class_dict_cyto: dict[int, str] | None = None,
+        class_dict_tissue: dict[int, str] | None = None,
+        nuc_smooth_func: Callable | None = gaussian_smooth,
+        cyto_smooth_func: Callable | None = gaussian_smooth,
+        tissue_smooth_func: Callable | None = None,
     ) -> dict[
         str, list[tuple[np.ndarray, np.ndarray | None] | np.ndarray | None] | None
     ]:
@@ -184,7 +184,18 @@ class PostProcessor:
             Tissue results are int32 class masks (H, W).
             Saving an image returns None at that list position. All worker results
             are resolved before returning; no future is returned to the caller.
+
+        Raises:
+            ValueError: A supplied coordinate or output-path list does not have
+                one entry per image. Checked before reconstruction or writing.
         """
+        self._validate_batch_metadata(
+            soft_masks["nuc"].aux_map.shape[0],
+            coords,
+            save_paths_nuc,
+            save_paths_cyto,
+            save_paths_tissue,
+        )
         # set up input args for
         nuc_inst_maps, nuc_aux_maps, nuc_type_maps = self._prepare_inst_maps(
             soft_masks["nuc"]
@@ -277,16 +288,16 @@ class PostProcessor:
         soft_masks: dict[str, SoftInstanceOutput | SoftSemanticOutput | None],
         n_jobs: int = 4,
         start_method: str = "threading",
-        save_paths_nuc: List[Union[Path, str]] = None,
-        save_paths_cyto: List[Union[Path, str]] = None,
-        save_paths_tissue: List[Union[Path, str]] = None,
-        coords: List[Tuple[int, int, int, int]] = None,
-        class_dict_nuc: Dict[int, str] = None,
-        class_dict_cyto: Dict[int, str] = None,
-        class_dict_tissue: Dict[int, str] = None,
-        nuc_smooth_func: Callable = gaussian_smooth,
-        cyto_smooth_func: Callable = gaussian_smooth,
-        tissue_smooth_func: Callable = None,
+        save_paths_nuc: list[Path | str | None] | None = None,
+        save_paths_cyto: list[Path | str | None] | None = None,
+        save_paths_tissue: list[Path | str | None] | None = None,
+        coords: list[tuple[int, int, int, int]] | None = None,
+        class_dict_nuc: dict[int, str] | None = None,
+        class_dict_cyto: dict[int, str] | None = None,
+        class_dict_tissue: dict[int, str] | None = None,
+        nuc_smooth_func: Callable | None = gaussian_smooth,
+        cyto_smooth_func: Callable | None = gaussian_smooth,
+        tissue_smooth_func: Callable | None = None,
     ) -> dict[
         str, list[tuple[np.ndarray, np.ndarray | None] | np.ndarray | None] | None
     ]:
@@ -317,7 +328,18 @@ class PostProcessor:
             Tissue results are int32 class masks (H, W).
             Saving an image returns None at that list position. All worker results
             are resolved before returning; no future is returned to the caller.
+
+        Raises:
+            ValueError: A supplied coordinate or output-path list does not have
+                one entry per image. Checked before reconstruction or writing.
         """
+        self._validate_batch_metadata(
+            soft_masks["nuc"].aux_map.shape[0],
+            coords,
+            save_paths_nuc,
+            save_paths_cyto,
+            save_paths_tissue,
+        )
         # set up input args for
         nuc_inst_maps, nuc_aux_maps, nuc_type_maps = self._prepare_inst_maps(
             soft_masks["nuc"]
@@ -415,16 +437,16 @@ class PostProcessor:
     def postproc_serial(
         self,
         soft_masks: dict[str, SoftInstanceOutput | SoftSemanticOutput | None],
-        save_paths_nuc: List[Union[Path, str]] = None,
-        save_paths_cyto: List[Union[Path, str]] = None,
-        save_paths_tissue: List[Union[Path, str]] = None,
-        coords: List[Tuple[int, int, int, int]] = None,
-        class_dict_nuc: Dict[int, str] = None,
-        class_dict_cyto: Dict[int, str] = None,
-        class_dict_tissue: Dict[int, str] = None,
-        nuc_smooth_func: Callable = gaussian_smooth,
-        cyto_smooth_func: Callable = gaussian_smooth,
-        tissue_smooth_func: Callable = None,
+        save_paths_nuc: list[Path | str | None] | None = None,
+        save_paths_cyto: list[Path | str | None] | None = None,
+        save_paths_tissue: list[Path | str | None] | None = None,
+        coords: list[tuple[int, int, int, int]] | None = None,
+        class_dict_nuc: dict[int, str] | None = None,
+        class_dict_cyto: dict[int, str] | None = None,
+        class_dict_tissue: dict[int, str] | None = None,
+        nuc_smooth_func: Callable | None = gaussian_smooth,
+        cyto_smooth_func: Callable | None = gaussian_smooth,
+        tissue_smooth_func: Callable | None = None,
     ) -> dict[
         str, list[tuple[np.ndarray, np.ndarray | None] | np.ndarray | None] | None
     ]:
@@ -452,7 +474,18 @@ class PostProcessor:
             Tissue results are int32 class masks (H, W).
             Saving an image returns None at that list position. All worker results
             are resolved before returning; no future is returned to the caller.
+
+        Raises:
+            ValueError: A supplied coordinate or output-path list does not have
+                one entry per image. Checked before reconstruction or writing.
         """
+        self._validate_batch_metadata(
+            soft_masks["nuc"].aux_map.shape[0],
+            coords,
+            save_paths_nuc,
+            save_paths_cyto,
+            save_paths_tissue,
+        )
         nuc_inst_maps, nuc_aux_maps, nuc_type_maps = self._prepare_inst_maps(
             soft_masks["nuc"]
         )
@@ -533,6 +566,27 @@ class PostProcessor:
             ]
 
         return {"nuc": nuc_results, "cyto": cyto_results, "tissue": tissue_results}
+
+    @staticmethod
+    def _validate_batch_metadata(
+        batch_size: int,
+        coords: list[tuple[int, int, int, int]] | None,
+        save_paths_nuc: list[Path | str | None] | None,
+        save_paths_cyto: list[Path | str | None] | None,
+        save_paths_tissue: list[Path | str | None] | None,
+    ) -> None:
+        """Require one coordinate/output-path entry per image when supplied."""
+        # zip would silently drop images if any supplied list were shorter.
+        for name, values in (
+            ("coords", coords),
+            ("save_paths_nuc", save_paths_nuc),
+            ("save_paths_cyto", save_paths_cyto),
+            ("save_paths_tissue", save_paths_tissue),
+        ):
+            if values is not None and len(values) != batch_size:
+                raise ValueError(
+                    f"{name} must contain {batch_size} entries, got {len(values)}."
+                )
 
     def _pool_apply_async(self, pool: WorkerPool, func, args):
         async_result = [pool.apply_async(func, args=arg) for arg in args]

@@ -1,5 +1,8 @@
 # Unreleased
 
+- Reject mismatched coordinate and output-path counts before batch reconstruction
+  or writes, preventing silent image loss in serial, threaded and async processing.
+
 - Apply `majority_vote_sequential` to every instance when no background pixels
   are present, preserving tie handling, class-zero fallback and input arrays.
 
