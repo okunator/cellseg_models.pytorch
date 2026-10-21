@@ -74,7 +74,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 - Type checking is being introduced gradually. Mypy checks
   `tools/check_release_metadata.py`, `cellseg_models_pytorch/utils/convolve.py`
   and `cellseg_models_pytorch/wsi/inst_merger.py` in strict mode, targeting Python
-  3.10. `uv run --locked mypy` runs all three files; CI checks the library files
+  3.11. `uv run --locked mypy` runs all three files; CI checks the library files
   in the existing Python 3.11 source job and the release guard in the
   developer-only job. Expand the checked scope explicitly before requiring
   broader runs.

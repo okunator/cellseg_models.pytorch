@@ -201,7 +201,7 @@ requires = ["poetry-core==2.2.1"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 files = [
     "tools/check_release_metadata.py",
     "cellseg_models_pytorch/utils/convolve.py",
