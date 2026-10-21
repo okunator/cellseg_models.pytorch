@@ -1,5 +1,8 @@
 # Unreleased
 
+- Preserve class probabilities with `save_intermediate=True` in direct and
+  sliding-window inference, sharing reconstruction tensors without copying them.
+
 - Add confidence-ranked instance AP and COCO-style mean AP in `cellseg-metrics` 0.2.0,
   including dataset-wide ranking. Preserve the historical `average_precision`
   function and legacy imports.

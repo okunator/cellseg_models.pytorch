@@ -65,8 +65,9 @@ class SoftInstanceOutput:
 
     Args:
         type_map: Raw network class logits of shape (B, classes, H, W).
-            After ``Predictor`` runs, this field contains integer class labels
-            of shape (B, H, W), not probabilities. None without a cell-type head;
+            ``Predictor`` returns integer class labels (B, H, W); with
+            ``save_intermediate=True``, its second result retains floating class
+            probabilities (B, classes, H, W). None without a cell-type head;
             binary_map then supplies foreground values for reconstruction.
         aux_map: Floating reconstruction values of shape (B, channels, H, W).
             Channels depend on the model family: flows, horizontal/vertical
@@ -94,7 +95,9 @@ class SoftSemanticOutput:
     Args:
         type_map: Raw class logits of shape (B, classes, H, W) from the network.
             ``Predictor`` smooths the tissue probabilities and then replaces this
-            field with integer class labels of shape (B, H, W).
+            field with integer class labels of shape (B, H, W). With
+            ``save_intermediate=True``, its second result retains the smoothed
+            floating probabilities (B, classes, H, W).
         binary_map: Optional separate binary output map, otherwise None.
         parents: Optional mapping from field names to producing branch/head names.
 

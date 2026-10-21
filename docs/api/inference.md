@@ -31,8 +31,12 @@ NumPy and PIL images use height, width, channels. Tensors use channels, height,
 width, with an optional leading batch axis. Normalize images as required by the
 checkpoint. Tensor inputs must match the network's device and floating dtype.
 
-To keep raw class scores, call the network directly. `save_intermediate=True`
-returns the same processed maps twice; it does not keep the raw scores.
+Use `save_intermediate=True` to return `(labels, intermediate)` from either
+prediction method. The intermediate `type_map` contains floating class
+probabilities `(B, classes, H, W)`, smoothed for tissue and averaged across windows
+when using sliding inference. It remains None without a cell-type head.
+Auxiliary and binary tensors are shared between results; clone them before
+modifying their values in place. For raw logits, call the network directly.
 
 ```python
 from cellseg_models_pytorch.inference.predictor import Predictor

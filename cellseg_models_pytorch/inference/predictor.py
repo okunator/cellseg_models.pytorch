@@ -1,3 +1,4 @@
+from dataclasses import replace
 from typing import Union
 
 import numpy as np
@@ -88,8 +89,7 @@ class BasePredictor:
             apply_boundary_weight: Give more weight to the image center and less
                 to its edges in nucleus and cytoplasm reconstruction and foreground
                 maps. Class labels and tissue maps are unchanged. Defaults to False.
-            save_intermediate: Return an additional reference to the result. The
-                current implementation does not preserve a separate raw-score copy.
+            save_intermediate: Also return class probabilities before label conversion.
 
         Returns:
             A dictionary with ``nuc``, ``cyto`` and ``tissue`` entries; unused
@@ -97,8 +97,10 @@ class BasePredictor:
             (B, H, W), or None without a cell-type head. Maps for separating
             objects remain floating tensors (B, channels, H, W).
             Results stay on the network device. With ``save_intermediate=True``,
-            returns the same dictionary twice. Call the network directly for raw
-            class scores.
+            returns (labels, intermediate). Intermediate ``type_map`` values are
+            floating probabilities (B, classes, H, W), smoothed for tissue, or None
+            without a cell-type head. Auxiliary and binary tensors are shared
+            between results; clone them before modifying their values in place.
 
         Raises:
             ValueError: The input is not a three- or four-dimensional tensor after
@@ -127,25 +129,18 @@ class BasePredictor:
                 .unsqueeze(0)
             )
 
-        intermediate = None
         with torch.no_grad():
             if self.mixed_precision:
                 with torch.autocast(self.device.type, dtype=torch.float16):
                     probs = self._predict(
                         x, apply_boundary_weight=apply_boundary_weight
                     )
-                    if save_intermediate:
-                        intermediate = probs
-                    probs = self._argmax(probs)
             else:
                 probs = self._predict(x, apply_boundary_weight=apply_boundary_weight)
-                if save_intermediate:
-                    intermediate = probs
-                probs = self._argmax(probs)
 
-        if save_intermediate:
-            return probs, intermediate
-        return probs
+            if save_intermediate:
+                return self._argmax(probs, inplace=False), probs
+            return self._argmax(probs)
 
     def _to_tensor(self, x: Union[np.ndarray, Image]) -> torch.Tensor:
         """Convert to input tensor."""
@@ -203,8 +198,25 @@ class BasePredictor:
 
         return x
 
-    def _argmax(self, probs: _PredictionMaps) -> _PredictionMaps:
-        """Replace existing class scores with labels in the supplied dictionary."""
+    def _argmax(
+        self, probs: _PredictionMaps, *, inplace: bool = True
+    ) -> _PredictionMaps:
+        """Convert class probabilities into integer labels.
+
+        Args:
+            probs: Nucleus, cytoplasm and tissue maps; unused entries are None.
+            inplace: Update the supplied dictionary and output objects. If False,
+                return separate containers while sharing unchanged tensors.
+
+        Returns:
+            Maps with class labels (B, H, W), or None without a cell-type head.
+        """
+        if not inplace:
+            # Copy the containers so replacing type_map leaves probabilities intact.
+            probs = {
+                name: replace(output) if output is not None else None
+                for name, output in probs.items()
+            }
         for name in ("nuc", "cyto", "tissue"):
             output = probs[name]
             if output is not None and output.type_map is not None:
@@ -319,8 +331,8 @@ class Predictor(BasePredictor):
             apply_boundary_weight: Reduce the influence of window edges on maps used
                 to separate objects and foreground maps. Class probabilities are averaged before
                 selecting class labels.
-            save_intermediate: Return an additional reference to the result; it does
-                not keep a separate copy of the raw class scores.
+            save_intermediate: Also return averaged class probabilities before
+                label conversion.
 
         Returns:
             A dictionary with ``nuc``, ``cyto`` and ``tissue`` entries; unused
@@ -328,8 +340,11 @@ class Predictor(BasePredictor):
             (B, H, W), or None without a cell-type head. Maps for separating
             objects remain floating tensors (B, channels, H, W).
             Results stay on the network device. With ``save_intermediate=True``,
-            returns the same dictionary twice. Call the network directly for raw
-            class scores.
+            returns (labels, intermediate). Intermediate ``type_map`` values are
+            floating probabilities (B, classes, H, W), smoothed for tissue and
+            averaged across windows, or None without a cell-type head. Auxiliary
+            and binary tensors are shared between results; clone them before
+            modifying their values in place.
 
         Raises:
             ValueError: Window sizes, stride, padding or image dimensions are invalid.
@@ -368,28 +383,20 @@ class Predictor(BasePredictor):
                 .unsqueeze(0)
             )
 
-        intermediate = None
         with torch.no_grad():
             if self.mixed_precision:
                 with torch.autocast(self.device.type, dtype=torch.float16):
                     probs = self._predict_sliding_win(
                         x, window_size, stride, padding, apply_boundary_weight
                     )
-                    if save_intermediate:
-                        intermediate = probs
-                    probs = self._argmax(probs)
             else:
                 probs = self._predict_sliding_win(
                     x, window_size, stride, padding, apply_boundary_weight
                 )
-                if save_intermediate:
-                    intermediate = probs
-                probs = self._argmax(probs)
 
-        if save_intermediate:
-            return probs, intermediate
-
-        return probs
+            if save_intermediate:
+                return self._argmax(probs, inplace=False), probs
+            return self._argmax(probs)
 
     @staticmethod
     def _get_margins(

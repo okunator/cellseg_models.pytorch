@@ -59,6 +59,107 @@ class BinaryPixelModel(PixelModel):
         return outputs
 
 
+@pytest.mark.parametrize("sliding", [False, True])
+@pytest.mark.parametrize("weighted", [False, True])
+@pytest.mark.parametrize("mixed_precision", [False, True])
+@pytest.mark.parametrize("optional_heads", [False, True])
+@pytest.mark.parametrize("binary_only", [False, True])
+def test_saved_intermediate_preserves_probabilities(
+    sliding, weighted, mixed_precision, optional_heads, binary_only
+):
+    image = torch.linspace(0, 1, 31 * 47).reshape(1, 1, 31, 47).repeat(2, 3, 1, 1)
+    model_class = BinaryPixelModel if binary_only else PixelModel
+    model = model_class(optional_heads=optional_heads).eval()
+    predictor = Predictor(model, mixed_precision=mixed_precision)
+    predict = predictor.predict_sliding_win if sliding else predictor.predict
+    kwargs = {"window_size": (24, 32), "stride": 16} if sliding else {}
+
+    labels, intermediate = predict(
+        image, save_intermediate=True, apply_boundary_weight=weighted, **kwargs
+    )
+    ordinary = predict(image, apply_boundary_weight=weighted, **kwargs)
+
+    assert isinstance(ordinary, dict)
+    assert labels is not intermediate
+    # The two-logit softmax reduces to this independent sigmoid calculation.
+    foreground_probability = torch.sigmoid(2 * image[:, :1] - 1)
+    expected = torch.cat((1 - foreground_probability, foreground_probability), dim=1)
+    for name in ("nuc", "cyto", "tissue"):
+        output, saved = labels[name], intermediate[name]
+        if output is None:
+            assert saved is ordinary[name] is None
+            continue
+
+        assert output is not saved
+        if name != "tissue" and binary_only:
+            assert output.type_map is saved.type_map is ordinary[name].type_map is None
+        else:
+            probabilities = saved.type_map
+            reference = expected
+            if name == "tissue":
+                tissue_probability = torch.full_like(image[:, :1], 1 / (1 + np.exp(-1)))
+                reference = torch.cat(
+                    (1 - tissue_probability, tissue_probability), dim=1
+                )
+            # Tissue convolution may run in float16 under autocast.
+            torch.testing.assert_close(
+                probabilities,
+                reference.to(probabilities),
+                atol=5e-4 if mixed_precision else 1e-6,
+                rtol=1e-3 if mixed_precision else 1e-5,
+            )
+            assert probabilities.shape == (2, 2, 31, 47)
+            assert probabilities.is_floating_point()
+            assert probabilities.device == image.device
+            assert not probabilities.requires_grad
+            torch.testing.assert_close(output.type_map, probabilities.argmax(1))
+            torch.testing.assert_close(output.type_map, ordinary[name].type_map)
+
+        # Retaining probabilities must not duplicate the larger reconstruction maps.
+        for field in ("aux_map", "binary_map"):
+            if not hasattr(output, field):
+                continue
+            value = getattr(output, field)
+            assert value is getattr(saved, field)
+            if value is None:
+                assert getattr(ordinary[name], field) is None
+            else:
+                torch.testing.assert_close(value, getattr(ordinary[name], field))
+
+
+@pytest.mark.parametrize(
+    "dtype", [torch.float16, torch.bfloat16, torch.float32, torch.float64]
+)
+@pytest.mark.parametrize("inplace", [False, True])
+def test_argmax_preserves_tensor_storage_and_dtype(dtype, inplace):
+    probabilities = torch.tensor([[[[0.2, 0.7]], [[0.8, 0.3]]]], dtype=dtype)
+    auxiliary = torch.ones(1, 2, 1, 2, dtype=dtype)
+    binary = torch.ones(1, 1, 1, 2, dtype=dtype)
+    parents = {"type_map": ["objects", "nuc_type"]}
+    nucleus = SoftInstanceOutput(probabilities, auxiliary, binary, parents)
+    cytoplasm = SoftInstanceOutput(None, auxiliary, binary)
+    tissue = SoftSemanticOutput(probabilities, binary)
+    maps = {"nuc": nucleus, "cyto": cytoplasm, "tissue": tissue}
+    predictor = Predictor(PixelModel(), mixed_precision=False)
+
+    labels = predictor._argmax(maps, inplace=inplace)
+
+    assert (labels is maps) is inplace
+    for name, original in (("nuc", nucleus), ("cyto", cytoplasm), ("tissue", tissue)):
+        assert (labels[name] is original) is inplace
+        assert labels[name].binary_map is binary
+        if name == "cyto":
+            assert labels[name].type_map is None
+        else:
+            torch.testing.assert_close(labels[name].type_map, torch.tensor([[[1, 0]]]))
+            if not inplace:
+                assert maps[name].type_map is probabilities
+                assert maps[name].type_map.dtype == dtype
+    assert labels["nuc"].aux_map is auxiliary
+    assert labels["cyto"].aux_map is auxiliary
+    assert labels["nuc"].parents is parents
+
+
 @pytest.mark.parametrize(
     "sliding,weighted", [(False, False), (True, False), (True, True)]
 )
