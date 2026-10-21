@@ -837,13 +837,14 @@ def majority_vote_sequential(type_map: np.ndarray, inst_map: np.ndarray) -> np.n
     for inst_id in pred_id_list:
         inst_type = type_map[inst_map == inst_id]
         type_list, type_pixels = np.unique(inst_type, return_counts=True)
-        type_list = list(zip(type_list, type_pixels))
-        type_list = sorted(type_list, key=lambda x: x[1], reverse=True)
-        cell_type = type_list[0][0]
+        type_counts = sorted(
+            zip(type_list, type_pixels), key=lambda x: x[1], reverse=True
+        )
+        cell_type = type_counts[0][0]
 
         if cell_type == 0:
-            if len(type_list) > 1:
-                cell_type = type_list[1][0]
+            if len(type_counts) > 1:
+                cell_type = type_counts[1][0]
 
         type_map[inst_map == inst_id] = cell_type
 
