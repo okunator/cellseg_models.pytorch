@@ -34,13 +34,129 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-from typing import Tuple
+from numbers import Integral
 
 import numpy as np
 import torch
 from numba import njit, prange
 
-__all__ = ["steps2D_interp", "steps2D", "follow_flows"]
+__all__ = ["steps2D_interp", "steps2D", "follow_flows", "follow_flows_torch"]
+
+
+def _validate_flow_map(dP: torch.Tensor, niter: int) -> None:
+    if dP.ndim != 3 or dP.shape[0] != 2 or min(dP.shape[1:]) < 1:
+        raise ValueError("Flows must have shape (2, H, W) with nonempty spatial axes.")
+    if dP.dtype not in (torch.float32, torch.float64):
+        raise TypeError("Flows must use float32 or float64.")
+    if dP.device.type not in ("cpu", "cuda"):
+        raise ValueError("Flow integration supports CPU and CUDA; float64 is required.")
+    if isinstance(niter, bool) or not isinstance(niter, Integral) or niter < 0:
+        raise ValueError("niter must be a nonnegative integer.")
+    if not torch.isfinite(dP).all():
+        raise ValueError("Flows must contain only finite values.")
+
+
+@torch.no_grad()
+def _steps2D_interp_torch(
+    p: torch.Tensor,
+    dP: torch.Tensor,
+    niter: int,
+    suppress_euler: bool,
+) -> torch.Tensor:
+    """Integrate validated (2, N) pixel coordinates in float64 on their device."""
+    if p.shape[1] == 0 or niter == 0:
+        return p.to(dtype=torch.float64).clone()
+    extent = (dP.shape[2] - 1, dP.shape[1] - 1)
+    pt = p.flip(0).T.to(dtype=torch.float64)[None, None]
+    im = dP.flip(0).to(dtype=torch.float64)[None]
+    for k, size in enumerate(extent):
+        if size:
+            im[:, k] *= 2.0 / size
+            pt[..., k] /= size
+        else:
+            # A singleton axis samples its center and cannot move.
+            im[:, k] = 0
+            pt[..., k] = 0.5
+    pt = pt * 2 - 1
+    for t in range(niter):
+        dPt = torch.nn.functional.grid_sample(im, pt, align_corners=False)
+        if suppress_euler:
+            dPt /= 1 + t
+        for k in range(2):
+            pt[..., k] = torch.clamp(pt[..., k] + dPt[:, k], -1.0, 1.0)
+    pt = (pt + 1) * 0.5
+    for k, size in enumerate(extent):
+        pt[..., k] *= size
+    return pt[0, 0].flip(-1).T
+
+
+@torch.no_grad()
+def follow_flows_torch(
+    dP: torch.Tensor,
+    mask: torch.Tensor | None = None,
+    niter: int = 200,
+    suppress_euler: bool = False,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Follow CellPose/Omnipose flows without copying tensors to another device.
+
+    Args:
+        dP: Finite float32 or float64 (2, H, W) flow values, in (y, x) channel
+            order, on CPU or CUDA. These are displacements, not probabilities.
+            Pass the masked CellPose flows or divergence-rescaled Omnipose flows.
+        mask: Optional bool (H, W) seed mask on the same device. Seeds are its
+            union with pixels whose absolute x-flow exceeds 1e-3, preserving
+            the NumPy integrator's selection rule.
+        niter: Number of bilinear Euler integration steps, including zero.
+        suppress_euler: Divide each step by its one-based iteration for Omnipose.
+
+    Returns:
+        Float32 (2, H, W) final (y, x) pixel coordinates and int64 (N, 2) seed
+        indices, both on the input device. Unseeded pixels keep their coordinates.
+        Integration uses float64, zero-padded sampling with align_corners=False,
+        and image-border clamping. Inputs are unchanged; outputs have no autograd
+        history. Instance labels are produced by a separate reconstruction stage.
+
+    Raises:
+        TypeError: Flows are not float32/float64, or mask is not bool.
+        ValueError: Shapes/devices differ, values are nonfinite, iterations are
+            invalid, or the device cannot run this CPU/CUDA float64 path.
+
+    Note:
+        Finite-value validation and dynamic seed selection can synchronize CUDA.
+        No NumPy conversion or dense tensor transfer is performed. MPS does not
+        support this float64 path; use CPU tensors on a Mac.
+
+    Example:
+        >>> import torch
+        >>> from cellseg_models_pytorch.postproc import follow_flows_torch
+        >>> flows = torch.zeros((2, 5, 7), dtype=torch.float32, device="cpu")
+        >>> endpoints, indices = follow_flows_torch(flows, niter=4)
+        >>> endpoints.shape, indices.shape
+        (torch.Size([2, 5, 7]), torch.Size([0, 2]))
+    """
+    _validate_flow_map(dP, niter)
+    if mask is not None:
+        if mask.dtype != torch.bool:
+            raise TypeError("The seed mask must use bool.")
+        if mask.shape != dP.shape[1:] or mask.device != dP.device:
+            raise ValueError("The seed mask must match the flow shape and device.")
+    height, width = dP.shape[1:]
+    p = torch.stack(
+        torch.meshgrid(
+            torch.arange(height, dtype=torch.float32, device=dP.device),
+            torch.arange(width, dtype=torch.float32, device=dP.device),
+            indexing="ij",
+        )
+    )
+    seeds = dP[1].abs() > 1e-3
+    if mask is not None:
+        seeds = seeds | mask
+    inds = torch.nonzero(seeds)
+    y, x = inds.unbind(1)
+    p[:, y, x] = _steps2D_interp_torch(p[:, y, x], dP, niter, suppress_euler).to(
+        dtype=p.dtype
+    )
+    return p, inds
 
 
 def steps2D_interp(
@@ -50,68 +166,35 @@ def steps2D_interp(
     suppress_euler: bool = False,
     use_gpu: bool = True,
 ) -> np.ndarray:
-    """Run bilinear interpolation on non-zero pixel locations.
-
-    NOTE: uses torch.nn.functional.grid_sample.
-
-    Run Euler integration.
-
-    "run a dynamical system starting at that pixel location and
-     following the spatial derivatives specified by the horizontal and
-     vertical gradient maps. We use finite differences with a step size
-     of one."
+    """Integrate selected NumPy pixel coordinates with bilinear Euler steps.
 
     Args:
-        p: All the pixel locations for the pixels in the flow maps.
-            Including zero-pixels. Shape: (2, H, W). Dtype: float32
-        dP: Flow maps. Shape: (2, H, W). Dtype: float64
-        niter: Number of iterations of dynamics to run
-            Defaults to 200.
-        suppress_euler: Suppress euler step. Used for omnipose.
-            Defaults to False.
-        use_gpu: Flag, wheter to use gpu.
-            Defaults to True.
+        p: Finite float32/float64 (2, N) starting coordinates in (y, x) order.
+        dP: Finite float32/float64 (2, H, W) flows in (y, x) order.
+        niter: Nonnegative number of integration steps.
+        suppress_euler: Divide each step by its one-based iteration for Omnipose.
+        use_gpu: Use the current CUDA device when available; otherwise use CPU.
 
     Returns:
-        The pixel locations after dynamics. Shape (2, H, W).
+        Float64 NumPy coordinates of shape (2, N), including N=0 or N=1.
+        Inputs are unchanged. Float64 sampling and image-border clamping match
+        ``follow_flows_torch``. Use that function to keep tensor inputs on-device.
+
+    Raises:
+        TypeError: Flows or coordinates do not use float32/float64.
+        ValueError: Shapes, values or iteration counts are invalid.
     """
     device = "cuda" if torch.cuda.is_available() and use_gpu else "cpu"
-
-    shape = dP.shape[1:]
-    shape = np.array(shape)[[1, 0]].astype("double") - 1
-
-    # Flip dims and modify to shape [1, 1, H*W, 2] for `grid_sample`
-    pt = torch.from_numpy(p[[1, 0]].T).double().to(device)
-    pt = pt.unsqueeze(0).unsqueeze(0)
-
-    im = torch.from_numpy(dP[[1, 0]]).double().to(device)
-    im = im.unsqueeze(0)
-
-    # normalize pt between 0 and 1, normalize the flow
-    for k in range(2):
-        im[:, k, ...] *= 2.0 / shape[k]
-        pt[..., k] /= shape[k]
-
-    # normalize to between -1 and 1
-    pt = pt * 2 - 1
-
-    # Euler integration steps
-    for t in range(niter):
-        dPt = torch.nn.functional.grid_sample(im, pt, align_corners=False)
-
-        if suppress_euler:
-            dPt /= 1 + t
-
-        # clamp the final pixel locations
-        for k in range(2):
-            pt[..., k] = torch.clamp(pt[..., k] + dPt[:, k, ...], -1.0, 1.0)
-
-    # Undo the normalization from before, reverse order of operations
-    pt = (pt + 1) * 0.5
-    for k in range(2):
-        pt[..., k] *= shape[k]
-
-    return pt[..., [1, 0]].cpu().numpy().squeeze().T
+    flows = torch.from_numpy(np.ascontiguousarray(dP)).to(device)
+    points = torch.from_numpy(np.ascontiguousarray(p)).to(device)
+    _validate_flow_map(flows, niter)
+    if points.ndim != 2 or points.shape[0] != 2:
+        raise ValueError("Coordinates must have shape (2, N).")
+    if points.dtype not in (torch.float32, torch.float64):
+        raise TypeError("Coordinates must use float32 or float64.")
+    if not torch.isfinite(points).all():
+        raise ValueError("Coordinates must contain only finite values.")
+    return _steps2D_interp_torch(points, flows, niter, suppress_euler).cpu().numpy()
 
 
 @njit(parallel=True)
@@ -161,39 +244,53 @@ def steps2D(
 
 def follow_flows(
     dP: np.ndarray,
-    mask: np.ndarray = None,
+    mask: np.ndarray | None = None,
     niter: int = 200,
     suppress_euler: bool = False,
     interp: bool = True,
     use_gpu: bool = True,
-) -> Tuple[np.ndarray, np.ndarray]:
-    """Define pixels and run dynamics to recover masks in 2D.
-
-    Pixels are meshgrid. Only pixels with non-zero cell-probability
-    are used (as defined by inds).
+) -> tuple[np.ndarray, np.ndarray]:
+    """Follow a NumPy flow field and return pixel endpoints and seed indices.
 
     Args:
-        dP: Flow maps. Shape: (2, H, W). Dtype: float64.
-        mask: Pixel mask to seed masks. Useful when flows have low magnitudes.
-            Defaults to None.
-        niter: Number of iterations of dynamics to run.
-            Defaults to 200.
-        suppress_euler:
-            Suppression factor for the euler intergator. Used for omnipose.
-            Defaults to False.
-        interp: Use bilinear interpolation when integrating.
-            Defaults to True.
-        use_gpu:
-            Use gpu accelerated bilinear interpolation. If `interp` == False, this is
-            ignored.
-            Defaults to True.
+        dP: Float32/float64 (2, H, W) flows in (y, x) order. Bilinear
+            integration requires finite values and nonempty spatial axes.
+        mask: Optional (H, W) seed mask. Nonzero values add seed pixels to
+            those whose absolute x-flow exceeds 1e-3.
+        niter: Nonnegative number of integration steps.
+        suppress_euler: Divide bilinear steps by their one-based iteration
+            for Omnipose.
+        interp: Use bilinear tensor integration. False retains the existing
+            nearest-neighbor Numba implementation.
+        use_gpu: Use the current CUDA device for bilinear integration when
+            available; otherwise use CPU. Ignored when interp is False.
 
     Returns:
-        A tuple of nd.arrays. The first index is teh final locations
-        of each pixel after dynamics (Shape: (2, H, W)) The second
-        index is the indices of the non-zero pixels.
-        Shape: (number of non zero pixels, 2)
+        Float32 NumPy (2, H, W) final (y, x) pixel coordinates and int32 (N, 2)
+        seed indices. Unseeded pixels keep their coordinates. Bilinear
+        integration uses float64 internally and leaves inputs unchanged.
+
+    Raises:
+        TypeError: Bilinear flows do not use float32/float64.
+        ValueError: Bilinear inputs or iteration counts are invalid.
+
+    Note:
+        Bilinear integration errors propagate to the caller. Use
+        ``follow_flows_torch`` to avoid the NumPy/device transfer boundary.
     """
+    if interp:
+        device = "cuda" if torch.cuda.is_available() and use_gpu else "cpu"
+        flows = torch.from_numpy(np.ascontiguousarray(dP)).to(device)
+        seeds = (
+            torch.from_numpy(np.ascontiguousarray(mask)).to(
+                device=device, dtype=torch.bool
+            )
+            if mask is not None
+            else None
+        )
+        p, inds = follow_flows_torch(flows, seeds, niter, suppress_euler)
+        return p.cpu().numpy(), inds.cpu().numpy().astype(np.int32)
+
     shape = np.array(dP.shape[1:]).astype(np.int32)
     niter = np.uint32(niter)
 
@@ -209,22 +306,9 @@ def follow_flows(
     pixel_loc = np.nonzero(seeds)
     inds = np.array(pixel_loc).astype(np.int32).T
 
-    # Sometimes a random error in empty images.. errr... dunno...
-    if interp:
-        try:
-            p[:, inds[:, 0], inds[:, 1]] = steps2D_interp(
-                p=p[:, inds[:, 0], inds[:, 1]],
-                dP=dP,
-                niter=niter,
-                suppress_euler=suppress_euler,
-                use_gpu=use_gpu,
-            )
-        except Exception:
-            pass
-    else:
-        try:
-            p = steps2D(p, dP.astype(np.float32), inds, niter)
-        except Exception:
-            pass
+    try:
+        p = steps2D(p, dP.astype(np.float32), inds, niter)
+    except Exception:
+        pass
 
     return p, inds
