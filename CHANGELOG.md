@@ -1,5 +1,9 @@
 # Unreleased
 
+- Require Python 3.11+ and Pillow 13+ in the main library to address Pillow
+  security advisories. Keep Python 3.10 support in `cellseg-metrics` and update
+  the locked certifi dependency to 2026.10.19.
+
 - Provide segmentation metrics as the independently installable `cellseg-metrics`
   package, requiring only NumPy/SciPy. Preserve existing
   `cellseg_models_pytorch.metrics` imports and numerical behavior.

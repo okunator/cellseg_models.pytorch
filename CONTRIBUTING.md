@@ -6,9 +6,11 @@ small fixes can go directly to a pull request.
 
 ## Development setup
 
-Linux source and Numba JIT checks cover Python 3.10–3.14. Routine wheel and
-source-distribution install checks use Python 3.10 and 3.14; manual and release
-runs cover all five versions. The minimum remains Python 3.10.
+Linux source and Numba JIT checks cover Python 3.11–3.14. Routine wheel and
+source-distribution install checks use Python 3.11 and 3.14; manual and release
+runs cover all four versions. Standalone metrics wheel and source installations
+also retain Python 3.10 checks. The main library requires Python 3.11 or newer;
+`cellseg-metrics` continues to support Python 3.10.
 Use a supported Python version and uv 0.11.4 (pinned in `pyproject.toml`).
 From the repository root, install the locked development dependencies and hooks:
 

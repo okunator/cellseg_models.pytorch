@@ -41,7 +41,9 @@ Add optional features with `uv sync --locked --extra training`, using the same
 features, for example `uv sync --locked --extra training --extra onnx`.
 Running `uv sync` without these flags removes the optional packages.
 
-These pages describe version 0.2.0. Installations are tested on
-Python 3.10–3.14. Python 3.14.1 is excluded by torchvision. For an NVIDIA GPU, follow
+The development version requires Python 3.11+ and Pillow 13+; installations are
+tested on Python 3.11–3.14.
+The standalone `cellseg-metrics` package continues to support Python 3.10.
+Python 3.14.1 is excluded by torchvision. For an NVIDIA GPU, follow
 [PyTorch's installation guidance](https://pytorch.org/get-started/locally/)
 for your hardware. Examples use CUDA when available and otherwise use CPU.

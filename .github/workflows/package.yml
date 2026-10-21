@@ -51,12 +51,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Python 3.10 checks standalone metrics only; main-library installs start at 3.11.
         # Release and manual runs check fresh installs on every supported Python.
         python-version: >-
           ${{ fromJSON(
             (github.event_name == 'release' || github.event_name == 'workflow_dispatch')
             && '["3.10", "3.11", "3.12", "3.13", "3.14"]'
-            || '["3.10", "3.14"]'
+            || '["3.10", "3.11", "3.14"]'
           ) }}
         distribution: [wheel, sdist]
     steps:
@@ -67,6 +68,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - uses: actions/download-artifact@v8
+        if: matrix.python-version != '3.10'
         with:
           name: package-distributions
           path: dist
@@ -99,6 +101,7 @@ jobs:
           cp -R "$GITHUB_WORKSPACE/packages/metrics/tests" "$RUNNER_TEMP/metrics-tests"
           "$RUNNER_TEMP/metrics-env/bin/python" -m pytest --confcutdir="$RUNNER_TEMP/metrics-tests" "$RUNNER_TEMP/metrics-tests" -q
       - name: Install the built distribution
+        if: matrix.python-version != '3.10'
         env:
           DISTRIBUTION: ${{ matrix.distribution }}
         run: |
@@ -110,6 +113,7 @@ jobs:
           fi
           "$RUNNER_TEMP/package-env/bin/python" -m pip check
       - name: Check installed imports and CPU model training
+        if: matrix.python-version != '3.10'
         working-directory: ${{ runner.temp }}
         env:
           NUMBA_DISABLE_JIT: "1"
@@ -117,6 +121,7 @@ jobs:
         run: '"$RUNNER_TEMP/package-env/bin/python" "$GITHUB_WORKSPACE/tools/check_installed_package.py"'
 
       - name: Check an independently installed optional feature
+        if: matrix.python-version != '3.10'
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
           DISTRIBUTION: ${{ matrix.distribution }}
@@ -125,7 +130,7 @@ jobs:
           NO_ALBUMENTATIONS_UPDATE: "1"
         run: |
           case "$PYTHON_VERSION:$DISTRIBUTION" in
-            3.10:wheel) extra=training ;;
+            3.11:wheel) extra=training ;;
             *:sdist) extra=onnx ;;
             *) extra=openslide ;;
           esac

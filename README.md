@@ -6,7 +6,7 @@
 
 [![Generic badge](https://img.shields.io/badge/License-MIT-<COLOR>.svg)](https://github.com/okunator/cellseg_models.pytorch/blob/master/LICENSE)
 [![PyTorch - Version](https://img.shields.io/badge/PYTORCH-2+-red?&logo=pytorch)](https://pytorch.org/)
-[![Python - Version](https://img.shields.io/badge/PYTHON-3.10+-red?&logo=python&logoColor=white)](https://www.python.org/)
+[![Python - Version](https://img.shields.io/badge/PYTHON-3.11+-red?&logo=python&logoColor=white)](https://www.python.org/)
 [![Model Checkpoints](https://img.shields.io/badge/HF-Model%20Hub-yellow)](https://huggingface.co/csmp-hub)
 <br>
 [![Github Test](https://img.shields.io/github/actions/workflow/status/okunator/cellseg_models.pytorch/tests.yml?label=Tests&logo=github)](https://github.com/okunator/cellseg_models.pytorch/actions/workflows/tests.yml)

@@ -5,7 +5,7 @@ description = "Python library for 2D cell/nuclei instance segmentation models wr
 readme = "README.md"
 license = {text = "MIT"}
 authors = [{name = "Okunator", email = "oskari.lehtonen@helsinki.fi"}]
-requires-python = ">=3.10,<4.0,!=3.14.1"
+requires-python = ">=3.11,<4.0,!=3.14.1"
 keywords = ["cell segmentation", "nuclei segmentation", "pytorch", "pytorch-lightning"]
 dependencies = [
     "cellseg-metrics>=0.1.0",
@@ -24,7 +24,7 @@ dependencies = [
     "rasterio>=1.4.4",
     "libpysal>=4.13.0",
     "mpire[dill]>=2.10.2",
-    "pillow>=12.3.0",
+    "pillow>=13.0.0",
     "huggingface-hub>=2.2.0",
     "safetensors>=0.8.0",
     "pandas>=2.3.3",
