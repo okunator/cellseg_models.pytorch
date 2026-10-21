@@ -100,6 +100,11 @@ into instances and the existing `PostProcessor` still use CPU processing.
 Use float32 or float64 CPU tensors on a Mac. CUDA tensors select the CUDA path;
 the float64 integration step is not supported by MPS.
 
+The original NumPy functions remain in `postproc/functional/cellpose/integrator.py`
+with their original behavior. The separate tensor implementation is in
+`postproc/torch/flow.py`. Existing NumPy reconstruction selects the original
+implementation; importing `follow_flows_torch` selects the tensor implementation.
+
 ```{eval-rst}
 .. autofunction:: cellseg_models_pytorch.postproc.follow_flows_torch
 ```

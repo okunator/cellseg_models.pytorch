@@ -3,7 +3,6 @@ from .functional.cellpose._old_cellpose import (
     post_proc_cellpose_old,
 )
 from .functional.cellpose.cellpose import get_masks_cellpose, post_proc_cellpose
-from .functional.cellpose.integrator import follow_flows_torch
 from .functional.cellpose.utils import (
     fill_holes_and_remove_small_masks,
     gen_flows,
@@ -14,6 +13,8 @@ from .functional.omnipose import get_masks_omnipose, post_proc_omnipose
 from .functional.stardist.nms import get_bboxes
 from .functional.stardist.stardist import post_proc_stardist, post_proc_stardist_orig
 from .functional.instanseg.instanseg import post_proc_instanseg
+
+from .torch import follow_flows_torch
 
 POSTPROC_LOOKUP = {
     "stardist_orig": post_proc_stardist_orig,

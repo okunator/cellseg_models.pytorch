@@ -2,10 +2,10 @@
 
 - Add `postproc.follow_flows_torch` for CellPose/Omnipose flow integration on
   explicit CPU or CUDA tensors, retaining float64 integration and float32 pixel
-  coordinates. Reuse the kernel from NumPy integration, handle empty/single-pixel
-  seeds and singleton spatial axes, and report invalid interpolated inputs
-  instead of silently returning unchanged coordinates. Full mask reconstruction
-  remains on CPU.
+  coordinates. Keep the original NumPy implementations and their behavior under
+  `postproc/functional/`; the tensor implementation lives in `postproc/torch/`.
+  The tensor path handles empty/single-pixel seeds and singleton spatial axes
+  and reports invalid inputs. Full mask reconstruction remains on CPU.
 
 - Add confidence-ranked instance AP and COCO-style mean AP in `cellseg-metrics` 0.2.0,
   including dataset-wide ranking. Preserve the historical `average_precision`

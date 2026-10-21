@@ -13,9 +13,10 @@ from cellseg_models_pytorch.postproc import (
     get_masks_cellpose,
 )
 from cellseg_models_pytorch.postproc.functional.cellpose import integrator
+from cellseg_models_pytorch.postproc.torch import flow as tensor_integrator
 from cellseg_models_pytorch.utils import binarize, majority_vote_sequential
 
-# Captured from the pre-port NumPy integrator on CPU, before sharing the kernel.
+# Captured from the original NumPy integrator before introducing the tensor path.
 REFERENCE = {
     False: [
         [0, 2, 4, 4],
@@ -62,10 +63,10 @@ def test_numpy_interpolation_preserves_preport_values(suppress: bool) -> None:
 
 
 @pytest.mark.parametrize("count", [0, 1])
-def test_numpy_interpolation_keeps_point_axis(count: int) -> None:
+def test_legacy_numpy_interpolation_retains_original_shapes(count: int) -> None:
     points = np.array([[2], [3]], dtype=np.float32)[:, :count]
     actual = integrator.steps2D_interp(points, _flows(), niter=1, use_gpu=False)
-    assert actual.shape == (2, count)
+    assert actual.shape == ((2, 0) if count == 0 else (2,))
 
 
 def test_empty_flow_returns_grid_without_sampling(monkeypatch) -> None:
@@ -97,7 +98,7 @@ def test_seed_threshold_union_and_unseeded_pixels() -> None:
     torch.testing.assert_close(original, torch.stack((y, x)).float(), rtol=0, atol=0)
 
 
-def test_single_seed_moves_in_both_tensor_and_numpy_paths() -> None:
+def test_single_seed_moves_in_tensor_path_and_legacy_behavior_is_retained() -> None:
     flows = torch.zeros((2, 5, 7))
     flows[1, 2, 3] = 0.75
     endpoints, indices = follow_flows_torch(flows, niter=1)
@@ -106,7 +107,7 @@ def test_single_seed_moves_in_both_tensor_and_numpy_paths() -> None:
         endpoints[:, 2, 3], torch.tensor([2.0, 3.75]), rtol=0, atol=0
     )
     actual, seeds = integrator.follow_flows(flows.numpy(), niter=1, use_gpu=False)
-    np.testing.assert_array_equal(actual, endpoints.numpy())
+    np.testing.assert_array_equal(actual[:, 2, 3], [2.0, 3.0])
     assert actual.dtype == np.float32 and seeds.dtype == np.int32
 
 
@@ -177,8 +178,6 @@ def test_nonfinite_flows_fail_instead_of_skipping_integration(value: float) -> N
     flows[0, 0, 0] = value
     with pytest.raises(ValueError, match="finite"):
         follow_flows_torch(flows)
-    with pytest.raises(ValueError, match="finite"):
-        integrator.follow_flows(flows.numpy(), use_gpu=False)
 
 
 @pytest.mark.parametrize("niter", [-1, 1.5, True])
@@ -225,17 +224,17 @@ def test_pinned_cellpose_reconstruction_preserves_masks() -> None:
 
 
 def test_tensor_flow_docstring_example() -> None:
-    result = doctest.testmod(integrator)
+    result = doctest.testmod(tensor_integrator)
     assert result.failed == 0 and result.attempted >= 4
 
 
-def test_numpy_integration_propagates_kernel_errors(monkeypatch) -> None:
+def test_tensor_integration_propagates_kernel_errors(monkeypatch) -> None:
     def broken_kernel(*args, **kwargs):
         raise RuntimeError("integration failed")
 
-    monkeypatch.setattr(integrator, "_steps2D_interp_torch", broken_kernel)
+    monkeypatch.setattr(tensor_integrator, "_steps2D_interp_torch", broken_kernel)
     with pytest.raises(RuntimeError, match="integration failed"):
-        integrator.follow_flows(_flows(), use_gpu=False)
+        follow_flows_torch(torch.from_numpy(_flows()))
 
 
 @pytest.mark.cuda
@@ -265,3 +264,22 @@ def test_cuda_flow_integration_preserves_device_and_cpu_parity(
     assert actual.device == indices.device == device
     torch.testing.assert_close(actual.cpu(), expected, rtol=0, atol=1e-6)
     torch.testing.assert_close(indices.cpu(), expected_indices)
+
+
+def test_existing_tensor_import_path_is_preserved() -> None:
+    assert integrator.follow_flows_torch is follow_flows_torch
+    assert tensor_integrator.follow_flows_torch is follow_flows_torch
+
+
+def test_legacy_functions_do_not_call_tensor_backend(monkeypatch) -> None:
+    def unexpected_tensor_backend(*args, **kwargs):
+        pytest.fail("Original NumPy integration must remain independent")
+
+    monkeypatch.setattr(
+        tensor_integrator, "_steps2D_interp_torch", unexpected_tensor_backend
+    )
+    actual, _ = integrator.follow_flows(_flows(), niter=4, use_gpu=False)
+    np.testing.assert_array_equal(
+        actual[:, [0, 2, 4, 3], [1, 3, 6, 5]],
+        np.array(REFERENCE[False], dtype=np.float32),
+    )
