@@ -4,15 +4,14 @@ Compare predicted masks with reference labels. Use NumPy arrays on CPU:
 instance masks for individual cells, class masks for categories, or binary masks
 for foreground/background. Convert raw model scores to labels first.
 
-These functions also belong to the standalone `cellseg-metrics` package, which
-requires only NumPy and SciPy. For example, use
-`from cellseg_metrics import panoptic_quality` without installing PyTorch.
-See the [source installation instructions](https://github.com/okunator/cellseg_models.pytorch#metrics-only)
-until its first PyPI release.
+Install the standalone metrics package without PyTorch:
 
-The full library depends on `cellseg-metrics`. Its existing
-`cellseg_models_pytorch.metrics` imports remain available and re-export the same
-functions, so the examples below work with either import path.
+```shell
+pip install cellseg-metrics
+```
+
+It requires only NumPy and SciPy. The full library also exposes the same
+functions through `cellseg_models_pytorch.metrics`.
 
 ## Instance evaluation
 
@@ -23,7 +22,7 @@ objects by their overlap and returns `pq`, `sq` and `dq`.
 ```python
 import numpy as np
 
-from cellseg_models_pytorch.metrics import panoptic_quality
+from cellseg_metrics import panoptic_quality
 
 truth = np.array([[0, 5, 5], [0, 0, 0]], dtype=np.int32)
 prediction = np.array([[0, 12, 12], [0, 0, 0]], dtype=np.int32)
@@ -66,7 +65,7 @@ Pass 0/1 masks to `get_stats`, then pass its three result arrays to a score
 function. Keep these arrays per pixel when using `accuracy`.
 
 ```python
-from cellseg_models_pytorch.metrics import get_stats, iou_score
+from cellseg_metrics import get_stats, iou_score
 
 binary_truth = (truth > 0).astype(np.uint8)
 binary_prediction = (prediction > 0).astype(np.uint8)

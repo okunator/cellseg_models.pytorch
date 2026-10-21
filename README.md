@@ -60,26 +60,13 @@ Combine features with commas:
 pip install "cellseg-models-pytorch[training,onnx]"
 ```
 
-See the [installation guide](https://okunator.github.io/cellseg_models.pytorch/installation.html#optional-features)
-for source installs and other slide readers.
-
-Read the [documentation](https://okunator.github.io/cellseg_models.pytorch/) for
-the quick start, user guides and API reference.
-
 ### Metrics only
 
-Use `cellseg-metrics` for segmentation evaluation with only NumPy and SciPy,
-without installing PyTorch. Until its first PyPI release, install it from a
-source checkout:
+Metrics with NumPy and SciPy, without PyTorch:
 
 ```shell
-pip install ./packages/metrics
+pip install cellseg-metrics
 ```
-
-Import its functions from `cellseg_metrics`. The full library depends on this
-package and preserves `cellseg_models_pytorch.metrics` imports for compatibility.
-Both use the same implementation, documented in the
-[metrics API reference](https://okunator.github.io/cellseg_models.pytorch/api/metrics.html).
 
 ## Quick Start
 
