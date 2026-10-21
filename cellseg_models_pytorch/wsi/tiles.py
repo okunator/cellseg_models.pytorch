@@ -244,7 +244,7 @@ def get_downsample(
 
 def _get_allowed_dimensions(
     xywh: tuple[int, int, int, int], dimensions: tuple[int, int]
-) -> tuple[int, int, int, int]:
+) -> tuple[int, int]:
     """Get height and width for `xywh` which are inside `dimensions`."""
     x, y, w, h = xywh
     height, width = dimensions

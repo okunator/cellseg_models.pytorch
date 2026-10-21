@@ -60,6 +60,6 @@ def get_sub_grids(
     sub_grids = []
     for g in sub_graphs:
         indices = list(g.neighbors.keys())
-        sub_grids.append([coordinates.coordinates[i] for i in indices])
+        sub_grids.append([coordinates[i] for i in indices])
 
     return sub_grids

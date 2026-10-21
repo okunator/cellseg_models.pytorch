@@ -1,5 +1,9 @@
 # Unreleased
 
+- Fix `get_sub_grids` for ordinary coordinate lists while preserving coordinate
+  collections, component selection and minimum-size filtering. Correct the
+  two-axis return annotation of `_get_allowed_dimensions`.
+
 - Require Python 3.11+ and Pillow 13+ in the main library to address Pillow
   security advisories. Keep Python 3.10 support in `cellseg-metrics` and update
   the locked certifi dependency to 2026.10.19.
