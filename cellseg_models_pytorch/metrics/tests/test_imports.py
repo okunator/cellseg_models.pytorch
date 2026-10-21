@@ -13,8 +13,9 @@ def test_existing_exports_keep_function_identity(module):
     old = importlib.import_module(f"cellseg_models_pytorch.metrics{module}")
     new = importlib.import_module(f"cellseg_metrics{module}")
 
-    assert old.__all__ == new.__all__
-    for name in new.__all__:
+    # Standalone releases can add APIs without raising the main package's minimum version.
+    assert set(old.__all__) <= set(new.__all__)
+    for name in old.__all__:
         assert getattr(old, name) is getattr(new, name)
 
 

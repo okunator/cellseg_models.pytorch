@@ -1,5 +1,9 @@
 # Unreleased
 
+- Add confidence-ranked instance AP and COCO-style mean AP to `cellseg-metrics`,
+  including dataset-wide ranking. Preserve the historical `average_precision`
+  function and legacy imports.
+
 - Accept Pillow images in `get_annotated_image`, converting them to RGB while
   preserving source pixels and the existing NumPy input validation.
 

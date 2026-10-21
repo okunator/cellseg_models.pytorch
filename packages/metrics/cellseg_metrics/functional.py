@@ -3,6 +3,7 @@ from typing import Callable
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
+from .average_precision import mean_average_precision, precision_recall_ap
 from .binary_metrics import get_stats, iou_score
 
 __all__ = [
@@ -10,6 +11,8 @@ __all__ = [
     "pairwise_object_stats",
     "panoptic_quality",
     "average_precision",
+    "precision_recall_ap",
+    "mean_average_precision",
     "aggregated_jaccard_index",
     "dice2",
     "iou_multiclass",

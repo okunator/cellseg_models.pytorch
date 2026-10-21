@@ -153,6 +153,7 @@ def test_api_page_examples(name):
     elif name == "metrics":
         assert ns["score"]["pq"] == pytest.approx(1)
         assert ns["foreground_iou"] == pytest.approx(1)
+        assert ns["ap50"] == ns["mean_ap"] == 1.0
     elif name == "losses":
         assert ns["loss"].ndim == 0 and torch.isfinite(ns["loss"])
         for key in ("flow_prediction", "class_logits"):

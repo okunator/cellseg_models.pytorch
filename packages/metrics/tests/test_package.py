@@ -56,11 +56,13 @@ class BlockHeavyPackages(importlib.abc.MetaPathFinder):
 sys.meta_path.insert(0, BlockHeavyPackages())
 
 import numpy as np
-from cellseg_metrics import panoptic_quality
+from cellseg_metrics import mean_average_precision, panoptic_quality, precision_recall_ap
 
 true = np.array([[0, 7, 7, 21, 21]])
 pred = np.array([[0, 42, 42, 3, 3]])
 np.testing.assert_allclose(list(panoptic_quality(true, pred).values()), 1.0, atol=1e-6)
+assert precision_recall_ap(true, pred, {3: 0.8, 42: 0.9}) == 1.0
+assert mean_average_precision(true, pred, {3: 0.8, 42: 0.9}) == 1.0
 """,
         ],
         check=True,
