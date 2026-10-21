@@ -1,6 +1,6 @@
 # Unreleased
 
-- Add confidence-ranked instance AP and COCO-style mean AP to `cellseg-metrics`,
+- Add confidence-ranked instance AP and COCO-style mean AP in `cellseg-metrics` 0.2.0,
   including dataset-wide ranking. Preserve the historical `average_precision`
   function and legacy imports.
 

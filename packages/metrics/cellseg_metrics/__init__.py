@@ -1,6 +1,6 @@
 """NumPy/SciPy metrics for binary, multiclass and instance segmentation."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from .binary_metrics import accuracy, dice_coef, f1score, get_stats, iou_score
 from .functional import (
