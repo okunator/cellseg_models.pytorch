@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import geopandas as gpd
 import numpy as np
 import pytest
@@ -19,7 +21,10 @@ def test_vectorization_keeps_smoothed_narrow_contours_valid():
 
 
 @pytest.mark.parametrize("suffix", ["parquet", "feather", "geojson"])
-def test_geometry_export_round_trip(tmp_path, suffix):
+@pytest.mark.parametrize("path_kind", ["str", "path"])
+def test_geometry_export_round_trip(
+    tmp_path: Path, suffix: str, path_kind: str
+) -> None:
     expected = gpd.GeoDataFrame(
         {
             "uid": [101, 505],
@@ -35,8 +40,11 @@ def test_geometry_export_round_trip(tmp_path, suffix):
         ],
         crs="EPSG:4326",
     )
+    original = expected.copy(deep=True)
     path = tmp_path / f"instances.{suffix}"
-    FileHandler.gdf_to_file(expected, path)
+    output_path = str(path) if path_kind == "str" else path
+    FileHandler.gdf_to_file(expected, output_path)
+    assert_geodataframe_equal(expected, original)
     readers = {
         "parquet": gpd.read_parquet,
         "feather": gpd.read_feather,

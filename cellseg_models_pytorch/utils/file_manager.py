@@ -282,7 +282,7 @@ class FileHandler:
 
     @staticmethod
     def gdf_to_file(
-        gdf: gpd.GeoDataFrame, path: str, silence_warnings: bool = True
+        gdf: gpd.GeoDataFrame, path: str | Path, silence_warnings: bool = True
     ) -> None:
         """Save a nonempty GeoDataFrame in a supported vector format.
 
@@ -306,8 +306,8 @@ class FileHandler:
                 "Install with `pip install geopandas`."
             )
 
-        path = Path(path)
-        suffix = path.suffix
+        output_path = Path(path)
+        suffix = output_path.suffix
 
         if gdf.empty:
             if not silence_warnings:
@@ -315,11 +315,11 @@ class FileHandler:
             return
 
         if suffix == ".feather":
-            gdf.to_feather(path.with_suffix(".feather"))
+            gdf.to_feather(output_path.with_suffix(".feather"))
         elif suffix == ".parquet":
-            gdf.to_parquet(path.with_suffix(".parquet"))
+            gdf.to_parquet(output_path.with_suffix(".parquet"))
         elif suffix == ".geojson":
-            gdf.to_file(path.with_suffix(".geojson"), driver="GeoJSON")
+            gdf.to_file(output_path.with_suffix(".geojson"), driver="GeoJSON")
 
     @staticmethod
     def to_mat(
