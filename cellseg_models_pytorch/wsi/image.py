@@ -35,9 +35,9 @@ def get_annotated_image(
     text_proportion: float = 0.75,
     text_font: str = "monospace",
     alpha: float = 0.0,
-    cmap: str = None,
-    values: np.ndarray = None,
-    breaks: Sequence[float] = None,
+    cmap: str | None = None,
+    values: np.ndarray | None = None,
+    breaks: Sequence[float] | np.ndarray | None = None,
     n_bins: int = 30,
 ) -> Image.Image:
     """Function to draw tiles to an image. Useful for visualising tiles/predictions.
@@ -92,18 +92,19 @@ def get_annotated_image(
             "Matplotlib is required for `get_annotated_image`. `pip install matplotlib`"
         )
     # Check image and convert to PIL Image.
-    image = Image.fromarray(check_image(image)).convert("RGB")
+    pil_image = Image.fromarray(check_image(image)).convert("RGB")
     # Check arguments.
     if text_items is not None:
         if len(text_items) != len(coordinates):
             raise ValueError(
                 ERROR_TEXT_ITEM_LENGTH.format(len(text_items), len(coordinates))
             )
-    else:
-        text_items = [None] * len(coordinates)
+    texts: Sequence[str | None] = (
+        text_items if text_items is not None else [None] * len(coordinates)
+    )
     # Draw tiles.
     font = None
-    annotated = image.copy()
+    annotated = pil_image.copy()
     draw = ImageDraw.Draw(annotated)
 
     pal = None
@@ -120,12 +121,12 @@ def get_annotated_image(
 
         pal = colormaps.get_cmap(cmap).resampled(len(breaks))
 
-    for idx, (xywh, text) in enumerate(zip(coordinates, text_items)):
+    for idx, (xywh, text) in enumerate(zip(coordinates, texts)):
         # Downscale coordinates.
         x, y, w, h = _divide_xywh(xywh, downsample)
         # Draw rectangle.
         rgb_uint8 = None
-        if pal is not None:
+        if pal is not None and values is not None:
             rgb_uint8 = tuple((np.array(pal(values[idx])) * 255).astype(np.uint8))
 
         draw.rectangle(
@@ -137,7 +138,7 @@ def get_annotated_image(
         if text is not None:
             # Define font.
             if font is None:
-                max_length = max(3, max(len(str(x)) for x in text_items))
+                max_length = max(3, max(len(str(x)) for x in texts))
                 font_path = fontManager.findfont(text_font)
                 # Figure width coefficient to find correct font size.
                 font_32 = ImageFont.FreeTypeFont(font_path, size=32).getbbox("W")
@@ -150,7 +151,7 @@ def get_annotated_image(
             # Write text.
             draw.text(
                 xy=(x + rectangle_width, y + rectangle_width),
-                text=str(text_items[idx]),
+                text=str(text),
                 font=font,
                 fill=text_color,
             )
@@ -164,4 +165,4 @@ def get_annotated_image(
             width=rectangle_width,
         )
     # Blend.
-    return Image.blend(annotated, image, alpha)
+    return Image.blend(annotated, pil_image, alpha)
