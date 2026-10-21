@@ -8,7 +8,9 @@ For whole slides, see [slide inference](wsi-inference.md) or the
 ## Read prediction results
 
 `Predictor` returns a dictionary with `nuc`, `cyto` and `tissue` entries.
-Unused entries are None. Each `type_map` contains the predicted class at each pixel.
+Unused entries are None. Each `type_map` contains the predicted class at each pixel,
+or None for an instance head without cell-type classification. Such a head uses
+`binary_map` for foreground values and `aux_map` for reconstruction.
 
 | Field | Direct network call | After Predictor |
 | --- | --- | --- |
@@ -58,6 +60,9 @@ Batch methods require a `nuc` entry. Each result contains two int32 `(H, W)` mas
 `instances` identifies objects. `classes` gives the most common predicted class
 within each object. Instance 0 is background; positive IDs identify objects
 within that image.
+For binary-only instance heads, `classes` is None. Saved polygons use the generic
+foreground class 1. Name it with the corresponding class dictionary, such as
+`class_dict_nuc={1: "nucleus"}`.
 
 ```python
 import torch

@@ -19,6 +19,8 @@ class InstanSegONNXWrapper(nn.Module):
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Return reconstruction maps and class logits with BCHW axes."""
         nucleus = self.model(x)["nuc"]
+        if nucleus.type_map is None:
+            raise RuntimeError("ONNX export requires a nuclei cell-type output head.")
         return nucleus.aux_map, nucleus.type_map
 
 

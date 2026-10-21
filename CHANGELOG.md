@@ -3,6 +3,10 @@
 - Accept Pillow images in `get_annotated_image`, converting them to RGB while
   preserving source pixels and the existing NumPy input validation.
 
+- Fix binary-only nucleus and cytoplasm networks through forward prediction,
+  sliding-window inference and reconstruction. Class maps are None without a
+  cell-type head; existing typed outputs and checkpoint keys are unchanged.
+
 - Correct `get_overlap_area` to intersect both rectangle boundaries, including
   partially overlapping and contained tiles, while preserving input order.
 

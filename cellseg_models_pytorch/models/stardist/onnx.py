@@ -23,6 +23,8 @@ class StarDistONNXWrapper(nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Return BCHW foreground scores, ray distances, and class logits."""
         nuc = self.model(x)["nuc"]
+        if nuc.type_map is None:
+            raise RuntimeError("ONNX export requires a nuclei cell-type output head.")
         if nuc.binary_map is None:
             raise RuntimeError("StarDist export requires a nuclei binary output head.")
 

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Union
+from typing import Union
 
 import numpy as np
 import torch
@@ -94,7 +94,8 @@ class BasePredictor:
         Returns:
             A dictionary with ``nuc``, ``cyto`` and ``tissue`` entries; unused
             outputs are None. Instance ``type_map`` values are integer class labels
-            (B, H, W); maps for separating objects remain floating tensors (B, channels, H, W).
+            (B, H, W), or None without a cell-type head. Maps for separating
+            objects remain floating tensors (B, channels, H, W).
             Results stay on the network device. With ``save_intermediate=True``,
             returns the same dictionary twice. Call the network directly for raw
             class scores.
@@ -202,19 +203,18 @@ class BasePredictor:
 
         return x
 
-    def _argmax(self, probs: Dict[str, Any]) -> torch.Tensor:
-        """Apply argmax to the input tensor."""
-        probs["nuc"].type_map = probs["nuc"].type_map.argmax(1)
-        if probs["cyto"] is not None:
-            probs["cyto"].type_map = probs["cyto"].type_map.argmax(1)
-        if probs["tissue"] is not None:
-            probs["tissue"].type_map = probs["tissue"].type_map.argmax(1)
+    def _argmax(self, probs: _PredictionMaps) -> _PredictionMaps:
+        """Replace existing class scores with labels in the supplied dictionary."""
+        for name in ("nuc", "cyto", "tissue"):
+            output = probs[name]
+            if output is not None and output.type_map is not None:
+                output.type_map = output.type_map.argmax(1)
 
         return probs
 
     def _predict(
         self, x: torch.Tensor, apply_boundary_weight: bool = False
-    ) -> Dict[str, Any]:
+    ) -> _PredictionMaps:
         """Predict the soft masks."""
         soft_masks = self.model(x)
 
@@ -224,11 +224,12 @@ class BasePredictor:
                 activate=False,
                 apply_boundary_weight=apply_boundary_weight,
             )
-            soft_masks["nuc"].type_map = self._weight_and_activate(
-                soft_masks["nuc"].type_map,
-                activate=True,
-                apply_boundary_weight=False,
-            )
+            if soft_masks["nuc"].type_map is not None:
+                soft_masks["nuc"].type_map = self._weight_and_activate(
+                    soft_masks["nuc"].type_map,
+                    activate=True,
+                    apply_boundary_weight=False,
+                )
 
             if soft_masks["nuc"].binary_map is not None:
                 soft_masks["nuc"].binary_map = self._weight_and_activate(
@@ -243,11 +244,12 @@ class BasePredictor:
                 activate=False,
                 apply_boundary_weight=apply_boundary_weight,
             )
-            soft_masks["cyto"].type_map = self._weight_and_activate(
-                soft_masks["cyto"].type_map,
-                activate=True,
-                apply_boundary_weight=False,
-            )
+            if soft_masks["cyto"].type_map is not None:
+                soft_masks["cyto"].type_map = self._weight_and_activate(
+                    soft_masks["cyto"].type_map,
+                    activate=True,
+                    apply_boundary_weight=False,
+                )
 
             if soft_masks["cyto"].binary_map is not None:
                 soft_masks["cyto"].binary_map = self._weight_and_activate(
@@ -323,7 +325,8 @@ class Predictor(BasePredictor):
         Returns:
             A dictionary with ``nuc``, ``cyto`` and ``tissue`` entries; unused
             outputs are None. Instance ``type_map`` values are integer class labels
-            (B, H, W); maps for separating objects remain floating tensors (B, channels, H, W).
+            (B, H, W), or None without a cell-type head. Maps for separating
+            objects remain floating tensors (B, channels, H, W).
             Results stay on the network device. With ``save_intermediate=True``,
             returns the same dictionary twice. Call the network directly for raw
             class scores.
@@ -427,7 +430,7 @@ class Predictor(BasePredictor):
 
     def _init_output(
         self, x: torch.Tensor, soft_masks: SoftInstanceOutput | SoftSemanticOutput
-    ) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
+    ) -> tuple[torch.Tensor | None, torch.Tensor | None, torch.Tensor | None]:
         """Allocate full-image type, auxiliary and binary maps for one output head.
 
         Args:
@@ -437,8 +440,10 @@ class Predictor(BasePredictor):
         Returns:
             Type, auxiliary and binary buffers. Absent maps return None.
         """
-        C = soft_masks.type_map.shape[1]
-        out = self._zeros(x.shape[0], C, *x.shape[2:], x.dtype, x.device)
+        out = None
+        if soft_masks.type_map is not None:
+            C = soft_masks.type_map.shape[1]
+            out = self._zeros(x.shape[0], C, *x.shape[2:], x.dtype, x.device)
 
         out_aux = None
         if isinstance(soft_masks, SoftInstanceOutput):
@@ -494,13 +499,15 @@ class Predictor(BasePredictor):
                     )
 
             # add the soft masks to the output matrices
-            nuc[..., yslice, xslice] += soft_masks["nuc"].type_map
+            if nuc is not None:
+                nuc[..., yslice, xslice] += soft_masks["nuc"].type_map
             nuc_aux[..., yslice, xslice] += soft_masks["nuc"].aux_map
             if nuc_binary is not None:
                 nuc_binary[..., yslice, xslice] += soft_masks["nuc"].binary_map
 
             if soft_masks["cyto"] is not None:
-                cyto[..., yslice, xslice] += soft_masks["cyto"].type_map
+                if cyto is not None:
+                    cyto[..., yslice, xslice] += soft_masks["cyto"].type_map
                 cyto_aux[..., yslice, xslice] += soft_masks["cyto"].aux_map
                 if cyto_binary is not None:
                     cyto_binary[..., yslice, xslice] += soft_masks["cyto"].binary_map
@@ -518,13 +525,15 @@ class Predictor(BasePredictor):
 
         rows, cols = slice(top, top + height), slice(left, left + width)
         # Auxiliary/binary instance maps were weighted; divide by those same weights.
-        soft_masks["nuc"].type_map = (nuc / recovery)[..., rows, cols]
+        if nuc is not None:
+            soft_masks["nuc"].type_map = (nuc / recovery)[..., rows, cols]
         soft_masks["nuc"].aux_map = (nuc_aux / aux_recovery)[..., rows, cols]
         if nuc_binary is not None:
             soft_masks["nuc"].binary_map = (nuc_binary / aux_recovery)[..., rows, cols]
 
         if soft_masks["cyto"] is not None:
-            soft_masks["cyto"].type_map = (cyto / recovery)[..., rows, cols]
+            if cyto is not None:
+                soft_masks["cyto"].type_map = (cyto / recovery)[..., rows, cols]
             soft_masks["cyto"].aux_map = (cyto_aux / aux_recovery)[..., rows, cols]
             if cyto_binary is not None:
                 soft_masks["cyto"].binary_map = (cyto_binary / aux_recovery)[

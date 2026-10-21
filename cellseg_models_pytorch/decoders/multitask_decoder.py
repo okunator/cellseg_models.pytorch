@@ -66,7 +66,8 @@ class SoftInstanceOutput:
     Args:
         type_map: Raw network class logits of shape (B, classes, H, W).
             After ``Predictor`` runs, this field contains integer class labels
-            of shape (B, H, W), not probabilities.
+            of shape (B, H, W), not probabilities. None without a cell-type head;
+            binary_map then supplies foreground values for reconstruction.
         aux_map: Floating reconstruction values of shape (B, channels, H, W).
             Channels depend on the model family: flows, horizontal/vertical
             distances, radial distances or InstanSeg values.
@@ -80,7 +81,7 @@ class SoftInstanceOutput:
     W width. Reading a field does not copy its tensor.
     """
 
-    type_map: torch.Tensor
+    type_map: torch.Tensor | None
     aux_map: torch.Tensor
     binary_map: Optional[torch.Tensor] = field(default=None)
     parents: dict[str, list[str] | None] | None = field(default=None)
@@ -285,8 +286,10 @@ class MultiTaskDecoder(nn.ModuleDict):
         return dec_feats
 
     def forward(
-        self, enc_feats: Tuple[torch.Tensor, ...], x_in: torch.Tensor = None
-    ) -> Tuple[Dict[str, List[torch.Tensor]], Dict[str, torch.Tensor]]:
+        self,
+        enc_feats: list[torch.Tensor] | tuple[torch.Tensor, ...],
+        x_in: torch.Tensor | None = None,
+    ) -> DecoderSoftOutput:
         """Forward pass style, decoders and optional stem skip.
 
         Args:
@@ -297,8 +300,8 @@ class MultiTaskDecoder(nn.ModuleDict):
                 Defaults to None.
 
         Returns:
-            Tuple[Dict[str, List[torch.Tensor]], Dict[str, torch.Tensor]]:
-                The output of the seg heads.
+            Prediction containers, with None class maps for binary-only instance
+            heads. Foreground and reconstruction maps retain gradients and BCHW axes.
         """
         enc_feats = enc_feats[::-1]  # bottleneck first
         if self.encoder_upsampler is not None:
@@ -313,13 +316,16 @@ class MultiTaskDecoder(nn.ModuleDict):
 
         out = self.forward_heads(dec_feats)
 
+        # Binary-only heads have foreground values, but no cell-type scores.
         nuc_out = SoftInstanceOutput(
-            type_map=out[self.nuc_type_key],
+            type_map=out[self.nuc_type_key] if self.nuc_type_key is not None else None,
             aux_map=out[self.nuc_aux_key],
             binary_map=out.get(self.nuc_binary_key, None),
             parents={
                 "aux_map": self.nuc_aux_key.split("-"),
-                "type_map": self.nuc_type_key.split("-"),
+                "type_map": self.nuc_type_key.split("-")
+                if self.nuc_type_key is not None
+                else None,
                 "binary_map": self.nuc_binary_key.split("-")
                 if out.get(self.nuc_binary_key, None) is not None
                 else None,
@@ -329,12 +335,16 @@ class MultiTaskDecoder(nn.ModuleDict):
         cyto_out = None
         if self.cyto_aux_key is not None:
             cyto_out = SoftInstanceOutput(
-                type_map=out[self.cyto_type_key],
+                type_map=out[self.cyto_type_key]
+                if self.cyto_type_key is not None
+                else None,
                 aux_map=out[self.cyto_aux_key],
                 binary_map=out.get(self.cyto_binary_key, None),
                 parents={
                     "aux_map": self.cyto_aux_key.split("-"),
-                    "type_map": self.cyto_type_key.split("-"),
+                    "type_map": self.cyto_type_key.split("-")
+                    if self.cyto_type_key is not None
+                    else None,
                     "binary_map": self.cyto_binary_key.split("-")
                     if out.get(self.cyto_binary_key, None) is not None
                     else None,

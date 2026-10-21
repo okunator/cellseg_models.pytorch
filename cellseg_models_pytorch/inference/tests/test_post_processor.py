@@ -24,6 +24,83 @@ def reconstruct_fixture(inst_map: np.ndarray, aux_map: np.ndarray) -> np.ndarray
     return label(inst_map > 0)[0]
 
 
+@pytest.mark.parametrize("mode", ["serial", "parallel", "parallel_async"])
+@pytest.mark.parametrize("typed_cytoplasm", [False, True])
+def test_binary_only_reconstruction_preserves_instances(
+    monkeypatch, mode, typed_cytoplasm
+):
+    foreground = torch.zeros(2, 1, 16, 20)
+    foreground[0, :, 1:6, 1:6] = 1
+    foreground[0, :, 8:13, 12:17] = 1
+    # The second image deliberately has no detections.
+    auxiliary = torch.cat((foreground * 0.25, foreground * 0.5), dim=1)
+    outputs = {
+        "nuc": SoftInstanceOutput(None, auxiliary, foreground),
+        "cyto": SoftInstanceOutput(
+            (foreground[:, 0] * 3).long() if typed_cytoplasm else None,
+            auxiliary,
+            foreground,
+        ),
+        "tissue": None,
+    }
+    monkeypatch.setitem(POSTPROC_LOOKUP, "baseline", reconstruct_fixture)
+    processor = PostProcessor("baseline")
+    kwargs = {} if mode == "serial" else {"n_jobs": 2, "start_method": "threading"}
+
+    result = getattr(processor, f"postproc_{mode}")(outputs, **kwargs)
+
+    for name in ("nuc", "cyto"):
+        assert len(result[name]) == 2
+        for index, (instances, classes) in enumerate(result[name]):
+            expected = label(foreground[index, 0].numpy())[0]
+            np.testing.assert_array_equal(instances, expected)
+            assert instances.dtype == np.int32
+            if name == "cyto" and typed_cytoplasm:
+                np.testing.assert_array_equal(classes, foreground[index, 0].numpy() * 3)
+                assert classes.dtype == np.int32
+            else:
+                assert classes is None
+    assert outputs["nuc"].type_map is None
+    torch.testing.assert_close(outputs["nuc"].binary_map, foreground, rtol=0, atol=0)
+
+
+def test_binary_only_vector_output_uses_existing_foreground_class(
+    monkeypatch, tmp_path
+):
+    import geopandas as gpd
+
+    foreground = torch.zeros(1, 1, 16, 20)
+    foreground[0, :, 2:8, 3:9] = 1
+    auxiliary = torch.cat((foreground * 0.25, foreground * 0.5), dim=1)
+    outputs = {
+        "nuc": SoftInstanceOutput(None, auxiliary, foreground),
+        "cyto": None,
+        "tissue": None,
+    }
+    monkeypatch.setitem(POSTPROC_LOOKUP, "baseline", reconstruct_fixture)
+    path = tmp_path / "nuclei.parquet"
+
+    result = PostProcessor("baseline").postproc_serial(
+        outputs,
+        save_paths_nuc=[path],
+        coords=[(100, 200, 20, 16)],
+        class_dict_nuc={1: "nucleus"},
+        nuc_smooth_func=None,
+    )
+
+    saved = gpd.read_parquet(path)
+    assert result["nuc"] == [None]
+    assert saved["class_name"].tolist() == ["nucleus"]
+    assert saved["uid"].tolist() == [1]
+    np.testing.assert_array_equal(saved.total_bounds, [103, 202, 109, 208])
+
+
+def test_binary_only_reconstruction_requires_foreground():
+    outputs = SoftInstanceOutput(None, torch.zeros(1, 2, 8, 8))
+    with pytest.raises(ValueError, match="binary or class map"):
+        PostProcessor("hovernet")._prepare_inst_maps(outputs)
+
+
 @pytest.mark.parametrize("device", DEVICES)
 @pytest.mark.parametrize("dtype", ["f4", "i4"])
 @pytest.mark.parametrize("requires_grad", [False, True])

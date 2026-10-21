@@ -91,19 +91,20 @@ class PostProcessor:
         self,
         inst_map: np.ndarray,
         aux_map: np.ndarray,
-        type_map: np.ndarray,
-        save_path: Union[Path, str] = None,
-        coords: Tuple[int, int, int, int] = None,
+        type_map: np.ndarray | None = None,
+        save_path: Path | str | None = None,
+        coords: tuple[int, int, int, int] | None = None,
         class_dict: dict[int, str] | None = None,
-        smooth_func: Callable = gaussian_smooth,
-    ) -> tuple[np.ndarray, np.ndarray] | None:
+        smooth_func: Callable | None = gaussian_smooth,
+    ) -> tuple[np.ndarray, np.ndarray | None] | None:
         """Reconstruct one image's objects and vote on their classes.
 
         Args:
             inst_map: HW foreground labels/scores expected by the reconstruction method.
                 This is the foreground input, not already reconstructed instance IDs.
             aux_map: Floating family-specific reconstruction map (channels, H, W).
-            type_map: Integer class labels (H, W) used for majority voting per object.
+            type_map: Integer class labels (H, W) for majority voting, or None
+                when the model has no cell-type head.
             save_path: Optional vector file path (.parquet, .geojson or .feather).
                 Existing-file behavior follows the selected writer.
             coords: Optional (x, y, width, height) tuple. Saved geometry is offset
@@ -115,9 +116,12 @@ class PostProcessor:
             (instances, classes) as int32 NumPy arrays of shape (H, W). Instance 0 is
             background; positive IDs identify objects. Returns None instead when
             saving to a file. Smoothing affects saved polygons, not returned masks.
+            The classes entry is None for binary-only models; saved polygons then
+            use the vector writer's generic foreground class 1.
         """
         inst_map = self.postproc_func(inst_map, aux_map).astype("i4")
-        type_map = majority_vote_sequential(type_map, inst_map).astype("i4")
+        if type_map is not None:
+            type_map = majority_vote_sequential(type_map, inst_map).astype("i4")
 
         if save_path is not None:
             self._save_inst2vector(
@@ -135,7 +139,7 @@ class PostProcessor:
 
     def postproc_parallel(
         self,
-        soft_masks,
+        soft_masks: dict[str, SoftInstanceOutput | SoftSemanticOutput | None],
         n_jobs: int = 4,
         start_method: str = "threading",
         progress_bar: bool = False,
@@ -149,7 +153,9 @@ class PostProcessor:
         nuc_smooth_func: Callable = gaussian_smooth,
         cyto_smooth_func: Callable = gaussian_smooth,
         tissue_smooth_func: Callable = None,
-    ) -> dict[str, list[tuple[np.ndarray, np.ndarray] | np.ndarray | None] | None]:
+    ) -> dict[
+        str, list[tuple[np.ndarray, np.ndarray | None] | np.ndarray | None] | None
+    ]:
         """Reconstruct a batch using workers.
 
         Args:
@@ -174,7 +180,8 @@ class PostProcessor:
         Returns:
             Dictionary with ``nuc``, ``cyto`` and ``tissue`` lists, in input order.
             Missing heads are None. Instance results are (instances, classes) int32
-            NumPy masks (H, W); tissue results are int32 class masks (H, W).
+            NumPy masks (H, W); classes are None without a cell-type head.
+            Tissue results are int32 class masks (H, W).
             Saving an image returns None at that list position. All worker results
             are resolved before returning; no future is returned to the caller.
         """
@@ -267,7 +274,7 @@ class PostProcessor:
 
     def postproc_parallel_async(
         self,
-        soft_masks,
+        soft_masks: dict[str, SoftInstanceOutput | SoftSemanticOutput | None],
         n_jobs: int = 4,
         start_method: str = "threading",
         save_paths_nuc: List[Union[Path, str]] = None,
@@ -280,7 +287,9 @@ class PostProcessor:
         nuc_smooth_func: Callable = gaussian_smooth,
         cyto_smooth_func: Callable = gaussian_smooth,
         tissue_smooth_func: Callable = None,
-    ) -> dict[str, list[tuple[np.ndarray, np.ndarray] | np.ndarray | None] | None]:
+    ) -> dict[
+        str, list[tuple[np.ndarray, np.ndarray | None] | np.ndarray | None] | None
+    ]:
         """Schedule batch reconstruction on workers and wait for all results.
 
         Args:
@@ -304,7 +313,8 @@ class PostProcessor:
         Returns:
             Dictionary with ``nuc``, ``cyto`` and ``tissue`` lists, in input order.
             Missing heads are None. Instance results are (instances, classes) int32
-            NumPy masks (H, W); tissue results are int32 class masks (H, W).
+            NumPy masks (H, W); classes are None without a cell-type head.
+            Tissue results are int32 class masks (H, W).
             Saving an image returns None at that list position. All worker results
             are resolved before returning; no future is returned to the caller.
         """
@@ -404,7 +414,7 @@ class PostProcessor:
 
     def postproc_serial(
         self,
-        soft_masks,
+        soft_masks: dict[str, SoftInstanceOutput | SoftSemanticOutput | None],
         save_paths_nuc: List[Union[Path, str]] = None,
         save_paths_cyto: List[Union[Path, str]] = None,
         save_paths_tissue: List[Union[Path, str]] = None,
@@ -415,7 +425,9 @@ class PostProcessor:
         nuc_smooth_func: Callable = gaussian_smooth,
         cyto_smooth_func: Callable = gaussian_smooth,
         tissue_smooth_func: Callable = None,
-    ) -> dict[str, list[tuple[np.ndarray, np.ndarray] | np.ndarray | None] | None]:
+    ) -> dict[
+        str, list[tuple[np.ndarray, np.ndarray | None] | np.ndarray | None] | None
+    ]:
         """Reconstruct a batch one image at a time.
 
         Args:
@@ -436,7 +448,8 @@ class PostProcessor:
         Returns:
             Dictionary with ``nuc``, ``cyto`` and ``tissue`` lists, in input order.
             Missing heads are None. Instance results are (instances, classes) int32
-            NumPy masks (H, W); tissue results are int32 class masks (H, W).
+            NumPy masks (H, W); classes are None without a cell-type head.
+            Tissue results are int32 class masks (H, W).
             Saving an image returns None at that list position. All worker results
             are resolved before returning; no future is returned to the caller.
         """
@@ -549,17 +562,25 @@ class PostProcessor:
 
     def _prepare_inst_maps(
         self, soft_masks: SoftInstanceOutput
-    ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    ) -> tuple[list[np.ndarray], list[np.ndarray], list[np.ndarray | None]]:
+        """Copy a batch's foreground, reconstruction and optional class maps to CPU."""
         if soft_masks.binary_map is not None:
             prob_maps = soft_masks.binary_map
         else:
             prob_maps = soft_masks.type_map
+        if prob_maps is None:
+            raise ValueError("Instance reconstruction requires a binary or class map.")
         prob_maps = prob_maps.squeeze(1)
 
         inst_dtype = "i4" if soft_masks.binary_map is None else "f4"
         inst_maps = list(self._to_ndarray(prob_maps, dtype=inst_dtype))
         aux_maps = list(self._to_ndarray(soft_masks.aux_map, dtype="f4"))
-        type_maps = list(self._to_ndarray(soft_masks.type_map, dtype="i4"))
+        # Missing class predictions need no full-size placeholder mask.
+        type_maps = (
+            list(self._to_ndarray(soft_masks.type_map, dtype="i4"))
+            if soft_masks.type_map is not None
+            else [None] * len(inst_maps)
+        )
 
         return inst_maps, aux_maps, type_maps
 
@@ -575,15 +596,16 @@ class PostProcessor:
 
     def _save_inst2vector(
         self,
-        save_path: Union[Path, str],
+        save_path: Path | str,
         inst_map: np.ndarray,
-        type_map: np.ndarray,
-        coords: List[Tuple[int, int, int, int]] = None,
-        class_dict: dict = None,
+        type_map: np.ndarray | None,
+        coords: tuple[int, int, int, int] | None = None,
+        class_dict: dict[int, str] | None = None,
         compute_centroids: bool = False,
         compute_bboxes: bool = False,
-        smooth_func: Callable = gaussian_smooth,
+        smooth_func: Callable | None = gaussian_smooth,
     ) -> None:
+        """Save one image's instances and optional cell types as polygons."""
         save_path = Path(save_path)
 
         xoff = coords[0] if coords is not None else None

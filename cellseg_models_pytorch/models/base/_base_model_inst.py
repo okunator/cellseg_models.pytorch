@@ -169,7 +169,8 @@ class BaseModelInst:
         Returns:
             Dictionary with ``nuc``, ``cyto`` and ``tissue`` entries. Unused
             outputs are None. Instance entries contain ``type_map`` class labels
-            of shape (B, H, W), and floating ``aux_map`` reconstruction values of
+            of shape (B, H, W), or None without a cell-type head, and floating
+            ``aux_map`` reconstruction values of
             shape (B, channels, H, W). These remain on the network device. A tissue
             entry contains class labels of shape (B, H, W). These are not probability
             maps. Class meanings and reconstruction maps depend on the checkpoint.
@@ -199,7 +200,7 @@ class BaseModelInst:
 
     def post_process(
         self,
-        x: Dict[str, Union[SoftSemanticOutput, SoftInstanceOutput]],
+        x: dict[str, SoftSemanticOutput | SoftInstanceOutput | None],
         *,
         use_async_postproc: bool = True,
         start_method: str = "threading",
@@ -209,7 +210,9 @@ class BaseModelInst:
         coords: List[Tuple[int, int, int, int]] = None,
         class_dict_nuc: Dict[int, str] = None,
         class_dict_cyto: Dict[int, str] = None,
-    ) -> dict[str, list[tuple[np.ndarray, np.ndarray] | np.ndarray | None] | None]:
+    ) -> dict[
+        str, list[tuple[np.ndarray, np.ndarray | None] | np.ndarray | None] | None
+    ]:
         """Turn predicted maps into individual nuclei and cell-type masks.
 
         Args:
@@ -233,7 +236,8 @@ class BaseModelInst:
             results are lists of (instances, classes) NumPy mask pairs, one per image.
             Both masks are int32 (H, W). Instance 0 is background; positive IDs
             identify objects. Each object gets the most common predicted class
-            within its mask. Unused outputs and saved-image results are None.
+            within its mask. Binary-only models return None for the class mask.
+            Unused outputs and saved-image results are None.
             Tissue results are class masks. Tensor maps are copied to CPU.
 
         Raises:
@@ -249,7 +253,7 @@ class BaseModelInst:
             )
 
         # if batch size is 1, run serially
-        if x["nuc"].type_map.shape[0] == 1:
+        if x["nuc"].aux_map.shape[0] == 1:
             return self.post_processor.postproc_serial(
                 x,
                 save_paths_nuc=save_paths_nuc,

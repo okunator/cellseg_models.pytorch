@@ -7,6 +7,8 @@ export packages. Install an ONNX runtime separately to run the file.
 The file contains prediction maps. Convert them to classes and instance masks
 separately, using the same preprocessing as the checkpoint. Image height and
 width are fixed; batch size can vary.
+The current export format requires a nucleus cell-type head. Binary-only models
+can use PyTorch prediction and reconstruction, but are not supported by these exporters.
 
 | Family | Input | Outputs, in order |
 | --- | --- | --- |

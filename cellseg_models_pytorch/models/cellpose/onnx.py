@@ -21,6 +21,8 @@ class CellPoseONNXWrapper(nn.Module):
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return flow and type-logit maps."""
         nuc = self.model(x)["nuc"]
+        if nuc.type_map is None:
+            raise RuntimeError("ONNX export requires a nuclei cell-type output head.")
         return nuc.aux_map, nuc.type_map
 
 

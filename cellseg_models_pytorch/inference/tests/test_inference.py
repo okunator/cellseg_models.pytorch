@@ -48,6 +48,55 @@ class PixelModel(torch.nn.Module):
         return outputs
 
 
+class BinaryPixelModel(PixelModel):
+    def forward(
+        self, image: torch.Tensor
+    ) -> dict[str, SoftInstanceOutput | SoftSemanticOutput | None]:
+        outputs = super().forward(image)
+        for name in ("nuc", "cyto"):
+            if outputs[name] is not None:
+                outputs[name].type_map = None
+        return outputs
+
+
+@pytest.mark.parametrize(
+    "sliding,weighted", [(False, False), (True, False), (True, True)]
+)
+@pytest.mark.parametrize("shape", [(13, 17), (65, 79)])
+def test_binary_only_prediction_preserves_foreground_and_auxiliary(
+    sliding, weighted, shape
+):
+    image = torch.linspace(0, 1, 2 * 3 * np.prod(shape)).reshape(2, 3, *shape)
+    original = image.clone()
+    predictor = Predictor(
+        BinaryPixelModel(optional_heads=True).eval(), mixed_precision=False
+    )
+
+    if sliding:
+        actual = predictor.predict_sliding_win(
+            image, (32, 48), stride=16, apply_boundary_weight=weighted
+        )
+    else:
+        actual = predictor.predict(image, apply_boundary_weight=False)
+    foreground = image[:, :1]
+
+    for name, offset in (("nuc", 0), ("cyto", 6)):
+        assert actual[name].type_map is None
+        torch.testing.assert_close(
+            actual[name].aux_map,
+            torch.cat((foreground + offset, foreground + offset + 2), dim=1),
+        )
+        torch.testing.assert_close(actual[name].binary_map, foreground + offset + 4)
+        assert actual[name].aux_map.dtype == image.dtype
+        assert actual[name].binary_map.device == image.device
+        assert not actual[name].binary_map.requires_grad
+    torch.testing.assert_close(
+        actual["tissue"].type_map, torch.ones((2, *shape), dtype=torch.long)
+    )
+    torch.testing.assert_close(actual["tissue"].binary_map, foreground + 12)
+    torch.testing.assert_close(image, original, rtol=0, atol=0)
+
+
 @pytest.mark.parametrize("mixed_precision", [False, True])
 @pytest.mark.parametrize("optional_heads", [False, True])
 def test_direct_prediction_applies_boundary_weights(

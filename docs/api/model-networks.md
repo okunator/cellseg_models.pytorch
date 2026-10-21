@@ -46,6 +46,11 @@ Use `nuc_`, `cyto_` or `tissue_` prefixes and the reconstruction maps required b
 your model family. Stage settings such as `out_channels` must match the network
 depth. Changing the architecture requires compatible weights.
 
+For instance segmentation without cell types, configure `nuc_binary` and the
+family's reconstruction head, omitting `nuc_type`. The output's `type_map` is
+then None. The same applies to `cyto_binary` and `cyto_type` for cytoplasm.
+Foreground-map values must follow the selected reconstruction method's contract.
+
 For CNN encoders such as `resnet18`, use image dimensions divisible by 32.
 CellVit supports `samvit_*` encoders, which have their own image-size requirements.
 For InstanSeg, use the factory or model class: these also create the pixel
