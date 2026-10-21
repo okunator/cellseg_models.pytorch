@@ -222,9 +222,13 @@ def get_overlap_area(
     # Exclude non overlapping.
     exclude = np.array([True] * len(coordinates), dtype=bool)
     exclude[get_overlap_index(xywh, coordinate_array)] = False
-    # Caluculate overlap.
-    x_overlap = np.maximum(np.minimum(x_other + w_other - x, w), 0)
-    y_overlap = np.maximum(np.minimum(y_other + h_other - y, h), 0)
+    # Calculate overlap.
+    x_overlap = np.maximum(
+        np.minimum(x_other + w_other, x + w) - np.maximum(x_other, x), 0
+    )
+    y_overlap = np.maximum(
+        np.minimum(y_other + h_other, y + h) - np.maximum(y_other, y), 0
+    )
     areas: np.ndarray = x_overlap * y_overlap
     areas[exclude] = 0
     return areas

@@ -1,5 +1,8 @@
 # Unreleased
 
+- Correct `get_overlap_area` to intersect both rectangle boundaries, including
+  partially overlapping and contained tiles, while preserving input order.
+
 - Fix `get_sub_grids` for ordinary coordinate lists while preserving coordinate
   collections, component selection and minimum-size filtering. Correct the
   two-axis return annotation of `_get_allowed_dimensions`.
