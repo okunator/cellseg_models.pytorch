@@ -56,5 +56,53 @@ class ReleaseMetadataTests(unittest.TestCase):
         self.assertEqual(release_metadata.check_versions(self.root), "0.1.30")
 
 
+class MetricsReleaseMetadataTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.package = self.root / "packages/metrics"
+        (self.package / "cellseg_metrics").mkdir(parents=True)
+        (self.package / "pyproject.toml").write_text('[project]\nversion = "0.1.0"\n')
+        self.module = self.package / "cellseg_metrics/__init__.py"
+        self.module.write_text('__version__ = "0.1.0"\n')
+
+    def test_metrics_versions_with_matching_tag_or_manual_validation(self):
+        for tag in ("", "metrics-v0.1.0"):
+            with self.subTest(tag=tag):
+                self.assertEqual(
+                    release_metadata.check_versions(self.root, tag, metrics=True),
+                    "0.1.0",
+                )
+
+    def test_metrics_rejects_main_tags_and_mismatched_versions(self):
+        for tag in ("v0.1.0", "0.1.0", "v0.2.0", "metrics-0.1.0", "metrics-v0.1.1"):
+            with self.subTest(tag=tag):
+                with self.assertRaisesRegex(ValueError, "Release tag"):
+                    release_metadata.check_versions(self.root, tag, metrics=True)
+
+    def test_main_rejects_metrics_tag_even_if_versions_match(self):
+        (self.root / "cellseg_models_pytorch").mkdir()
+        (self.root / "pyproject.toml").write_text('[project]\nversion = "0.1.0"\n')
+        (self.root / "cellseg_models_pytorch/__init__.py").write_text(
+            '__version__ = "0.1.0"\n'
+        )
+        with self.assertRaisesRegex(ValueError, "Release tag"):
+            release_metadata.check_versions(self.root, "metrics-v0.1.0")
+
+    def test_metrics_rejects_mismatched_module_version(self):
+        self.module.write_text('__version__ = "0.0.9"\n')
+        with self.assertRaisesRegex(ValueError, "Manifest version"):
+            release_metadata.check_versions(self.root, "metrics-v0.1.0", metrics=True)
+
+    def test_metrics_does_not_import_runtime_or_require_main_metadata(self):
+        self.module.write_text(
+            'raise RuntimeError("Do not import me")\n__version__ = "0.1.0"\n'
+        )
+        self.assertEqual(
+            release_metadata.check_versions(self.root, metrics=True), "0.1.0"
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

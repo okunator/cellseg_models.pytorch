@@ -20,10 +20,11 @@ concurrency:
 
 jobs:
   validate:
+    if: github.event_name != 'release' || !startsWith(github.event.release.tag_name, 'metrics-')
     uses: ./.github/workflows/tests.yml
 
   publish:
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' && !startsWith(github.event.release.tag_name, 'metrics-')
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 10
