@@ -4,12 +4,12 @@
 
 **Python library for 2D cell/nuclei instance segmentation models written with [PyTorch](https://pytorch.org/).**
 
-[![Generic badge](https://img.shields.io/badge/License-MIT-<COLOR>.svg)](https://github.com/okunator/cellseg_models.pytorch/blob/master/LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/okunator/cellseg_models.pytorch/blob/main/LICENSE)
 [![PyTorch - Version](https://img.shields.io/badge/PYTORCH-2+-red?&logo=pytorch)](https://pytorch.org/)
 [![Python - Version](https://img.shields.io/badge/PYTHON-3.11+-red?&logo=python&logoColor=white)](https://www.python.org/)
 [![Model Checkpoints](https://img.shields.io/badge/HF-Model%20Hub-yellow)](https://huggingface.co/csmp-hub)
+[![Tests](https://img.shields.io/github/actions/workflow/status/okunator/cellseg_models.pytorch/tests.yml?branch=main&label=Tests&logo=github)](https://github.com/okunator/cellseg_models.pytorch/actions/workflows/tests.yml)
 <br>
-[![Github Test](https://img.shields.io/github/actions/workflow/status/okunator/cellseg_models.pytorch/tests.yml?label=Tests&logo=github)](https://github.com/okunator/cellseg_models.pytorch/actions/workflows/tests.yml)
 [![Pypi](https://img.shields.io/pypi/v/cellseg-models-pytorch?color=blue&logo=pypi)](https://pypi.org/project/cellseg-models-pytorch/)
 [![Downloads](https://api.pepy.tech/badge/cellseg-models-pytorch)](https://pepy.tech/projects/cellseg-models-pytorch)
 [![Codecov](https://img.shields.io/codecov/c/github/okunator/cellseg_models.pytorch?logo=codecov)](https://codecov.io/gh/okunator/cellseg_models.pytorch)
