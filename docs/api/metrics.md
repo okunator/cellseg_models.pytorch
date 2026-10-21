@@ -4,6 +4,16 @@ Compare predicted masks with reference labels. Use NumPy arrays on CPU:
 instance masks for individual cells, class masks for categories, or binary masks
 for foreground/background. Convert raw model scores to labels first.
 
+These functions also belong to the standalone `cellseg-metrics` package, which
+requires only NumPy and SciPy. For example, use
+`from cellseg_metrics import panoptic_quality` without installing PyTorch.
+See the [source installation instructions](https://github.com/okunator/cellseg_models.pytorch#metrics-only)
+until its first PyPI release.
+
+The full library depends on `cellseg-metrics`. Its existing
+`cellseg_models_pytorch.metrics` imports remain available and re-export the same
+functions, so the examples below work with either import path.
+
 ## Instance evaluation
 
 Use 2D integer masks with 0 for background and a positive ID for each object.
