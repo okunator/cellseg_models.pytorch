@@ -97,8 +97,8 @@ def get_tissue_mask(
     blur = _gaussian_blur(image=gray, sigma=sigma, truncate=3.5)
     # Get threshold.
     if threshold is None:
-        threshold = _otsu_threshold(gray=blur)
-        threshold = max(min(255, int(threshold * max(0.0, multiplier) + 0.5)), 0)
+        otsu_threshold = _otsu_threshold(gray=blur)
+        threshold = max(min(255, int(otsu_threshold * max(0.0, multiplier) + 0.5)), 0)
     # Global thresholding.
     thrsh, mask = cv2.threshold(blur, threshold, 1, cv2.THRESH_BINARY_INV)
     return int(thrsh), mask
@@ -152,12 +152,12 @@ def clean_tissue_mask(
     return new_mask
 
 
-def _otsu_threshold(*, gray: np.ndarray) -> int:
+def _otsu_threshold(*, gray: np.ndarray) -> float:
     """Helper function to calculate Otsu's thresold from a grayscale image."""
-    values = gray.flatten()
+    values: np.ndarray = gray.flatten()
     values = values[(values != WHITE_PIXEL) & (values != BLACK_PIXEL)]
     threshold, __ = cv2.threshold(
-        values, None, 1, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
+        values, 0.0, 1, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
     )
     return threshold
 
