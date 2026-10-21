@@ -820,21 +820,25 @@ def majority_vote_parallel(type_map: np.ndarray, inst_map: np.ndarray) -> np.nda
 
 
 def majority_vote_sequential(type_map: np.ndarray, inst_map: np.ndarray) -> np.ndarray:
-    """Do a majority voting on the type_map pixels by broadcasting.
+    """Assign one class to each labelled instance.
 
     Adapted from:
     https://github.com/vqdang/hover_net/blob/master/models/hovernet/post_proc.py
 
     Args:
-        type_map: A raw type map (after an argmax function). Shape: (H, W).
-        inst_map: An instance labelled mask. Shape: (H, W).
+        type_map: Integer class labels of shape (H, W).
+        inst_map: Instance labels of shape (H, W). Label 0 is background;
+            background pixels need not be present.
 
     Returns:
-        Post-processed type map. Shape: (H, W).
+        New class map of shape (H, W), using NumPy promotion of type_map with a
+        uint8 mask. Background is 0. Each instance receives its most frequent
+        nonzero class, or 0 if all its classes are 0. Ties choose the smallest
+        class ID. Inputs are not modified.
     """
     type_map = binarize(inst_map) * type_map
-    pred_id_list = np.unique(inst_map)[1:]
-    for inst_id in pred_id_list:
+    pred_id_list = np.unique(inst_map)
+    for inst_id in pred_id_list[pred_id_list != 0]:
         inst_type = type_map[inst_map == inst_id]
         type_list, type_pixels = np.unique(inst_type, return_counts=True)
         type_counts = sorted(

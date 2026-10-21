@@ -1,5 +1,8 @@
 # Unreleased
 
+- Apply `majority_vote_sequential` to every instance when no background pixels
+  are present, preserving tie handling, class-zero fallback and input arrays.
+
 - Preserve class probabilities with `save_intermediate=True` in direct and
   sliding-window inference, sharing reconstruction tensors without copying them.
 
