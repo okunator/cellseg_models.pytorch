@@ -91,6 +91,19 @@ Smoothing changes saved polygon outlines only.
    :members: postproc_inst, postproc_tissuemap, postproc_serial, postproc_parallel, postproc_parallel_async
 ```
 
+## Tensor flow integration
+
+`follow_flows_torch` follows the flow field used by CellPose and Omnipose and
+returns final pixel coordinates and seed indices on the input device. It is a
+lower-level step for building tensor reconstruction pipelines; grouping pixels
+into instances and the existing `PostProcessor` still use CPU processing.
+Use float32 or float64 CPU tensors on a Mac. CUDA tensors select the CUDA path;
+the float64 integration step is not supported by MPS.
+
+```{eval-rst}
+.. autofunction:: cellseg_models_pytorch.postproc.follow_flows_torch
+```
+
 ## Prediction map fields
 
 Each container holds the maps for one output branch. Despite the "Soft" name,

@@ -3,6 +3,7 @@ from .functional.cellpose._old_cellpose import (
     post_proc_cellpose_old,
 )
 from .functional.cellpose.cellpose import get_masks_cellpose, post_proc_cellpose
+from .functional.cellpose.integrator import follow_flows_torch
 from .functional.cellpose.utils import (
     fill_holes_and_remove_small_masks,
     gen_flows,
@@ -26,6 +27,7 @@ POSTPROC_LOOKUP = {
 
 __all__ = [
     "POSTPROC_LOOKUP",
+    "follow_flows_torch",
     "gen_flows",
     "fill_holes_and_remove_small_masks",
     "normalize_field",
