@@ -28,6 +28,7 @@ import itertools
 from typing import Optional, Union
 
 import numpy as np
+from numpy.typing import NDArray
 
 ERROR_TYPE = "Tile width and height should be integers, got {} and {}."
 ERROR_NONZERO = (
@@ -171,52 +172,60 @@ def get_background_percentages(
     return output
 
 
-def get_overlap_index(xywh: XYWH, coordinates: list[XYWH]) -> np.ndarray:
+def get_overlap_index(
+    xywh: XYWH, coordinates: list[XYWH] | np.ndarray
+) -> NDArray[np.intp]:
     """Indices of tiles in `coordinates` which overlap with `xywh`.
 
     Args:
         xywh (tuple[int, int, int, int]): Coordinates.
-        coordinates: List of tile coordinates.
+        coordinates: Tile coordinates as a list or an array of shape (N, 4),
+            with columns (x, y, width, height).
 
     Returns:
-        Indices of tiles which overlap with xywh.
+        One-dimensional integer array of indices of tiles which overlap with xywh.
     """
     x, y, w, h = xywh
-    if not isinstance(coordinates, np.ndarray):
-        coordinates = np.array(coordinates, dtype=int)
+    coordinate_array = (
+        coordinates
+        if isinstance(coordinates, np.ndarray)
+        else np.array(coordinates, dtype=int)
+    )
     return np.argwhere(
-        (coordinates[:, 0] < x + w)
-        & (coordinates[:, 0] + coordinates[:, 2] > x)
-        & (coordinates[:, 1] < y + h)
-        & (coordinates[:, 1] + coordinates[:, 3] > y)
+        (coordinate_array[:, 0] < x + w)
+        & (coordinate_array[:, 0] + coordinate_array[:, 2] > x)
+        & (coordinate_array[:, 1] < y + h)
+        & (coordinate_array[:, 1] + coordinate_array[:, 3] > y)
     ).flatten()
 
 
 def get_overlap_area(
     xywh: tuple[int, int, int, int],
-    coordinates: list[XYWH],
+    coordinates: list[XYWH] | np.ndarray,
 ) -> np.ndarray:
     """Calculate how much each coordinate overlaps with `xywh`.
 
     Args:
         xywh: Coordinates.
-        coordinates: List of coordinates.
+        coordinates: Tile coordinates as a list or an array of shape (N, 4),
+            with columns (x, y, width, height).
 
     Returns:
-        np.ndarray:
-            Overlapping area for each tile in `coordinates`
+        One-dimensional array of overlapping areas in input order. The dtype
+        follows NumPy arithmetic on the coordinates.
     """
     x, y, w, h = xywh
-    if not isinstance(coordinates, np.ndarray):
-        coordinates = np.array(coordinates)
-    x_other, y_other, w_other, h_other = (coordinates[:, i] for i in range(4))
+    coordinate_array = (
+        coordinates if isinstance(coordinates, np.ndarray) else np.array(coordinates)
+    )
+    x_other, y_other, w_other, h_other = (coordinate_array[:, i] for i in range(4))
     # Exclude non overlapping.
     exclude = np.array([True] * len(coordinates), dtype=bool)
-    exclude[get_overlap_index(xywh, coordinates)] = False
+    exclude[get_overlap_index(xywh, coordinate_array)] = False
     # Caluculate overlap.
     x_overlap = np.maximum(np.minimum(x_other + w_other - x, w), 0)
     y_overlap = np.maximum(np.minimum(y_other + h_other - y, h), 0)
-    areas = x_overlap * y_overlap
+    areas: np.ndarray = x_overlap * y_overlap
     areas[exclude] = 0
     return areas
 
