@@ -43,7 +43,8 @@ def get_annotated_image(
     """Function to draw tiles to an image. Useful for visualising tiles/predictions.
 
     Args:
-        image: Image to draw to.
+        image: RGB uint8 NumPy image of shape (H, W, 3), grayscale uint8 array
+            of shape (H, W), or a Pillow image. Pillow images are converted to RGB.
         coordinates: Tile coordinates.
         downsample:
             Downsample for the image. If coordinates are from the same image,
@@ -85,14 +86,17 @@ def get_annotated_image(
 
     Returns:
         PIL.Image.Image:
-            Annotated PIL image.
+            New RGB Pillow image. Input pixels are not modified.
     """
     if not _has_matplotlib:
         raise ImportError(
             "Matplotlib is required for `get_annotated_image`. `pip install matplotlib`"
         )
     # Check image and convert to PIL Image.
-    pil_image = Image.fromarray(check_image(image)).convert("RGB")
+    if isinstance(image, Image.Image):
+        pil_image = image.convert("RGB")
+    else:
+        pil_image = Image.fromarray(check_image(image)).convert("RGB")
     # Check arguments.
     if text_items is not None:
         if len(text_items) != len(coordinates):

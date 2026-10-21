@@ -144,3 +144,61 @@ def test_annotation_preserves_text_length_validation() -> None:
 def test_annotation_preserves_array_validation(image: np.ndarray) -> None:
     with pytest.raises(TypeError):
         get_annotated_image(image, [], 1.0)
+
+
+@pytest.mark.parametrize("mode", ["RGB", "L", "RGBA", "P"])
+@pytest.mark.parametrize("alpha", [0.0, 0.5])
+def test_annotation_accepts_pillow_modes_without_mutating_input(
+    mode: str, alpha: float
+) -> None:
+    if mode == "L":
+        image = Image.new(mode, (18, 16), 50)
+        rgb_color = [50, 50, 50]
+    elif mode == "P":
+        image = Image.new(mode, (18, 16), 1)
+        image.putpalette([0, 0, 0, 20, 40, 60])
+        rgb_color = [20, 40, 60]
+    else:
+        color = (20, 40, 60, 127) if mode == "RGBA" else (20, 40, 60)
+        image = Image.new(mode, (18, 16), color)
+        rgb_color = [20, 40, 60]
+    original_pixels = image.tobytes()
+    original_palette = image.getpalette()
+    array = np.full((16, 18, 3), rgb_color, dtype=np.uint8)
+    coordinates = [(4, 4, 8, 8), (20, 4, 8, 8)]
+
+    result = get_annotated_image(
+        image,
+        coordinates,
+        2.0,
+        rectangle_fill="green",
+        highlight_first=True,
+        alpha=alpha,
+    )
+    expected = get_annotated_image(
+        array,
+        coordinates,
+        2.0,
+        rectangle_fill="green",
+        highlight_first=True,
+        alpha=alpha,
+    )
+
+    assert result.mode == "RGB"
+    assert result.size == image.size
+    np.testing.assert_array_equal(result, expected)
+    np.testing.assert_array_equal(np.asarray(result)[0, 0], rgb_color)
+    assert image.mode == mode
+    assert image.tobytes() == original_pixels
+    assert image.getpalette() == original_palette
+
+
+def test_annotation_returns_independent_image_for_empty_pillow_input() -> None:
+    image = Image.new("L", (8, 8), 42)
+
+    result = get_annotated_image(image, [], 1.0)
+
+    assert result.mode == "RGB"
+    np.testing.assert_array_equal(result, np.full((8, 8, 3), 42, np.uint8))
+    result.putpixel((0, 0), (255, 255, 255))
+    assert image.getpixel((0, 0)) == 42

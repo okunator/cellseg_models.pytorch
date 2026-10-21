@@ -1,5 +1,8 @@
 # Unreleased
 
+- Accept Pillow images in `get_annotated_image`, converting them to RGB while
+  preserving source pixels and the existing NumPy input validation.
+
 - Correct `get_overlap_area` to intersect both rectangle boundaries, including
   partially overlapping and contained tiles, while preserving input order.
 
