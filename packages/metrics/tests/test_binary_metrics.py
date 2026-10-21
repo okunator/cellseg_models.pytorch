@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from cellseg_models_pytorch.metrics import (
+from cellseg_metrics import (
     accuracy,
     dice_coef,
     f1score,

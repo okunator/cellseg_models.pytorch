@@ -40,6 +40,13 @@ jobs:
           name: package-distributions
           path: dist
 
+      # The standalone package has its own publisher and must be released first.
+      - name: Require the standalone metrics release on PyPI
+        run: >-
+          python -m pip download --index-url https://pypi.org/simple
+          --no-deps --only-binary=:all: --dest "$RUNNER_TEMP/metrics-release"
+          'cellseg-metrics>=0.1.0'
+
       - name: Publish verified distributions
         uses: pypa/gh-action-pypi-publish@release/v1
 

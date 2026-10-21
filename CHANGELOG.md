@@ -1,3 +1,9 @@
+# Unreleased
+
+- Provide segmentation metrics as the independently installable `cellseg-metrics`
+  package, requiring only NumPy/SciPy. Preserve existing
+  `cellseg_models_pytorch.metrics` imports and numerical behavior.
+
 <a id='changelog-0.2.0'></a>
 
 # 0.2.0 — 2026-10-20

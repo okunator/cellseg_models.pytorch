@@ -193,6 +193,12 @@ def main(extra: str | None = None) -> None:
     ):
         importlib.import_module(f"cellseg_models_pytorch.{module}")
 
+    from cellseg_metrics import panoptic_quality
+    from cellseg_models_pytorch.metrics import panoptic_quality as legacy_quality
+
+    if legacy_quality is not panoptic_quality:
+        raise RuntimeError("Legacy metrics imports do not use the standalone package")
+
     geometry = gpd.GeoDataFrame(
         {"uid": [101], "class_name": ["nucleus"]},
         geometry=[box(10, 20, 14, 25)],

@@ -1,0 +1,24 @@
+[project]
+name = "cellseg-metrics"
+version = "0.1.0"
+description = "NumPy and SciPy metrics for cell and nuclei segmentation."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Okunator"}]
+requires-python = ">=3.10"
+dependencies = ["numpy>=2.2.6", "scipy>=1.15.3"]
+
+[project.urls]
+Documentation = "https://okunator.github.io/cellseg_models.pytorch/api/metrics.html"
+Repository = "https://github.com/okunator/cellseg_models.pytorch"
+
+[tool.poetry]
+packages = [{include = "cellseg_metrics"}]
+include = ["NOTICE.md", "LICENSES/*.txt"]
+
+[build-system]
+requires = ["poetry-core==2.2.1"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -28,12 +28,20 @@ jobs:
       - name: Build and check distributions
         run: |
           uv build
+          uv build --package cellseg-metrics --out-dir metrics-dist
           uvx --from twine==6.2.0 twine check --strict dist/*
+          uvx --from twine==6.2.0 twine check --strict metrics-dist/*
       - name: Preserve distributions
         uses: actions/upload-artifact@v7
         with:
           name: package-distributions
           path: dist/*
+          if-no-files-found: error
+      - name: Preserve standalone metrics distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: metrics-distributions
+          path: metrics-dist/*
           if-no-files-found: error
 
   install:
@@ -62,15 +70,43 @@ jobs:
         with:
           name: package-distributions
           path: dist
+      - uses: actions/download-artifact@v8
+        with:
+          name: metrics-distributions
+          path: metrics-dist
+      - name: Check a clean standalone metrics installation
+        env:
+          DISTRIBUTION: ${{ matrix.distribution }}
+        run: |
+          python -m venv "$RUNNER_TEMP/metrics-env"
+          if [ "$DISTRIBUTION" = wheel ]; then
+            "$RUNNER_TEMP/metrics-env/bin/python" -m pip install metrics-dist/*.whl
+          else
+            "$RUNNER_TEMP/metrics-env/bin/python" -m pip install metrics-dist/*.tar.gz
+          fi
+          "$RUNNER_TEMP/metrics-env/bin/python" -m pip check
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/metrics-env/bin/python" - <<'PY'
+          from importlib.metadata import distributions
+          from pathlib import Path
+          import sys
+          import cellseg_metrics
+          names = {package.metadata['Name'].lower().replace('_', '-') for package in distributions()}
+          assert names - {'pip', 'setuptools', 'wheel'} == {'cellseg-metrics', 'numpy', 'scipy'}, names
+          assert Path(cellseg_metrics.__file__).resolve().is_relative_to(Path(sys.prefix).resolve())
+          PY
+          "$RUNNER_TEMP/metrics-env/bin/python" -m pip install 'pytest>=9.1.1'
+          cp -R "$GITHUB_WORKSPACE/packages/metrics/tests" "$RUNNER_TEMP/metrics-tests"
+          "$RUNNER_TEMP/metrics-env/bin/python" -m pytest --confcutdir="$RUNNER_TEMP/metrics-tests" "$RUNNER_TEMP/metrics-tests" -q
       - name: Install the built distribution
         env:
           DISTRIBUTION: ${{ matrix.distribution }}
         run: |
           python -m venv "$RUNNER_TEMP/package-env"
           if [ "$DISTRIBUTION" = wheel ]; then
-            "$RUNNER_TEMP/package-env/bin/python" -m pip install dist/*.whl
+            "$RUNNER_TEMP/package-env/bin/python" -m pip install metrics-dist/*.whl dist/*.whl
           else
-            "$RUNNER_TEMP/package-env/bin/python" -m pip install dist/*.tar.gz
+            "$RUNNER_TEMP/package-env/bin/python" -m pip install metrics-dist/*.tar.gz dist/*.tar.gz
           fi
           "$RUNNER_TEMP/package-env/bin/python" -m pip check
       - name: Check installed imports and CPU model training

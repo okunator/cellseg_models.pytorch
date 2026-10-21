@@ -7,6 +7,10 @@ headers are preserved; the bundled texts supplement those headers.
 This list describes code included in the package. Separately installed dependencies,
 datasets and downloaded weights have their own licenses.
 
+The standalone metrics implementation lives in `packages/metrics/`; its own
+`NOTICE.md` retains the HoVer-Net attribution for adapted instance metrics.
+The legacy `metrics/` modules in this distribution re-export that dependency.
+
 ## Retained code
 
 Paths below are relative to `cellseg_models_pytorch/`.

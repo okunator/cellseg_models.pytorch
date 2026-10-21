@@ -40,6 +40,23 @@ See [PyPI's publisher setup](https://docs.pypi.org/trusted-publishers/adding-a-p
 and [the publishing action](https://github.com/pypa/gh-action-pypi-publish).
 Workflow syntax checks and ordinary CI cannot verify the PyPI-side configuration.
 
+## Standalone metrics distribution
+
+`packages/metrics/` builds the independent `cellseg-metrics` distribution. The
+existing build/install jobs retain its verified wheel and source archive in the
+`metrics-distributions` artifact and test both without Torch or imaging packages.
+The main distribution retains only its compatibility imports and requires
+`cellseg-metrics>=0.1.0`.
+
+Before a main-library release that requires it, configure trusted publishing for
+the separate PyPI project and publish the reviewed metrics artifacts. The current
+`publish.yml` uploads only the main distribution and requires an available metrics
+wheel on PyPI first. It does not publish the standalone package. A separate metrics
+publication must be explicitly authorized and use those verified artifacts; do
+not add a stored-token fallback. Keep the standalone version in its pyproject and
+`cellseg_metrics/__init__.py` consistent. Later main releases may reuse an already
+published compatible metrics release without republishing it.
+
 ## Configure documentation hosting
 
 Enable GitHub Pages in the repository settings with **GitHub Actions** as its

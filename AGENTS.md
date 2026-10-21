@@ -18,6 +18,7 @@ future work; it does not make planned tools or features available today.
 | `cellseg_models_pytorch/inference/`, `wsi/`, `postproc/` | Prediction, whole-slide workflows, instance reconstruction |
 | `cellseg_models_pytorch/torch_datasets/`, `transforms/` | Data loading and preprocessing |
 | `cellseg_models_pytorch/losses/`, `metrics/` | Training objectives and evaluation |
+| `packages/metrics/` | Independently installable NumPy/SciPy metrics; legacy metrics modules re-export this implementation |
 | `cellseg_models_pytorch/**/tests/`, `conftest.py` | Library tests and shared fixtures |
 | `tests/`, `tests/fixtures/` | Repository-only checkpoint comparisons and reference data |
 | `tools/`, `tools/tests/` | Build and release checks and their tests |
@@ -149,7 +150,7 @@ results and unverified devices, versions or optional paths.
 
 ## Current development commands
 
-uv 0.11.4 and `uv.lock` are authoritative. Use the required version in
+uv 0.11.4 and `uv.lock` are authoritative for both workspace packages. Use the required version in
 `pyproject.toml`, locked synchronization and one project lockfile.
 The build backend remains poetry-core 2.2.1; Poetry CLI is not needed.
 Use [CONTRIBUTING.md](CONTRIBUTING.md) for setup and
@@ -165,6 +166,8 @@ Use [CONTRIBUTING.md](CONTRIBUTING.md) for setup and
 | Hooks for changed files | `uv run --locked pre-commit run --files <changed-files>` |
 | Install commit and push hooks | `uv run --locked pre-commit install --hook-type pre-commit --hook-type pre-push` |
 | Build distributions | `uv build` |
+| Build standalone metrics | `uv build --package cellseg-metrics` |
+| Test metrics independently | `uv run --locked --package cellseg-metrics --group dev pytest --confcutdir=packages/metrics packages/metrics/tests` |
 | Build docs | `uv run --locked --group docs sphinx-build -W --keep-going -b html docs docs/_build/html` |
 
 Ruff 0.17.0 is the development linter/formatter and matches the pre-commit hook

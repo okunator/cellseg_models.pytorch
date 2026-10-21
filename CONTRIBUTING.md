@@ -23,6 +23,19 @@ modules. See [AGENTS.md](AGENTS.md) for the layout and development conventions.
 `uv.lock` is the single project lockfile; poetry-core remains the build backend.
 Use `uv lock` after intentional dependency edits, then `uv sync --locked`.
 
+The workspace also contains `cellseg-metrics` under `packages/metrics/`. It owns
+the numerical implementation; `cellseg_models_pytorch.metrics` preserves the
+existing imports. Losses remain in the main package. Build metrics with
+`uv build --package cellseg-metrics`. Run its tests without the root conftest:
+
+```sh
+uv run --locked --package cellseg-metrics --group dev pytest --confcutdir=packages/metrics packages/metrics/tests
+```
+
+This command uses the shared development environment. The existing distribution
+jobs separately install metrics wheels/source archives into clean environments
+with only NumPy/SciPy, then install pytest and run the same numerical suite.
+
 ## Changes and checks
 
 Keep the change focused and update affected callers, exports, tests, and examples.

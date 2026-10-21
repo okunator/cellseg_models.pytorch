@@ -74,7 +74,7 @@ jobs:
         env:
           NUMBA_DISABLE_JIT: "1"
           HF_HUB_OFFLINE: "1"
-        run: uv run --no-sync pytest --cov cellseg_models_pytorch/ --cov-report xml --junitxml=test-results.xml
+        run: uv run --no-sync pytest --cov cellseg_models_pytorch --cov cellseg_metrics --cov-report xml --junitxml=test-results.xml
 
       - name: Check numerical helpers with Numba JIT enabled
         env:
