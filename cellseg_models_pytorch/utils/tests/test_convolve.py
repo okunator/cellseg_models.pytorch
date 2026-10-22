@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from cellseg_models_pytorch.utils.convolve import filter2D, gaussian_kernel2d
+from cellseg_models_pytorch.utils.convolve import filter2D, gaussian, gaussian_kernel2d
 
 
 @pytest.mark.parametrize("window_size", [5, 6])
@@ -18,8 +18,6 @@ def test_convolve():
 
 @pytest.mark.parametrize("window_size", [3, 4])
 def test_gaussian_values_and_options(window_size):
-    from cellseg_models_pytorch.utils.convolve import gaussian
-
     positions = torch.tensor(
         [i - (window_size - 1) / 2 for i in range(window_size)],
         dtype=torch.float64,
@@ -39,6 +37,51 @@ def test_gaussian_values_and_options(window_size):
     torch.testing.assert_close(
         kernel.sum(dim=(1, 2, 3)), torch.ones(2, dtype=torch.float64)
     )
+
+
+@pytest.mark.parametrize("autocast_dtype", [torch.float16, torch.bfloat16])
+@pytest.mark.parametrize(
+    "device",
+    [
+        torch.device("cpu"),
+        pytest.param(torch.device("cuda", 0), marks=pytest.mark.cuda),
+    ],
+)
+@pytest.mark.parametrize(
+    "dtype", [None, torch.float16, torch.bfloat16, torch.float32, torch.float64]
+)
+def test_gaussian_kernel_preserves_requested_dtype_under_autocast(
+    dtype, device, autocast_dtype
+):
+    expected_vector = gaussian(31, 26, device=device, dtype=dtype)
+    expected = gaussian_kernel2d(31, 26, n_channels=2, device=device, dtype=dtype)
+
+    with torch.autocast(device.type, dtype=autocast_dtype):
+        actual_vector = gaussian(31, 26, device=device, dtype=dtype)
+        actual = gaussian_kernel2d(31, 26, n_channels=2, device=device, dtype=dtype)
+
+    for value, reference in ((actual_vector, expected_vector), (actual, expected)):
+        assert value.dtype == (torch.float32 if dtype is None else dtype)
+        assert value.device == device
+        torch.testing.assert_close(value, reference, rtol=0, atol=0)
+
+
+@pytest.mark.parametrize("window_size", [3, 4])
+@pytest.mark.parametrize(
+    "dtype", [None, torch.float16, torch.bfloat16, torch.float32, torch.float64]
+)
+def test_gaussian_helpers_support_meta_device(window_size, dtype):
+    device = torch.device("meta")
+    vector = gaussian(window_size, 2, device=device, dtype=dtype)
+    kernel = gaussian_kernel2d(
+        window_size, 2, n_channels=2, device=device, dtype=dtype
+    )
+
+    assert vector.shape == (window_size,)
+    assert kernel.shape == (2, 1, window_size, window_size)
+    for value in (vector, kernel):
+        assert value.device == device
+        assert value.dtype == (torch.float32 if dtype is None else dtype)
 
 
 @pytest.mark.parametrize("window_size", [3, 4])

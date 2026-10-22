@@ -2,6 +2,7 @@
 # See NOTICE.md for attribution and license text.
 
 from collections.abc import Sequence
+from contextlib import nullcontext
 
 import torch
 import torch.nn.functional as F
@@ -76,9 +77,15 @@ def gaussian(
     if window_size % 2 == 0:
         x = x + 0.5
 
-    gauss = torch.exp((-x.pow(2.0) / float(2 * sigma**2)))
-
-    return gauss / gauss.sum()
+    # Meta tensors need no precision guard; their device does not support autocast.
+    context = (
+        torch.autocast(x.device.type, enabled=False)
+        if torch.amp.autocast_mode.is_autocast_available(x.device.type)
+        else nullcontext()
+    )
+    with context:
+        gauss = torch.exp((-x.pow(2.0) / float(2 * sigma**2)))
+        return gauss / gauss.sum()
 
 
 def gaussian_kernel2d(
@@ -110,7 +117,8 @@ def gaussian_kernel2d(
     kernel_x = gaussian(window_size, sigma, device=device, dtype=dtype)
     kernel_y = gaussian(window_size, sigma, device=device, dtype=dtype)
 
-    kernel_2d = torch.matmul(kernel_x.unsqueeze(-1), kernel_y.unsqueeze(-1).t())
+    # Elementwise products keep the requested dtype inside autocast.
+    kernel_2d = kernel_x[:, None] * kernel_y[None, :]
     kernel_2d = kernel_2d.expand(n_channels, 1, window_size, window_size)
 
     return kernel_2d

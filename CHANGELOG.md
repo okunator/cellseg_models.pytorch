@@ -1,5 +1,8 @@
 # Unreleased
 
+- Preserve the requested Gaussian-kernel dtype under autocast instead of silently
+  lowering its precision during construction.
+
 - Reject mismatched coordinate and output-path counts before batch reconstruction
   or writes, preventing silent image loss in serial, threaded and async processing.
 
