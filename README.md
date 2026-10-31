@@ -136,6 +136,8 @@ format, labels, splits and license.
 | [[14, 15](REFERENCES.md#ref-14)] [Lizard-Mitosis](https://huggingface.co/datasets/csmp-hub/lizard-mitosis) | 4,981 | Original `train`, `val`, `test`; train/val overlap | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (noncommercial) |
 | [[16](REFERENCES.md#ref-16)] [Human Lung](https://huggingface.co/datasets/csmp-hub/human-lung) | 68 | Original `train` (51), `val` (7), `test` (10); patient independence unverified | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (noncommercial) |
 | [[17, 18, 19](REFERENCES.md#ref-17)] [VitaminP ORION-CRC](https://huggingface.co/datasets/csmp-hub/vitaminp-orion-crc) | 3,337 | Original case-separated `train` (2,946), `val` (272), `test` (119) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| [[20](REFERENCES.md#ref-20)] [Schürch CRC](https://huggingface.co/datasets/csmp-hub/schurch-crc) | 4,900 | Patient-separated `train` (3,780), `test` (1,120) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| [[21](REFERENCES.md#ref-21)] [Phillips CTCL](https://huggingface.co/datasets/csmp-hub/phillips-ctcl) | 7,452 | Patient-separated `train` (5,940), `test` (1,512) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
 Load one PanopTILs Refined sample:
 
