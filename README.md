@@ -138,6 +138,7 @@ format, labels, splits and license.
 | [[17, 18, 19](REFERENCES.md#ref-17)] [VitaminP ORION-CRC](https://huggingface.co/datasets/csmp-hub/vitaminp-orion-crc) | 3,337 | Original case-separated `train` (2,946), `val` (272), `test` (119) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | [[20](REFERENCES.md#ref-20)] [Schürch CRC](https://huggingface.co/datasets/csmp-hub/schurch-crc) | 4,900 | Patient-separated `train` (3,780), `test` (1,120) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | [[21](REFERENCES.md#ref-21)] [Phillips CTCL](https://huggingface.co/datasets/csmp-hub/phillips-ctcl) | 7,452 | Patient-separated `train` (5,940), `test` (1,512) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| [[22](REFERENCES.md#ref-22)] [Hoefflin glioma](https://huggingface.co/datasets/csmp-hub/hoefflin-glioma) | 22,252 | Patient-separated `train` (18,400), `test` (3,852) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
 Load one PanopTILs Refined sample:
 
