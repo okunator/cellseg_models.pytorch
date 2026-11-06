@@ -66,6 +66,9 @@ For numerical changes, compare values and final masks, not only tensor shapes.
 For performance changes, include hardware, precision, workload, memory, and
 measurement details. Keep data/checkpoint licenses and attribution intact.
 
+The [post-processing migration baseline](tools/postprocessing.md) replays pinned
+predictions offline and measures the current transfer and reconstruction boundary.
+
 Ruff 0.17.0 is the single linter/formatter and matches the hook revision. CI checks
 `tools/` with Ruff and runs strict mypy on `tools/check_release_metadata.py`,
 `cellseg_models_pytorch/utils/convolve.py` and `cellseg_models_pytorch/wsi/inst_merger.py`,
